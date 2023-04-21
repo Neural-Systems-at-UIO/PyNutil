@@ -7,6 +7,10 @@ def triangulate(w,h,markers):
                  [ 1.1*w,-0.1*h, 1.1*w,-0.1*h],
                  [-0.1*w, 1.1*h,-0.1*w, 1.1*h],
                  [ 1.1*w, 1.1*h, 1.1*w, 1.1*h]]
+    #    vertices = [[0, 0, 0, 0],
+    #                [w, 0, w, 0],
+    #                [0, h, 0, h],
+    #                [w, h, w, h]]
        edges=[0]*((len(markers)+4)*(len(markers)+4-1)//2)
        triangles=[Triangle(0,1,2,vertices,edges),Triangle(1,2,3,vertices,edges)]
        edges[0]=edges[1]=edges[4]=edges[5]=2
@@ -46,15 +50,17 @@ def transform(triangulation,x,y):
                      triangle.A[1]
                      +(triangle.B[1]-triangle.A[1])*uv1[0]
                      +(triangle.C[1]-triangle.A[1])*uv1[1])
- 
+def transform_vec(triangulation,x,y):
+    xPrime = np.zeros(x.shape,float)
+    yPrime = np.zeros(y.shape,float)
+    for triangle in triangulation:
+        triangle.intriangle_vec(x,y, xPrime,yPrime)
+    return (xPrime,yPrime)
+
 def forwardtransform(triangulation,x,y):
      for triangle in triangulation:
          uv1=triangle.inforward(x,y)
-         print('uv1',uv1)
          if uv1:
-             ans = (triangle.A[2]
-                   +(triangle.B[2]-triangle.A[2])*uv1[0])
-             print('uv1 ans',triangle.A[2],(triangle.B[2]-triangle.A[2]),uv1,ans)
              return (triangle.A[2]
                    +(triangle.B[2]-triangle.A[2])*uv1[0]
                    +(triangle.C[2]-triangle.A[2])*uv1[1],
@@ -151,3 +157,10 @@ class Triangle:
            ok = (uv1[:,0]>=0) & (uv1[:,0]<=1) & (uv1[:,1]>=0) & (uv1[:,1]<=1) & (uv1[:,0]+uv1[:,1]<=1) 
            xPrime[ok] = self.A[2] + (self.B[2]-self.A[2])*uv1[ok,0] + (self.C[2]-self.A[2])*uv1[ok,1]
            yPrime[ok] = self.A[3] + (self.B[3]-self.A[3])*uv1[ok,0] + (self.C[3]-self.A[3])*uv1[ok,1]
+
+     def intriangle_vec(self,x,y, xPrime,yPrime):
+           uv1 = rowmul3_vec(x,y,self.decomp)
+           # also compute the next step, since it uses the parameters of this triangle
+           ok = (uv1[:,0]>=0) & (uv1[:,0]<=1) & (uv1[:,1]>=0) & (uv1[:,1]<=1) & (uv1[:,0]+uv1[:,1]<=1) 
+           xPrime[ok] = self.A[0] + (self.B[0]-self.A[0])*uv1[ok,0] + (self.C[0]-self.A[0])*uv1[ok,1]
+           yPrime[ok] = self.A[1] + (self.B[1]-self.A[1])*uv1[ok,0] + (self.C[1]-self.A[1])*uv1[ok,1]
