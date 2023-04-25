@@ -2,8 +2,12 @@
 import pandas as pd
 #nrrd just lets us open nrrd files
 import nrrd
+
+#this is a hack to let us import as if we are in the parent directory
+import sys
+sys.path.append('..')
 #import our function for converting a folder of segmentations to points
-from PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview
+from PyNutil.PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview
 
 
 segmentation_folder = "test_data/oneSection15/"

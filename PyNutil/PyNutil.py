@@ -154,7 +154,7 @@ def WritePointsToMeshview(points, pointNames, filename, infoFile):
     WritePoints(regionDict, filename, infoFile)
 
 def labelPoints(points, label_volume, scale_factor=1):
-        """this function takes a list of points and assigns them to a region based on the regionVolume.
+    """this function takes a list of points and assigns them to a region based on the regionVolume.
     These regions will just be the values in the regionVolume at the points.
     it returns a dictionary with the region as the key and the points as the value"""
     #first convert the points to 3 columns
@@ -169,3 +169,4 @@ def labelPoints(points, label_volume, scale_factor=1):
     #get the label value for each point
     labels = label_volume[x,y,z]
     return labels
+
