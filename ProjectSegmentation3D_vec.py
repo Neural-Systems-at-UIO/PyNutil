@@ -2,7 +2,7 @@
 import numpy as np
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
-from VisuAlignLib_vec_original import triangulate,  forwardtransform_vec
+from VisuAlignWarpVec import triangulate,  forwardtransform_vec, transform_vec
 from glob import glob
 from tqdm import tqdm
 import cv2
@@ -67,7 +67,7 @@ def loadVisuAlignJson(filename):
     slices = vafile["slices"]
     return slices
 
-def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto'):
+def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=True):
     Segmentation = cv2.imread(SegmentationPath)
 
     if pixelID == 'auto':
@@ -80,21 +80,41 @@ def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto'):
     #transform pixels to registration space (the registered image and segmentation have different dimensions)
     SegHeight = Segmentation.shape[0]
     SegWidth  = Segmentation.shape[1]
-    points = applyTransformationToPoints(ID_pixels, slice, SegHeight, SegWidth)
+    RegHeight = slice["height"]
+    RegWidth  = slice["width"]
+    #this calculates reg/seg
+    Yscale , Xscale = transformToRegistration(SegHeight,SegWidth,  RegHeight,RegWidth)
+    #this creates a triangulation using the reg width
+    triangulation   = triangulate(RegWidth, RegHeight, slice["markers"])
+    #scale the seg coordinates to reg/seg
+    scaledY,scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
+    if nonLinear:
+        newX, newY = transform_vec(triangulation, scaledX, scaledY)
+    else:
+        newX, newY = scaledX, scaledY
+    #scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
+    points = transformToAtlasSpace(slice['anchoring'], newY, newX, RegHeight, RegWidth)
     # points = points.reshape(-1)
     return points
 
-def applyTransformationToPoints(ID_pixels, slice,SegHeight, SegWidth):
-    RegHeight = slice["height"]
-    RegWidth  = slice["width"]
-    Yscale , Xscale = transformToRegistration(SegHeight,SegWidth,  RegHeight,RegWidth)
-    triangulation   = triangulate(RegWidth, RegHeight, slice["markers"])
-    scaledY,scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
-    newX, newY      = forwardtransform_vec(triangulation, scaledX, scaledY)
-    points = transformToAtlasSpace(slice['anchoring'], newY, newX, RegHeight, RegWidth)
-    return points
+# def applyTransformationToPoints(ID_pixels, slice,SegHeight, SegWidth, nonLinear=True):
+#     RegHeight = slice["height"]
+#     RegWidth  = slice["width"]
+#     #this calculates reg/seg
+#     Yscale , Xscale = transformToRegistration(SegHeight,SegWidth,  RegHeight,RegWidth)
+#     #this creates a triangulation using the reg width
+#     triangulation   = triangulate(RegWidth, RegHeight, slice["markers"])
+#     #scale the seg coordinates to reg/seg
+#     scaledY,scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
+#     if nonLinear:
+#         newX, newY = transform_vec(triangulation, scaledX, scaledY)
+#     else:
+#         newX, newY = scaledX, scaledY
+#     #scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
+#     points = transformToAtlasSpace(slice['anchoring'], newY, newX, RegHeight, RegWidth)
+#     return points
 
-def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0]):
+def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
     slices = loadVisuAlignJson(QUINT_alignment)
     points = []
     segmentationFileTypes = [".png", ".tif", ".tiff", ".jpg", ".jpeg"] 
@@ -103,12 +123,12 @@ def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0]):
     #order segmentations and sectionNumbers
     # Segmentations = [x for _,x in sorted(zip(SectionNumbers,Segmentations))]
     # SectionNumbers.sort()
-    for slice in tqdm(slices):
-        current_slice_number = int(slice["nr"])
-        SegmentationPath = Segmentations[SectionNumbers.index(current_slice_number)]
-        SegmentationPath =  SegmentationPath
-        # print(SegmentationPath)
-        points.extend(SegmentationToAtlasSpace(slice, SegmentationPath, pixelID))
+    for  SegmentationPath in Segmentations:
+        seg_nr = int(number_sections([SegmentationPath])[0])
+        current_slice_index = np.where([s["nr"]==seg_nr for s in slices])
+        current_slice = slices[current_slice_index[0][0]]
+        ##this converts the segmentation to a point cloud
+        points.extend(SegmentationToAtlasSpace(current_slice, SegmentationPath, pixelID, nonLinear))
     return points
 
 def WritePoints(pointsDict, filename, infoFile):
