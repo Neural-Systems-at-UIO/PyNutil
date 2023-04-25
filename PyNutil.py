@@ -2,37 +2,41 @@
 import numpy as np
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
-from VisuAlignWarpVec import triangulate,  forwardtransform_vec, transform_vec
+from VisuAlignWarpVec import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
 import cv2
 from skimage import measure
-import pandas as pd
 
 def getCentroidsAndArea(Segmentation, pixelCutOff=0):
+    """this function returns the center coordinate of each object in the segmentation.
+    You can set a pixelCutOff to remove objects that are smaller than that number of pixels"""
     SegmentationBinary = ~np.all(Segmentation==255, axis=2) 
     labels = measure.label(SegmentationBinary)
     #this finds all the objects in the image
     labelsInfo = measure.regionprops(labels)
     #remove objects that are less than pixelCutOff
     labelsInfo = [label for label in labelsInfo if label.area > pixelCutOff]
+    #get the centre points of the objects
     centroids = np.array([label.centroid for label in labelsInfo])
+    #get the area of the objects
     area = np.array([label.area for label in labelsInfo])
-    return centroids, area
+    #get the coordinates for all the pixels in each object
+    coords = np.array([label.coords for label in labelsInfo])
+    return centroids, area, coords
 
-def assignPointsToRegions(points, regionVolume):
-    Regions = regionVolume[points[:,0].astype(int), points[:,1].astype(int), points[:,2].astype(int)]
-    regionDict = {region: [points[Regions==region]] for region in np.unique(Regions)}
-    return regionDict
+
 
 
 def transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth):
+    """this function returns the scaling factors to transform the segmentation to the registration space"""
     Yscale = RegHeight/SegHeight
     Xscale = RegWidth/SegWidth
     return  Yscale,Xscale
 
 
 def findMatchingPixels(Segmentation, id):
+    """this function returns the Y and X coordinates of all the pixels in the segmentation that match the id provided"""
     mask = Segmentation==id
     mask = np.all(mask, axis=2)
     id_positions = np.where(mask)
@@ -40,11 +44,14 @@ def findMatchingPixels(Segmentation, id):
     return idY,idX
 
 def scalePositions(idY, idX, Yscale, Xscale):
+    """this function scales the Y and X coordinates to the registration space.
+     (the Yscale and Xscale are the output of transformToRegistration)"""
     idY = idY * Yscale
     idX = idX * Xscale
     return  idY,idX
 
 def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
+    """transform to atlas space using the QuickNII anchoring vector"""
     O = anchoring[0:3]
     U = anchoring[3:6]
     # swap order of U
@@ -68,6 +75,8 @@ def loadVisuAlignJson(filename):
     return slices
 
 def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=True):
+    """combines many functions to convert a segmentation to atlas space. It takes care
+    of deformations"""
     Segmentation = cv2.imread(SegmentationPath)
 
     if pixelID == 'auto':
@@ -99,6 +108,7 @@ def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=
 
 
 def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
+    "apply Segmentation to atlas space to all segmentations in a folder"
     slices = loadVisuAlignJson(QUINT_alignment)
     points = []
     segmentationFileTypes = [".png", ".tif", ".tiff", ".jpg", ".jpeg"] 
@@ -120,6 +130,8 @@ def createRegionDict(points, regions):
     return regionDict
 
 def WritePoints(pointsDict, filename, infoFile):
+    """write a series of points to a meshview json file. pointsDict is a dictionary with the points.
+    pointsDict is created by createRegionDict. infoFile is a csv file with the information about the regions"""
     meshview = [
     {
         "idx": idx,
@@ -137,10 +149,14 @@ def WritePoints(pointsDict, filename, infoFile):
         json.dump(meshview, f)
 
 def WritePointsToMeshview(points, pointNames, filename, infoFile):
+    """this is the function you call more often as it combines the other functions for writing meshview"""
     regionDict = createRegionDict(points, pointNames)
     WritePoints(regionDict, filename, infoFile)
 
 def labelPoints(points, label_volume, scale_factor=1):
+        """this function takes a list of points and assigns them to a region based on the regionVolume.
+    These regions will just be the values in the regionVolume at the points.
+    it returns a dictionary with the region as the key and the points as the value"""
     #first convert the points to 3 columns
     points = np.reshape(points, (-1,3))
     #scale the points
