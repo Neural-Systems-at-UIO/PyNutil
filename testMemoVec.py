@@ -2,11 +2,24 @@ import time
 startTime = time.time()
 
 import numpy as np
+from VisuAlignWarpVec import triangulate,  forwardtransform_vec, forwardtransform
 import json
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 
+from ProjectSegmentation3D_vec import FolderToAtlasSpace, getCentroidsAndArea, assignPointsToRegions
+
+import cv2
+
+# Segmentation = cv2.imread("ext-d000033_PVMouseExtraction_pub-Nutil_Quantifier_analysis-81264-Input_dir/ext-d000009_PVMouse_81264_Samp1_resize15__s013_thumbnail_FinalSegmentation.png")
+#count the number of isolated segments
+# Segmentation[~np.all(Segmentation==255, axis=2)] = 0
+
+# centroids, area = getCentroidsAndArea(Segmentation, 4)
+
+    
 
 
 
