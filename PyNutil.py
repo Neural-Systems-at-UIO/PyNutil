@@ -26,7 +26,7 @@ def assignPointsToRegions(points, regionVolume):
     return regionDict
 
 
-def transformToRegistration( SegHeight, SegWidth, RegHeight, RegWidth):
+def transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth):
     Yscale = RegHeight/SegHeight
     Xscale = RegWidth/SegWidth
     return  Yscale,Xscale
@@ -97,22 +97,6 @@ def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=
     # points = points.reshape(-1)
     return points
 
-# def applyTransformationToPoints(ID_pixels, slice,SegHeight, SegWidth, nonLinear=True):
-#     RegHeight = slice["height"]
-#     RegWidth  = slice["width"]
-#     #this calculates reg/seg
-#     Yscale , Xscale = transformToRegistration(SegHeight,SegWidth,  RegHeight,RegWidth)
-#     #this creates a triangulation using the reg width
-#     triangulation   = triangulate(RegWidth, RegHeight, slice["markers"])
-#     #scale the seg coordinates to reg/seg
-#     scaledY,scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
-#     if nonLinear:
-#         newX, newY = transform_vec(triangulation, scaledX, scaledY)
-#     else:
-#         newX, newY = scaledX, scaledY
-#     #scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
-#     points = transformToAtlasSpace(slice['anchoring'], newY, newX, RegHeight, RegWidth)
-#     return points
 
 def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
     slices = loadVisuAlignJson(QUINT_alignment)
