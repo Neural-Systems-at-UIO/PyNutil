@@ -95,7 +95,7 @@ def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=
     #scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
     points = transformToAtlasSpace(slice['anchoring'], newY, newX, RegHeight, RegWidth)
     # points = points.reshape(-1)
-    return points
+    return np.array(points)
 
 
 def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
@@ -113,18 +113,22 @@ def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=Tru
         current_slice = slices[current_slice_index[0][0]]
         ##this converts the segmentation to a point cloud
         points.extend(SegmentationToAtlasSpace(current_slice, SegmentationPath, pixelID, nonLinear))
-    return points
+    return np.array(points)
+def createRegionDict(points, regions):
+    """points is a list of points and regions is an id for each point"""
+    regionDict = {region:points[regions==region].flatten().tolist() for region in np.unique(regions)}
+    return regionDict
 
 def WritePoints(pointsDict, filename, infoFile):
     meshview = [
     {
         "idx": idx,
         "count": len(pointsDict[name])//3,
-        "name"  : str(name),
-        "triplets": str(infoFile["name"].values[0]),
-        "r": str(infoFile["r"].values[0]),
-        "g": str(infoFile["g"].values[0]),
-        "b": str(infoFile["b"].values[0])
+        "name"  :str(infoFile["name"].values[infoFile["allenID"]==name][0]),
+        "triplets": pointsDict[name],
+        "r": str(infoFile["r"].values[infoFile["allenID"]==name][0]),
+        "g": str(infoFile["g"].values[infoFile["allenID"]==name][0]),
+        "b": str(infoFile["b"].values[infoFile["allenID"]==name][0])
     }
     for name, idx in zip(pointsDict.keys(), range(len(pointsDict.keys())))
     ]
@@ -132,6 +136,9 @@ def WritePoints(pointsDict, filename, infoFile):
     with open(filename, "w") as f:
         json.dump(meshview, f)
 
+def WritePointsToMeshview(points, pointNames, filename, infoFile):
+    regionDict = createRegionDict(points, pointNames)
+    WritePoints(regionDict, filename, infoFile)
 
 def labelPoints(points, label_volume, scale_factor=1):
     #first convert the points to 3 columns
