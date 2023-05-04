@@ -2,7 +2,7 @@
 import numpy as np
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
-from VisuAlignWarpVec import triangulate, transform_vec
+from visualign_deformations import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
 import cv2
