@@ -9,7 +9,7 @@ import csv
 from datetime import datetime
 
 #import our function for converting a folder of segmentations to points
-from PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview
+from PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
 
 volume_path = "../annotation_volumes//annotation_10_reoriented.nrrd"
 data, header = nrrd.read(volume_path)
@@ -19,8 +19,7 @@ startTime = datetime.now()
 segmentation_folder = "../test_data/ext-d000033_PVMouseExtraction_pub-Nutil_Quantifier_analysis-81264-Input_dir/"
 alignment_json = "../test_data/PVMouse_81264_nonlin.json"
 #now we can use our function to convert the folder of segmentations to points
-points = FolderToAtlasSpace(segmentation_folder,alignment_json, pixelID=[255, 0, 0], nonLinear=True)
-
+points = FolderToAtlasSpaceMultiThreaded(segmentation_folder,alignment_json, pixelID=[255, 0, 0], nonLinear=True)
 
 time_taken = datetime.now() - startTime
 
