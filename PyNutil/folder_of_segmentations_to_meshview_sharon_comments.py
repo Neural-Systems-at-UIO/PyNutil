@@ -9,7 +9,7 @@ import csv
 from datetime import datetime
 
 #import our function for converting a folder of segmentations to points
-from PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
+from PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview
 
 volume_path = "../annotation_volumes//annotation_10_reoriented.nrrd"
 data, header = nrrd.read(volume_path)
@@ -19,11 +19,8 @@ startTime = datetime.now()
 segmentation_folder = "../test_data/tTA_2877_NOP/"
 alignment_json = "../test_data/tTA_2877_NOP_horizontal_final_2017.json"
 #now we can use our function to convert the folder of segmentations to points
-points = FolderToAtlasSpaceMultiThreaded(segmentation_folder,alignment_json, pixelID=[0, 0, 255], nonLinear=True)
-
-time_taken = datetime.now() - startTime
-
-print(f"Folder to atlas took: {time_taken}")
+# colour is BGR (not RGB)
+points = FolderToAtlasSpace(segmentation_folder,alignment_json, pixelID=[0, 0, 255], nonLinear=True)
 #first we need to find the label file for the volume
 label_path = "../annotation_volumes//allen2022_colours.csv"
 #then the path to the volume
@@ -71,7 +68,7 @@ for index, row in df_counts_per_label.iterrows():
     new_rows.append(row)
 
 df_counts_per_label_name = pd.DataFrame(new_rows)
-df_counts_per_label_name
+#df_counts_per_label_name
 
 # write to csv file
 df_counts_per_label_name.to_csv("../outputs/counts_per_allenID.csv", sep=";", na_rep='', index= False)
@@ -86,3 +83,12 @@ df_counts_per_label_name.to_csv("../outputs/counts_per_allenID.csv", sep=";", na
 time_taken = datetime.now() - startTime
 
 print(f"time taken was: {time_taken}")
+
+
+#get centroids and areas returns a list of objects and the center coordinate.
+
+#we need to deform the center coordinate according to visualign deformations¨
+
+#we need to then transform the coordinate into atlas space
+
+#and then save labels like before.
