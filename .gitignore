@@ -160,6 +160,11 @@ cython_debug/
 #.idea/
 
 
+#inputs
+test_data/tTA_2877_NOP
+test_data/tTA_2877_NOP_horizontal_final_2017.json
+
+
 outputs/
 
 fileForMessingAround.py
