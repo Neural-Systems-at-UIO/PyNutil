@@ -86,3 +86,11 @@ df_counts_per_label_name.to_csv("../outputs/counts_per_allenID.csv", sep=";", na
 time_taken = datetime.now() - startTime
 
 print(f"time taken was: {time_taken}")
+
+#get centroids and areas returns a list of objects and the center coordinate.
+
+#we need to deform the center coordinate according to visualign deformations¨
+
+#we need to then transform the coordinate into atlas space
+
+#and then save labels like before.
