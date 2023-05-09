@@ -8,24 +8,31 @@ import csv
 
 from datetime import datetime
 
+#import json and use it to define volume_path, segmentation_folder, alignment_json, label_path, colour, allen_colours
+
+
 #import our function for converting a folder of segmentations to points
 from PyNutil import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
-
+label_path = "../annotation_volumes//allen2022_colours.csv"
+colour = [255, 0, 255]
 volume_path = "../annotation_volumes//annotation_10_reoriented.nrrd"
 data, header = nrrd.read(volume_path)
+points_json_path = "../outputs/points.json"
+segmentation_folder = "../test_data/oneSection15"
+alignment_json = "../test_data/C68_nonlinear_no_markers.json"
+allen_colours = "../annotation_volumes//allen2022_colours.csv"
+counts_per_label_name = "../outputs/counts_per_allenID.csv"
 
 startTime = datetime.now()
 
-segmentation_folder = "../test_data/tTA_2877_NOP/"
-alignment_json = "../test_data/tTA_2877_NOP_horizontal_final_2017.json"
+
 #now we can use our function to convert the folder of segmentations to points
-points = FolderToAtlasSpaceMultiThreaded(segmentation_folder,alignment_json, pixelID=[0, 0, 255], nonLinear=True)
+points = FolderToAtlasSpaceMultiThreaded(segmentation_folder,alignment_json, pixelID=colour, nonLinear=True)
 
 time_taken = datetime.now() - startTime
 
 print(f"Folder to atlas took: {time_taken}")
 #first we need to find the label file for the volume
-label_path = "../annotation_volumes//allen2022_colours.csv"
 #then the path to the volume
 
 #read the label files
@@ -34,7 +41,7 @@ label_df = pd.read_csv(label_path)
 #now we can get the labels for each point
 labels = labelPoints(points, data, scale_factor=2.5)
 #save points to a meshview json
-WritePointsToMeshview(points, labels,"../outputs/points.json", label_df)
+WritePointsToMeshview(points, labels,points_json_path, label_df)
 
 #Task:
 # Make a pandas dataframe
@@ -48,7 +55,6 @@ counts_per_label = list(zip(counted_labels,label_counts))
 
 df_counts_per_label = pd.DataFrame(counts_per_label, columns=["allenID","pixel count"])
 
-allen_colours = "../annotation_volumes//allen2022_colours.csv"
 
 df_allen_colours =pd.read_csv(allen_colours, sep=",")
 df_allen_colours
@@ -74,7 +80,7 @@ df_counts_per_label_name = pd.DataFrame(new_rows)
 df_counts_per_label_name
 
 # write to csv file
-df_counts_per_label_name.to_csv("../outputs/counts_per_allenID.csv", sep=";", na_rep='', index= False)
+df_counts_per_label_name.to_csv(counts_per_label_name, sep=";", na_rep='', index= False)
 
 #r = df_allen_colours["r"]
 #g = df_allen_colours["g"]
