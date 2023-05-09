@@ -1,0 +1,10 @@
+{"label_path": "../annotation_volumes//allen2022_colours.csv",
+    "colour": "[255, 0, 255]",
+    "volume_path": "../annotation_volumes//annotation_10_reoriented.nrrd",
+    "data, header": "nrrd.read(volume_path)",
+    "points_json_path": "../outputs/points.json",
+    "segmentation_folder": "../test_data/oneSection15",
+    "alignment_json": "../test_data/C68_nonlinear_no_markers.json",
+    "allen_colours": "../annotation_volumes//allen2022_colours.csv",
+    "counts_per_label_name": "../outputs/counts_per_allenID.csv"
+}
