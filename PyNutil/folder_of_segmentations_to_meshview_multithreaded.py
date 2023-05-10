@@ -16,7 +16,7 @@ with open('../input/input.json', 'r') as f:
 
 #import our function for converting a folder of segmentations to points
 from coordinate_extraction import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
-#from read_and_write import 
+#from read_and_write import WritePointsToMeshview
 
 startTime = datetime.now()
 

@@ -2,6 +2,8 @@
 import numpy as np
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
+from read_and_write import loadVisuAlignJson
+from object_counting import labelPoints
 from visualign_deformations import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
@@ -27,12 +29,14 @@ def getCentroidsAndArea(Segmentation, pixelCutOff=0):
     coords = np.array([label.coords for label in labelsInfo])
     return centroids, area, coords
 
+
 # related to coordinate extraction
 def transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth):
     """this function returns the scaling factors to transform the segmentation to the registration space"""
     Yscale = RegHeight/SegHeight
     Xscale = RegWidth/SegWidth
     return  Yscale,Xscale
+
 
 # related to coordinate extraction
 def findMatchingPixels(Segmentation, id):
@@ -43,6 +47,7 @@ def findMatchingPixels(Segmentation, id):
     idY, idX  = id_positions[0], id_positions[1]
     return idY,idX
 
+
 #related to coordinate extraction
 def scalePositions(idY, idX, Yscale, Xscale):
     """this function scales the Y and X coordinates to the registration space.
@@ -50,6 +55,7 @@ def scalePositions(idY, idX, Yscale, Xscale):
     idY = idY * Yscale
     idX = idX * Xscale
     return  idY,idX
+
 
 #related to coordinate extraction
 def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
@@ -70,12 +76,17 @@ def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
     O = np.reshape(O, (3,1))
     return (O+XYZU+XYZV).T
 
-#related to read and write
+
+#related to read and write: loadVisuAlignJson
+# this has been moved successfully to read_and_write
+"""
 def loadVisuAlignJson(filename):
     with open(filename) as f:
         vafile = json.load(f)
     slices = vafile["slices"]
     return slices
+"""
+
 
 # related to coordinate extraction
 def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=True):
@@ -115,6 +126,7 @@ def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=
     # points = points.reshape(-1)
     return np.array(points)
 
+
 # related to coordinate extraction
 def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
     "apply Segmentation to atlas space to all segmentations in a folder"
@@ -133,6 +145,7 @@ def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=Tru
         ##this converts the segmentation to a point cloud
         points.extend(SegmentationToAtlasSpace(current_slice, SegmentationPath, pixelID, nonLinear))
     return np.array(points)
+
 
 #related to coordinate extraction
 def FolderToAtlasSpaceMultiThreaded(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
@@ -161,6 +174,7 @@ def FolderToAtlasSpaceMultiThreaded(folder, QUINT_alignment, pixelID=[0, 0, 0], 
     # flatten pointsList
     points = [item for sublist in pointsList for item in sublist]
     return np.array(points)
+
 
 # related to coordinate extraction
 def SegmentationToAtlasSpaceMultiThreaded(slice, SegmentationPath, pixelID='auto', nonLinear=True, pointsList=None, index=None):
@@ -200,16 +214,18 @@ def SegmentationToAtlasSpaceMultiThreaded(slice, SegmentationPath, pixelID='auto
     # points = points.reshape(-1)
     pointsList[index] = np.array(points)
 
-#related to coordinate extraction
+
+#related to coordinate extraction or object_counting
 def createRegionDict(points, regions):
     """points is a list of points and regions is an id for each point"""
     regionDict = {region:points[regions==region].flatten().tolist() for region in np.unique(regions)}
     return regionDict
 
-#related to read and write
+
+#related to read and write: WritePoints
+
 def WritePoints(pointsDict, filename, infoFile):
-    """write a series of points to a meshview json file. pointsDict is a dictionary with the points.
-    pointsDict is created by createRegionDict. infoFile is a csv file with the information about the regions"""
+
     meshview = [
     {
         "idx": idx,
@@ -227,13 +243,16 @@ def WritePoints(pointsDict, filename, infoFile):
         json.dump(meshview, f)
 
 
-# related to read and write
+
+# related to read and write: WritePointsToMeshview
+
 def WritePointsToMeshview(points, pointNames, filename, infoFile):
-    """this is the function you call more often as it combines the other functions for writing meshview"""
     regionDict = createRegionDict(points, pointNames)
     WritePoints(regionDict, filename, infoFile)
 
-# related to object_counting
+
+
+# related to object_counting: labelPoints
 def labelPoints(points, label_volume, scale_factor=1):
     """this function takes a list of points and assigns them to a region based on the regionVolume.
     These regions will just be the values in the regionVolume at the points.
