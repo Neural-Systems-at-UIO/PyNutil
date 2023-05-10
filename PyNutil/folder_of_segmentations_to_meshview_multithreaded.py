@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 #import json, use to define input parameters
-with open('../input/input.json', 'r') as f:
+with open('../test/test1.json', 'r') as f:
   input = json.load(f)
 #print(input)
 

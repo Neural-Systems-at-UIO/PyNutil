@@ -1,0 +1,10 @@
+{   "volume_path": "../annotation_volumes/annotation_10_reoriented.nrrd",
+    "label_path": "../annotation_volumes/allen2022_colours.csv",
+    "allen_colours": "../annotation_volumes/allen2022_colours.csv",
+    "segmentation_folder": "../test_data/tTA_2877_NOP",
+    "alignment_json": "../test_data/tTA_2877_NOP_horizontal_final_2017.json",
+    "nonlinear": true,
+    "colour": [0, 0, 255], 
+    "points_json_path": "../outputs/test1.json",
+    "counts_per_label_name": "../outputs/test1_counts_per_allenID.csv"
+}
