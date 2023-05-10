@@ -10,17 +10,18 @@ import json
 from datetime import datetime
 
 #import json, use to define input parameters
-with open('../input.json', 'r') as f:
+with open('../input/input.json', 'r') as f:
   input = json.load(f)
 #print(input)
 
 #import our function for converting a folder of segmentations to points
 from coordinate_extraction import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
+#from read_and_write import 
 
 startTime = datetime.now()
 
 #now we can use our function to convert the folder of segmentations to points
-points = FolderToAtlasSpaceMultiThreaded(input["segmentation_folder"],input["alignment_json"], pixelID=[255,0,255], nonLinear=True)
+points = FolderToAtlasSpaceMultiThreaded(input["segmentation_folder"],input["alignment_json"], pixelID=input["colour"], nonLinear=input["nonlinear"])
 
 time_taken = datetime.now() - startTime
 
