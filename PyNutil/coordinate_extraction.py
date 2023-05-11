@@ -78,17 +78,6 @@ def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
     return (O+XYZU+XYZV).T
 
 
-#related to read and write: loadVisuAlignJson
-# this has been moved successfully to read_and_write
-"""
-def loadVisuAlignJson(filename):
-    with open(filename) as f:
-        vafile = json.load(f)
-    slices = vafile["slices"]
-    return slices
-"""
-
-
 # related to coordinate extraction
 def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID='auto', nonLinear=True):
     """combines many functions to convert a segmentation to atlas space. It takes care
@@ -149,6 +138,7 @@ def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=Tru
 
 
 #related to coordinate extraction
+#this function returns an array of points
 def FolderToAtlasSpaceMultiThreaded(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
     "apply Segmentation to atlas space to all segmentations in a folder"
     slices = loadVisuAlignJson(QUINT_alignment)
@@ -178,6 +168,7 @@ def FolderToAtlasSpaceMultiThreaded(folder, QUINT_alignment, pixelID=[0, 0, 0], 
 
 
 # related to coordinate extraction
+# this function returns an array of points
 def SegmentationToAtlasSpaceMultiThreaded(slice, SegmentationPath, pixelID='auto', nonLinear=True, pointsList=None, index=None):
     """combines many functions to convert a segmentation to atlas space. It takes care
     of deformations"""
@@ -216,43 +207,3 @@ def SegmentationToAtlasSpaceMultiThreaded(slice, SegmentationPath, pixelID='auto
     pointsList[index] = np.array(points)
 
 
-#related to counting_and_load
-def createRegionDict(points, regions):
-    """points is a list of points and regions is an id for each point"""
-    regionDict = {region:points[regions==region].flatten().tolist() for region in np.unique(regions)}
-    return regionDict
-
-
-#related to read and write: WritePoints
-def WritePoints(pointsDict, filename, infoFile):
-
-    meshview = [
-    {
-        "idx": idx,
-        "count": len(pointsDict[name])//3,
-        "name"  :str(infoFile["name"].values[infoFile["allenID"]==name][0]),
-        "triplets": pointsDict[name],
-        "r": str(infoFile["r"].values[infoFile["allenID"]==name][0]),
-        "g": str(infoFile["g"].values[infoFile["allenID"]==name][0]),
-        "b": str(infoFile["b"].values[infoFile["allenID"]==name][0])
-    }
-    for name, idx in zip(pointsDict.keys(), range(len(pointsDict.keys())))
-    ]
-    #write meshview json
-    with open(filename, "w") as f:
-        json.dump(meshview, f)
-
-
-
-# related to read and write: WritePointsToMeshview
-def WritePointsToMeshview(points, pointNames, filename, infoFile):
-    regionDict = createRegionDict(points, pointNames)
-    WritePoints(regionDict, filename, infoFile)
-
-
-
-# related to counting_and_load: labelPoints.
-# this has been moved successfully. 
-
-# related to counting_and_load: PixelCountPerRegion
-# This has been moved successfully.

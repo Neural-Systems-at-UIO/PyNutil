@@ -9,14 +9,14 @@ import json
 
 from datetime import datetime
 
-#import json into "input" variable, use to define input parameters
+#import json, use to define input parameters
 with open('../test/test2.json', 'r') as f:
   input = json.load(f)
 #print(input)
 
 #import our function for converting a folder of segmentations to points
-from coordinate_extraction import FolderToAtlasSpace, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
-from read_and_write import SaveDataframeasCSV
+from coordinate_extraction import FolderToAtlasSpace, FolderToAtlasSpaceMultiThreaded
+from read_and_write import SaveDataframeasCSV, WritePointsToMeshview
 from counting_and_load import PixelCountPerRegion, labelPoints
 
 startTime = datetime.now()
@@ -35,13 +35,12 @@ label_df = pd.read_csv(input["label_path"])
 data, header = nrrd.read(input["volume_path"])
 #now we can get the labels for each point
 labels = labelPoints(points, data, scale_factor=2.5)
+
 #save points to a meshview json
 WritePointsToMeshview(points, labels, input["points_json_path"], label_df)
 
 df_counts_per_label_name = PixelCountPerRegion(labels, input["allen_colours"])
-
 SaveDataframeasCSV(df_counts_per_label_name, input["counts_per_label_name"])
-
 
 time_taken = datetime.now() - startTime
 
