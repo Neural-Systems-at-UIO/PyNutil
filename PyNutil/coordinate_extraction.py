@@ -273,7 +273,7 @@ def labelPoints(points, label_volume, scale_factor=1):
 
 # related to object_counting
 # consider separating out writing to CSV in future
-def PixelCountPerRegion(labelsDict, label_colours, output_csv): 
+def PixelCountPerRegion(labelsDict, label_colours): 
     """Function for counting no. of pixels per region and writing to CSV based on 
     a dictionary with the region as the key and the points as the value, """
     counted_labels, label_counts = np.unique(labelsDict, return_counts=True)
@@ -305,6 +305,9 @@ def PixelCountPerRegion(labelsDict, label_colours, output_csv):
         new_rows.append(row)
 
     df_counts_per_label_name = pd.DataFrame(new_rows)
+    return df_counts_per_label_name
     
-    df_counts_per_label_name.to_csv(output_csv, sep=";", na_rep='', index= False)
+   
+#def SaveDataframeasCSV(df_to_save):
+    #df_to_save.to_csv(output_csv, sep=";", na_rep='', index= False)
 

@@ -1,5 +1,6 @@
 import json
 
+
 #related to read and write: loadVisuAlignJson
 def loadVisuAlignJson(filename):
     with open(filename) as f:
@@ -35,3 +36,8 @@ def WritePointsToMeshview(points, pointNames, filename, infoFile):
     """this is the function you call more often as it combines the other functions for writing meshview"""
     regionDict = createRegionDict(points, pointNames)
     WritePoints(regionDict, filename, infoFile)
+
+
+def SaveDataframeasCSV(df_to_save, output_csv):
+    """Function for saving a df as a CSV file"""
+    df_to_save.to_csv(output_csv, sep=";", na_rep='', index= False)
