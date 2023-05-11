@@ -5,6 +5,7 @@ import pandas as pd
 import nrrd
 import numpy as np
 import csv
+import json
 
 from datetime import datetime
 
@@ -16,10 +17,15 @@ data, header = nrrd.read(volume_path)
 
 startTime = datetime.now()
 
-segmentation_folder = "../test_data/oneSection15/"
-alignment_json = "../test_data/C68_nonlinear.json"
+segmentation_folder = "../test_data/ext-d000033_PVMouseExtraction_pub-Nutil_Quantifier_analysis-81264-Input_dir/"
+alignment_json = "../test_data/PVMouse_81264_nonlin.json"
 #now we can use our function to convert the folder of segmentations to points
-points = FolderToAtlasSpace(segmentation_folder,alignment_json, pixelID=[255, 0, 255], nonLinear=True)
+points = FolderToAtlasSpace(segmentation_folder,alignment_json, pixelID=[255, 0, 0], nonLinear=True)
+
+
+time_taken = datetime.now() - startTime
+
+print(f"Folder to atlas took: {time_taken}")
 #first we need to find the label file for the volume
 label_path = "../annotation_volumes//allen2022_colours.csv"
 #then the path to the volume
