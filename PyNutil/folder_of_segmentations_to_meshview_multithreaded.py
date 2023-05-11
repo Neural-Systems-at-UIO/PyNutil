@@ -15,8 +15,9 @@ with open('../test/test2.json', 'r') as f:
 #print(input)
 
 #import our function for converting a folder of segmentations to points
-from coordinate_extraction import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded, PixelCountPerRegion
+from coordinate_extraction import FolderToAtlasSpace, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded
 from read_and_write import SaveDataframeasCSV
+from counting_and_load import PixelCountPerRegion, labelPoints
 
 startTime = datetime.now()
 
@@ -41,16 +42,13 @@ df_counts_per_label_name = PixelCountPerRegion(labels, input["allen_colours"])
 
 SaveDataframeasCSV(df_counts_per_label_name, input["counts_per_label_name"])
 
-#while we havent added it here it would be good to next quantify the number of cells for each label.
 
 time_taken = datetime.now() - startTime
 
 print(f"overall time taken was: {time_taken}")
 
+#while we havent added it here it would be good to next quantify the number of cells for each label.
 #get centroids and areas returns a list of objects and the center coordinate.
-
 #we need to deform the center coordinate according to visualign deformations¨
-
 #we need to then transform the coordinate into atlas space
-
 #and then save labels like before.
