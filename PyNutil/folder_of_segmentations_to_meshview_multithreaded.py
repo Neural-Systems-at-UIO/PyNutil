@@ -16,7 +16,7 @@ with open('../test/test2.json', 'r') as f:
 
 #import our function for converting a folder of segmentations to points
 from coordinate_extraction import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded, PixelCountPerRegion
-#from read_and_write import WritePointsToMeshview
+from read_and_write import SaveDataframeasCSV
 
 startTime = datetime.now()
 
@@ -37,7 +37,9 @@ labels = labelPoints(points, data, scale_factor=2.5)
 #save points to a meshview json
 WritePointsToMeshview(points, labels, input["points_json_path"], label_df)
 
-PixelCountPerRegion(labels, input["allen_colours"], input["counts_per_label_name"])
+df_counts_per_label_name = PixelCountPerRegion(labels, input["allen_colours"])
+
+SaveDataframeasCSV(df_counts_per_label_name, input["counts_per_label_name"])
 
 #while we havent added it here it would be good to next quantify the number of cells for each label.
 
