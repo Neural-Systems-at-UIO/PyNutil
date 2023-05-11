@@ -1,7 +1,9 @@
 import json
+import numpy as np
 
 
-#related to read and write: loadVisuAlignJson
+#related to read and write
+# this function reads a VisuAlign JSON and returns the slices
 def loadVisuAlignJson(filename):
     with open(filename) as f:
         vafile = json.load(f)
@@ -9,10 +11,18 @@ def loadVisuAlignJson(filename):
     return slices
 
 
+#related to read_and_write, used in WritePointsToMeshview
+# this function returns a dictionary of region names
+def createRegionDict(points, regions):
+    """points is a list of points and regions is an id for each point"""
+    regionDict = {region:points[regions==region].flatten().tolist() for region in np.unique(regions)}
+    return regionDict
+
+
 #related to read and write: WritePoints
+# this function writes the region dictionary to a meshview json
 def WritePoints(pointsDict, filename, infoFile):
-    """write a series of points to a meshview json file. pointsDict is a dictionary with the points.
-    pointsDict is created by createRegionDict. infoFile is a csv file with the information about the regions"""
+
     meshview = [
     {
         "idx": idx,
@@ -31,9 +41,8 @@ def WritePoints(pointsDict, filename, infoFile):
 
 
 # related to read and write: WritePointsToMeshview
-# this uses createRegionDict in coordinate_extraction.py
+# this function combines createRegionDict and WritePoints functions
 def WritePointsToMeshview(points, pointNames, filename, infoFile):
-    """this is the function you call more often as it combines the other functions for writing meshview"""
     regionDict = createRegionDict(points, pointNames)
     WritePoints(regionDict, filename, infoFile)
 
