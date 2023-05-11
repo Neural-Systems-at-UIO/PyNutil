@@ -9,7 +9,7 @@ import json
 
 from datetime import datetime
 
-#import json, use to define input parameters
+#import json into "input" variable, use to define input parameters
 with open('../test/test1.json', 'r') as f:
   input = json.load(f)
 #print(input)
@@ -24,7 +24,6 @@ startTime = datetime.now()
 points = FolderToAtlasSpaceMultiThreaded(input["segmentation_folder"],input["alignment_json"], pixelID=input["colour"], nonLinear=input["nonlinear"])
 
 time_taken = datetime.now() - startTime
-
 print(f"Folder to atlas took: {time_taken}")
 #first we need to find the label file for the volume
 #then the path to the volume
@@ -38,13 +37,16 @@ labels = labelPoints(points, data, scale_factor=2.5)
 #save points to a meshview json
 WritePointsToMeshview(points, labels, input["points_json_path"], label_df)
 
-#Task:
+#SY Task:
+# function for counting no. of objects per region
 # Make a pandas dataframe
 # Column 1: counted_labels
 # Column 2: label_counts
 # Column 3: region_name (look up by reading Allen2022_colours.csv, look up name and RGB)
 # Save dataframe in output as CSV
 # next task is to create functions from this. 
+
+
 counted_labels, label_counts = np.unique(labels, return_counts=True)
 counts_per_label = list(zip(counted_labels,label_counts))
 
