@@ -4,7 +4,7 @@ import pandas as pd
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
 from read_and_write import loadVisuAlignJson
-from object_counting import labelPoints
+from counting_and_load import labelPoints
 from visualign_deformations import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
@@ -216,7 +216,7 @@ def SegmentationToAtlasSpaceMultiThreaded(slice, SegmentationPath, pixelID='auto
     pointsList[index] = np.array(points)
 
 
-#related to coordinate extraction or object_counting
+#related to counting_and_load
 def createRegionDict(points, regions):
     """points is a list of points and regions is an id for each point"""
     regionDict = {region:points[regions==region].flatten().tolist() for region in np.unique(regions)}
@@ -224,7 +224,6 @@ def createRegionDict(points, regions):
 
 
 #related to read and write: WritePoints
-
 def WritePoints(pointsDict, filename, infoFile):
 
     meshview = [
@@ -246,68 +245,14 @@ def WritePoints(pointsDict, filename, infoFile):
 
 
 # related to read and write: WritePointsToMeshview
-
 def WritePointsToMeshview(points, pointNames, filename, infoFile):
     regionDict = createRegionDict(points, pointNames)
     WritePoints(regionDict, filename, infoFile)
 
 
 
-# related to object_counting: labelPoints
-def labelPoints(points, label_volume, scale_factor=1):
-    """this function takes a list of points and assigns them to a region based on the regionVolume.
-    These regions will just be the values in the regionVolume at the points.
-    it returns a dictionary with the region as the key and the points as the value"""
-    #first convert the points to 3 columns
-    points = np.reshape(points, (-1,3))
-    #scale the points
-    points = points * scale_factor
-    #round the points to the nearest whole number
-    points = np.round(points).astype(int)
-    x = points[:,0]
-    y = points[:,1]
-    z = points[:,2]
-    #get the label value for each point
-    labels = label_volume[x,y,z]
-    return labels
+# related to counting_and_load: labelPoints.
+# this has been moved successfully. 
 
-# related to object_counting
-# consider separating out writing to CSV in future
-def PixelCountPerRegion(labelsDict, label_colours): 
-    """Function for counting no. of pixels per region and writing to CSV based on 
-    a dictionary with the region as the key and the points as the value, """
-    counted_labels, label_counts = np.unique(labelsDict, return_counts=True)
-    # which regions have pixels, and how many pixels are there per region
-    counts_per_label = list(zip(counted_labels,label_counts))
-    # create a list of unique regions and pixel counts per region
-
-    df_counts_per_label = pd.DataFrame(counts_per_label, columns=["allenID","pixel count"])
-    # create a pandas df with regions and pixel counts
-
-    df_label_colours =pd.read_csv(label_colours, sep=",")
-    # find colours corresponding to each region ID and add to the pandas dataframe
-
-    #look up name, r, g, b in df_allen_colours in df_counts_per_label based on "allenID"
-    new_rows = []
-    for index, row in df_counts_per_label.iterrows():
-        mask = df_label_colours["allenID"] == row["allenID"] 
-        current_region_row = df_label_colours[mask]
-        current_region_name = current_region_row["name"].values
-        current_region_red = current_region_row["r"].values
-        current_region_green = current_region_row["g"].values
-        current_region_blue = current_region_row["b"].values
-
-        row["name"]  = current_region_name[0]
-        row["r"] = current_region_red[0]
-        row["g"] = current_region_green[0]
-        row["b"] = current_region_blue[0]
-        
-        new_rows.append(row)
-
-    df_counts_per_label_name = pd.DataFrame(new_rows)
-    return df_counts_per_label_name
-    
-   
-#def SaveDataframeasCSV(df_to_save):
-    #df_to_save.to_csv(output_csv, sep=";", na_rep='', index= False)
-
+# related to counting_and_load: PixelCountPerRegion
+# This has been moved successfully.
