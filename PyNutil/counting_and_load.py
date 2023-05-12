@@ -55,3 +55,13 @@ def PixelCountPerRegion(labelsDict, label_colours):
     df_counts_per_label_name = pd.DataFrame(new_rows)
     return df_counts_per_label_name
 
+
+# import flat files, count pixels per label, np.unique... etc. nitrc.org/plugins/mwiki/index.php?title=visualign:Deformation
+"""
+   base=slice["filename"][:-4]
+   
+   import struct
+   with open(base+".flat","rb") as f:
+       b,w,h=struct.unpack(">BII",f.read(9))
+       data=struct.unpack(">"+("xBH"[b]*(w*h)),f.read(b*w*h))
+"""
