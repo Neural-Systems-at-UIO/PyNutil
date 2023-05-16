@@ -9,14 +9,15 @@ import json
 
 from datetime import datetime
 
-#import json into "input" variable, use to define input parameters
-with open('../test/test2.json', 'r') as f:
+#import json, use to define input parameters
+with open('../test/test1.json', 'r') as f:
   input = json.load(f)
 #print(input)
 
 #import our function for converting a folder of segmentations to points
-from coordinate_extraction import FolderToAtlasSpace, labelPoints, WritePointsToMeshview, FolderToAtlasSpaceMultiThreaded, PixelCountPerRegion
-from read_and_write import SaveDataframeasCSV
+from coordinate_extraction import FolderToAtlasSpace, FolderToAtlasSpaceMultiThreaded
+from read_and_write import SaveDataframeasCSV, WritePointsToMeshview
+from counting_and_load import PixelCountPerRegion, labelPoints
 
 startTime = datetime.now()
 
@@ -34,23 +35,19 @@ label_df = pd.read_csv(input["label_path"])
 data, header = nrrd.read(input["volume_path"])
 #now we can get the labels for each point
 labels = labelPoints(points, data, scale_factor=2.5)
+
 #save points to a meshview json
 WritePointsToMeshview(points, labels, input["points_json_path"], label_df)
 
-df_counts_per_label_name = PixelCountPerRegion(labels, input["allen_colours"])
-
+df_counts_per_label_name = PixelCountPerRegion(labels, input["label_path"])
 SaveDataframeasCSV(df_counts_per_label_name, input["counts_per_label_name"])
-
-#while we havent added it here it would be good to next quantify the number of cells for each label.
 
 time_taken = datetime.now() - startTime
 
 print(f"overall time taken was: {time_taken}")
 
+#while we havent added it here it would be good to next quantify the number of cells for each label.
 #get centroids and areas returns a list of objects and the center coordinate.
-
 #we need to deform the center coordinate according to visualign deformations¨
-
 #we need to then transform the coordinate into atlas space
-
 #and then save labels like before.
