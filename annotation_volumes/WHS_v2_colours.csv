@@ -1,4 +1,4 @@
-idx,r,g,b,a,VIS,MSH,label
+idx,r,g,b,a,VIS,MSH,name
 1,255,52,39,1.0,1.0,0.0,descending corticofugal pathways
 2,255,186,0,1.0,1.0,0.0,substantia nigra
 3,0,0,255,1.0,1.0,0.0,subthalamic nucleus

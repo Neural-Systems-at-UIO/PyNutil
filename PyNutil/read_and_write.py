@@ -27,11 +27,11 @@ def WritePoints(pointsDict, filename, infoFile):
     {
         "idx": idx,
         "count": len(pointsDict[name])//3,
-        "name"  :str(infoFile["name"].values[infoFile["allenID"]==name][0]),
+        "name"  :str(infoFile["name"].values[infoFile["idx"]==name][0]),
         "triplets": pointsDict[name],
-        "r": str(infoFile["r"].values[infoFile["allenID"]==name][0]),
-        "g": str(infoFile["g"].values[infoFile["allenID"]==name][0]),
-        "b": str(infoFile["b"].values[infoFile["allenID"]==name][0])
+        "r": str(infoFile["r"].values[infoFile["idx"]==name][0]),
+        "g": str(infoFile["g"].values[infoFile["idx"]==name][0]),
+        "b": str(infoFile["b"].values[infoFile["idx"]==name][0])
     }
     for name, idx in zip(pointsDict.keys(), range(len(pointsDict.keys())))
     ]
