@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 #import json, use to define input parameters
-with open('../test/test2.json', 'r') as f:
+with open('../test/test1.json', 'r') as f:
   input = json.load(f)
 #print(input)
 
@@ -39,7 +39,7 @@ labels = labelPoints(points, data, scale_factor=2.5)
 #save points to a meshview json
 WritePointsToMeshview(points, labels, input["points_json_path"], label_df)
 
-df_counts_per_label_name = PixelCountPerRegion(labels, input["allen_colours"])
+df_counts_per_label_name = PixelCountPerRegion(labels, input["label_path"])
 SaveDataframeasCSV(df_counts_per_label_name, input["counts_per_label_name"])
 
 time_taken = datetime.now() - startTime

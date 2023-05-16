@@ -29,16 +29,16 @@ def PixelCountPerRegion(labelsDict, label_colours):
     counts_per_label = list(zip(counted_labels,label_counts))
     # create a list of unique regions and pixel counts per region
 
-    df_counts_per_label = pd.DataFrame(counts_per_label, columns=["allenID","pixel count"])
+    df_counts_per_label = pd.DataFrame(counts_per_label, columns=["idx","pixel_count"])
     # create a pandas df with regions and pixel counts
 
     df_label_colours =pd.read_csv(label_colours, sep=",")
     # find colours corresponding to each region ID and add to the pandas dataframe
 
-    #look up name, r, g, b in df_allen_colours in df_counts_per_label based on "allenID"
+    #look up name, r, g, b in df_allen_colours in df_counts_per_label based on "idx"
     new_rows = []
     for index, row in df_counts_per_label.iterrows():
-        mask = df_label_colours["allenID"] == row["allenID"] 
+        mask = df_label_colours["idx"] == row["idx"] 
         current_region_row = df_label_colours[mask]
         current_region_name = current_region_row["name"].values
         current_region_red = current_region_row["r"].values
