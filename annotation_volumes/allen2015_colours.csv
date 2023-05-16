@@ -1,4 +1,4 @@
-allenID,r,g,b,1a,1b,1c,name
+idx,r,g,b,a,VIS,MSH,label
 997,255,255,255,1.0,1.0,1.0,root
 8,191,218,227,1.0,1.0,1.0,Basic cell groups and regions
 567,176,240,255,1.0,1.0,1.0,Cerebrum
