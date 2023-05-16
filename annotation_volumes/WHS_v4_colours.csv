@@ -1,4 +1,4 @@
-allenID,r,g,b,1a,1b,1c,name
+idx,r,g,b,a,VIS,MSH,label
 1,255,52,39,1.0,1.0,0.0,corticofugal tract and corona radiata
 3,0,0,255,1.0,1.0,0.0,Subthalamic nucleus
 4,255,255,1,1.0,1.0,0.0,Molecular cell layer of the cerebellum

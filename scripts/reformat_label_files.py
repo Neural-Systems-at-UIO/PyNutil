@@ -2,16 +2,16 @@ import pandas as pd
 
 """reformat itksnap_label_description_2022.txt"""
 def reformat_allen_label(inputpath, outputpath):
-    df = pd.read_csv(inputpath, sep=" ", header=None,  names=["id", "r", "g", "b", "1a", "1b", "1c", "name"])
+    df = pd.read_csv(inputpath, sep=" ", header=None,  names=["id", "r", "g", "b", "a", "VIS", "MSH", "label"])
     
     # this is to reformat the name to allenID
-    df[["name", "allenID"]] = df["name"].str.split(' - ', expand=True)
+    df[["label", "idx"]] = df["label"].str.split(' - ', expand=True)
     
     # this is to add on "root" as this was missing from the Allen file
-    df = df.append({"allenID": 0, "name": "background", "r": 255, "g": 255, "b": 255, "1a": 1.0, "1b":1.0, "1c":1.0}, ignore_index=True)
+    df = df.append({"idx": 0, "label": "background", "r": 255, "g": 255, "b": 255, "a": 1.0, "VIS":1.0, "MSH":1.0}, ignore_index=True)
     df.to_csv(outputpath, index=False)
 
-reformat_allen_label("../junk/itksnap_label_description_2022.txt","../junk/allen2022_colours.csv")
+reformat_allen_label("../junk/itksnap_label_description_2022.txt","../annotation_volumes/allen2022_colours_updated.csv")
 
 
 """reformat AllenMouseBrain_atlas_CCF_2017.label"""
