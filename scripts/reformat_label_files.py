@@ -20,7 +20,8 @@ reformat_allen_label("../annotation_volumes/itksnap_label_description_2022.txt",
 """reformat AllenMouseBrain_atlas_CCF_2017.label"""
 def reformat_label(inputpath, outputpath):
     df = pd.read_csv(inputpath, sep = "\t", header=None, skiprows=15 ,names=["idx", "r", "g", "b", "a", "VIS", "MSH", "name"] )
-    df = df.append({"idx": 0, "name": "Clear Label", "r": 0, "g": 0, "b": 0, "a": 1.0, "VIS":1.0, "MSH":1.0}, ignore_index=True)
+    df_clear = pd.DataFrame({"idx": 0, "name": "Clear Label", "r": 0, "g": 0, "b": 0, "a": 1.0, "VIS":1.0, "MSH":1.0}, ignore_index=True)
+    df = pd.concat([df_clear, df])
     df.to_csv(outputpath, index=False)
 
 reformat_label("../annotation_volumes/AllenMouseBrain_Atlas_CCF_2017.label","../annotation_volumes/allen2017_colours.csv")
