@@ -1,5 +1,8 @@
 import json
 import numpy as np
+import struct
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 #related to read and write
@@ -50,3 +53,26 @@ def WritePointsToMeshview(points, pointNames, filename, infoFile):
 def SaveDataframeasCSV(df_to_save, output_csv):
     """Function for saving a df as a CSV file"""
     df_to_save.to_csv(output_csv, sep=";", na_rep='', index= False)
+
+
+def FlattoArray(flatfile):
+    """Read flat file and write into an np array"""
+    with open(flatfile,"rb") as f:
+        #i dont know what b is, w and h are the width and height that we get from the 
+        #flat file header
+        b,w,h=struct.unpack(">BII",f.read(9))
+        #data is a one dimensional list of values
+        #it has the shape width times height
+        data =struct.unpack(">"+("xBH"[b]*(w*h)),f.read(b*w*h))
+
+    #convert flat file data into an array, previously data was a tuple
+    imagedata = np.array(data)
+
+    #create an empty image array in the right shape, write imagedata into image_array
+    image = np.zeros((h,w))
+    for x in range(w):
+        for y in range(h):
+            image[y,x] = imagedata[x+y*w]
+
+    image_arr = np.array(image)
+    return image_arr

@@ -12,40 +12,42 @@ with open(base,"rb") as f:
     b,w,h=struct.unpack(">BII",f.read(9))
     #data is a one dimensional list of values
     #it has the shape width times height
-    data=struct.unpack(">"+("xBH"[b]*(w*h)),f.read(b*w*h))
+    data =struct.unpack(">"+("xBH"[b]*(w*h)),f.read(b*w*h))
 
-#convert data into an array(this may be unnecessary)
-#previously data was a tuple
-data = np.array(data)
+    #convert flat file data into an array, previously data was a tuple
+    imagedata = np.array(data)
 
-#here we create an empty image in the right shape
-image = np.zeros((h,w))
-#pallette = dict(zip(np.unique(data), np.random.randint(0,255,len(np.unique(data)))))
-#and here we go pixel by pixel placing the value from the flat file
-for x in range(w):
-    for y in range(h):
-        image[y,x] = data[x+y*w]
+    #create an empty image array in the right shape,
+    image = np.zeros((h,w))
+    #pallette = dict(zip(np.unique(data), np.random.randint(0,255,len(np.unique(data)))))
 
-image_arr = np.array(image)
+    #assign values from flat file into the image array
+    for x in range(w):
+        for y in range(h):
+            image[y,x] = imagedata[x+y*w]
 
-# show an image corresponding to the flat file (unique colour per idx)
-plt.imshow(image_arr)
+    image_arr = np.array(image)
+
+# show image with plt.imshow(image_arr)
+
+"""assign label file values into image array""" 
 
 labelfile = pd.read_csv(r"../annotation_volumes\allen2017_colours.csv")
-allen_id_image = np.zeros((h,w))
-plt.imshow(allen_id_image) 
+allen_id_image = np.zeros((h,w)) # create an empty image array
+
 """for ph in range(h):
     for pw in range(w):
         value_in_data_at_pixel = int(image_arr[ph,pw])
         allen_id_image[ph, pw] = labelfile.loc[value_in_data_at_pixel, 'idx']"""
 
-"""for efficiency, vectorize instead of using for loop"""
+"""for efficiency, vectorize instead of using the for loops above"""
 coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-
-values = image_arr[coordsx, coordsy]
+values = image_arr[coordsx, coordsy] # assign x,y coords from image_array into values
 lbidx = labelfile['idx'].values
-allen_id_image = lbidx[values.astype(int)]
+allen_id_image = lbidx[values.astype(int)] # assign allen IDs into image array
 
+
+"""count pixels for unique idx"""
 unique_ids, counts = np.unique(allen_id_image, return_counts=True)
 
 area_per_label = list(zip(unique_ids,counts))
