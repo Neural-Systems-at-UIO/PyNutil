@@ -56,7 +56,7 @@ def SaveDataframeasCSV(df_to_save, output_csv):
 
 
 def FlattoArray(flatfile):
-    """Read flat file and write into an np array"""
+    """Read flat file and write into an np array, return array"""
     with open(flatfile,"rb") as f:
         #i dont know what b is, w and h are the width and height that we get from the 
         #flat file header
@@ -76,3 +76,15 @@ def FlattoArray(flatfile):
 
     image_arr = np.array(image)
     return image_arr
+
+
+def LabeltoArray(label_path, image_array):
+    """assign label file values into image array, return array""" 
+    labelfile = pd.read_csv(label_path)
+    allen_id_image = np.zeros((h,w)) # create an empty image array
+    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
+    values = image_array[coordsx, coordsy] # assign x,y coords from image_array into values
+    lbidx = labelfile['idx'].values
+    allen_id_image = lbidx[values.astype(int)] # assign allen IDs into image array
+    return allen_id_image
+
