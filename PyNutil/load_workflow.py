@@ -21,3 +21,14 @@ lbidx = labelfile['idx'].values
 allen_id_image = lbidx[values.astype(int)] # assign allen IDs into image array
 
 plt.imshow(allen_id_image)
+
+
+# Count area per unique label
+# Scale up to size of corresponding segmentation
+# calculate segmentation value per slice
+# divide segmentation value per idx per slice by area per idx per slice
+# output reports
+# also do for whole brain
+
+#Also to do:
+# fix position of clear label in label files

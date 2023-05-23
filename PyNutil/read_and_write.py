@@ -3,6 +3,7 @@ import numpy as np
 import struct
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 
 #related to read and write
@@ -87,4 +88,18 @@ def LabeltoArray(label_path, image_array):
     lbidx = labelfile['idx'].values
     allen_id_image = lbidx[values.astype(int)] # assign allen IDs into image array
     return allen_id_image
+
+
+def FilesinDirectory(directory):
+    """return list of flat file names in a directory"""
+    list_of_files = []
+    for file in os.scandir(directory):
+        if file.path.endswith(".flat") and file.is_file:
+            #print(filename.path)
+            #newfilename, file_ext = os.path.splitext(filename)
+            #print(newfilename)
+            filename = os.path.basename(file)
+            newfilename, file_ext = os.path.splitext(filename)
+            list_of_files.append(newfilename)
+    return list_of_files
 
