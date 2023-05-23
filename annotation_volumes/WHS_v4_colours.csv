@@ -1,224 +1,224 @@
-idx,r,g,b,a,VIS,MSH,name
-1,255,52,39,1.0,1.0,0.0,corticofugal tract and corona radiata
-3,0,0,255,1.0,1.0,0.0,Subthalamic nucleus
-4,255,255,1,1.0,1.0,0.0,Molecular cell layer of the cerebellum
-5,0,255,255,1.0,1.0,0.0,"Cerebellum, unspecified"
-6,255,0,255,1.0,1.0,0.0,alveus of the hippocampus
-7,52,255,13,1.0,1.0,0.0,inferior cerebellar peduncle
-10,29,104,235,1.0,1.0,0.0,Cingulate area 2
-32,26,231,255,1.0,1.0,0.0,Entopeduncular nucleus
-33,2,44,255,1.0,1.0,0.0,"Ventricular system, unspecified"
-34,212,255,0,1.0,1.0,0.0,"medial lemniscus, unspecified"
-35,255,25,240,1.0,1.0,0.0,"facial nerve, unspecified"
-36,124,252,0,1.0,1.0,0.0,"anterior commissure, anterior limb"
-37,255,186,0,1.0,1.0,0.0,"anterior commissure, posterior limb"
-38,174,0,232,1.0,1.0,0.0,ventral hippocampal commissure
-40,255,8,0,1.0,1.0,0.0,Septal region
-41,48,218,0,1.0,1.0,0.0,optic nerve
-42,38,126,255,1.0,1.0,0.0,optic tract and optic chiasm
-43,218,170,62,1.0,1.0,0.0,Pineal gland
-45,134,255,90,1.0,1.0,0.0,Spinal cord
-46,33,230,255,1.0,1.0,0.0,commissure of the superior colliculus
-47,153,83,255,1.0,1.0,0.0,"Brainstem, unspecified"
-48,226,120,161,1.0,1.0,0.0,"Hypothalamic region, unspecified"
-50,86,0,221,1.0,1.0,0.0,Superficial gray layer of the superior colliculus
-51,7,255,89,1.0,1.0,0.0,Periaqueductal gray
-52,21,192,255,1.0,1.0,0.0,fornix
-53,238,186,0,1.0,1.0,0.0,mammillotegmental tract
-54,173,255,47,1.0,1.0,0.0,commissural stria terminalis
-55,225,151,15,1.0,1.0,0.0,Deeper layers of the superior colliculus
-56,235,87,255,1.0,1.0,0.0,Periventricular gray
-57,250,244,247,1.0,1.0,0.0,genu of the facial nerve
-58,0,215,11,1.0,1.0,0.0,Pontine nuclei
-59,0,255,29,1.0,1.0,0.0,fimbria of the hippocampus
-60,244,67,69,1.0,1.0,0.0,fasciculus retroflexus
-61,0,255,0,1.0,1.0,0.0,stria medullaris thalami
-62,238,117,51,1.0,1.0,0.0,stria terminalis
-63,255,0,218,1.0,1.0,0.0,posterior commissure
-64,15,109,230,1.0,1.0,0.0,Glomerular layer of the accessory olfactory bulb
-65,255,227,0,1.0,1.0,0.0,Glomerular layer of the olfactory bulb
-66,255,135,0,1.0,1.0,0.0,"Olfactory bulb, unspecified"
-67,255,110,0,1.0,1.0,0.0,corpus callosum and associated subcortical white matter
-68,188,32,173,1.0,1.0,0.0,brachium of the superior colliculus
-69,255,42,39,1.0,1.0,0.0,"inferior colliculus, commissure"
-70,39,244,253,1.0,1.0,0.0,Central canal
-71,63,192,255,1.0,1.0,0.0,Interpeduncular nucleus
-72,179,28,53,1.0,1.0,0.0,ascending fibers of the facial nerve
-73,255,79,206,1.0,1.0,0.0,"anterior commissure, intrabulbar part"
-74,0,246,14,1.0,1.0,0.0,Inferior olive
-75,91,241,255,1.0,1.0,0.0,Spinal trigeminal nucleus
-76,250,128,114,1.0,1.0,0.0,spinal trigeminal tract
-77,206,211,7,1.0,1.0,0.0,Frontal association cortex
-78,134,204,76,1.0,1.0,0.0,middle cerebellar peduncle
-79,128,170,255,1.0,1.0,0.0,transverse fibers of the pons
-80,69,235,202,1.0,1.0,0.0,habenular commissure
-81,222,7,237,1.0,1.0,0.0,Nucleus of the stria medullaris
-82,225,240,13,1.0,1.0,0.0,"Basal forebrain region, unspecified"
-83,250,170,64,1.0,1.0,0.0,supraoptic decussation
-84,65,150,255,1.0,1.0,0.0,medial lemniscus decussation
-85,114,9,212,1.0,1.0,0.0,pyramidal decussation
-93,0,8,182,1.0,1.0,0.0,Bed nucleus of the stria terminalis
-94,255,87,30,1.0,1.0,0.0,Pretectal region
-95,165,131,107,1.0,1.0,0.0,Cornu ammonis 3
-96,91,45,10,1.0,1.0,0.0,Dentate gyrus
-97,255,255,0,1.0,1.0,0.0,Cornu ammonis 2
-98,217,104,13,1.0,1.0,0.0,Cornu ammonis 1
-99,255,0,0,1.0,1.0,0.0,Fasciola cinereum
-100,255,192,0,1.0,1.0,0.0,Subiculum
-108,40,112,130,1.0,1.0,0.0,Postrhinal cortex
-109,80,123,175,1.0,1.0,0.0,Presubiculum
-110,23,54,96,1.0,1.0,0.0,Parasubiculum
-112,205,51,255,1.0,1.0,0.0,Perirhinal area 35
-113,112,48,160,1.0,1.0,0.0,Perirhinal area 36
-114,122,187,51,1.0,1.0,0.0,Medial entorhinal cortex
-115,90,111,47,1.0,1.0,0.0,Lateral entorhinal cortex
-119,0,144,55,1.0,1.0,0.0,Vestibular apparatus
-120,0,255,28,1.0,1.0,0.0,Cochlea
-121,253,148,0,1.0,1.0,0.0,Cochlear nerve
-122,253,50,0,1.0,1.0,0.0,Vestibular nerve
-123,0,12,255,1.0,1.0,0.0,"Ventral cochlear nucleus, granule cell layer"
-125,52,29,144,1.0,1.0,0.0,4th ventricle
-126,92,156,211,1.0,1.0,0.0,"Dorsal cochlear nucleus, molecular layer"
-127,0,80,156,1.0,1.0,0.0,"Dorsal cochlear nucleus, fusiform and granule layer"
-128,197,238,255,1.0,1.0,0.0,"Dorsal cochlear nucleus, deep core"
-129,255,217,0,1.0,1.0,0.0,acoustic striae
-130,213,255,0,1.0,1.0,0.0,trapezoid body
-131,0,255,81,1.0,1.0,0.0,Nucleus of the trapezoid body
-132,0,238,255,1.0,1.0,0.0,Superior paraolivary nucleus
-133,219,239,61,1.0,1.0,0.0,Medial superior olive
-134,35,76,190,1.0,1.0,0.0,Lateral superior olive
-135,1,153,21,1.0,1.0,0.0,Superior periolivary region
-136,0,174,255,1.0,1.0,0.0,Ventral periolivary nuclei
-137,255,0,115,1.0,1.0,0.0,"Lateral lemniscus, ventral nucleus"
-138,171,16,91,1.0,1.0,0.0,"Lateral lemniscus, intermediate nucleus"
-139,108,18,91,1.0,1.0,0.0,"Lateral lemniscus, dorsal nucleus"
-140,255,29,0,1.0,1.0,0.0,"lateral lemniscus, commissure"
-141,255,166,0,1.0,1.0,0.0,"lateral lemniscus, unspecified"
-142,206,255,142,1.0,1.0,0.0,"Inferior colliculus, dorsal cortex"
-143,0,238,254,1.0,1.0,0.0,"Inferior colliculus, central nucleus"
-145,48,136,203,1.0,1.0,0.0,"Inferior colliculus, external cortex"
-146,176,58,72,1.0,1.0,0.0,"inferior colliculus, brachium"
-150,255,47,242,1.0,1.0,0.0,"Medial geniculate body, marginal zone"
-151,255,215,0,1.0,1.0,0.0,Primary auditory area
-152,240,255,255,1.0,1.0,0.0,"Secondary auditory area, dorsal part"
-153,216,191,216,1.0,1.0,0.0,"Secondary auditory area, ventral part"
-157,244,156,255,1.0,1.0,0.0,"external medullary lamina, auditory radiation"
-158,34,152,255,1.0,1.0,0.0,"Ventral cochlear nucleus, anterior part"
-159,0,230,207,1.0,1.0,0.0,"Ventral cochlear nucleus, posterior part"
-160,0,255,106,1.0,1.0,0.0,"Ventral cochlear nucleus, cap area"
-162,185,255,233,1.0,1.0,0.0,Spiral ganglion
-163,99,205,0,1.0,1.0,0.0,Nucleus sagulum
-164,110,0,255,1.0,1.0,0.0,"Reticular (pre)thalamic nucleus, auditory segment"
-180,255,0,221,1.0,1.0,0.0,lateral olfactory tract
-181,0,204,255,1.0,1.0,0.0,"Piriform cortex, layer 1"
-182,0,0,254,1.0,1.0,0.0,"Piriform cortex, layer 2"
-183,165,120,221,1.0,1.0,0.0,"Piriform cortex, layer 3"
-184,230,216,250,1.0,1.0,0.0,"Nucleus accumbens, core"
-187,99,197,18,1.0,1.0,0.0,"Substantia nigra, reticular part"
-188,255,255,127,1.0,1.0,0.0,"Substantia nigra, compact part"
-189,0,159,159,1.0,1.0,0.0,"Substantia nigra, lateral part"
-192,88,47,108,1.0,1.0,0.0,"Nucleus accumbens, shell"
-193,0,162,255,1.0,1.0,0.0,Ventral pallidum
-195,255,85,255,1.0,1.0,0.0,"Globus pallidus external, medial part"
-196,127,255,212,1.0,1.0,0.0,Ventral tegmental area
-197,129,79,155,1.0,1.0,0.0,Caudate putamen
-198,200,25,200,1.0,1.0,0.0,"Globus pallidus external, lateral part"
-199,220,20,60,1.0,1.0,0.0,"Ventral striatal region, unspecified"
-200,0,217,255,1.0,1.0,0.0,"Reticular (pre)thalamic nucleus, unspecified"
-201,183,199,136,1.0,1.0,0.0,Peripeduncular nucleus
-204,255,25,0,1.0,1.0,0.0,Pregeniculate nucleus
-205,255,226,0,1.0,1.0,0.0,Dorsal lateral geniculate nucleus
-206,217,108,0,1.0,1.0,0.0,Lateral habenular nucleus
-207,205,0,24,1.0,1.0,0.0,Medial habenular nucleus
-208,228,112,214,1.0,1.0,0.0,Posterior intralaminar nucleus
-210,255,255,200,1.0,1.0,0.0,"Posterior thalamic nuclear group, triangular part"
-211,205,0,6,1.0,1.0,0.0,Parataenial thalamic nucleus
-213,131,10,121,1.0,1.0,0.0,Anterodorsal thalamic nucleus
-214,239,121,218,1.0,1.0,0.0,"Anteroventral thalamic nucleus, dorsomedial part"
-215,101,35,142,1.0,1.0,0.0,"Anteroventral thalamic nucleus, ventrolateral part"
-216,0,255,17,1.0,1.0,0.0,Rhomboid thalamic nucleus
-218,35,255,236,1.0,1.0,0.0,Xiphoid thalamic nucleus
-219,255,170,0,1.0,1.0,0.0,Reuniens thalamic nucleus
-221,0,185,126,1.0,1.0,0.0,Ventromedial thalamic nucleus
-222,130,0,217,1.0,1.0,0.0,Submedius thalamic nucleus
-223,139,93,139,1.0,1.0,0.0,Angular thalamic nucleus
-227,255,0,254,1.0,1.0,0.0,Ventral posteromedial thalamic nucleus
-228,255,123,0,1.0,1.0,0.0,"Laterodorsal thalamic nucleus, dorsomedial part"
-229,43,153,31,1.0,1.0,0.0,"Laterodorsal thalamic nucleus, ventrolateral part"
-230,255,255,2,1.0,1.0,0.0,Posterior thalamic nucleus
-231,170,170,255,1.0,1.0,0.0,Ventrolateral thalamic nucleus
-232,255,85,127,1.0,1.0,0.0,"Mediodorsal thalamic nucleus, lateral part"
-233,85,170,0,1.0,1.0,0.0,"Mediodorsal thalamic nucleus, central part"
-235,216,191,217,1.0,1.0,0.0,"Zona incerta, dorsal part"
-236,75,200,138,1.0,1.0,0.0,"Zona incerta, ventral part"
-238,194,71,79,1.0,1.0,0.0,"Zona incerta, A13 dopamine cells"
-239,219,143,247,1.0,1.0,0.0,pretectothalamic lamina
-240,170,255,255,1.0,1.0,0.0,"Mediodorsal thalamic nucleus, medial part"
-242,156,51,51,1.0,1.0,0.0,Paraventricular thalamic nuclei (anterior and posterior)
-246,240,248,255,1.0,1.0,0.0,Paracentral thalamic nucleus
-247,224,182,64,1.0,1.0,0.0,Central medial thalamic nucleus
-248,153,50,204,1.0,1.0,0.0,Central lateral thalamic nucleus
-249,170,255,0,1.0,1.0,0.0,"external medullary lamina, unspecified"
-254,0,85,255,1.0,1.0,0.0,Anteromedial thalamic nucleus
-255,248,117,222,1.0,1.0,0.0,Interanteromedial thalamic nucleus
-257,30,144,255,1.0,1.0,0.0,"Zona incerta, rostral part"
-260,160,82,45,1.0,1.0,0.0,Intermediodorsal thalamic nucleus
-266,0,255,8,1.0,1.0,0.0,"Ventral posterior nucleus of the thalamus, parvicellular part"
-267,255,239,213,1.0,1.0,0.0,Parafascicular thalamic nucleus
-268,0,0,205,1.0,1.0,0.0,Retroreuniens thalamic nucleus
-270,210,182,140,1.0,1.0,0.0,superior cerebellar peduncle and prerubral field
-272,0,0,128,1.0,1.0,0.0,Intergeniculate leaflet
-278,233,150,122,1.0,1.0,0.0,Subparafascicular nucleus
-280,255,250,250,1.0,1.0,0.0,Fields of Forel
-281,147,112,219,1.0,1.0,0.0,Subgeniculate nucleus
-282,131,50,128,1.0,1.0,0.0,Ethmoid-Limitans nucleus
-283,199,87,61,1.0,1.0,0.0,"Lateral posterior thalamic nucleus, lateral part"
-284,255,182,193,1.0,1.0,0.0,"Zona incerta, A11 dopamine cells"
-285,60,179,113,1.0,1.0,0.0,"Lateral posterior thalamic nucleus, mediorostral part"
-286,255,235,205,1.0,1.0,0.0,"Lateral posterior thalamic nucleus, mediocaudal part"
-287,255,228,196,1.0,1.0,0.0,"Zona incerta, caudal part"
-290,155,148,111,1.0,1.0,0.0,intramedullary thalamic area
-291,255,92,10,1.0,1.0,0.0,internal medullary lamina
-293,255,136,0,1.0,1.0,0.0,Ventral anterior thalamic nucleus
-294,171,86,62,1.0,1.0,0.0,Ventral posterolateral thalamic nucleus
-295,239,163,0,1.0,1.0,0.0,"Medial geniculate body, dorsal division"
-297,10,244,217,1.0,1.0,0.0,"Medial geniculate body, medial division"
-298,131,58,31,1.0,1.0,0.0,"Medial geniculate body, ventral division"
-299,10,244,150,1.0,1.0,0.0,"Medial geniculate body, suprageniculate nucleus"
-400,255,0,1,1.0,1.0,0.0,Ventrolateral orbital area
-401,255,174,201,1.0,1.0,0.0,Lateral orbital area
-402,200,191,231,1.0,1.0,0.0,Ventral orbital area
-403,63,72,204,1.0,1.0,0.0,Medial orbital area
-404,185,122,87,1.0,1.0,0.0,Dorsolateral orbital area
-405,163,73,164,1.0,1.0,0.0,Prelimbic area
-406,0,162,232,1.0,1.0,0.0,Secondary motor area
-407,136,0,21,1.0,1.0,0.0,Frontal association area 3
-408,153,217,234,1.0,1.0,0.0,Primary motor area
-409,255,201,14,1.0,1.0,0.0,"Agranular insular cortex, ventral area"
-410,255,127,39,1.0,1.0,0.0,Agranular insular cortex dorsal area 
-411,0,128,128,1.0,1.0,0.0,Cingulate area 1
-412,153,217,200,1.0,1.0,0.0,Claustrum
-413,34,177,76,1.0,1.0,0.0,Infralimbic area
-414,255,242,0,1.0,1.0,0.0,Dysgranular insular cortex
-416,239,228,176,1.0,1.0,0.0,Granular insular cortex
-417,185,14,131,1.0,1.0,0.0,"Primary somatosensory area, forelimb representation"
-418,237,28,36,1.0,1.0,0.0,"Primary somatosensory area, dysgranular zone"
-420,255,128,192,1.0,1.0,0.0,"Primary somatosensory area, face representation"
-422,200,100,250,1.0,1.0,0.0,Secondary somatosensory area
-423,136,100,21,1.0,1.0,0.0,"Primary somatosensory area, hindlimb representation"
-424,181,230,29,1.0,1.0,0.0,"Agranular insular cortex, posterior area "
-425,120,177,76,1.0,1.0,0.0,"Primary somatosensory area, barrel field"
-427,200,73,164,1.0,1.0,0.0,Retrosplenial dysgranular area
-429,225,150,201,1.0,1.0,0.0,"Primary somatosensory area, trunk representation"
-430,25,100,200,1.0,1.0,0.0,Retrosplenial granular area
-432,255,240,29,1.0,1.0,0.0,"Parietal association cortex, lateral area"
-433,108,0,108,1.0,1.0,0.0,"Parietal association cortex, medial area"
-436,128,0,64,1.0,1.0,0.0,"Parietal association cortex, posterior area "
-442,84,52,35,1.0,1.0,0.0,Primary visual area
-443,255,100,100,1.0,1.0,0.0,"Secondary visual area, lateral part"
-444,0,128,0,1.0,1.0,0.0,Temporal association cortex
-448,128,0,100,1.0,1.0,0.0,"Secondary visual area, medial part"
-500,1,10,100,1.0,1.0,0.0,Endopiriform nucleus
-501,2,20,200,1.0,1.0,0.0,"Amygdaloid area, unspecified"
-502,230,184,67,1.0,1.0,0.0,Nucleus of the lateral olfactory tract
-0,0,0,0,1.0,1.0,1.0,Clear Label
+idx,name,r,g,b,a,VIS,MSH
+0,Clear Label,0,0,0,1.0,1.0,1.0
+1,corticofugal tract and corona radiata,255,52,39,1.0,1.0,0.0
+3,Subthalamic nucleus,0,0,255,1.0,1.0,0.0
+4,Molecular cell layer of the cerebellum,255,255,1,1.0,1.0,0.0
+5,"Cerebellum, unspecified",0,255,255,1.0,1.0,0.0
+6,alveus of the hippocampus,255,0,255,1.0,1.0,0.0
+7,inferior cerebellar peduncle,52,255,13,1.0,1.0,0.0
+10,Cingulate area 2,29,104,235,1.0,1.0,0.0
+32,Entopeduncular nucleus,26,231,255,1.0,1.0,0.0
+33,"Ventricular system, unspecified",2,44,255,1.0,1.0,0.0
+34,"medial lemniscus, unspecified",212,255,0,1.0,1.0,0.0
+35,"facial nerve, unspecified",255,25,240,1.0,1.0,0.0
+36,"anterior commissure, anterior limb",124,252,0,1.0,1.0,0.0
+37,"anterior commissure, posterior limb",255,186,0,1.0,1.0,0.0
+38,ventral hippocampal commissure,174,0,232,1.0,1.0,0.0
+40,Septal region,255,8,0,1.0,1.0,0.0
+41,optic nerve,48,218,0,1.0,1.0,0.0
+42,optic tract and optic chiasm,38,126,255,1.0,1.0,0.0
+43,Pineal gland,218,170,62,1.0,1.0,0.0
+45,Spinal cord,134,255,90,1.0,1.0,0.0
+46,commissure of the superior colliculus,33,230,255,1.0,1.0,0.0
+47,"Brainstem, unspecified",153,83,255,1.0,1.0,0.0
+48,"Hypothalamic region, unspecified",226,120,161,1.0,1.0,0.0
+50,Superficial gray layer of the superior colliculus,86,0,221,1.0,1.0,0.0
+51,Periaqueductal gray,7,255,89,1.0,1.0,0.0
+52,fornix,21,192,255,1.0,1.0,0.0
+53,mammillotegmental tract,238,186,0,1.0,1.0,0.0
+54,commissural stria terminalis,173,255,47,1.0,1.0,0.0
+55,Deeper layers of the superior colliculus,225,151,15,1.0,1.0,0.0
+56,Periventricular gray,235,87,255,1.0,1.0,0.0
+57,genu of the facial nerve,250,244,247,1.0,1.0,0.0
+58,Pontine nuclei,0,215,11,1.0,1.0,0.0
+59,fimbria of the hippocampus,0,255,29,1.0,1.0,0.0
+60,fasciculus retroflexus,244,67,69,1.0,1.0,0.0
+61,stria medullaris thalami,0,255,0,1.0,1.0,0.0
+62,stria terminalis,238,117,51,1.0,1.0,0.0
+63,posterior commissure,255,0,218,1.0,1.0,0.0
+64,Glomerular layer of the accessory olfactory bulb,15,109,230,1.0,1.0,0.0
+65,Glomerular layer of the olfactory bulb,255,227,0,1.0,1.0,0.0
+66,"Olfactory bulb, unspecified",255,135,0,1.0,1.0,0.0
+67,corpus callosum and associated subcortical white matter,255,110,0,1.0,1.0,0.0
+68,brachium of the superior colliculus,188,32,173,1.0,1.0,0.0
+69,"inferior colliculus, commissure",255,42,39,1.0,1.0,0.0
+70,Central canal,39,244,253,1.0,1.0,0.0
+71,Interpeduncular nucleus,63,192,255,1.0,1.0,0.0
+72,ascending fibers of the facial nerve,179,28,53,1.0,1.0,0.0
+73,"anterior commissure, intrabulbar part",255,79,206,1.0,1.0,0.0
+74,Inferior olive,0,246,14,1.0,1.0,0.0
+75,Spinal trigeminal nucleus,91,241,255,1.0,1.0,0.0
+76,spinal trigeminal tract,250,128,114,1.0,1.0,0.0
+77,Frontal association cortex,206,211,7,1.0,1.0,0.0
+78,middle cerebellar peduncle,134,204,76,1.0,1.0,0.0
+79,transverse fibers of the pons,128,170,255,1.0,1.0,0.0
+80,habenular commissure,69,235,202,1.0,1.0,0.0
+81,Nucleus of the stria medullaris,222,7,237,1.0,1.0,0.0
+82,"Basal forebrain region, unspecified",225,240,13,1.0,1.0,0.0
+83,supraoptic decussation,250,170,64,1.0,1.0,0.0
+84,medial lemniscus decussation,65,150,255,1.0,1.0,0.0
+85,pyramidal decussation,114,9,212,1.0,1.0,0.0
+93,Bed nucleus of the stria terminalis,0,8,182,1.0,1.0,0.0
+94,Pretectal region,255,87,30,1.0,1.0,0.0
+95,Cornu ammonis 3,165,131,107,1.0,1.0,0.0
+96,Dentate gyrus,91,45,10,1.0,1.0,0.0
+97,Cornu ammonis 2,255,255,0,1.0,1.0,0.0
+98,Cornu ammonis 1,217,104,13,1.0,1.0,0.0
+99,Fasciola cinereum,255,0,0,1.0,1.0,0.0
+100,Subiculum,255,192,0,1.0,1.0,0.0
+108,Postrhinal cortex,40,112,130,1.0,1.0,0.0
+109,Presubiculum,80,123,175,1.0,1.0,0.0
+110,Parasubiculum,23,54,96,1.0,1.0,0.0
+112,Perirhinal area 35,205,51,255,1.0,1.0,0.0
+113,Perirhinal area 36,112,48,160,1.0,1.0,0.0
+114,Medial entorhinal cortex,122,187,51,1.0,1.0,0.0
+115,Lateral entorhinal cortex,90,111,47,1.0,1.0,0.0
+119,Vestibular apparatus,0,144,55,1.0,1.0,0.0
+120,Cochlea,0,255,28,1.0,1.0,0.0
+121,Cochlear nerve,253,148,0,1.0,1.0,0.0
+122,Vestibular nerve,253,50,0,1.0,1.0,0.0
+123,"Ventral cochlear nucleus, granule cell layer",0,12,255,1.0,1.0,0.0
+125,4th ventricle,52,29,144,1.0,1.0,0.0
+126,"Dorsal cochlear nucleus, molecular layer",92,156,211,1.0,1.0,0.0
+127,"Dorsal cochlear nucleus, fusiform and granule layer",0,80,156,1.0,1.0,0.0
+128,"Dorsal cochlear nucleus, deep core",197,238,255,1.0,1.0,0.0
+129,acoustic striae,255,217,0,1.0,1.0,0.0
+130,trapezoid body,213,255,0,1.0,1.0,0.0
+131,Nucleus of the trapezoid body,0,255,81,1.0,1.0,0.0
+132,Superior paraolivary nucleus,0,238,255,1.0,1.0,0.0
+133,Medial superior olive,219,239,61,1.0,1.0,0.0
+134,Lateral superior olive,35,76,190,1.0,1.0,0.0
+135,Superior periolivary region,1,153,21,1.0,1.0,0.0
+136,Ventral periolivary nuclei,0,174,255,1.0,1.0,0.0
+137,"Lateral lemniscus, ventral nucleus",255,0,115,1.0,1.0,0.0
+138,"Lateral lemniscus, intermediate nucleus",171,16,91,1.0,1.0,0.0
+139,"Lateral lemniscus, dorsal nucleus",108,18,91,1.0,1.0,0.0
+140,"lateral lemniscus, commissure",255,29,0,1.0,1.0,0.0
+141,"lateral lemniscus, unspecified",255,166,0,1.0,1.0,0.0
+142,"Inferior colliculus, dorsal cortex",206,255,142,1.0,1.0,0.0
+143,"Inferior colliculus, central nucleus",0,238,254,1.0,1.0,0.0
+145,"Inferior colliculus, external cortex",48,136,203,1.0,1.0,0.0
+146,"inferior colliculus, brachium",176,58,72,1.0,1.0,0.0
+150,"Medial geniculate body, marginal zone",255,47,242,1.0,1.0,0.0
+151,Primary auditory area,255,215,0,1.0,1.0,0.0
+152,"Secondary auditory area, dorsal part",240,255,255,1.0,1.0,0.0
+153,"Secondary auditory area, ventral part",216,191,216,1.0,1.0,0.0
+157,"external medullary lamina, auditory radiation",244,156,255,1.0,1.0,0.0
+158,"Ventral cochlear nucleus, anterior part",34,152,255,1.0,1.0,0.0
+159,"Ventral cochlear nucleus, posterior part",0,230,207,1.0,1.0,0.0
+160,"Ventral cochlear nucleus, cap area",0,255,106,1.0,1.0,0.0
+162,Spiral ganglion,185,255,233,1.0,1.0,0.0
+163,Nucleus sagulum,99,205,0,1.0,1.0,0.0
+164,"Reticular (pre)thalamic nucleus, auditory segment",110,0,255,1.0,1.0,0.0
+180,lateral olfactory tract,255,0,221,1.0,1.0,0.0
+181,"Piriform cortex, layer 1",0,204,255,1.0,1.0,0.0
+182,"Piriform cortex, layer 2",0,0,254,1.0,1.0,0.0
+183,"Piriform cortex, layer 3",165,120,221,1.0,1.0,0.0
+184,"Nucleus accumbens, core",230,216,250,1.0,1.0,0.0
+187,"Substantia nigra, reticular part",99,197,18,1.0,1.0,0.0
+188,"Substantia nigra, compact part",255,255,127,1.0,1.0,0.0
+189,"Substantia nigra, lateral part",0,159,159,1.0,1.0,0.0
+192,"Nucleus accumbens, shell",88,47,108,1.0,1.0,0.0
+193,Ventral pallidum,0,162,255,1.0,1.0,0.0
+195,"Globus pallidus external, medial part",255,85,255,1.0,1.0,0.0
+196,Ventral tegmental area,127,255,212,1.0,1.0,0.0
+197,Caudate putamen,129,79,155,1.0,1.0,0.0
+198,"Globus pallidus external, lateral part",200,25,200,1.0,1.0,0.0
+199,"Ventral striatal region, unspecified",220,20,60,1.0,1.0,0.0
+200,"Reticular (pre)thalamic nucleus, unspecified",0,217,255,1.0,1.0,0.0
+201,Peripeduncular nucleus,183,199,136,1.0,1.0,0.0
+204,Pregeniculate nucleus,255,25,0,1.0,1.0,0.0
+205,Dorsal lateral geniculate nucleus,255,226,0,1.0,1.0,0.0
+206,Lateral habenular nucleus,217,108,0,1.0,1.0,0.0
+207,Medial habenular nucleus,205,0,24,1.0,1.0,0.0
+208,Posterior intralaminar nucleus,228,112,214,1.0,1.0,0.0
+210,"Posterior thalamic nuclear group, triangular part",255,255,200,1.0,1.0,0.0
+211,Parataenial thalamic nucleus,205,0,6,1.0,1.0,0.0
+213,Anterodorsal thalamic nucleus,131,10,121,1.0,1.0,0.0
+214,"Anteroventral thalamic nucleus, dorsomedial part",239,121,218,1.0,1.0,0.0
+215,"Anteroventral thalamic nucleus, ventrolateral part",101,35,142,1.0,1.0,0.0
+216,Rhomboid thalamic nucleus,0,255,17,1.0,1.0,0.0
+218,Xiphoid thalamic nucleus,35,255,236,1.0,1.0,0.0
+219,Reuniens thalamic nucleus,255,170,0,1.0,1.0,0.0
+221,Ventromedial thalamic nucleus,0,185,126,1.0,1.0,0.0
+222,Submedius thalamic nucleus,130,0,217,1.0,1.0,0.0
+223,Angular thalamic nucleus,139,93,139,1.0,1.0,0.0
+227,Ventral posteromedial thalamic nucleus,255,0,254,1.0,1.0,0.0
+228,"Laterodorsal thalamic nucleus, dorsomedial part",255,123,0,1.0,1.0,0.0
+229,"Laterodorsal thalamic nucleus, ventrolateral part",43,153,31,1.0,1.0,0.0
+230,Posterior thalamic nucleus,255,255,2,1.0,1.0,0.0
+231,Ventrolateral thalamic nucleus,170,170,255,1.0,1.0,0.0
+232,"Mediodorsal thalamic nucleus, lateral part",255,85,127,1.0,1.0,0.0
+233,"Mediodorsal thalamic nucleus, central part",85,170,0,1.0,1.0,0.0
+235,"Zona incerta, dorsal part",216,191,217,1.0,1.0,0.0
+236,"Zona incerta, ventral part",75,200,138,1.0,1.0,0.0
+238,"Zona incerta, A13 dopamine cells",194,71,79,1.0,1.0,0.0
+239,pretectothalamic lamina,219,143,247,1.0,1.0,0.0
+240,"Mediodorsal thalamic nucleus, medial part",170,255,255,1.0,1.0,0.0
+242,Paraventricular thalamic nuclei (anterior and posterior),156,51,51,1.0,1.0,0.0
+246,Paracentral thalamic nucleus,240,248,255,1.0,1.0,0.0
+247,Central medial thalamic nucleus,224,182,64,1.0,1.0,0.0
+248,Central lateral thalamic nucleus,153,50,204,1.0,1.0,0.0
+249,"external medullary lamina, unspecified",170,255,0,1.0,1.0,0.0
+254,Anteromedial thalamic nucleus,0,85,255,1.0,1.0,0.0
+255,Interanteromedial thalamic nucleus,248,117,222,1.0,1.0,0.0
+257,"Zona incerta, rostral part",30,144,255,1.0,1.0,0.0
+260,Intermediodorsal thalamic nucleus,160,82,45,1.0,1.0,0.0
+266,"Ventral posterior nucleus of the thalamus, parvicellular part",0,255,8,1.0,1.0,0.0
+267,Parafascicular thalamic nucleus,255,239,213,1.0,1.0,0.0
+268,Retroreuniens thalamic nucleus,0,0,205,1.0,1.0,0.0
+270,superior cerebellar peduncle and prerubral field,210,182,140,1.0,1.0,0.0
+272,Intergeniculate leaflet,0,0,128,1.0,1.0,0.0
+278,Subparafascicular nucleus,233,150,122,1.0,1.0,0.0
+280,Fields of Forel,255,250,250,1.0,1.0,0.0
+281,Subgeniculate nucleus,147,112,219,1.0,1.0,0.0
+282,Ethmoid-Limitans nucleus,131,50,128,1.0,1.0,0.0
+283,"Lateral posterior thalamic nucleus, lateral part",199,87,61,1.0,1.0,0.0
+284,"Zona incerta, A11 dopamine cells",255,182,193,1.0,1.0,0.0
+285,"Lateral posterior thalamic nucleus, mediorostral part",60,179,113,1.0,1.0,0.0
+286,"Lateral posterior thalamic nucleus, mediocaudal part",255,235,205,1.0,1.0,0.0
+287,"Zona incerta, caudal part",255,228,196,1.0,1.0,0.0
+290,intramedullary thalamic area,155,148,111,1.0,1.0,0.0
+291,internal medullary lamina,255,92,10,1.0,1.0,0.0
+293,Ventral anterior thalamic nucleus,255,136,0,1.0,1.0,0.0
+294,Ventral posterolateral thalamic nucleus,171,86,62,1.0,1.0,0.0
+295,"Medial geniculate body, dorsal division",239,163,0,1.0,1.0,0.0
+297,"Medial geniculate body, medial division",10,244,217,1.0,1.0,0.0
+298,"Medial geniculate body, ventral division",131,58,31,1.0,1.0,0.0
+299,"Medial geniculate body, suprageniculate nucleus",10,244,150,1.0,1.0,0.0
+400,Ventrolateral orbital area,255,0,1,1.0,1.0,0.0
+401,Lateral orbital area,255,174,201,1.0,1.0,0.0
+402,Ventral orbital area,200,191,231,1.0,1.0,0.0
+403,Medial orbital area,63,72,204,1.0,1.0,0.0
+404,Dorsolateral orbital area,185,122,87,1.0,1.0,0.0
+405,Prelimbic area,163,73,164,1.0,1.0,0.0
+406,Secondary motor area,0,162,232,1.0,1.0,0.0
+407,Frontal association area 3,136,0,21,1.0,1.0,0.0
+408,Primary motor area,153,217,234,1.0,1.0,0.0
+409,"Agranular insular cortex, ventral area",255,201,14,1.0,1.0,0.0
+410,Agranular insular cortex dorsal area ,255,127,39,1.0,1.0,0.0
+411,Cingulate area 1,0,128,128,1.0,1.0,0.0
+412,Claustrum,153,217,200,1.0,1.0,0.0
+413,Infralimbic area,34,177,76,1.0,1.0,0.0
+414,Dysgranular insular cortex,255,242,0,1.0,1.0,0.0
+416,Granular insular cortex,239,228,176,1.0,1.0,0.0
+417,"Primary somatosensory area, forelimb representation",185,14,131,1.0,1.0,0.0
+418,"Primary somatosensory area, dysgranular zone",237,28,36,1.0,1.0,0.0
+420,"Primary somatosensory area, face representation",255,128,192,1.0,1.0,0.0
+422,Secondary somatosensory area,200,100,250,1.0,1.0,0.0
+423,"Primary somatosensory area, hindlimb representation",136,100,21,1.0,1.0,0.0
+424,"Agranular insular cortex, posterior area ",181,230,29,1.0,1.0,0.0
+425,"Primary somatosensory area, barrel field",120,177,76,1.0,1.0,0.0
+427,Retrosplenial dysgranular area,200,73,164,1.0,1.0,0.0
+429,"Primary somatosensory area, trunk representation",225,150,201,1.0,1.0,0.0
+430,Retrosplenial granular area,25,100,200,1.0,1.0,0.0
+432,"Parietal association cortex, lateral area",255,240,29,1.0,1.0,0.0
+433,"Parietal association cortex, medial area",108,0,108,1.0,1.0,0.0
+436,"Parietal association cortex, posterior area ",128,0,64,1.0,1.0,0.0
+442,Primary visual area,84,52,35,1.0,1.0,0.0
+443,"Secondary visual area, lateral part",255,100,100,1.0,1.0,0.0
+444,Temporal association cortex,0,128,0,1.0,1.0,0.0
+448,"Secondary visual area, medial part",128,0,100,1.0,1.0,0.0
+500,Endopiriform nucleus,1,10,100,1.0,1.0,0.0
+501,"Amygdaloid area, unspecified",2,20,200,1.0,1.0,0.0
+502,Nucleus of the lateral olfactory tract,230,184,67,1.0,1.0,0.0
