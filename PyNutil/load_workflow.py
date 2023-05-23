@@ -1,3 +1,5 @@
+"""Create workflow for calculating load based on atlas maps and segmentations"""
+
 import struct
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -21,6 +23,20 @@ lbidx = labelfile['idx'].values
 allen_id_image = lbidx[values.astype(int)] # assign allen IDs into image array
 
 plt.imshow(allen_id_image)
+
+"""count pixels for unique idx"""
+unique_ids, counts = np.unique(allen_id_image, return_counts=True)
+
+area_per_label = list(zip(unique_ids,counts))
+# create a list of unique regions and pixel counts per region
+
+df_area_per_label = pd.DataFrame(area_per_label, columns=["idx","area_count"])
+# create a pandas df with regions and pixel counts
+
+print(df_area_per_label)
+df_area_per_label.to_csv("../outputs/s037_area_per_idx.csv", sep=";", na_rep='', index= False)
+
+
 
 
 # Count area per unique label

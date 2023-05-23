@@ -1,3 +1,7 @@
+   
+"""This is Gergely Csusc's code from VisuAlign MediaWiki NITRC page,
+this was a test, not used elsewhere in PyNutil"""   
+   
    import sys
    for arg in sys.argv:
        if arg.startswith("flat="):
