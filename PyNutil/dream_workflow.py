@@ -22,12 +22,12 @@ quantifier.load_mask(mask_path=r"blablabla/")
 quantifier.load_custom_regions(custom_region_json=r"blablabla/")
 # run coordinate extraction
 # ideally extract coordinates per section and whole brain
-points = quantifier.get_coordinates()
+quantifier.get_coordinates()
 
 quantifier.save_coordinates()
 
-objects = quantifier.get_objects()
+quantifier.get_objects()
 
-loads = quantifier.get_loads()
+quantifier.get_loads()
 
 quantifier.save_segmentation_atlas_overlays()

@@ -11,7 +11,7 @@ def load_config() -> dict:
     :rtype: dict
     """
     # returns a path to the config file assuming that it is in the same directory as this script
-    path = str(Path(__file__).parent.parent.absolute()) + "/config.json"
+    path = str(Path(__file__).parent.parent.absolute()) + "/metadata/config.json"
     # open the config file
     with open(path, "r") as f:
         # load the config file
