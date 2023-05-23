@@ -22,6 +22,7 @@
     "WHS_Atlas_Rat_Brain_v4":{
         "labels":"WHS_v4_colours.csv",
         "volume":"None"
-    },
-    "annotation_volume_directory":"annotation_volumes/"
-}}
+    }
+},
+"annotation_volume_directory":"PyNutil/metadata/annotation_volumes/"
+}
