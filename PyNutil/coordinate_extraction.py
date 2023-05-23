@@ -136,6 +136,8 @@ def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=Tru
         points.extend(SegmentationToAtlasSpace(current_slice, SegmentationPath, pixelID, nonLinear))
     return np.array(points)
 
+# points.append would make list of lists, keeping sections separate. 
+
 
 #related to coordinate extraction
 #this function returns an array of points

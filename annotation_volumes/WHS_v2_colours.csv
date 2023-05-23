@@ -1,82 +1,82 @@
-idx,r,g,b,a,VIS,MSH,name
-1,255,52,39,1.0,1.0,0.0,descending corticofugal pathways
-2,255,186,0,1.0,1.0,0.0,substantia nigra
-3,0,0,255,1.0,1.0,0.0,subthalamic nucleus
-4,255,255,0,1.0,1.0,0.0,molecular layer of the cerebellum
-5,0,255,255,1.0,1.0,0.0,granule cell level of the cerebellum
-6,255,0,255,1.0,1.0,0.0,alveus of the hippocampus
-7,52,255,13,1.0,1.0,0.0,inferior cerebellar peduncle
-10,29,104,235,1.0,1.0,0.0,"cingulate cortex, area 2"
-30,129,79,255,1.0,1.0,0.0,striatum
-31,255,145,186,1.0,1.0,0.0,globus pallidus
-32,26,231,255,1.0,1.0,0.0,entopeduncular nucleus
-33,2,44,255,1.0,1.0,0.0,ventricular system
-34,212,255,0,1.0,1.0,0.0,medial lemniscus
-35,0,176,63,1.0,1.0,0.0,facial nerve
-36,124,252,0,1.0,1.0,0.0,"anterior commissure, anterior part"
-37,255,186,0,1.0,1.0,0.0,"anterior commissure, posterior part"
-38,174,0,232,1.0,1.0,0.0,ventral hippocampal commissure
-39,0,100,0,1.0,1.0,0.0,thalamus
-40,255,8,0,1.0,1.0,0.0,septal region
-41,48,218,0,1.0,1.0,0.0,optic nerve
-42,38,126,255,1.0,1.0,0.0,optic tract and optic chiasm
-43,218,170,62,1.0,1.0,0.0,pineal gland
-44,0,165,21,1.0,1.0,0.0,inner ear
-45,134,255,90,0.68,1.0,0.0,spinal cord
-46,33,230,255,1.0,1.0,0.0,commissure of the superior colliculus
-47,153,83,255,1.0,1.0,0.0,brainstem
-48,226,120,161,1.0,1.0,0.0,hypothalamic region
-49,238,47,44,1.0,1.0,0.0,inferior colliculus
-50,86,0,221,1.0,1.0,0.0,superficial gray layer of the superior colliculus
-51,7,255,89,1.0,1.0,0.0,periaqueductal gray
-52,21,192,255,1.0,1.0,0.0,fornix
-53,238,186,0,1.0,1.0,0.0,mammillothalamic tract
-54,173,255,47,1.0,1.0,0.0,commissural stria terminalis
-55,225,151,15,1.0,1.0,0.0,deeper layers of the superior colliculus
-56,235,87,255,1.0,1.0,0.0,periventricular gray
-57,250,244,247,1.0,1.0,0.0,genu of the facial nerve
-58,0,215,11,1.0,1.0,0.0,pontine nuclei
-59,0,255,29,1.0,1.0,0.0,fimbria of the hippocampus
-60,244,67,69,1.0,1.0,0.0,fasciculus retroflexus
-61,255,252,0,1.0,1.0,0.0,stria medullaris of the thalamus
-62,238,117,51,1.0,1.0,0.0,stria terminalis
-63,255,0,218,1.0,1.0,0.0,posterior commissure
-64,15,109,230,1.0,1.0,0.0,glomerular layer of the accessory olfactory bulb
-65,255,227,0,1.0,1.0,0.0,glomerular layer of the olfactory bulb
-66,255,135,0,1.0,1.0,0.0,olfactory bulb
-67,255,110,0,1.0,1.0,0.0,corpus callosum and associated subcortical white matter
-68,188,32,173,1.0,1.0,0.0,brachium of the superior colliculus
-69,147,255,39,1.0,1.0,0.0,commissure of the inferior colliculus
-70,39,244,253,1.0,1.0,0.0,central canal
-71,63,192,255,1.0,1.0,0.0,interpeduncular nucleus
-72,179,28,53,1.0,1.0,0.0,ascending fibers of the facial nerve
-73,255,79,206,1.0,1.0,0.0,anterior commissure
-74,0,246,14,1.0,1.0,0.0,inferior olive
-75,91,241,255,1.0,1.0,0.0,spinal trigeminal nuclus
-76,250,128,114,1.0,1.0,0.0,spinal trigeminal tract
-77,206,211,7,1.0,1.0,0.0,frontal associiation cortex
-78,134,204,76,1.0,1.0,0.0,middle cerebellar peduncle
-79,128,170,255,1.0,1.0,0.0,transverse fibers of the pons
-80,69,235,202,1.0,1.0,0.0,habenular commissure
-81,222,7,237,1.0,1.0,0.0,nucleus of the stria medullaris
-82,225,240,13,1.0,1.0,0.0,basal forebrain region
-83,250,170,64,1.0,1.0,0.0,supraoptic decussation
-84,65,150,255,1.0,1.0,0.0,medial lemniscus decussation
-85,114,9,212,1.0,1.0,0.0,pyramidal decussation
-92,3,193,45,1.0,1.0,0.0,neocortex
-93,0,8,182,1.0,1.0,0.0,bed nucleus of the stria terminalis
-94,255,87,30,1.0,1.0,0.0,pretectal region
-95,165,131,107,1.0,1.0,1.0,cornu ammonis 3
-96,91,45,10,1.0,1.0,1.0,dentate gyrus
-97,255,255,0,1.0,1.0,1.0,cornu ammonis 2
-98,217,104,13,1.0,1.0,1.0,cornu ammonis 1
-99,255,82,82,1.0,1.0,1.0,fasciola cinereum
-100,255,192,0,1.0,1.0,1.0,subiculum
-108,40,112,130,1.0,1.0,1.0,postrhinal cortex
-109,80,123,175,1.0,1.0,1.0,presubiculum
-110,23,54,96,1.0,1.0,1.0,parasubiculum
-112,205,51,255,1.0,1.0,1.0,perirhinal area 35
-113,112,48,160,1.0,1.0,1.0,perirhinal area 36
-114,12,92,8,1.0,1.0,1.0,entorhinal cortex
-115,221,166,36,1.0,1.0,1.0,lateral entorhinal cortex
-0,0,0,0,1.0,1.0,1.0,Clear Label
+idx,name,r,g,b,a,VIS,MSH
+0,Clear Label,0,0,0,1.0,1.0,1.0
+1,descending corticofugal pathways,255,52,39,1.0,1.0,0.0
+2,substantia nigra,255,186,0,1.0,1.0,0.0
+3,subthalamic nucleus,0,0,255,1.0,1.0,0.0
+4,molecular layer of the cerebellum,255,255,0,1.0,1.0,0.0
+5,granule cell level of the cerebellum,0,255,255,1.0,1.0,0.0
+6,alveus of the hippocampus,255,0,255,1.0,1.0,0.0
+7,inferior cerebellar peduncle,52,255,13,1.0,1.0,0.0
+10,"cingulate cortex, area 2",29,104,235,1.0,1.0,0.0
+30,striatum,129,79,255,1.0,1.0,0.0
+31,globus pallidus,255,145,186,1.0,1.0,0.0
+32,entopeduncular nucleus,26,231,255,1.0,1.0,0.0
+33,ventricular system,2,44,255,1.0,1.0,0.0
+34,medial lemniscus,212,255,0,1.0,1.0,0.0
+35,facial nerve,0,176,63,1.0,1.0,0.0
+36,"anterior commissure, anterior part",124,252,0,1.0,1.0,0.0
+37,"anterior commissure, posterior part",255,186,0,1.0,1.0,0.0
+38,ventral hippocampal commissure,174,0,232,1.0,1.0,0.0
+39,thalamus,0,100,0,1.0,1.0,0.0
+40,septal region,255,8,0,1.0,1.0,0.0
+41,optic nerve,48,218,0,1.0,1.0,0.0
+42,optic tract and optic chiasm,38,126,255,1.0,1.0,0.0
+43,pineal gland,218,170,62,1.0,1.0,0.0
+44,inner ear,0,165,21,1.0,1.0,0.0
+45,spinal cord,134,255,90,0.68,1.0,0.0
+46,commissure of the superior colliculus,33,230,255,1.0,1.0,0.0
+47,brainstem,153,83,255,1.0,1.0,0.0
+48,hypothalamic region,226,120,161,1.0,1.0,0.0
+49,inferior colliculus,238,47,44,1.0,1.0,0.0
+50,superficial gray layer of the superior colliculus,86,0,221,1.0,1.0,0.0
+51,periaqueductal gray,7,255,89,1.0,1.0,0.0
+52,fornix,21,192,255,1.0,1.0,0.0
+53,mammillothalamic tract,238,186,0,1.0,1.0,0.0
+54,commissural stria terminalis,173,255,47,1.0,1.0,0.0
+55,deeper layers of the superior colliculus,225,151,15,1.0,1.0,0.0
+56,periventricular gray,235,87,255,1.0,1.0,0.0
+57,genu of the facial nerve,250,244,247,1.0,1.0,0.0
+58,pontine nuclei,0,215,11,1.0,1.0,0.0
+59,fimbria of the hippocampus,0,255,29,1.0,1.0,0.0
+60,fasciculus retroflexus,244,67,69,1.0,1.0,0.0
+61,stria medullaris of the thalamus,255,252,0,1.0,1.0,0.0
+62,stria terminalis,238,117,51,1.0,1.0,0.0
+63,posterior commissure,255,0,218,1.0,1.0,0.0
+64,glomerular layer of the accessory olfactory bulb,15,109,230,1.0,1.0,0.0
+65,glomerular layer of the olfactory bulb,255,227,0,1.0,1.0,0.0
+66,olfactory bulb,255,135,0,1.0,1.0,0.0
+67,corpus callosum and associated subcortical white matter,255,110,0,1.0,1.0,0.0
+68,brachium of the superior colliculus,188,32,173,1.0,1.0,0.0
+69,commissure of the inferior colliculus,147,255,39,1.0,1.0,0.0
+70,central canal,39,244,253,1.0,1.0,0.0
+71,interpeduncular nucleus,63,192,255,1.0,1.0,0.0
+72,ascending fibers of the facial nerve,179,28,53,1.0,1.0,0.0
+73,anterior commissure,255,79,206,1.0,1.0,0.0
+74,inferior olive,0,246,14,1.0,1.0,0.0
+75,spinal trigeminal nuclus,91,241,255,1.0,1.0,0.0
+76,spinal trigeminal tract,250,128,114,1.0,1.0,0.0
+77,frontal associiation cortex,206,211,7,1.0,1.0,0.0
+78,middle cerebellar peduncle,134,204,76,1.0,1.0,0.0
+79,transverse fibers of the pons,128,170,255,1.0,1.0,0.0
+80,habenular commissure,69,235,202,1.0,1.0,0.0
+81,nucleus of the stria medullaris,222,7,237,1.0,1.0,0.0
+82,basal forebrain region,225,240,13,1.0,1.0,0.0
+83,supraoptic decussation,250,170,64,1.0,1.0,0.0
+84,medial lemniscus decussation,65,150,255,1.0,1.0,0.0
+85,pyramidal decussation,114,9,212,1.0,1.0,0.0
+92,neocortex,3,193,45,1.0,1.0,0.0
+93,bed nucleus of the stria terminalis,0,8,182,1.0,1.0,0.0
+94,pretectal region,255,87,30,1.0,1.0,0.0
+95,cornu ammonis 3,165,131,107,1.0,1.0,1.0
+96,dentate gyrus,91,45,10,1.0,1.0,1.0
+97,cornu ammonis 2,255,255,0,1.0,1.0,1.0
+98,cornu ammonis 1,217,104,13,1.0,1.0,1.0
+99,fasciola cinereum,255,82,82,1.0,1.0,1.0
+100,subiculum,255,192,0,1.0,1.0,1.0
+108,postrhinal cortex,40,112,130,1.0,1.0,1.0
+109,presubiculum,80,123,175,1.0,1.0,1.0
+110,parasubiculum,23,54,96,1.0,1.0,1.0
+112,perirhinal area 35,205,51,255,1.0,1.0,1.0
+113,perirhinal area 36,112,48,160,1.0,1.0,1.0
+114,entorhinal cortex,12,92,8,1.0,1.0,1.0
+115,lateral entorhinal cortex,221,166,36,1.0,1.0,1.0
