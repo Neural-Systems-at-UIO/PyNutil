@@ -15,14 +15,14 @@ with open("../test/test5_NOP_s037.json", "r") as f:
 # print(input)
 
 # import our function for converting a folder of segmentations to points
-from coordinate_extraction import FolderToAtlasSpace, FolderToAtlasSpaceMultiThreaded
+from coordinate_extraction import FolderToAtlasSpace, FolderToAtlasSpace
 from read_and_write import SaveDataframeasCSV, WritePointsToMeshview, FilesinDirectory
 from counting_and_load import PixelCountPerRegion, labelPoints
 
 startTime = datetime.now()
 
 # now we can use our function to convert the folder of segmentations to points
-points = FolderToAtlasSpaceMultiThreaded(
+points = FolderToAtlasSpace(
     input["segmentation_folder"],
     input["alignment_json"],
     pixelID=input["colour"],

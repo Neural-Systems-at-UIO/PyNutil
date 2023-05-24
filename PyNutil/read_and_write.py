@@ -53,7 +53,8 @@ def WritePointsToMeshview(points, pointNames, filename, infoFile):
     regionDict = createRegionDict(points, pointNames)
     WritePoints(regionDict, filename, infoFile)
 
-# I think this might not need to be its own function :) 
+
+# I think this might not need to be its own function :)
 def SaveDataframeasCSV(df_to_save, output_csv):
     """Function for saving a df as a CSV file"""
     df_to_save.to_csv(output_csv, sep=";", na_rep="", index=False)
