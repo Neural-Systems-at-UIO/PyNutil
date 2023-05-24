@@ -23,7 +23,7 @@ def labelPoints(points, label_volume, scale_factor=1):
 
 
 # related to counting_and_load
-def PixelCountPerRegion(labelsDict, label_colours):
+def PixelCountPerRegion(labelsDict, df_label_colours):
     """Function for counting no. of pixels per region and writing to CSV based on
     a dictionary with the region as the key and the points as the value,"""
     counted_labels, label_counts = np.unique(labelsDict, return_counts=True)
@@ -34,7 +34,7 @@ def PixelCountPerRegion(labelsDict, label_colours):
     df_counts_per_label = pd.DataFrame(counts_per_label, columns=["idx", "pixel_count"])
     # create a pandas df with regions and pixel counts
 
-    df_label_colours = pd.read_csv(label_colours, sep=",")
+    # df_label_colours = pd.read_csv(label_colours, sep=",")
     # find colours corresponding to each region ID and add to the pandas dataframe
 
     # look up name, r, g, b in df_allen_colours in df_counts_per_label based on "idx"

@@ -79,72 +79,8 @@ def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
     return (O + XYZU + XYZV).T
 
 
-# related to coordinate extraction
-def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID="auto", nonLinear=True):
-    """combines many functions to convert a segmentation to atlas space. It takes care
-    of deformations"""
-    Segmentation = cv2.imread(SegmentationPath)
-
-    if pixelID == "auto":
-        # remove the background from the segmentation
-        SegmentationNoBackGround = Segmentation[~np.all(Segmentation == 255, axis=2)]
-        pixelID = np.vstack(
-            {tuple(r) for r in SegmentationNoBackGround.reshape(-1, 3)}
-        )  # remove background
-        # currently only works for a single label
-        pixelID = pixelID[0]
-    ID_pixels = findMatchingPixels(Segmentation, pixelID)
-    # transform pixels to registration space (the registered image and segmentation have different dimensions)
-    SegHeight = Segmentation.shape[0]
-    SegWidth = Segmentation.shape[1]
-    RegHeight = slice["height"]
-    RegWidth = slice["width"]
-    # this calculates reg/seg
-    Yscale, Xscale = transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth)
-    scaledY, scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
-    if nonLinear:
-        if "markers" in slice:
-            # this creates a triangulation using the reg width
-            triangulation = triangulate(RegWidth, RegHeight, slice["markers"])
-            newX, newY = transform_vec(triangulation, scaledX, scaledY)
-        else:
-            print(f"no markers found for {slice['filename']}, result for section will be linear")
-            newX, newY = scaledX, scaledY
-    else:
-        newX, newY = scaledX, scaledY
-
-    # scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
-    points = transformToAtlasSpace(slice["anchoring"], newY, newX, RegHeight, RegWidth)
-    # points = points.reshape(-1)
-    return np.array(points)
 
 
-# related to coordinate extraction
-def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True):
-    "apply Segmentation to atlas space to all segmentations in a folder"
-    slices = loadVisuAlignJson(QUINT_alignment)
-    points = []
-    segmentationFileTypes = [".png", ".tif", ".tiff", ".jpg", ".jpeg"]
-    Segmentations = [
-        file
-        for file in glob(folder + "/*")
-        if any([file.endswith(type) for type in segmentationFileTypes])
-    ]
-    SectionNumbers = number_sections(Segmentations)
-    # order segmentations and sectionNumbers
-    # Segmentations = [x for _,x in sorted(zip(SectionNumbers,Segmentations))]
-    # SectionNumbers.sort()
-    for SegmentationPath in Segmentations:
-        seg_nr = int(number_sections([SegmentationPath])[0])
-        current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
-        current_slice = slices[current_slice_index[0][0]]
-        ##this converts the segmentation to a point cloud
-        points.extend(
-            SegmentationToAtlasSpace(
-                current_slice, SegmentationPath, pixelID, nonLinear
-            )
-        )
-    return np.array(points)
 
 
 # points.append would make list of lists, keeping sections separate.
@@ -152,7 +88,7 @@ def FolderToAtlasSpace(folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=Tru
 
 # related to coordinate extraction
 # this function returns an array of points
-def FolderToAtlasSpaceMultiThreaded(
+def FolderToAtlasSpace(
     folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True
 ):
     "apply Segmentation to atlas space to all segmentations in a folder"
@@ -175,7 +111,7 @@ def FolderToAtlasSpaceMultiThreaded(
         current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
         current_slice = slices[current_slice_index[0][0]]
         x = threading.Thread(
-            target=SegmentationToAtlasSpaceMultiThreaded,
+            target=SegmentationToAtlasSpace,
             args=(
                 current_slice,
                 SegmentationPath,
@@ -198,7 +134,7 @@ def FolderToAtlasSpaceMultiThreaded(
 
 # related to coordinate extraction
 # this function returns an array of points
-def SegmentationToAtlasSpaceMultiThreaded(
+def SegmentationToAtlasSpace(
     slice, SegmentationPath, pixelID="auto", nonLinear=True, pointsList=None, index=None
 ):
     """combines many functions to convert a segmentation to atlas space. It takes care
