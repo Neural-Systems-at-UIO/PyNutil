@@ -65,7 +65,7 @@ class PyNutil:
         if method not in ["per_pixel", "per_object", "all"]:
             raise ValueError(f"method {method} not recognised, valid methods are: per_pixel, per_object, or all")
         print("extracting coordinates")
-        points = FolderToAtlasSpaceMultiThreaded(
+        points = FolderToAtlasSpace(
             self.segmentation_folder,
             self.alignment_json,
             pixelID=self.colour,
