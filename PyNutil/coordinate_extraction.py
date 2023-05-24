@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
-from read_and_write import loadVisuAlignJson
-from counting_and_load import labelPoints
-from visualign_deformations import triangulate, transform_vec
+from .read_and_write import loadVisuAlignJson
+from .counting_and_load import labelPoints
+from .visualign_deformations import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
 import cv2
@@ -108,7 +108,7 @@ def SegmentationToAtlasSpace(slice, SegmentationPath, pixelID="auto", nonLinear=
             triangulation = triangulate(RegWidth, RegHeight, slice["markers"])
             newX, newY = transform_vec(triangulation, scaledX, scaledY)
         else:
-            print(f"no markers found for " + slice["filename"])
+            print(f"no markers found for {slice['filename']}, result for section will be linear")
             newX, newY = scaledX, scaledY
     else:
         newX, newY = scaledX, scaledY
@@ -230,7 +230,7 @@ def SegmentationToAtlasSpaceMultiThreaded(
             triangulation = triangulate(RegWidth, RegHeight, slice["markers"])
             newX, newY = transform_vec(triangulation, scaledX, scaledY)
         else:
-            print(f"no markers found for " + slice["filename"])
+            print(f"no markers found for {slice['filename']}, result for section will be linear")
             newX, newY = scaledX, scaledY
     else:
         newX, newY = scaledX, scaledY
