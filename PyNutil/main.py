@@ -1,7 +1,10 @@
 from .metadata import metadata_loader
-from .read_and_write import readAtlasVolume
-from .coordinate_extraction import FolderToAtlasSpaceMultiThreaded
+from .read_and_write import readAtlasVolume, WritePointsToMeshview
+from .coordinate_extraction import FolderToAtlasSpace
+from .counting_and_load import labelPoints, PixelCountPerRegion
 import json
+import pandas as pd
+from datetime import datetime
 
 class PyNutil:
     def __init__(
@@ -46,8 +49,15 @@ class PyNutil:
         atlas_root_path = self.config["annotation_volume_directory"]
         current_atlas_path = self.config["annotation_volumes"][self.atlas]["volume"]
         print("loading atlas volume")
+        startTime = datetime.now()
         self.atlas_volume = readAtlasVolume(atlas_root_path + current_atlas_path)
-        print("atlas volume loaded")
+        time_taken = datetime.now() - startTime
+        print(f"atlas volume loaded in: {time_taken}")
+        atlas_label_path = self.config["annotation_volumes"][self.atlas]["labels"]
+        print("loading atlas labels")
+        self.atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
+        print("atlas labels loaded")
+        
 
     def get_coordinates(self, nonLinear=True, method="all"):
         if not hasattr(self, "atlas_volume"):
@@ -64,4 +74,31 @@ class PyNutil:
         self.points = points
         
 
+    def quantify_coordinates(self):
+        if not hasattr(self, "points"):
+            raise ValueError("Please run get_coordinates before running quantify_coordinates")
+        print("quantifying coordinates")
+        labeled_points = labelPoints(self.points, self.atlas_volume, scale_factor=2.5)
+        self.label_df = PixelCountPerRegion(labeled_points, self.atlas_labels)
+        self.labeled_points = labeled_points
 
+        print("quantification complete")
+
+    def save_analysis(self, output_folder):
+        if not hasattr(self, "points"):
+            raise ValueError("Please run get_coordinates before running save_analysis")
+        if not hasattr(self, "label_df"):
+            print("no quantification found so we will only save the coordinates")
+            print("if you want to save the quantification please run quantify_coordinates")
+            self.label_df.to_csv(output_folder + '/counts.csv', sep=";", na_rep="", index=False)
+
+        else:
+            self.label_df.to_csv(output_folder + '/counts.csv', sep=";", na_rep="", index=False)
+            WritePointsToMeshview(
+                self.points, 
+                self.labeled_points,
+                output_folder + '/pixels_meshview.json',
+                self.atlas_labels
+            )
+            
+        

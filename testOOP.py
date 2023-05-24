@@ -7,3 +7,6 @@ pnt.build_quantifier()
 
 pnt.get_coordinates()
 
+pnt.quantify_coordinates()
+
+pnt.save_analysis('outputs/test4_2017')
