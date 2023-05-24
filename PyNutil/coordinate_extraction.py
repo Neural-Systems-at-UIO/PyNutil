@@ -28,7 +28,7 @@ def getCentroidsAndArea(Segmentation, pixelCutOff=0):
     # get the area of the objects
     area = np.array([label.area for label in labelsInfo])
     # get the coordinates for all the pixels in each object
-    coords = np.array([label.coords for label in labelsInfo])
+    coords = np.array([label.coords for label in labelsInfo], dtype=object)
     return centroids, area, coords
 
 
@@ -79,19 +79,17 @@ def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
     return (O + XYZU + XYZV).T
 
 
-
-
-
-
 # points.append would make list of lists, keeping sections separate.
 
 
 # related to coordinate extraction
 # this function returns an array of points
 def FolderToAtlasSpace(
-    folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True
+    folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True, method="all"
 ):
     "apply Segmentation to atlas space to all segmentations in a folder"
+
+    # this should be loaded above and passed as an argument
     slices = loadVisuAlignJson(QUINT_alignment)
 
     segmentationFileTypes = [".png", ".tif", ".tiff", ".jpg", ".jpeg"]
@@ -100,7 +98,6 @@ def FolderToAtlasSpace(
         for file in glob(folder + "/*")
         if any([file.endswith(type) for type in segmentationFileTypes])
     ]
-    SectionNumbers = number_sections(Segmentations)
     # order segmentations and sectionNumbers
     # Segmentations = [x for _,x in sorted(zip(SectionNumbers,Segmentations))]
     # SectionNumbers.sort()
@@ -119,6 +116,7 @@ def FolderToAtlasSpace(
                 nonLinear,
                 pointsList,
                 index,
+                method,
             ),
         )
         threads.append(x)
@@ -135,12 +133,22 @@ def FolderToAtlasSpace(
 # related to coordinate extraction
 # this function returns an array of points
 def SegmentationToAtlasSpace(
-    slice, SegmentationPath, pixelID="auto", nonLinear=True, pointsList=None, index=None
+    slice,
+    SegmentationPath,
+    pixelID="auto",
+    nonLinear=True,
+    pointsList=None,
+    index=None,
+    method="per_pixel",
 ):
     """combines many functions to convert a segmentation to atlas space. It takes care
     of deformations"""
     Segmentation = cv2.imread(SegmentationPath)
-
+    if method in ["per_object", "all"]:
+        # this function returns the centroids, area and coordinates of all the objects in the segmentation
+        # right now we only use centroids
+        centroids, area, coords = getCentroidsAndArea(Segmentation, pixelCutOff=0)
+        print("number of objects: ", len(centroids))
     if pixelID == "auto":
         # remove the background from the segmentation
         SegmentationNoBackGround = Segmentation[~np.all(Segmentation == 255, axis=2)]
@@ -166,7 +174,9 @@ def SegmentationToAtlasSpace(
             triangulation = triangulate(RegWidth, RegHeight, slice["markers"])
             newX, newY = transform_vec(triangulation, scaledX, scaledY)
         else:
-            print(f"no markers found for {slice['filename']}, result for section will be linear")
+            print(
+                f"no markers found for {slice['filename']}, result for section will be linear"
+            )
             newX, newY = scaledX, scaledY
     else:
         newX, newY = scaledX, scaledY

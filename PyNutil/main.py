@@ -6,6 +6,7 @@ import json
 import pandas as pd
 from datetime import datetime
 
+
 class PyNutil:
     def __init__(
         self,
@@ -37,7 +38,7 @@ class PyNutil:
             raise ValueError(
                 f"Atlas {volume_path} not found in config file, valid atlases are: \n{' , '.join(list(self.config['annotation_volumes'].keys()))}"
             )
-        
+
         self.segmentation_folder = segmentation_folder
         self.alignment_json = alignment_json
         self.colour = colour
@@ -45,7 +46,7 @@ class PyNutil:
         # load the metadata json as well as the path to stored data files
 
     def build_quantifier(self):
-        # do all the expensive computations
+        # this could potentially be moved into init
         atlas_root_path = self.config["annotation_volume_directory"]
         current_atlas_path = self.config["annotation_volumes"][self.atlas]["volume"]
         print("loading atlas volume")
@@ -57,48 +58,59 @@ class PyNutil:
         print("loading atlas labels")
         self.atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
         print("atlas labels loaded")
-        
 
     def get_coordinates(self, nonLinear=True, method="all"):
         if not hasattr(self, "atlas_volume"):
-            raise ValueError("Please run build_quantifier before running get_coordinates")
+            raise ValueError(
+                "Please run build_quantifier before running get_coordinates"
+            )
         if method not in ["per_pixel", "per_object", "all"]:
-            raise ValueError(f"method {method} not recognised, valid methods are: per_pixel, per_object, or all")
+            raise ValueError(
+                f"method {method} not recognised, valid methods are: per_pixel, per_object, or all"
+            )
         print("extracting coordinates")
-        points = FolderToAtlasSpace(
+        pixel_points = FolderToAtlasSpace(
             self.segmentation_folder,
             self.alignment_json,
             pixelID=self.colour,
-            nonLinear=nonLinear
+            nonLinear=nonLinear,
+            method=method,
         )
-        self.points = points
-        
+        self.pixel_points = pixel_points
 
     def quantify_coordinates(self):
-        if not hasattr(self, "points"):
-            raise ValueError("Please run get_coordinates before running quantify_coordinates")
+        if not hasattr(self, "pixel_points"):
+            raise ValueError(
+                "Please run get_coordinates before running quantify_coordinates"
+            )
         print("quantifying coordinates")
-        labeled_points = labelPoints(self.points, self.atlas_volume, scale_factor=2.5)
+        labeled_points = labelPoints(
+            self.pixel_points, self.atlas_volume, scale_factor=2.5
+        )
         self.label_df = PixelCountPerRegion(labeled_points, self.atlas_labels)
         self.labeled_points = labeled_points
 
         print("quantification complete")
 
     def save_analysis(self, output_folder):
-        if not hasattr(self, "points"):
+        if not hasattr(self, "pixel_points"):
             raise ValueError("Please run get_coordinates before running save_analysis")
+
+        self.label_df.to_csv(
+            output_folder + "/counts.csv", sep=";", na_rep="", index=False
+        )
+
         if not hasattr(self, "label_df"):
             print("no quantification found so we will only save the coordinates")
-            print("if you want to save the quantification please run quantify_coordinates")
-            self.label_df.to_csv(output_folder + '/counts.csv', sep=";", na_rep="", index=False)
+            print(
+                "if you want to save the quantification please run quantify_coordinates"
+            )
 
         else:
-            self.label_df.to_csv(output_folder + '/counts.csv', sep=";", na_rep="", index=False)
             WritePointsToMeshview(
-                self.points, 
+                self.pixel_points,
                 self.labeled_points,
-                output_folder + '/pixels_meshview.json',
-                self.atlas_labels
+                output_folder + "/pixels_meshview.json",
+                self.atlas_labels,
             )
-            
-        
+        print("analysis saved")
