@@ -17,8 +17,8 @@ def getCentroidsAndArea(Segmentation, pixelCutOff=0):
     """this function returns the center coordinate of each object in the segmentation.
     You can set a pixelCutOff to remove objects that are smaller than that number of pixels
     """
-    SegmentationBinary = ~np.all(Segmentation == 255, axis=2)
-    labels = measure.label(SegmentationBinary)
+    # SegmentationBinary = ~np.all(Segmentation == 255, axis=2)
+    labels = measure.label(Segmentation)
     # this finds all the objects in the image
     labelsInfo = measure.regionprops(labels)
     # remove objects that are less than pixelCutOff
@@ -144,11 +144,6 @@ def SegmentationToAtlasSpace(
     """combines many functions to convert a segmentation to atlas space. It takes care
     of deformations"""
     Segmentation = cv2.imread(SegmentationPath)
-    if method in ["per_object", "all"]:
-        # this function returns the centroids, area and coordinates of all the objects in the segmentation
-        # right now we only use centroids
-        centroids, area, coords = getCentroidsAndArea(Segmentation, pixelCutOff=0)
-        print("number of objects: ", len(centroids))
     if pixelID == "auto":
         # remove the background from the segmentation
         SegmentationNoBackGround = Segmentation[~np.all(Segmentation == 255, axis=2)]
@@ -157,7 +152,7 @@ def SegmentationToAtlasSpace(
         )  # remove background
         # currently only works for a single label
         pixelID = pixelID[0]
-    ID_pixels = findMatchingPixels(Segmentation, pixelID)
+
     # transform pixels to registration space (the registered image and segmentation have different dimensions)
     SegHeight = Segmentation.shape[0]
     SegWidth = Segmentation.shape[1]
@@ -166,8 +161,20 @@ def SegmentationToAtlasSpace(
     # this calculates reg/seg
     Yscale, Xscale = transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth)
 
-    # scale the seg coordinates to reg/seg
-    scaledY, scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
+    if method in ["per_object", "all"]:
+        # this function returns the centroids, area and coordinates of all the objects in the segmentation
+        # right now we only use centroids
+        binary_seg = Segmentation == pixelID
+        binary_seg = np.all(binary_seg, axis=2)
+        centroids, area, coords = getCentroidsAndArea(binary_seg, pixelCutOff=0)
+        print("number of objects: ", len(centroids))
+        # print(centroids)
+
+    if method in ["per_pixel", "all"]:
+        ID_pixels = findMatchingPixels(Segmentation, pixelID)
+        # scale the seg coordinates to reg/seg
+        scaledY, scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
+
     if nonLinear:
         if "markers" in slice:
             # this creates a triangulation using the reg width
