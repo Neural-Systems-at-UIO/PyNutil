@@ -43,20 +43,23 @@ class PyNutil:
         self.alignment_json = alignment_json
         self.colour = colour
         self.atlas = volume_path
+        self.atlas_volume, self.atlas_labels = self.load_atlas_data()
+
+    def load_atlas_data(self):
         # load the metadata json as well as the path to stored data files
         # this could potentially be moved into init
         atlas_root_path = self.config["annotation_volume_directory"]
         current_atlas_path = self.config["annotation_volumes"][self.atlas]["volume"]
         print("loading atlas volume")
         startTime = datetime.now()
-        self.atlas_volume = readAtlasVolume(atlas_root_path + current_atlas_path)
+        atlas_volume = readAtlasVolume(atlas_root_path + current_atlas_path)
         time_taken = datetime.now() - startTime
         print(f"atlas volume loaded in: {time_taken} ✅")
         atlas_label_path = self.config["annotation_volumes"][self.atlas]["labels"]
         print("loading atlas labels")
-        self.atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
+        atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
         print("atlas labels loaded ✅")
-
+        return atlas_volume, atlas_labels
 
     def get_coordinates(self, nonLinear=True, method="all"):
         if not hasattr(self, "atlas_volume"):
@@ -68,14 +71,17 @@ class PyNutil:
                 f"method {method} not recognised, valid methods are: per_pixel, per_object, or all"
             )
         print("extracting coordinates")
-        pixel_points = FolderToAtlasSpace(
+        pixel_points = self.extract_coordinates(nonLinear, method)
+        self.pixel_points = pixel_points
+
+    def extract_coordinates(self, nonLinear, method):
+        return FolderToAtlasSpace(
             self.segmentation_folder,
             self.alignment_json,
             pixelID=self.colour,
             nonLinear=nonLinear,
             method=method,
         )
-        self.pixel_points = pixel_points
 
     def quantify_coordinates(self):
         if not hasattr(self, "pixel_points"):
@@ -83,13 +89,17 @@ class PyNutil:
                 "Please run get_coordinates before running quantify_coordinates"
             )
         print("quantifying coordinates")
-        labeled_points = labelPoints(
-            self.pixel_points, self.atlas_volume, scale_factor=2.5
-        )
-        self.label_df = PixelCountPerRegion(labeled_points, self.atlas_labels)
+        labeled_points = self.label_points()
+        self.label_df = self.count_pixels_per_region(labeled_points)
         self.labeled_points = labeled_points
 
         print("quantification complete ✅")
+
+    def label_points(self):
+        return labelPoints(self.pixel_points, self.atlas_volume, scale_factor=2.5)
+
+    def count_pixels_per_region(self, labeled_points):
+        return PixelCountPerRegion(labeled_points, self.atlas_labels)
 
     def save_analysis(self, output_folder):
         if not hasattr(self, "pixel_points"):
@@ -106,10 +116,13 @@ class PyNutil:
             )
 
         else:
-            WritePointsToMeshview(
-                self.pixel_points,
-                self.labeled_points,
-                output_folder + "/pixels_meshview.json",
-                self.atlas_labels,
-            )
+            self.write_points_to_meshview(output_folder)
         print("analysis saved ✅")
+
+    def write_points_to_meshview(self, output_folder):
+        WritePointsToMeshview(
+            self.pixel_points,
+            self.labeled_points,
+            output_folder + "/pixels_meshview.json",
+            self.atlas_labels,
+        )
