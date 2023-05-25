@@ -36,7 +36,7 @@ label_path = "../annotation_volumes//allen2022_colours.csv"
 label_df = pd.read_csv(label_path)
 # read the annotation volume, it also has a header but we don't need it
 # now we can get the labels for each point
-labels = labelPoints(points, data, scale_factor=2.5)
+labels = labelPoints(points, data, scale_factor=1)
 # save points to a meshview json
 WritePointsToMeshview(points, labels, "../outputs/points.json", label_df)
 

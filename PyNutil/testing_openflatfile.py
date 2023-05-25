@@ -3,9 +3,10 @@ import numpy as np
 import struct
 import pandas as pd
 import matplotlib.pyplot as plt
+import cv2
 
 """read flat file and write into an np array"""
-
+np.set_printoptions(suppress=True)
 with open(base, "rb") as f:
     # i dont know what b is, w and h are the width and height that we get from the
     # flat file header
@@ -27,12 +28,17 @@ with open(base, "rb") as f:
             image[y, x] = imagedata[x + y * w]
 
     image_arr = np.array(image)
+    print(image_arr.shape)
+    image_arr = cv2.resize(image_arr,(9848,12784),interpolation=cv2.INTER_NEAREST)
+    print(image_arr.shape)
+    val,count = np.unique(image_arr, return_counts=True)
+    print(list(zip(val,count)))
 
 # show image with plt.imshow(image_arr)
 
 """assign label file values into image array"""
 
-labelfile = pd.read_csv(r"../annotation_volumes\allen2017_colours.csv")
+labelfile = pd.read_csv(r"../metadata/annotation_volumes\allen2017_colours.csv")
 allen_id_image = np.zeros((h, w))  # create an empty image array
 
 """for ph in range(h):
