@@ -53,11 +53,11 @@ class PyNutil:
         startTime = datetime.now()
         self.atlas_volume = readAtlasVolume(atlas_root_path + current_atlas_path)
         time_taken = datetime.now() - startTime
-        print(f"atlas volume loaded in: {time_taken}")
+        print(f"atlas volume loaded in: {time_taken} ✅")
         atlas_label_path = self.config["annotation_volumes"][self.atlas]["labels"]
         print("loading atlas labels")
         self.atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
-        print("atlas labels loaded")
+        print("atlas labels loaded ✅")
 
     def get_coordinates(self, nonLinear=True, method="all"):
         if not hasattr(self, "atlas_volume"):
@@ -90,7 +90,7 @@ class PyNutil:
         self.label_df = PixelCountPerRegion(labeled_points, self.atlas_labels)
         self.labeled_points = labeled_points
 
-        print("quantification complete")
+        print("quantification complete ✅")
 
     def save_analysis(self, output_folder):
         if not hasattr(self, "pixel_points"):
@@ -113,4 +113,4 @@ class PyNutil:
                 output_folder + "/pixels_meshview.json",
                 self.atlas_labels,
             )
-        print("analysis saved")
+        print("analysis saved ✅")
