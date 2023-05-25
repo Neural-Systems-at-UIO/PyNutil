@@ -44,8 +44,6 @@ class PyNutil:
         self.colour = colour
         self.atlas = volume_path
         # load the metadata json as well as the path to stored data files
-
-    def build_quantifier(self):
         # this could potentially be moved into init
         atlas_root_path = self.config["annotation_volume_directory"]
         current_atlas_path = self.config["annotation_volumes"][self.atlas]["volume"]
@@ -58,6 +56,7 @@ class PyNutil:
         print("loading atlas labels")
         self.atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
         print("atlas labels loaded ✅")
+
 
     def get_coordinates(self, nonLinear=True, method="all"):
         if not hasattr(self, "atlas_volume"):
