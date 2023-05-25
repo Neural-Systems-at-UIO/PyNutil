@@ -23,15 +23,46 @@ def label_points(points, label_volume, scale_factor=1):
 
 
 # related to counting_and_load
-def pixel_count_per_region(labels_dict, df_label_colours):
+def pixel_count_per_region(
+    labels_dict_points, labeled_dict_centroids, df_label_colours
+):
     """Function for counting no. of pixels per region and writing to CSV based on
     a dictionary with the region as the key and the points as the value."""
-    counted_labels, label_counts = np.unique(labels_dict, return_counts=True)
-    # Which regions have pixels, and how many pixels are there per region
-    counts_per_label = list(zip(counted_labels, label_counts))
-    # Create a list of unique regions and pixel counts per region
-
-    df_counts_per_label = pd.DataFrame(counts_per_label, columns=["idx", "pixel_count"])
+    if labels_dict_points is not None and labeled_dict_centroids is not None:
+        counted_labels_points, label_counts_points = np.unique(
+            labels_dict_points, return_counts=True
+        )
+        counted_labels_centroids, label_counts_centroids = np.unique(
+            labeled_dict_centroids, return_counts=True
+        )
+        # Which regions have pixels, and how many pixels are there per region
+        counts_per_label = list(
+            zip(counted_labels_points, label_counts_points, label_counts_centroids)
+        )
+        # Create a list of unique regions and pixel counts per region
+        df_counts_per_label = pd.DataFrame(
+            counts_per_label, columns=["idx", "pixel_count", "object_count"]
+        )
+    elif labels_dict_points is None and labeled_dict_centroids is not None:
+        counted_labels_centroids, label_counts_centroids = np.unique(
+            labeled_dict_centroids, return_counts=True
+        )
+        # Which regions have pixels, and how many pixels are there per region
+        counts_per_label = list(zip(counted_labels_centroids, label_counts_centroids))
+        # Create a list of unique regions and pixel counts per region
+        df_counts_per_label = pd.DataFrame(
+            counts_per_label, columns=["idx", "object_count"]
+        )
+    elif labels_dict_points is not None and labeled_dict_centroids is None:
+        counted_labels_points, label_counts_points = np.unique(
+            labels_dict_points, return_counts=True
+        )
+        # Which regions have pixels, and how many pixels are there per region
+        counts_per_label = list(zip(counted_labels_points, label_counts_points))
+        # Create a list of unique regions and pixel counts per region
+        df_counts_per_label = pd.DataFrame(
+            counts_per_label, columns=["idx", "pixel_count"]
+        )
     # Create a pandas df with regions and pixel counts
 
     # df_label_colours = pd.read_csv(label_colours, sep=",")

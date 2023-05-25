@@ -157,7 +157,7 @@ class PyNutil:
                 f"method {method} not recognised, valid methods are: per_pixel, per_object, or all"
             )
         print("extracting coordinates")
-        pixel_points = folder_to_atlas_space(
+        pixel_points, centroids, points_len, centroids_len = folder_to_atlas_space(
             self.segmentation_folder,
             self.alignment_json,
             pixel_id=self.colour,
@@ -165,8 +165,11 @@ class PyNutil:
             method=method,
         )
         self.pixel_points = pixel_points
-
-
+        self.centroids = centroids
+        ##points len and centroids len tell us how many points were extracted from each section
+        ##This will be used to split the data up later into per section files
+        self.points_len = points_len
+        self.centroids_len = centroids_len
 
     def quantify_coordinates(self):
         """Quantifies the pixel coordinates by region.
@@ -177,19 +180,28 @@ class PyNutil:
             If the pixel coordinates have not been extracted.
 
         """
-        if not hasattr(self, "pixel_points"):
+        if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
             raise ValueError(
                 "Please run get_coordinates before running quantify_coordinates"
             )
         print("quantifying coordinates")
-        labeled_points = label_points(self.pixel_points, self.atlas_volume, scale_factor=1)
+        labeled_points_centroids = None
+        labeled_points = None
+        if hasattr(self, "centroids"):
+            labeled_points_centroids = label_points(
+                self.centroids, self.atlas_volume, scale_factor=1
+            )
+        if hasattr(self, "pixel_points"):
+            labeled_points = label_points(
+                self.pixel_points, self.atlas_volume, scale_factor=1
+            )
 
-        self.label_df = pixel_count_per_region(labeled_points, self.atlas_labels)
+        self.label_df = pixel_count_per_region(
+            labeled_points, labeled_points_centroids, self.atlas_labels
+        )
         self.labeled_points = labeled_points
 
         print("quantification complete ✅")
-
-
 
     def save_analysis(self, output_folder):
         """Saves the pixel coordinates and pixel counts to different files in the specified
