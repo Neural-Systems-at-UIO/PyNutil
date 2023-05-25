@@ -5,7 +5,7 @@
     },
     "allen2017":{
         "labels":"allen2017_colours.csv",
-        "volume":"annotation_10_reoriented_2017.nrrd"
+        "volume":"annotation_25_reoriented_2017.nrrd"
     },
     "allen2022":{
         "labels":"allen2022_colours.csv",
