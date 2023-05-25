@@ -6,7 +6,6 @@ import json
 import pandas as pd
 from datetime import datetime
 
-
 class PyNutil:
     def __init__(
         self,
@@ -84,7 +83,7 @@ class PyNutil:
             )
         print("quantifying coordinates")
         labeled_points = labelPoints(
-            self.pixel_points, self.atlas_volume, scale_factor=2.5
+            self.pixel_points, self.atlas_volume, scale_factor=1
         )
         self.label_df = PixelCountPerRegion(labeled_points, self.atlas_labels)
         self.labeled_points = labeled_points
