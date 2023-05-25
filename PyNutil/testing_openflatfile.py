@@ -29,10 +29,10 @@ with open(base, "rb") as f:
 
     image_arr = np.array(image)
     print(image_arr.shape)
-    image_arr = cv2.resize(image_arr,(9848,12784),interpolation=cv2.INTER_NEAREST)
+    image_arr = cv2.resize(image_arr, (9848, 12784), interpolation=cv2.INTER_NEAREST)
     print(image_arr.shape)
-    val,count = np.unique(image_arr, return_counts=True)
-    print(list(zip(val,count)))
+    val, count = np.unique(image_arr, return_counts=True)
+    print(list(zip(val, count)))
 
 # show image with plt.imshow(image_arr)
 
