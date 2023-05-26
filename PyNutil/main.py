@@ -5,6 +5,7 @@ from .counting_and_load import label_points, pixel_count_per_region
 import json
 import pandas as pd
 from datetime import datetime
+import os
 
 
 class PyNutil:
@@ -218,6 +219,9 @@ class PyNutil:
             If the pixel coordinates have not been extracted.
 
         """
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
         if not hasattr(self, "pixel_points"):
             raise ValueError("Please run get_coordinates before running save_analysis")
 
