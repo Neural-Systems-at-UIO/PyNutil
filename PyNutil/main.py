@@ -132,7 +132,7 @@ class PyNutil:
         print("atlas labels loaded ✅")
         return atlas_volume, atlas_labels
 
-    def get_coordinates(self, non_linear=True, method="all"):
+    def get_coordinates(self, non_linear=True, method="all", object_cutoff=0):
         """Extracts pixel coordinates from the segmentation data.
 
         Parameters
@@ -142,6 +142,8 @@ class PyNutil:
         method : str, optional
             The method to use for extracting coordinates. Valid options are 'per_pixel', 'per_object', or 'all'.
             Default is 'all'.
+        object_cutoff : int, optional
+            The minimum number of pixels per object to be included in the analysis. Default is 1.
 
         Raises
         ------
@@ -164,6 +166,7 @@ class PyNutil:
             pixel_id=self.colour,
             non_linear=non_linear,
             method=method,
+            object_cutoff=object_cutoff,
         )
         self.pixel_points = pixel_points
         self.centroids = centroids
@@ -201,6 +204,7 @@ class PyNutil:
             labeled_points, labeled_points_centroids, self.atlas_labels
         )
         self.labeled_points = labeled_points
+        self.labeled_points_centroids = labeled_points_centroids
 
         print("quantification complete ✅")
 
@@ -224,22 +228,28 @@ class PyNutil:
 
         if not hasattr(self, "pixel_points"):
             raise ValueError("Please run get_coordinates before running save_analysis")
-
-        self.label_df.to_csv(
-            output_folder + "/counts.csv", sep=";", na_rep="", index=False
-        )
-
         if not hasattr(self, "label_df"):
             print("no quantification found so we will only save the coordinates")
             print(
                 "if you want to save the quantification please run quantify_coordinates"
             )
 
-        else:
-            write_points_to_meshview(
-                self.pixel_points,
-                self.labeled_points,
-                output_folder + "/pixels_meshview.json",
-                self.atlas_labels,
-            )
+        self.label_df.to_csv(
+            output_folder + "/counts.csv", sep=";", na_rep="", index=False
+        )
+
+ 
+ 
+        write_points_to_meshview(
+            self.pixel_points,
+            self.labeled_points,
+            output_folder + "/pixels_meshview.json",
+            self.atlas_labels,
+        )
+        write_points_to_meshview(
+            self.centroids,
+            self.labeled_points_centroids,
+            output_folder + "/objects_meshview.json",
+            self.atlas_labels,
+        )
         print("analysis saved ✅")
