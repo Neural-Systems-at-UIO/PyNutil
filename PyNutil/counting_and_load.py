@@ -17,8 +17,23 @@ def label_points(points, label_volume, scale_factor=1):
     x = points[:, 0]
     y = points[:, 1]
     z = points[:, 2]
+    print(x[0], y[0], z[0])
+
+    #make sure the points are within the volume
+    x[x < 0] = 0
+    y[y < 0] = 0
+    z[z < 0] = 0
+    mask = (x > label_volume.shape[0] - 1) | (y > label_volume.shape[1] - 1) | (z > label_volume.shape[2] - 1)
+    x[mask] = 0
+    y[mask] = 0
+    z[mask] = 0
+    print('total mask: ')
+    print(np.sum(mask))
     # Get the label value for each point
+    print(x[0], y[0], z[0])
     labels = label_volume[x, y, z]
+    print('label sum: ')
+    print(np.sum(labels))
     return labels
 
 

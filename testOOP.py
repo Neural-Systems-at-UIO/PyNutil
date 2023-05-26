@@ -1,6 +1,7 @@
 from PyNutil import PyNutil
 
-pnt = PyNutil(settings_file=r"test/test4_2017.json")
+pnt = PyNutil(settings_file=r"test/PVMouse_81264_test.json")
+# pnt = PyNutil(settings_file=r"test/test3.json")
 # pnt.build_quantifier()
 
 pnt.get_coordinates(object_cutoff=0)
