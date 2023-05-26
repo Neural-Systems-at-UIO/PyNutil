@@ -123,12 +123,12 @@ class PyNutil:
         current_atlas_path = self.config["annotation_volumes"][self.atlas]["volume"]
         print("loading atlas volume")
         start_time = datetime.now()
-        atlas_volume = read_atlas_volume(atlas_root_path + current_atlas_path)
+        atlas_volume = read_atlas_volume(f"{atlas_root_path}{current_atlas_path}")
         time_taken = datetime.now() - start_time
         print(f"atlas volume loaded in: {time_taken} ✅")
         atlas_label_path = self.config["annotation_volumes"][self.atlas]["labels"]
         print("loading atlas labels")
-        atlas_labels = pd.read_csv(atlas_root_path + atlas_label_path)
+        atlas_labels = pd.read_csv(f"{atlas_root_path}{atlas_label_path}")
         print("atlas labels loaded ✅")
         return atlas_volume, atlas_labels
 
@@ -160,7 +160,13 @@ class PyNutil:
                 f"method {method} not recognised, valid methods are: per_pixel, per_object, or all"
             )
         print("extracting coordinates")
-        pixel_points, centroids, points_len, centroids_len = folder_to_atlas_space(
+        (
+            pixel_points,
+            centroids,
+            points_len,
+            centroids_len,
+            segmentation_filenames,
+        ) = folder_to_atlas_space(
             self.segmentation_folder,
             self.alignment_json,
             pixel_id=self.colour,
@@ -174,6 +180,7 @@ class PyNutil:
         ##This will be used to split the data up later into per section files
         self.points_len = points_len
         self.centroids_len = centroids_len
+        self.segmentation_filenames = segmentation_filenames
 
     def quantify_coordinates(self):
         """Quantifies the pixel coordinates by region.
@@ -203,8 +210,24 @@ class PyNutil:
         self.label_df = pixel_count_per_region(
             labeled_points, labeled_points_centroids, self.atlas_labels
         )
+        prev_pl = 0
+        per_section_df = []
+        current_centroids = None
+        current_points = None
+        for pl in self.points_len:
+            if hasattr(self, "centroids"):
+                current_centroids = labeled_points_centroids[prev_pl : prev_pl + pl]
+            if hasattr(self, "pixel_points"):
+                current_points = labeled_points[prev_pl : prev_pl + pl]
+            current_df = pixel_count_per_region(
+                current_points, current_centroids, self.atlas_labels
+            )
+            per_section_df.append(current_df)
+            prev_pl += pl
+
         self.labeled_points = labeled_points
         self.labeled_points_centroids = labeled_points_centroids
+        self.per_section_df = per_section_df
 
         print("quantification complete ✅")
 
@@ -226,30 +249,66 @@ class PyNutil:
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        if not hasattr(self, "pixel_points"):
-            raise ValueError("Please run get_coordinates before running save_analysis")
         if not hasattr(self, "label_df"):
             print("no quantification found so we will only save the coordinates")
             print(
                 "if you want to save the quantification please run quantify_coordinates"
             )
+        else:
+            self.label_df.to_csv(
+                f"{output_folder}/counts.csv", sep=";", na_rep="", index=False
+            )
+        if not os.path.exists(f"{output_folder}/per_section_meshview"):
+            os.makedirs(f"{output_folder}/per_section_meshview")
+        if not os.path.exists(f"{output_folder}/per_section_reports"):
+            os.makedirs(f"{output_folder}/per_section_reports")
 
-        self.label_df.to_csv(
-            output_folder + "/counts.csv", sep=";", na_rep="", index=False
-        )
+        prev_pl = 0
+        prev_cl = 0
 
- 
- 
-        write_points_to_meshview(
-            self.pixel_points,
-            self.labeled_points,
-            output_folder + "/pixels_meshview.json",
-            self.atlas_labels,
-        )
-        write_points_to_meshview(
-            self.centroids,
-            self.labeled_points_centroids,
-            output_folder + "/objects_meshview.json",
-            self.atlas_labels,
-        )
+        for pl, cl, fn, df in zip(
+            self.points_len,
+            self.centroids_len,
+            self.segmentation_filenames,
+            self.per_section_df,
+        ):
+            
+            split_fn = fn.split("/")[-1].split(".")[0]
+            df.to_csv(
+                f"{output_folder}/per_section_reports/{split_fn}.csv",
+                sep=";",
+                na_rep="",
+                index=False,
+            )
+            if hasattr(self, "pixel_points"):
+                write_points_to_meshview(
+                    self.pixel_points[prev_pl : pl + prev_pl],
+                    self.labeled_points[prev_pl : pl + prev_pl],
+                    f"{output_folder}/per_section_meshview/{split_fn}_pixels.json",
+                    self.atlas_labels,
+                )
+            if hasattr(self, "centroids"):
+                write_points_to_meshview(
+                    self.centroids[prev_cl : cl + prev_cl],
+                    self.labeled_points_centroids[prev_cl : cl + prev_cl],
+                    f"{output_folder}/per_section_meshview/{split_fn}_centroids.json",
+                    self.atlas_labels,
+                )
+            prev_cl += cl
+            prev_pl += pl
+
+        if hasattr(self, "pixel_points"):
+            write_points_to_meshview(
+                self.pixel_points,
+                self.labeled_points,
+                f"{output_folder}/pixels_meshview.json",
+                self.atlas_labels,
+            )
+        if hasattr(self, "centroids"):
+            write_points_to_meshview(
+                self.centroids,
+                self.labeled_points_centroids,
+                f"{output_folder}/objects_meshview.json",
+                self.atlas_labels,
+            )
         print("analysis saved ✅")

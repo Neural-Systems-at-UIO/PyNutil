@@ -20,6 +20,7 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     labels = measure.label(segmentation)
     # This finds all the objects in the image
     labels_info = measure.regionprops(labels)
+
     # Remove objects that are less than pixel_cut_off
     labels_info = [label for label in labels_info if label.area > pixel_cut_off]
     # Get the centre points of the objects
@@ -84,7 +85,12 @@ def transform_to_atlas_space(anchoring, y, x, reg_height, reg_width):
 # related to coordinate extraction
 # This function returns an array of points
 def folder_to_atlas_space(
-    folder, quint_alignment, pixel_id=[0, 0, 0], non_linear=True, method="all", object_cutoff=0
+    folder,
+    quint_alignment,
+    pixel_id=[0, 0, 0],
+    non_linear=True,
+    method="all",
+    object_cutoff=0,
 ):
     """Apply Segmentation to atlas space to all segmentations in a folder."""
 
@@ -118,7 +124,7 @@ def folder_to_atlas_space(
                 centroids_list,
                 index,
                 method,
-                object_cutoff
+                object_cutoff,
             ),
         )
         threads.append(x)
@@ -131,10 +137,23 @@ def folder_to_atlas_space(
 
     points_len = [len(points) for points in points_list]
     centroids_len = [len(centroids) for centroids in centroids_list]
-    points = [item for sublist in points_list for item in sublist]
-    centroids_list = [item for sublist in centroids_list for item in sublist]
+    points = np.concatenate(points_list)
+    print("points shape: ",points.shape)
+    centroids = np.concatenate(centroids_list)
+    print("centroids shape: ",centroids.shape)
+    print("Number of points: ", len(points))
+    print("Number of centroids: ", len(centroids))
+    print("points_len: ", points_len)
+    print("points: ", points)
+    print("points first: ", points[0])
 
-    return np.array(points), np.array(centroids_list), points_len, centroids_len
+    return (
+        np.array(points),
+        np.array(centroids),
+        points_len,
+        centroids_len,
+        segmentations,
+    )
 
 
 def segmentation_to_atlas_space(
@@ -146,7 +165,7 @@ def segmentation_to_atlas_space(
     centroids_list=None,
     index=None,
     method="per_pixel",
-    object_cutoff=0
+    object_cutoff=0,
 ):
     """Combines many functions to convert a segmentation to atlas space. It takes care
     of deformations."""
@@ -174,9 +193,9 @@ def segmentation_to_atlas_space(
         centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
             segmentation, pixel_id, y_scale, x_scale, object_cutoff
         )
-        print("Number of objects: ", len(scaled_centroidsY))
     if method in ["per_pixel", "all"]:
         scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
+    print(f"{segmentation_path} \nNumber of objects: {len(scaled_centroidsY)}\nNumber of pixels: {len(scaled_y)}")
 
     if non_linear:
         if "markers" in slice:
@@ -210,6 +229,7 @@ def segmentation_to_atlas_space(
         centroids = transform_to_atlas_space(
             slice["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width
         )
+    print(f"Finished and points len is: {len(points)} and centroids len is: {len(centroids)}")
     points_list[index] = np.array(points)
     centroids_list[index] = np.array(centroids)
 
@@ -217,9 +237,11 @@ def segmentation_to_atlas_space(
 def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
     binary_seg = segmentation == pixel_id
     binary_seg = np.all(binary_seg, axis=2)
-    centroids, area, coords = get_centroids_and_area(binary_seg, pixel_cut_off=object_cutoff)
-    centroidsY = centroids[:, 1]
-    centroidsX = centroids[:, 0]
+    centroids, area, coords = get_centroids_and_area(
+        binary_seg, pixel_cut_off=object_cutoff
+    )
+    centroidsX = centroids[:, 1]
+    centroidsY = centroids[:, 0]
     scaled_centroidsY, scaled_centroidsX = scale_positions(
         centroidsY, centroidsX, y_scale, x_scale
     )
