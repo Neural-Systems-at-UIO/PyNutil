@@ -138,14 +138,7 @@ def folder_to_atlas_space(
     points_len = [len(points) for points in points_list]
     centroids_len = [len(centroids) for centroids in centroids_list]
     points = np.concatenate(points_list)
-    print("points shape: ",points.shape)
     centroids = np.concatenate(centroids_list)
-    print("centroids shape: ",centroids.shape)
-    print("Number of points: ", len(points))
-    print("Number of centroids: ", len(centroids))
-    print("points_len: ", points_len)
-    print("points: ", points)
-    print("points first: ", points[0])
 
     return (
         np.array(points),
@@ -195,7 +188,6 @@ def segmentation_to_atlas_space(
         )
     if method in ["per_pixel", "all"]:
         scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
-    print(f"{segmentation_path} \nNumber of objects: {len(scaled_centroidsY)}\nNumber of pixels: {len(scaled_y)}")
 
     if non_linear:
         if "markers" in slice:
@@ -229,7 +221,9 @@ def segmentation_to_atlas_space(
         centroids = transform_to_atlas_space(
             slice["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width
         )
-    print(f"Finished and points len is: {len(points)} and centroids len is: {len(centroids)}")
+    print(
+        f"Finished and points len is: {len(points)} and centroids len is: {len(centroids)}"
+    )
     points_list[index] = np.array(points)
     centroids_list[index] = np.array(centroids)
 
