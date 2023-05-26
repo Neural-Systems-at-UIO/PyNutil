@@ -7,7 +7,6 @@ def generate_target_slice(alignment, volume):
     bounds = [455, 527, 319]
     X_size = np.sqrt(np.sum(np.square((Ux, Uy, Uz))))
     Z_size = np.sqrt(np.sum(np.square((Vx, Vy, Vz))))
-    print(X_size, Z_size)
     X_size = np.round(X_size).astype(int)
     Z_size = np.round(Z_size).astype(int)
     # make this into a grid (0,0) to (320,456)
