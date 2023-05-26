@@ -3,7 +3,7 @@ from PyNutil import PyNutil
 pnt = PyNutil(settings_file=r"test/test4_2017.json")
 # pnt.build_quantifier()
 
-pnt.get_coordinates()
+pnt.get_coordinates(object_cutoff=0)
 
 pnt.quantify_coordinates()
 
