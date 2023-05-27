@@ -32,13 +32,22 @@ with open(base, "rb") as f:
     image_arr = cv2.resize(image_arr,(9848,12784),interpolation=cv2.INTER_NEAREST)
     print(image_arr.shape)
     val,count = np.unique(image_arr, return_counts=True)
-    print(list(zip(val,count)))
 
 # show image with plt.imshow(image_arr)
 
 """assign label file values into image array"""
 
-labelfile = pd.read_csv(r"../metadata/annotation_volumes\allen2017_colours.csv")
+labelfile = pd.read_csv(r"metadata/annotation_volumes\allen2017_colours.csv")
+labelfile[]
+print(list(zip(val,count)))
+
+
+temp_copy = labelfile.loc[val.astype(int),:].copy()
+
+temp_copy['region areas'] = count
+
+temp_copy.to_csv('../outputs/region_areas_quick_test.csv',sep=';')
+
 allen_id_image = np.zeros((h, w))  # create an empty image array
 
 """for ph in range(h):
