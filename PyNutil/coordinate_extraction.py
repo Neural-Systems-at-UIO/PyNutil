@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
-from .read_and_write import loadVisuAlignJson
-from .counting_and_load import labelPoints
+from .read_and_write import load_visualign_json
+from .counting_and_load import label_points
 from .visualign_deformations import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
@@ -13,181 +13,237 @@ import threading
 
 
 # related to coordinate_extraction
-def getCentroidsAndArea(Segmentation, pixelCutOff=0):
-    """this function returns the center coordinate of each object in the segmentation.
-    You can set a pixelCutOff to remove objects that are smaller than that number of pixels
+def get_centroids_and_area(segmentation, pixel_cut_off=0):
+    """This function returns the center coordinate of each object in the segmentation.
+    You can set a pixel_cut_off to remove objects that are smaller than that number of pixels.
     """
-    # SegmentationBinary = ~np.all(Segmentation == 255, axis=2)
-    labels = measure.label(Segmentation)
-    # this finds all the objects in the image
-    labelsInfo = measure.regionprops(labels)
-    # remove objects that are less than pixelCutOff
-    labelsInfo = [label for label in labelsInfo if label.area > pixelCutOff]
-    # get the centre points of the objects
-    centroids = np.array([label.centroid for label in labelsInfo])
-    # get the area of the objects
-    area = np.array([label.area for label in labelsInfo])
-    # get the coordinates for all the pixels in each object
-    coords = np.array([label.coords for label in labelsInfo], dtype=object)
+    labels = measure.label(segmentation)
+    # This finds all the objects in the image
+    labels_info = measure.regionprops(labels)
+
+    # Remove objects that are less than pixel_cut_off
+    labels_info = [label for label in labels_info if label.area > pixel_cut_off]
+    # Get the centre points of the objects
+    centroids = np.array([label.centroid for label in labels_info])
+    # Get the area of the objects
+    area = np.array([label.area for label in labels_info])
+    # Get the coordinates for all the pixels in each object
+    coords = np.array([label.coords for label in labels_info], dtype=object)
     return centroids, area, coords
 
 
 # related to coordinate extraction
-def transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth):
-    """this function returns the scaling factors to transform the segmentation to the registration space"""
-    Yscale = RegHeight / SegHeight
-    Xscale = RegWidth / SegWidth
-    return Yscale, Xscale
+def transform_to_registration(seg_height, seg_width, reg_height, reg_width):
+    """This function returns the scaling factors to transform the segmentation to the registration space."""
+    y_scale = reg_height / seg_height
+    x_scale = reg_width / seg_width
+    return y_scale, x_scale
 
 
 # related to coordinate extraction
-def findMatchingPixels(Segmentation, id):
-    """this function returns the Y and X coordinates of all the pixels in the segmentation that match the id provided"""
-    mask = Segmentation == id
+def find_matching_pixels(segmentation, id):
+    """This function returns the Y and X coordinates of all the pixels in the segmentation that match the id provided."""
+    mask = segmentation == id
     mask = np.all(mask, axis=2)
     id_positions = np.where(mask)
-    idY, idX = id_positions[0], id_positions[1]
-    return idY, idX
+    id_y, id_x = id_positions[0], id_positions[1]
+    return id_y, id_x
 
 
 # related to coordinate extraction
-def scalePositions(idY, idX, Yscale, Xscale):
-    """this function scales the Y and X coordinates to the registration space.
-    (the Yscale and Xscale are the output of transformToRegistration)"""
-    idY = idY * Yscale
-    idX = idX * Xscale
-    return idY, idX
+def scale_positions(id_y, id_x, y_scale, x_scale):
+    """This function scales the Y and X coordinates to the registration space.
+    (The y_scale and x_scale are the output of transform_to_registration.)
+    """
+    id_y = id_y * y_scale
+    id_x = id_x * x_scale
+    return id_y, id_x
 
 
 # related to coordinate extraction
-def transformToAtlasSpace(anchoring, Y, X, RegHeight, RegWidth):
-    """transform to atlas space using the QuickNII anchoring vector"""
-    O = anchoring[0:3]
-    U = anchoring[3:6]
-    # swap order of U
-    U = np.array([U[0], U[1], U[2]])
-    V = anchoring[6:9]
-    # swap order of V
-    V = np.array([V[0], V[1], V[2]])
-    # scale X and Y to between 0 and 1 using the registration width and height
-    Yscale = Y / RegHeight
-    Xscale = X / RegWidth
-    # print("width: ", RegWidth, " height: ", RegHeight, " Xmax: ", np.max(X), " Ymax: ", np.max(Y), " Xscale: ", np.max(Xscale), " Yscale: ", np.max(Yscale))
-    XYZV = np.array([Yscale * V[0], Yscale * V[1], Yscale * V[2]])
-    XYZU = np.array([Xscale * U[0], Xscale * U[1], Xscale * U[2]])
-    O = np.reshape(O, (3, 1))
-    return (O + XYZU + XYZV).T
+def transform_to_atlas_space(anchoring, y, x, reg_height, reg_width):
+    """Transform to atlas space using the QuickNII anchoring vector."""
+    o = anchoring[0:3]
+    u = anchoring[3:6]
+    # Swap order of U
+    u = np.array([u[0], u[1], u[2]])
+    v = anchoring[6:9]
+    # Swap order of V
+    v = np.array([v[0], v[1], v[2]])
+    # Scale X and Y to between 0 and 1 using the registration width and height
+    y_scale = y / reg_height
+    x_scale = x / reg_width
+    xyz_v = np.array([y_scale * v[0], y_scale * v[1], y_scale * v[2]])
+    xyz_u = np.array([x_scale * u[0], x_scale * u[1], x_scale * u[2]])
+    o = np.reshape(o, (3, 1))
+    return (o + xyz_u + xyz_v).T
 
 
 # points.append would make list of lists, keeping sections separate.
 
 
 # related to coordinate extraction
-# this function returns an array of points
-def FolderToAtlasSpace(
-    folder, QUINT_alignment, pixelID=[0, 0, 0], nonLinear=True, method="all"
+# This function returns an array of points
+def folder_to_atlas_space(
+    folder,
+    quint_alignment,
+    pixel_id=[0, 0, 0],
+    non_linear=True,
+    method="all",
+    object_cutoff=0,
 ):
-    "apply Segmentation to atlas space to all segmentations in a folder"
+    """Apply Segmentation to atlas space to all segmentations in a folder."""
 
-    # this should be loaded above and passed as an argument
-    slices = loadVisuAlignJson(QUINT_alignment)
+    # This should be loaded above and passed as an argument
+    slices = load_visualign_json(quint_alignment)
 
-    segmentationFileTypes = [".png", ".tif", ".tiff", ".jpg", ".jpeg"]
-    Segmentations = [
+    segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg"]
+    segmentations = [
         file
         for file in glob(folder + "/*")
-        if any([file.endswith(type) for type in segmentationFileTypes])
+        if any([file.endswith(type) for type in segmentation_file_types])
     ]
-    # order segmentations and sectionNumbers
-    # Segmentations = [x for _,x in sorted(zip(SectionNumbers,Segmentations))]
-    # SectionNumbers.sort()
-    pointsList = [None] * len(Segmentations)
+    # Order segmentations and section_numbers
+    # segmentations = [x for _,x in sorted(zip(section_numbers,segmentations))]
+    # section_numbers.sort()
+    points_list = [None] * len(segmentations)
+    centroids_list = [None] * len(segmentations)
     threads = []
-    for SegmentationPath, index in zip(Segmentations, range(len(Segmentations))):
-        seg_nr = int(number_sections([SegmentationPath])[0])
+    for segmentation_path, index in zip(segmentations, range(len(segmentations))):
+        seg_nr = int(number_sections([segmentation_path])[0])
         current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
         current_slice = slices[current_slice_index[0][0]]
         x = threading.Thread(
-            target=SegmentationToAtlasSpace,
+            target=segmentation_to_atlas_space,
             args=(
                 current_slice,
-                SegmentationPath,
-                pixelID,
-                nonLinear,
-                pointsList,
+                segmentation_path,
+                pixel_id,
+                non_linear,
+                points_list,
+                centroids_list,
                 index,
                 method,
+                object_cutoff,
             ),
         )
         threads.append(x)
-        ##this converts the segmentation to a point cloud
-    # start threads
+        ## This converts the segmentation to a point cloud
+    # Start threads
     [t.start() for t in threads]
-    # wait for threads to finish
+    # Wait for threads to finish
     [t.join() for t in threads]
-    # flatten pointsList
-    points = [item for sublist in pointsList for item in sublist]
-    return np.array(points)
+    # Flatten points_list
+
+    points_len = [len(points) for points in points_list]
+    centroids_len = [len(centroids) for centroids in centroids_list]
+    points = np.concatenate(points_list)
+    centroids = np.concatenate(centroids_list)
+
+    return (
+        np.array(points),
+        np.array(centroids),
+        points_len,
+        centroids_len,
+        segmentations,
+    )
 
 
-# related to coordinate extraction
-# this function returns an array of points
-def SegmentationToAtlasSpace(
+def segmentation_to_atlas_space(
     slice,
-    SegmentationPath,
-    pixelID="auto",
-    nonLinear=True,
-    pointsList=None,
+    segmentation_path,
+    pixel_id="auto",
+    non_linear=True,
+    points_list=None,
+    centroids_list=None,
     index=None,
     method="per_pixel",
+    object_cutoff=0,
 ):
-    """combines many functions to convert a segmentation to atlas space. It takes care
-    of deformations"""
-    Segmentation = cv2.imread(SegmentationPath)
-    if pixelID == "auto":
-        # remove the background from the segmentation
-        SegmentationNoBackGround = Segmentation[~np.all(Segmentation == 255, axis=2)]
-        pixelID = np.vstack(
-            {tuple(r) for r in SegmentationNoBackGround.reshape(-1, 3)}
-        )  # remove background
-        # currently only works for a single label
-        pixelID = pixelID[0]
+    """Combines many functions to convert a segmentation to atlas space. It takes care
+    of deformations."""
+    segmentation = cv2.imread(segmentation_path)
+    if pixel_id == "auto":
+        # Remove the background from the segmentation
+        segmentation_no_background = segmentation[~np.all(segmentation == 255, axis=2)]
+        pixel_id = np.vstack(
+            {tuple(r) for r in segmentation_no_background.reshape(-1, 3)}
+        )  # Remove background
+        # Currently only works for a single label
+        pixel_id = pixel_id[0]
 
-    # transform pixels to registration space (the registered image and segmentation have different dimensions)
-    SegHeight = Segmentation.shape[0]
-    SegWidth = Segmentation.shape[1]
-    RegHeight = slice["height"]
-    RegWidth = slice["width"]
-    # this calculates reg/seg
-    Yscale, Xscale = transformToRegistration(SegHeight, SegWidth, RegHeight, RegWidth)
-
+    # Transform pixels to registration space (the registered image and segmentation have different dimensions)
+    seg_height = segmentation.shape[0]
+    seg_width = segmentation.shape[1]
+    reg_height = slice["height"]
+    reg_width = slice["width"]
+    # This calculates reg/seg
+    y_scale, x_scale = transform_to_registration(
+        seg_height, seg_width, reg_height, reg_width
+    )
+    centroids, points = None, None
     if method in ["per_object", "all"]:
-        # this function returns the centroids, area and coordinates of all the objects in the segmentation
-        # right now we only use centroids
-        binary_seg = Segmentation == pixelID
-        binary_seg = np.all(binary_seg, axis=2)
-        centroids, area, coords = getCentroidsAndArea(binary_seg, pixelCutOff=0)
-        print("number of objects: ", len(centroids))
-        # print(centroids)
-
+        centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
+            segmentation, pixel_id, y_scale, x_scale, object_cutoff
+        )
     if method in ["per_pixel", "all"]:
-        ID_pixels = findMatchingPixels(Segmentation, pixelID)
-        # scale the seg coordinates to reg/seg
-        scaledY, scaledX = scalePositions(ID_pixels[0], ID_pixels[1], Yscale, Xscale)
+        scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
 
-    if nonLinear:
+    if non_linear:
         if "markers" in slice:
-            # this creates a triangulation using the reg width
-            triangulation = triangulate(RegWidth, RegHeight, slice["markers"])
-            newX, newY = transform_vec(triangulation, scaledX, scaledY)
+            # This creates a triangulation using the reg width
+            triangulation = triangulate(reg_width, reg_height, slice["markers"])
+            if method in ["per_pixel", "all"]:
+                new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
+            if method in ["per_object", "all"]:
+                centroids_new_x, centroids_new_y = transform_vec(
+                    triangulation, scaled_centroidsX, scaled_centroidsY
+                )
         else:
             print(
-                f"no markers found for {slice['filename']}, result for section will be linear"
+                f"No markers found for {slice['filename']}, result for section will be linear."
             )
-            newX, newY = scaledX, scaledY
+            if method in ["per_pixel", "all"]:
+                new_x, new_y = scaled_x, scaled_y
+            if method in ["per_object", "all"]:
+                centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
     else:
-        newX, newY = scaledX, scaledY
-    # scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
-    points = transformToAtlasSpace(slice["anchoring"], newY, newX, RegHeight, RegWidth)
-    # points = points.reshape(-1)
-    pointsList[index] = np.array(points)
+        if method in ["per_pixel", "all"]:
+            new_x, new_y = scaled_x, scaled_y
+        if method in ["per_object", "all"]:
+            centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
+    # Scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
+    if method in ["per_pixel", "all"]:
+        points = transform_to_atlas_space(
+            slice["anchoring"], new_y, new_x, reg_height, reg_width
+        )
+    if method in ["per_object", "all"]:
+        centroids = transform_to_atlas_space(
+            slice["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width
+        )
+    print(
+        f"Finished and points len is: {len(points)} and centroids len is: {len(centroids)}"
+    )
+    points_list[index] = np.array(points)
+    centroids_list[index] = np.array(centroids)
+
+
+def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
+    binary_seg = segmentation == pixel_id
+    binary_seg = np.all(binary_seg, axis=2)
+    centroids, area, coords = get_centroids_and_area(
+        binary_seg, pixel_cut_off=object_cutoff
+    )
+    centroidsX = centroids[:, 1]
+    centroidsY = centroids[:, 0]
+    scaled_centroidsY, scaled_centroidsX = scale_positions(
+        centroidsY, centroidsX, y_scale, x_scale
+    )
+    return centroids, scaled_centroidsX, scaled_centroidsY
+
+
+def get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale):
+    id_pixels = find_matching_pixels(segmentation, pixel_id)
+    # Scale the seg coordinates to reg/seg
+    scaled_y, scaled_x = scale_positions(id_pixels[0], id_pixels[1], y_scale, x_scale)
+    return scaled_y, scaled_x
