@@ -1,9 +1,9 @@
-{   "volume_path": "../annotation_volumes/annotation_10_reoriented_2017.nrrd",
-    "label_path": "../annotation_volumes/allen2017_colours.csv",
-    "segmentation_folder": "../test_data/ttA_2877_NOP_segmentations",
-    "alignment_json": "../test_data/ttA_2877_NOP_horizontal_final_2017.json",
+{   "volume_path": "allen2017",
+    "label_path": "annotation_volumes/allen2017_colours.csv",
+    "segmentation_folder": "test_data/ttA_2877_NOP_segmentations",
+    "alignment_json": "test_data/ttA_2877_NOP_horizontal_final_2017.json",
     "nonlinear": true,
     "colour": [0, 0, 255],
-    "points_json_path": "../outputs/test1_points.json",
-    "counts_per_label_name": "../outputs/test1_counts_per_allenID_2017.csv"
+    "points_json_path": "outputs/test1_points.json",
+    "counts_per_label_name": "outputs/test1_counts_per_allenID_2017.csv"
 }
