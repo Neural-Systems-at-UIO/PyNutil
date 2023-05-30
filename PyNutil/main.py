@@ -272,7 +272,7 @@ class PyNutil:
             self.segmentation_filenames,
             self.per_section_df,
         ):
-            split_fn = fn.split("/")[-1].split(".")[0]
+            split_fn = fn.split(os.sep)[-1].split(".")[0]
             df.to_csv(
                 f"{output_folder}/per_section_reports/{split_fn}.csv",
                 sep=";",
