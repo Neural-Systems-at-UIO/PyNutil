@@ -5,5 +5,4 @@
     "nonlinear": true,
     "colour": [0, 0, 0],
     "points_json_path": "outputs/test7_PyNutil.json",
-    "counts_per_label_name": "outputs/test7_counts_per_allen2017.csv"
 }
