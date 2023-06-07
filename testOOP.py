@@ -8,4 +8,4 @@ pnt.get_coordinates(object_cutoff=0)
 
 pnt.quantify_coordinates()
 
-pnt.save_analysis("outputs/test7_PyNutil")
+pnt.save_analysis("outputs/test8_PyNutil")
