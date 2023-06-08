@@ -11,7 +11,7 @@ PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic 
 Harry Carey, Sharon C Yates, Gergely Csucs, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
 
 # Licence
-- GNU General Public License v3
+GNU General Public License v3
 
 # Related articles
 Yates SC, Groeneboom NE, Coello C, et al. & Bjaalie JG (2019) QUINT: Workflow for Quantification and Spatial Analysis of Features in Histological Images From Rodent Brain. Front. Neuroinform. 13:75. doi: 10.3389/fninf.2019.00075
