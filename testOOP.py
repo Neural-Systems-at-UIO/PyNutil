@@ -1,6 +1,6 @@
 from PyNutil import PyNutil
 
-pnt = PyNutil(settings_file=r"test/test7_PyNutil.json")
+pnt = PyNutil(settings_file=r"test/test8_PyNutil_fixed.json")
 # pnt = PyNutil(settings_file=r"test/test7_PyNutil.json")
 # pnt.build_quantifier()
 
