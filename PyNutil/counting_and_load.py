@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 import struct
+import matplotlib.pyplot as plt
+import os
+import nrrd
 
 
 # related to counting and load
@@ -114,7 +117,7 @@ def pixel_count_per_region(
 """Read flat file and write into an np array"""
 
 
-def flat_to_array(flat_file):
+def flat_to_array(flat_file, labelfile):
     with open(flat_file, "rb") as f:
         # I don't know what b is, w and h are the width and height that we get from the
         # flat file header
@@ -133,8 +136,28 @@ def flat_to_array(flat_file):
             image[y, x] = image_data[x + y * w]
 
     image_arr = np.array(image)
-    return image_arr
+    #return image_arr
 
+    """assign label file values into image array"""
+    labelfile = pd.read_csv(labelfile)
+    allen_id_image = np.zeros((h, w))  # create an empty image array
+    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
+    values = image_arr[coordsx, coordsy]  # assign x,y coords from image_array into values
+    lbidx = labelfile["idx"].values
+    allen_id_image = lbidx[values.astype(int)]
+    return allen_id_image
+
+#def count_per_uniqueidx()
+
+    """count pixels for unique idx"""
+    unique_ids, counts = np.unique(allen_id_image, return_counts=True)
+
+    area_per_label = list(zip(unique_ids, counts))
+    # create a list of unique regions and pixel counts per region
+
+    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "area_count"])
+    # create a pandas df with regions and pixel counts
+    return(df_area_per_label)
 
 # Import flat files, count pixels per label, np.unique... etc. nitrc.org/plugins/mwiki/index.php?title=visualign:Deformation
 
@@ -146,3 +169,4 @@ def flat_to_array(flat_file):
        b,w,h=struct.unpack(">BII",f.read(9))
        data=struct.unpack(">"+("xBH"[b]*(w*h)),f.read(b*w*h))
 """
+
