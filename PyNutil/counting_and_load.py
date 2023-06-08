@@ -115,7 +115,7 @@ def pixel_count_per_region(
 
 
 """Read flat file and write into an np array"""
-
+"""Read flat file, write into an np array, assign label file values, return array"""
 
 def flat_to_array(flat_file, labelfile):
     with open(flat_file, "rb") as f:
