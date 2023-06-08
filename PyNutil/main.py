@@ -211,12 +211,13 @@ class PyNutil:
             labeled_points, labeled_points_centroids, self.atlas_labels
         )
         prev_pl = 0
+        prev_cl = 0
         per_section_df = []
         current_centroids = None
         current_points = None
-        for pl in self.points_len:
+        for pl,cl in zip(self.points_len, self.centroids_len):
             if hasattr(self, "centroids"):
-                current_centroids = labeled_points_centroids[prev_pl : prev_pl + pl]
+                current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl]
             if hasattr(self, "pixel_points"):
                 current_points = labeled_points[prev_pl : prev_pl + pl]
             current_df = pixel_count_per_region(
@@ -224,6 +225,7 @@ class PyNutil:
             )
             per_section_df.append(current_df)
             prev_pl += pl
+            prev_cl += cl
 
         self.labeled_points = labeled_points
         self.labeled_points_centroids = labeled_points_centroids
@@ -272,7 +274,7 @@ class PyNutil:
             self.segmentation_filenames,
             self.per_section_df,
         ):
-            split_fn = fn.split("/")[-1].split(".")[0]
+            split_fn = fn.split(os.sep)[-1].split(".")[0]
             df.to_csv(
                 f"{output_folder}/per_section_reports/{split_fn}.csv",
                 sep=";",
