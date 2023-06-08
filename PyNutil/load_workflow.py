@@ -5,26 +5,18 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-from read_and_write import FlattoArray, LabeltoArray
+#from read_and_write import flat_to_array, label_to_array
+from counting_and_load import flat_to_array
 
 base = r"../test_data/tTA_2877_NOP_s037_atlasmap/2877_NOP_tTA_lacZ_Xgal_s037_nl.flat"
 label = r"../annotation_volumes\allen2017_colours.csv"
 
-image_arr = FlattoArray(base)
+#image_arr = flat_to_array(base, label)
+plt.imshow(flat_to_array(base, label))
 
-plt.imshow(FlattoArray(base))
 
-"""assign label file values into image array"""
-labelfile = pd.read_csv(r"../annotation_volumes\allen2017_colours.csv")
-allen_id_image = np.zeros((h, w))  # create an empty image array
-coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-values = image_arr[coordsx, coordsy]  # assign x,y coords from image_array into values
-lbidx = labelfile["idx"].values
-allen_id_image = lbidx[values.astype(int)]  # assign allen IDs into image array
 
-plt.imshow(allen_id_image)
-
-"""count pixels for unique idx"""
+"""count pixels in np array for unique idx, return pd df"""
 unique_ids, counts = np.unique(allen_id_image, return_counts=True)
 
 area_per_label = list(zip(unique_ids, counts))
@@ -32,6 +24,7 @@ area_per_label = list(zip(unique_ids, counts))
 
 df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "area_count"])
 # create a pandas df with regions and pixel counts
+
 
 
 """add region name and colours corresponding to each idx into dataframe.
