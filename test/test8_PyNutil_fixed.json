@@ -1,0 +1,8 @@
+{   "volume_path": "allen2017",
+    "label_path": "annotation_volumes/allen2017_colours.csv",
+    "segmentation_folder": "test_data/PyTest_seg",
+    "alignment_json": "test_data/PyNutil_testdataset_Nonlin_SY_fixed.json",
+    "nonlinear": true,
+    "colour": [0, 0, 0],
+    "points_json_path": "outputs/test8_PyNutil.json"
+}

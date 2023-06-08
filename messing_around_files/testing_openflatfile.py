@@ -39,7 +39,7 @@ with open(base, "rb") as f:
 """assign label file values into image array"""
 
 labelfile = pd.read_csv(r"metadata/annotation_volumes\allen2017_colours.csv")
-labelfile[]
+#labelfile[]
 print(list(zip(val,count)))
 
 
