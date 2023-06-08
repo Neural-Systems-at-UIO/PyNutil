@@ -93,7 +93,7 @@ def folder_to_atlas_space(
     object_cutoff=0,
 ):
     """Apply Segmentation to atlas space to all segmentations in a folder."""
-
+    """Return pixel_points, centroids, points_len, centroids_len, segmentation_filenames, """
     # This should be loaded above and passed as an argument
     slices = load_visualign_json(quint_alignment)
 

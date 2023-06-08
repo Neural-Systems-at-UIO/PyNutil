@@ -117,7 +117,7 @@ def pixel_count_per_region(
 """Read flat file and write into an np array"""
 """Read flat file, write into an np array, assign label file values, return array"""
 
-def flat_to_array(flat_file, labelfile):
+def flat_to_dataframe(flat_file, labelfile):
     with open(flat_file, "rb") as f:
         # I don't know what b is, w and h are the width and height that we get from the
         # flat file header
@@ -145,9 +145,9 @@ def flat_to_array(flat_file, labelfile):
     values = image_arr[coordsx, coordsy]  # assign x,y coords from image_array into values
     lbidx = labelfile["idx"].values
     allen_id_image = lbidx[values.astype(int)]
-    return allen_id_image
+    #return allen_id_image
 
-#def count_per_uniqueidx()
+    #def count_per_uniqueidx()
 
     """count pixels for unique idx"""
     unique_ids, counts = np.unique(allen_id_image, return_counts=True)

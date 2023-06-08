@@ -6,25 +6,25 @@ import pandas as pd
 import numpy as np
 
 #from read_and_write import flat_to_array, label_to_array
-from counting_and_load import flat_to_array
+from counting_and_load import flat_to_dataframe
 
 base = r"../test_data/tTA_2877_NOP_s037_atlasmap/2877_NOP_tTA_lacZ_Xgal_s037_nl.flat"
 label = r"../annotation_volumes\allen2017_colours.csv"
 
 #image_arr = flat_to_array(base, label)
-plt.imshow(flat_to_array(base, label))
 
+#plt.imshow(flat_to_array(base, label))
 
+df_area_per_label = flat_to_dataframe(base, label)
 
 """count pixels in np array for unique idx, return pd df"""
-unique_ids, counts = np.unique(allen_id_image, return_counts=True)
+#unique_ids, counts = np.unique(allen_id_image, return_counts=True)
 
-area_per_label = list(zip(unique_ids, counts))
+#area_per_label = list(zip(unique_ids, counts))
 # create a list of unique regions and pixel counts per region
 
-df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "area_count"])
+#df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "area_count"])
 # create a pandas df with regions and pixel counts
-
 
 
 """add region name and colours corresponding to each idx into dataframe.
