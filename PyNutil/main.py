@@ -163,12 +163,14 @@ class PyNutil:
         (
             pixel_points,
             centroids,
+            region_areas_list,
             points_len,
             centroids_len,
             segmentation_filenames,
         ) = folder_to_atlas_space(
             self.segmentation_folder,
             self.alignment_json,
+            self.atlas_labels,
             pixel_id=self.colour,
             non_linear=non_linear,
             method=method,
@@ -181,6 +183,7 @@ class PyNutil:
         self.points_len = points_len
         self.centroids_len = centroids_len
         self.segmentation_filenames = segmentation_filenames
+        self.region_areas_list = region_areas_list
 
     def quantify_coordinates(self):
         """Quantifies the pixel coordinates by region.
@@ -207,15 +210,12 @@ class PyNutil:
                 self.pixel_points, self.atlas_volume, scale_factor=1
             )
 
-        self.label_df = pixel_count_per_region(
-            labeled_points, labeled_points_centroids, self.atlas_labels
-        )
         prev_pl = 0
         prev_cl = 0
         per_section_df = []
         current_centroids = None
         current_points = None
-        for pl,cl in zip(self.points_len, self.centroids_len):
+        for pl,cl,ra in zip(self.points_len, self.centroids_len, self.region_areas_list):
             if hasattr(self, "centroids"):
                 current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl]
             if hasattr(self, "pixel_points"):
@@ -223,9 +223,14 @@ class PyNutil:
             current_df = pixel_count_per_region(
                 current_points, current_centroids, self.atlas_labels
             )
+
+            current_df = ra.merge(current_df, on='idx', how='left')
+            ##Sharon. I would guess you should add the rgb and name adding code here
             per_section_df.append(current_df)
             prev_pl += pl
             prev_cl += cl
+        ##Sharon. and then here you should group on r,g,b,idx, and name since you dont want any of these summed
+        self.label_df =  pd.concat(per_section_df).groupby(['idx']).sum().reset_index()
 
         self.labeled_points = labeled_points
         self.labeled_points_centroids = labeled_points_centroids
