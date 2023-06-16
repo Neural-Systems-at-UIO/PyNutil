@@ -224,11 +224,17 @@ class PyNutil:
                 current_points, current_centroids, self.atlas_labels
             )
 
+# create the df for section report and all report
+# pixel_count_per_region returns a df with idx, pixel count, name and RGB.
+# ra is region area list
+# merge current_df onto ra (region_areas_list) based on idx column
+#(left means use only keys from left frame, preserve key order)
             current_df = ra.merge(current_df, on='idx', how='left')
             ##Sharon. I would guess you should add the rgb and name adding code here
             per_section_df.append(current_df)
             prev_pl += pl
             prev_cl += cl
+        
         ##Sharon. and then here you should group on r,g,b,idx, and name since you dont want any of these summed
         self.label_df =  pd.concat(per_section_df).groupby(['idx']).sum().reset_index()
 
@@ -255,6 +261,9 @@ class PyNutil:
         """
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
+            
+        if not os.path.exists(f"{output_folder}/sections_combined_report"):
+            os.makedirs(f"{output_folder}/sections_combined_report")
 
         if not hasattr(self, "label_df"):
             print("no quantification found so we will only save the coordinates")
@@ -262,13 +271,16 @@ class PyNutil:
                 "if you want to save the quantification please run quantify_coordinates"
             )
         else:
+            
             self.label_df.to_csv(
-                f"{output_folder}/counts.csv", sep=";", na_rep="", index=False
+                f"{output_folder}/sections_combined_report/counts.csv", sep=";", na_rep="", index=False
             )
         if not os.path.exists(f"{output_folder}/per_section_meshview"):
             os.makedirs(f"{output_folder}/per_section_meshview")
         if not os.path.exists(f"{output_folder}/per_section_reports"):
             os.makedirs(f"{output_folder}/per_section_reports")
+        if not os.path.exists(f"{output_folder}/sections_combined_meshview"):
+            os.makedirs(f"{output_folder}/sections_combined_meshview")
 
         prev_pl = 0
         prev_cl = 0
@@ -307,14 +319,14 @@ class PyNutil:
             write_points_to_meshview(
                 self.pixel_points,
                 self.labeled_points,
-                f"{output_folder}/pixels_meshview.json",
+                f"{output_folder}/sections_combined_meshview/pixels_meshview.json",
                 self.atlas_labels,
             )
         if hasattr(self, "centroids"):
             write_points_to_meshview(
                 self.centroids,
                 self.labeled_points_centroids,
-                f"{output_folder}/objects_meshview.json",
+                f"{output_folder}/sections_combined_meshview/objects_meshview.json",
                 self.atlas_labels,
             )
         print("analysis saved ✅")
