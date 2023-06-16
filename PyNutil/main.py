@@ -131,6 +131,7 @@ class PyNutil:
         atlas_labels = pd.read_csv(f"{atlas_root_path}{atlas_label_path}")
         print("atlas labels loaded ✅")
         return atlas_volume, atlas_labels
+    
 
     def get_coordinates(self, non_linear=True, method="all", object_cutoff=0):
         """Extracts pixel coordinates from the segmentation data.
@@ -229,8 +230,16 @@ class PyNutil:
 # ra is region area list from 
 # merge current_df onto ra (region_areas_list) based on idx column
 #(left means use only keys from left frame, preserve key order)
-            current_df = ra.merge(current_df, on='idx', how='left')
             
+            """
+            current_df = ra.merge(current_df, on='idx', how='left')
+            current_df_new = current_df.merge(self.atlas_labels, on= 'idx', how='left')
+            """
+            
+            all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')
+            current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left')
+ 
+            """
             new_rows = []
             for index, row in current_df.iterrows():
                 mask = self.atlas_labels["idx"] == row["idx"]
@@ -244,12 +253,11 @@ class PyNutil:
                 row["r"] = current_region_red[0]
                 row["g"] = current_region_green[0]
                 row["b"] = current_region_blue[0]
-
+                
                 new_rows.append(row)
 
-            current_df_new = pd.DataFrame(new_rows)
+            current_df_new = pd.DataFrame(new_rows)"""
             
-            ##Sharon. I would guess you should add the rgb and name adding code here
             per_section_df.append(current_df_new)
             prev_pl += pl
             prev_cl += cl
