@@ -226,12 +226,31 @@ class PyNutil:
 
 # create the df for section report and all report
 # pixel_count_per_region returns a df with idx, pixel count, name and RGB.
-# ra is region area list
+# ra is region area list from 
 # merge current_df onto ra (region_areas_list) based on idx column
 #(left means use only keys from left frame, preserve key order)
             current_df = ra.merge(current_df, on='idx', how='left')
+            
+            new_rows = []
+            for index, row in current_df.iterrows():
+                mask = self.atlas_labels["idx"] == row["idx"]
+                current_region_row = self.atlas_labels[mask]
+                current_region_name = current_region_row["name"].values
+                current_region_red = current_region_row["r"].values
+                current_region_green = current_region_row["g"].values
+                current_region_blue = current_region_row["b"].values
+
+                row["name"] = current_region_name[0]
+                row["r"] = current_region_red[0]
+                row["g"] = current_region_green[0]
+                row["b"] = current_region_blue[0]
+
+                new_rows.append(row)
+
+            current_df_new = pd.DataFrame(new_rows)
+            
             ##Sharon. I would guess you should add the rgb and name adding code here
-            per_section_df.append(current_df)
+            per_section_df.append(current_df_new)
             prev_pl += pl
             prev_cl += cl
         
