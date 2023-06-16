@@ -163,7 +163,7 @@ def flat_to_dataframe(flat_file, labelfile, rescaleXY=False):
     area_per_label = list(zip(unique_ids, counts))
     # create a list of unique regions and pixel counts per region
 
-    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "area_count"])
+    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
     # create a pandas df with regions and pixel counts
     return(df_area_per_label)
 
