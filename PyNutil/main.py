@@ -236,9 +236,28 @@ class PyNutil:
             current_df_new = current_df.merge(self.atlas_labels, on= 'idx', how='left')
             """
             
-            all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')
-            current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left')
- 
+            all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')            
+            current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left', suffixes= (None,"_y")).drop(columns=["a","VIS", "MSH", "name_y","r_y","g_y","b_y"])
+
+            current_df_new["area_fraction"] = current_df_new["pixel_count"] / current_df_new["region_area"]
+            """
+            new_rows = []
+            for index, row in all_region_df.iterrows():
+                mask = current_df["idx"] == row ["idx"]
+                current_region_row = current_df[mask]
+                region_area = current_region_row["pixel_count"].values
+                object_count = current_region_row["object_count"].values
+
+                row["pixel_count"] = region_area[0]
+                row["object_count"] = object_count[0]
+
+                new_rows.append[row]
+            
+            current_df_new = pd.DataFrame(new_rows)
+            """
+            
+            
+
             """
             new_rows = []
             for index, row in current_df.iterrows():
@@ -258,13 +277,17 @@ class PyNutil:
 
             current_df_new = pd.DataFrame(new_rows)"""
             
+            #per_section_df.append(current_df_new)
             per_section_df.append(current_df_new)
             prev_pl += pl
             prev_cl += cl
         
+        
         ##Sharon. and then here you should group on r,g,b,idx, and name since you dont want any of these summed
-        self.label_df =  pd.concat(per_section_df).groupby(['idx']).sum().reset_index()
-
+        #Currently, it takes sum of area_fraction. This is incorrect. 
+        self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index()
+        #self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index()
+        
         self.labeled_points = labeled_points
         self.labeled_points_centroids = labeled_points_centroids
         self.per_section_df = per_section_df
