@@ -7,8 +7,11 @@ https://quint-workflow.readthedocs.io/en/latest/
 # Acknowledgements
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
 
-# Authors and contributors
-Harry Carey, Sharon C Yates, Gergely Csucs, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
+# Developers
+Harry Carey and Sharon C Yates.
+
+# Contributors
+Gergely Csucs, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
 
 # Licence
 GNU General Public License v3
