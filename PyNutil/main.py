@@ -232,14 +232,15 @@ class PyNutil:
 #(left means use only keys from left frame, preserve key order)
             
             """
-            current_df = ra.merge(current_df, on='idx', how='left')
-            current_df_new = current_df.merge(self.atlas_labels, on= 'idx', how='left')
+            Merge region areas and object areas onto the atlas label file.
+            Remove duplicate columns
+            Calculate and add area_fraction to new column in the df.  
             """
-            
-            all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')            
+            all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')           
             current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left', suffixes= (None,"_y")).drop(columns=["a","VIS", "MSH", "name_y","r_y","g_y","b_y"])
-
             current_df_new["area_fraction"] = current_df_new["pixel_count"] / current_df_new["region_area"]
+            
+            # Several alternatives for the merge code above
             """
             new_rows = []
             for index, row in all_region_df.iterrows():
@@ -256,8 +257,6 @@ class PyNutil:
             current_df_new = pd.DataFrame(new_rows)
             """
             
-            
-
             """
             new_rows = []
             for index, row in current_df.iterrows():
@@ -283,10 +282,19 @@ class PyNutil:
             prev_cl += cl
         
         
-        ##Sharon. and then here you should group on r,g,b,idx, and name since you dont want any of these summed
-        #Currently, it takes sum of area_fraction. This is incorrect. 
-        self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index()
-        #self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index()
+        ##combine all the slice reports, groupby idx, name, rgb and sum region and object pixels. Remove area_fraction column and recalculate.
+        self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index().drop(columns=['area_fraction'])
+        self.label_df["area_fraction"] = self.label_df["pixel_count"] / self.label_df["region_area"]
+
+        """
+        Potential source of error:
+        If there are duplicates in the label file, regional results will be duplicated and summed leading to incorrect results
+        """
+
+        #reorder the df to match the order of idx column in self.atlas_labels        
+        self.label_df = self.label_df.set_index('idx')
+        self.label_df = self.label_df.reindex(index=self.atlas_labels['idx'])
+        self.label_df = self.label_df.reset_index()
         
         self.labeled_points = labeled_points
         self.labeled_points_centroids = labeled_points_centroids
