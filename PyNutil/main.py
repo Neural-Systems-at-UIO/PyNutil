@@ -239,7 +239,8 @@ class PyNutil:
             all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')           
             current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left', suffixes= (None,"_y")).drop(columns=["a","VIS", "MSH", "name_y","r_y","g_y","b_y"])
             current_df_new["area_fraction"] = current_df_new["pixel_count"] / current_df_new["region_area"]
-            
+            current_df_new.fillna(0, inplace=True)
+
             # Several alternatives for the merge code above
             """
             new_rows = []
@@ -285,7 +286,7 @@ class PyNutil:
         ##combine all the slice reports, groupby idx, name, rgb and sum region and object pixels. Remove area_fraction column and recalculate.
         self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index().drop(columns=['area_fraction'])
         self.label_df["area_fraction"] = self.label_df["pixel_count"] / self.label_df["region_area"]
-
+        self.label_df.fillna(0, inplace=True)
         """
         Potential source of error:
         If there are duplicates in the label file, regional results will be duplicated and summed leading to incorrect results
