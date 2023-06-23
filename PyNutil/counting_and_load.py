@@ -1,6 +1,10 @@
 import numpy as np
 import pandas as pd
 import struct
+import matplotlib.pyplot as plt
+import os
+import nrrd
+import cv2
 
 
 # related to counting and load
@@ -84,6 +88,7 @@ def pixel_count_per_region(
     # Find colours corresponding to each region ID and add to the pandas dataframe
 
     # Look up name, r, g, b in df_allen_colours in df_counts_per_label based on "idx"
+    #Sharon, remove this here
     new_rows = []
     for index, row in df_counts_per_label.iterrows():
         mask = df_label_colours["idx"] == row["idx"]
@@ -112,13 +117,16 @@ def pixel_count_per_region(
 
 
 """Read flat file and write into an np array"""
+"""Read flat file, write into an np array, assign label file values, return array"""
 
-
-def flat_to_array(flat_file):
+def flat_to_dataframe(flat_file, labelfile, rescaleXY=False):
+    if rescaleXY:
+        rescaleX, rescaleY = rescaleXY
     with open(flat_file, "rb") as f:
         # I don't know what b is, w and h are the width and height that we get from the
         # flat file header
         b, w, h = struct.unpack(">BII", f.read(9))
+        print(w, h)
         # Data is a one dimensional list of values
         # It has the shape width times height
         data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
@@ -133,8 +141,31 @@ def flat_to_array(flat_file):
             image[y, x] = image_data[x + y * w]
 
     image_arr = np.array(image)
-    return image_arr
+    #return image_arr
+    if rescaleXY:
+        w,h= rescaleXY
+        image_arr = cv2.resize(image_arr, (h, w), interpolation=cv2.INTER_NEAREST)
 
+
+    """assign label file values into image array"""
+    allen_id_image = np.zeros((h, w))  # create an empty image array
+    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
+    values = image_arr[coordsy,coordsx]  # assign x,y coords from image_array into values
+    lbidx = labelfile["idx"].values
+    allen_id_image = lbidx[values.astype(int)]
+    #return allen_id_image
+
+    #def count_per_uniqueidx()
+
+    """count pixels for unique idx"""
+    unique_ids, counts = np.unique(allen_id_image, return_counts=True)
+
+    area_per_label = list(zip(unique_ids, counts))
+    # create a list of unique regions and pixel counts per region
+
+    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
+    # create a pandas df with regions and pixel counts
+    return(df_area_per_label)
 
 # Import flat files, count pixels per label, np.unique... etc. nitrc.org/plugins/mwiki/index.php?title=visualign:Deformation
 
@@ -146,3 +177,4 @@ def flat_to_array(flat_file):
        b,w,h=struct.unpack(">BII",f.read(9))
        data=struct.unpack(">"+("xBH"[b]*(w*h)),f.read(b*w*h))
 """
+
