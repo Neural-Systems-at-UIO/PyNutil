@@ -3,7 +3,7 @@ import pandas as pd
 from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
 from .read_and_write import load_visualign_json
-from .counting_and_load import label_points
+from .counting_and_load import label_points, flat_to_dataframe
 from .visualign_deformations import triangulate, transform_vec
 from glob import glob
 from tqdm import tqdm
@@ -87,13 +87,14 @@ def transform_to_atlas_space(anchoring, y, x, reg_height, reg_width):
 def folder_to_atlas_space(
     folder,
     quint_alignment,
+    atlas_labels,
     pixel_id=[0, 0, 0],
     non_linear=True,
     method="all",
     object_cutoff=0,
 ):
     """Apply Segmentation to atlas space to all segmentations in a folder."""
-
+    """Return pixel_points, centroids, points_len, centroids_len, segmentation_filenames, """
     # This should be loaded above and passed as an argument
     slices = load_visualign_json(quint_alignment)
 
@@ -103,25 +104,37 @@ def folder_to_atlas_space(
         for file in glob(folder + "/*")
         if any([file.endswith(type) for type in segmentation_file_types])
     ]
+    flat_files = [
+        file
+        for file in glob(folder + "/flat_files/*")
+        if any([file.endswith('.flat')])
+    ]
     # Order segmentations and section_numbers
     # segmentations = [x for _,x in sorted(zip(section_numbers,segmentations))]
     # section_numbers.sort()
     points_list = [None] * len(segmentations)
     centroids_list = [None] * len(segmentations)
+    region_areas_list = [None] * len(segmentations)
     threads = []
+    flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
     for segmentation_path, index in zip(segmentations, range(len(segmentations))):
         seg_nr = int(number_sections([segmentation_path])[0])
         current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
         current_slice = slices[current_slice_index[0][0]]
+        current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
+        current_flat = flat_files[current_flat_file_index[0][0]]
         x = threading.Thread(
             target=segmentation_to_atlas_space,
             args=(
                 current_slice,
                 segmentation_path,
+                atlas_labels, 
+                current_flat,
                 pixel_id,
                 non_linear,
                 points_list,
                 centroids_list,
+                region_areas_list,
                 index,
                 method,
                 object_cutoff,
@@ -143,6 +156,7 @@ def folder_to_atlas_space(
     return (
         np.array(points),
         np.array(centroids),
+        region_areas_list,
         points_len,
         centroids_len,
         segmentations,
@@ -152,13 +166,17 @@ def folder_to_atlas_space(
 def segmentation_to_atlas_space(
     slice,
     segmentation_path,
+    atlas_labels, 
+    flat_file_atlas,
     pixel_id="auto",
     non_linear=True,
     points_list=None,
     centroids_list=None,
+    region_areas_list=None, 
     index=None,
     method="per_pixel",
     object_cutoff=0,
+    
 ):
     """Combines many functions to convert a segmentation to atlas space. It takes care
     of deformations."""
@@ -177,6 +195,7 @@ def segmentation_to_atlas_space(
     seg_width = segmentation.shape[1]
     reg_height = slice["height"]
     reg_width = slice["width"]
+    region_areas = flat_to_dataframe(flat_file_atlas, atlas_labels, (seg_width,seg_height))
     # This calculates reg/seg
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
@@ -226,6 +245,7 @@ def segmentation_to_atlas_space(
     )
     points_list[index] = np.array(points)
     centroids_list[index] = np.array(centroids)
+    region_areas_list[index] = region_areas
 
 
 def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):

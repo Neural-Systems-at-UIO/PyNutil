@@ -131,6 +131,7 @@ class PyNutil:
         atlas_labels = pd.read_csv(f"{atlas_root_path}{atlas_label_path}")
         print("atlas labels loaded ✅")
         return atlas_volume, atlas_labels
+    
 
     def get_coordinates(self, non_linear=True, method="all", object_cutoff=0):
         """Extracts pixel coordinates from the segmentation data.
@@ -163,12 +164,14 @@ class PyNutil:
         (
             pixel_points,
             centroids,
+            region_areas_list,
             points_len,
             centroids_len,
             segmentation_filenames,
         ) = folder_to_atlas_space(
             self.segmentation_folder,
             self.alignment_json,
+            self.atlas_labels,
             pixel_id=self.colour,
             non_linear=non_linear,
             method=method,
@@ -181,6 +184,7 @@ class PyNutil:
         self.points_len = points_len
         self.centroids_len = centroids_len
         self.segmentation_filenames = segmentation_filenames
+        self.region_areas_list = region_areas_list
 
     def quantify_coordinates(self):
         """Quantifies the pixel coordinates by region.
@@ -207,15 +211,12 @@ class PyNutil:
                 self.pixel_points, self.atlas_volume, scale_factor=1
             )
 
-        self.label_df = pixel_count_per_region(
-            labeled_points, labeled_points_centroids, self.atlas_labels
-        )
         prev_pl = 0
         prev_cl = 0
         per_section_df = []
         current_centroids = None
         current_points = None
-        for pl,cl in zip(self.points_len, self.centroids_len):
+        for pl,cl,ra in zip(self.points_len, self.centroids_len, self.region_areas_list):
             if hasattr(self, "centroids"):
                 current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl]
             if hasattr(self, "pixel_points"):
@@ -223,10 +224,79 @@ class PyNutil:
             current_df = pixel_count_per_region(
                 current_points, current_centroids, self.atlas_labels
             )
-            per_section_df.append(current_df)
+
+# create the df for section report and all report
+# pixel_count_per_region returns a df with idx, pixel count, name and RGB.
+# ra is region area list from 
+# merge current_df onto ra (region_areas_list) based on idx column
+#(left means use only keys from left frame, preserve key order)
+            
+            """
+            Merge region areas and object areas onto the atlas label file.
+            Remove duplicate columns
+            Calculate and add area_fraction to new column in the df.  
+            """
+            all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')           
+            current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left', suffixes= (None,"_y")).drop(columns=["a","VIS", "MSH", "name_y","r_y","g_y","b_y"])
+            current_df_new["area_fraction"] = current_df_new["pixel_count"] / current_df_new["region_area"]
+            current_df_new.fillna(0, inplace=True)
+
+            # Several alternatives for the merge code above
+            """
+            new_rows = []
+            for index, row in all_region_df.iterrows():
+                mask = current_df["idx"] == row ["idx"]
+                current_region_row = current_df[mask]
+                region_area = current_region_row["pixel_count"].values
+                object_count = current_region_row["object_count"].values
+
+                row["pixel_count"] = region_area[0]
+                row["object_count"] = object_count[0]
+
+                new_rows.append[row]
+            
+            current_df_new = pd.DataFrame(new_rows)
+            """
+            
+            """
+            new_rows = []
+            for index, row in current_df.iterrows():
+                mask = self.atlas_labels["idx"] == row["idx"]
+                current_region_row = self.atlas_labels[mask]
+                current_region_name = current_region_row["name"].values
+                current_region_red = current_region_row["r"].values
+                current_region_green = current_region_row["g"].values
+                current_region_blue = current_region_row["b"].values
+
+                row["name"] = current_region_name[0]
+                row["r"] = current_region_red[0]
+                row["g"] = current_region_green[0]
+                row["b"] = current_region_blue[0]
+                
+                new_rows.append(row)
+
+            current_df_new = pd.DataFrame(new_rows)"""
+            
+            #per_section_df.append(current_df_new)
+            per_section_df.append(current_df_new)
             prev_pl += pl
             prev_cl += cl
+        
+        
+        ##combine all the slice reports, groupby idx, name, rgb and sum region and object pixels. Remove area_fraction column and recalculate.
+        self.label_df =  pd.concat(per_section_df).groupby(['idx','name','r','g','b']).sum().reset_index().drop(columns=['area_fraction'])
+        self.label_df["area_fraction"] = self.label_df["pixel_count"] / self.label_df["region_area"]
+        self.label_df.fillna(0, inplace=True)
+        """
+        Potential source of error:
+        If there are duplicates in the label file, regional results will be duplicated and summed leading to incorrect results
+        """
 
+        #reorder the df to match the order of idx column in self.atlas_labels        
+        self.label_df = self.label_df.set_index('idx')
+        self.label_df = self.label_df.reindex(index=self.atlas_labels['idx'])
+        self.label_df = self.label_df.reset_index()
+        
         self.labeled_points = labeled_points
         self.labeled_points_centroids = labeled_points_centroids
         self.per_section_df = per_section_df
@@ -250,6 +320,9 @@ class PyNutil:
         """
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
+            
+        if not os.path.exists(f"{output_folder}/whole_series_report"):
+            os.makedirs(f"{output_folder}/whole_series_report")
 
         if not hasattr(self, "label_df"):
             print("no quantification found so we will only save the coordinates")
@@ -257,13 +330,16 @@ class PyNutil:
                 "if you want to save the quantification please run quantify_coordinates"
             )
         else:
+            
             self.label_df.to_csv(
-                f"{output_folder}/counts.csv", sep=";", na_rep="", index=False
+                f"{output_folder}/whole_series_report/counts.csv", sep=";", na_rep="", index=False
             )
         if not os.path.exists(f"{output_folder}/per_section_meshview"):
             os.makedirs(f"{output_folder}/per_section_meshview")
         if not os.path.exists(f"{output_folder}/per_section_reports"):
             os.makedirs(f"{output_folder}/per_section_reports")
+        if not os.path.exists(f"{output_folder}/whole_series_meshview"):
+            os.makedirs(f"{output_folder}/whole_series_meshview")
 
         prev_pl = 0
         prev_cl = 0
@@ -302,14 +378,14 @@ class PyNutil:
             write_points_to_meshview(
                 self.pixel_points,
                 self.labeled_points,
-                f"{output_folder}/pixels_meshview.json",
+                f"{output_folder}/whole_series_meshview/pixels_meshview.json",
                 self.atlas_labels,
             )
         if hasattr(self, "centroids"):
             write_points_to_meshview(
                 self.centroids,
                 self.labeled_points_centroids,
-                f"{output_folder}/objects_meshview.json",
+                f"{output_folder}/whole_series_meshview/objects_meshview.json",
                 self.atlas_labels,
             )
         print("analysis saved ✅")
