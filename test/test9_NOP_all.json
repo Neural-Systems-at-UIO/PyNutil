@@ -1,0 +1,8 @@
+{   "volume_path": "allen2017",
+    "label_path": "annotation_volumes/allen2017_colours.csv",
+    "segmentation_folder": "test_data/tTA_2877_NOP_seg",
+    "alignment_json": "test_data/tTA_2877_NOP_horizontal_final_2017.json",
+    "nonlinear": true,
+    "colour": [0, 0, 255],
+    "points_json_path": "outputs/test9_ttA_2877_NOP.json"
+}  

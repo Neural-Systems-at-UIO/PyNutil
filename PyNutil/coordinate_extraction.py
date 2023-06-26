@@ -92,6 +92,7 @@ def folder_to_atlas_space(
     non_linear=True,
     method="all",
     object_cutoff=0,
+    multi_threaded=True
 ):
     """Apply Segmentation to atlas space to all segmentations in a folder."""
     """Return pixel_points, centroids, points_len, centroids_len, segmentation_filenames, """
@@ -123,30 +124,47 @@ def folder_to_atlas_space(
         current_slice = slices[current_slice_index[0][0]]
         current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
         current_flat = flat_files[current_flat_file_index[0][0]]
-        x = threading.Thread(
-            target=segmentation_to_atlas_space,
-            args=(
-                current_slice,
-                segmentation_path,
-                atlas_labels, 
-                current_flat,
-                pixel_id,
-                non_linear,
-                points_list,
-                centroids_list,
-                region_areas_list,
-                index,
-                method,
-                object_cutoff,
-            ),
-        )
-        threads.append(x)
+        if multi_threaded:
+            x = threading.Thread(
+                target=segmentation_to_atlas_space,
+                args=(
+                    current_slice,
+                    segmentation_path,
+                    atlas_labels, 
+                    current_flat,
+                    pixel_id,
+                    non_linear,
+                    points_list,
+                    centroids_list,
+                    region_areas_list,
+                    index,
+                    method,
+                    object_cutoff,
+                ),
+            )
+            threads.append(x)
+        else:
+            segmentation_to_atlas_space(
+                    current_slice,
+                    segmentation_path,
+                    atlas_labels, 
+                    current_flat,
+                    pixel_id,
+                    non_linear,
+                    points_list,
+                    centroids_list,
+                    region_areas_list,
+                    index,
+                    method,
+                    object_cutoff,
+                )
         ## This converts the segmentation to a point cloud
-    # Start threads
-    [t.start() for t in threads]
-    # Wait for threads to finish
-    [t.join() for t in threads]
-    # Flatten points_list
+    if multi_threaded:
+        # Start threads
+        [t.start() for t in threads]
+        # Wait for threads to finish
+        [t.join() for t in threads]
+        # Flatten points_list
 
     points_len = [len(points) for points in points_list]
     centroids_len = [len(centroids) for centroids in centroids_list]

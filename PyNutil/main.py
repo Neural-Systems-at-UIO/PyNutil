@@ -133,7 +133,7 @@ class PyNutil:
         return atlas_volume, atlas_labels
     
 
-    def get_coordinates(self, non_linear=True, method="all", object_cutoff=0):
+    def get_coordinates(self, non_linear=True, method="all", object_cutoff=0, multi_threaded=True):
         """Extracts pixel coordinates from the segmentation data.
 
         Parameters
@@ -176,6 +176,7 @@ class PyNutil:
             non_linear=non_linear,
             method=method,
             object_cutoff=object_cutoff,
+            multi_threaded=multi_threaded
         )
         self.pixel_points = pixel_points
         self.centroids = centroids
