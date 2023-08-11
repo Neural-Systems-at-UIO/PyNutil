@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from DeepSlice.coord_post_processing.spacing_and_indexing import number_sections
 import json
 from .read_and_write import load_visualign_json
 from .counting_and_load import label_points, flat_to_dataframe
@@ -10,7 +9,36 @@ from tqdm import tqdm
 import cv2
 from skimage import measure
 import threading
+import re 
 
+def number_sections(filenames: List[str], legacy=False) -> List[int]:
+    """
+    returns the section numbers of filenames
+
+    :param filenames: list of filenames
+    :type filenames: list[str]
+    :return: list of section numbers
+    :rtype: list[int]
+    """
+    filenames = [filename.split("\\")[-1] for filename in filenames]
+    section_numbers = []
+    for filename in filenames:
+        if not legacy:
+            match = re.findall(r"\_s\d+", filename)
+            if len(match) == 0:
+                raise ValueError(f"No section number found in filename: {filename}")
+            if len(match) > 1:
+                raise ValueError(
+                    "Multiple section numbers found in filename, ensure only one instance of _s### is present, where ### is the section number"
+                )
+            section_numbers.append(int(match[-1][2:]))
+        else:
+            match = re.sub("[^0-9]", "", filename)
+            ###this gets the three numbers closest to the end
+            section_numbers.append(match[-3:])
+    if len(section_numbers) == 0:
+        raise ValueError("No section numbers found in filenames")
+    return section_numbers
 
 # related to coordinate_extraction
 def get_centroids_and_area(segmentation, pixel_cut_off=0):
