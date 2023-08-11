@@ -11,7 +11,7 @@ from skimage import measure
 import threading
 import re 
 
-def number_sections(filenames: List[str], legacy=False) -> List[int]:
+def number_sections(filenames, legacy=False):
     """
     returns the section numbers of filenames
 
