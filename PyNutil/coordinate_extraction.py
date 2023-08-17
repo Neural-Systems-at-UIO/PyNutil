@@ -10,6 +10,8 @@ import cv2
 from skimage import measure
 import threading
 import re 
+from .reconstruct_dzi import reconstruct_dzi
+
 
 def number_sections(filenames, legacy=False):
     """
@@ -208,7 +210,10 @@ def segmentation_to_atlas_space(
 ):
     """Combines many functions to convert a segmentation to atlas space. It takes care
     of deformations."""
-    segmentation = cv2.imread(segmentation_path)
+    if segmentation_path.endswith(".dzip"):
+        segmentation = reconstruct_dzi(segmentation_path)
+    else:
+        segmentation = cv2.imread(segmentation_path)
     if pixel_id == "auto":
         # Remove the background from the segmentation
         segmentation_no_background = segmentation[~np.all(segmentation == 255, axis=2)]
