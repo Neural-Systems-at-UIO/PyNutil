@@ -128,7 +128,7 @@ def folder_to_atlas_space(
     # This should be loaded above and passed as an argument
     slices = load_visualign_json(quint_alignment)
 
-    segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg"]
+    segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg", ".dzip"]
     segmentations = [
         file
         for file in glob(folder + "/*")
