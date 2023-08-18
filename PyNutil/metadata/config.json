@@ -24,5 +24,5 @@
         "volume":"None"
     }
 },
-"annotation_volume_directory":"PyNutil/metadata/annotation_volumes/"
+"annotation_volume_directory":"PyNutil/PyNutil/metadata/annotation_volumes/"
 }

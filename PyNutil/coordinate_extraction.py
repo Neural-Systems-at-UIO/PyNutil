@@ -50,7 +50,6 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     labels = measure.label(segmentation)
     # This finds all the objects in the image
     labels_info = measure.regionprops(labels)
-
     # Remove objects that are less than pixel_cut_off
     labels_info = [label for label in labels_info if label.area > pixel_cut_off]
     # Get the centre points of the objects
@@ -131,14 +130,17 @@ def folder_to_atlas_space(
     segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg", ".dzip"]
     segmentations = [
         file
-        for file in glob(folder + "/*")
+        for file in glob(folder + "/segmentations/*")
         if any([file.endswith(type) for type in segmentation_file_types])
     ]
     flat_files = [
         file
         for file in glob(folder + "/flat_files/*")
-        if any([file.endswith('.flat')])
+        if any([file.endswith('.flat'), file.endswith('.seg')])
     ]
+    print(f"Found {len(segmentations)} segmentations in folder {folder}")
+    print(f"Found {len(flat_files)} flat files in folder {folder}")
+    
     # Order segmentations and section_numbers
     # segmentations = [x for _,x in sorted(zip(section_numbers,segmentations))]
     # section_numbers.sort()
@@ -210,18 +212,24 @@ def segmentation_to_atlas_space(
 ):
     """Combines many functions to convert a segmentation to atlas space. It takes care
     of deformations."""
+    print(f"workissssssssssng on {segmentation_path}")
     if segmentation_path.endswith(".dzip"):
+        print("Reconstructing dzi")
         segmentation = reconstruct_dzi(segmentation_path)
+
     else:
         segmentation = cv2.imread(segmentation_path)
-    if pixel_id == "auto":
+    # if pixel_id == "auto":
+    if True:
         # Remove the background from the segmentation
-        segmentation_no_background = segmentation[~np.all(segmentation == 255, axis=2)]
-        pixel_id = np.vstack(
-            {tuple(r) for r in segmentation_no_background.reshape(-1, 3)}
-        )  # Remove background
+        segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
+        # pixel_id = np.vstack(
+        #     {tuple(r) for r in segmentation_no_background.reshape(-1, 3)}
+        # )  # Remove background
         # Currently only works for a single label
-        pixel_id = pixel_id[0]
+        print("length of non background pixels: ", len(segmentation_no_background))
+        pixel_id = segmentation_no_background[0]
+        print('detected pissssssxel_id: ', pixel_id)
 
     # Transform pixels to registration space (the registered image and segmentation have different dimensions)
     seg_height = segmentation.shape[0]
@@ -234,6 +242,7 @@ def segmentation_to_atlas_space(
         seg_height, seg_width, reg_height, reg_width
     )
     centroids, points = None, None
+
     if method in ["per_object", "all"]:
         centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
             segmentation, pixel_id, y_scale, x_scale, object_cutoff
@@ -287,6 +296,9 @@ def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
     centroids, area, coords = get_centroids_and_area(
         binary_seg, pixel_cut_off=object_cutoff
     )
+
+    print(f"using pixel id {pixel_id}")
+    print(f"Found {len(centroids)} objects in the segmentation")
     centroidsX = centroids[:, 1]
     centroidsY = centroids[:, 0]
     scaled_centroidsY, scaled_centroidsX = scale_positions(

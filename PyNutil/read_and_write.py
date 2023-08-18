@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import nrrd
+import re
 
 
 # related to read and write
@@ -12,7 +13,33 @@ import nrrd
 def load_visualign_json(filename):
     with open(filename) as f:
         vafile = json.load(f)
-    slices = vafile["slices"]
+    if filename.endswith(".waln") or filename.endswith("wwrp"):
+        slices = vafile["sections"]
+        vafile["slices"] = slices
+        for slice in slices:
+            print(slice)
+            slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
+            slice["anchoring"] = slice["ouv"]
+    else:
+        slices = vafile["slices"]
+    # overwrite the existing file
+
+    name = os.path.basename(filename)
+    slices = [{"filename":slice['filename'],
+               "nr":slice["nr"],
+               "width":slice["width"],
+               "height":slice["height"],
+               "anchoring":slice["anchoring"]} for slice in slices]
+    lz_compat_file = {
+        "name":name,
+        "target":vafile["atlas"],
+        "target-resolution":[ 456, 528, 320],
+        "slices":slices,
+
+    }
+    # save with .json extension
+    with open(filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w") as f:
+        json.dump(lz_compat_file, f, indent=4)
     return slices
 
 
@@ -60,15 +87,35 @@ def save_dataframe_as_csv(df_to_save, output_csv):
     df_to_save.to_csv(output_csv, sep=";", na_rep="", index=False)
 
 
-def flat_to_array(flatfile, labelfile):
+def flat_to_array(file, labelfile):
     """Read flat file, write into an np array, assign label file values, return array"""
-    with open(flatfile, "rb") as f:
-        # i dont know what b is, w and h are the width and height that we get from the
-        # flat file header
-        b, w, h = struct.unpack(">BII", f.read(9))
-        # data is a one dimensional list of values
-        # it has the shape width times height
-        data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
+    if file.endswith(".flat"):
+        with open(file, "rb") as f:
+            # I don't know what b is, w and h are the width and height that we get from the
+            # flat file header
+            b, w, h = struct.unpack(">BII", f.read(9))
+            # Data is a one dimensional list of values
+            # It has the shape width times height
+            data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
+    elif file.endswith(".seg"):
+        with open(file,"rb") as f:
+            def byte():
+                return f.read(1)[0]
+            def code():
+                c=byte()
+                if(c<0):
+                    raise "!"
+                return c if c<128 else (c&127)|(code()<<7)
+            if "SegRLEv1" != f.read(8).decode():
+                raise "Header mismatch"
+            atlas=f.read(code()).decode()
+            print(f"Target atlas: {atlas}")
+            codes=[code() for x in range(code())]
+            w=code()
+            h=code()
+            data=[]
+            while len(data)<w*h:
+                data += [codes[byte() if len(codes)<=256 else code()]]*(code()+1)
 
     # convert flat file data into an array, previously data was a tuple
     imagedata = np.array(data)

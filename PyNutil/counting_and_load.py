@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import nrrd
 import cv2
+# from generate_target_slice import generate_target_slice
 
 
 # related to counting and load
@@ -119,18 +120,39 @@ def pixel_count_per_region(
 """Read flat file and write into an np array"""
 """Read flat file, write into an np array, assign label file values, return array"""
 
-def flat_to_dataframe(flat_file, labelfile, rescaleXY=False):
+
+
+
+def flat_to_dataframe(file, labelfile, rescaleXY=False):
     if rescaleXY:
         rescaleX, rescaleY = rescaleXY
-    with open(flat_file, "rb") as f:
-        # I don't know what b is, w and h are the width and height that we get from the
-        # flat file header
-        b, w, h = struct.unpack(">BII", f.read(9))
-        print(w, h)
-        # Data is a one dimensional list of values
-        # It has the shape width times height
-        data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
-
+    if file.endswith(".flat"):
+        with open(file, "rb") as f:
+            # I don't know what b is, w and h are the width and height that we get from the
+            # flat file header
+            b, w, h = struct.unpack(">BII", f.read(9))
+            # Data is a one dimensional list of values
+            # It has the shape width times height
+            data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
+    elif file.endswith(".seg"):
+        with open(file,"rb") as f:
+            def byte():
+                return f.read(1)[0]
+            def code():
+                c=byte()
+                if(c<0):
+                    raise "!"
+                return c if c<128 else (c&127)|(code()<<7)
+            if "SegRLEv1" != f.read(8).decode():
+                raise "Header mismatch"
+            atlas=f.read(code()).decode()
+            print(f"Target atlas: {atlas}")
+            codes=[code() for x in range(code())]
+            w=code()
+            h=code()
+            data=[]
+            while len(data)<w*h:
+                data += [codes[byte() if len(codes)<=256 else code()]]*(code()+1)
     # Convert flat file data into an array, previously data was a tuple
     image_data = np.array(data)
 
@@ -146,13 +168,19 @@ def flat_to_dataframe(flat_file, labelfile, rescaleXY=False):
         w,h= rescaleXY
         image_arr = cv2.resize(image_arr, (h, w), interpolation=cv2.INTER_NEAREST)
 
+    print("max data value",np.max(image_arr))
 
+    if file.endswith(".flat"):
+        allen_id_image = np.zeros((h, w))  # create an empty image array
+        coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
+        values = image_arr[coordsy,coordsx]  # assign x,y coords from image_array into values
+
+        lbidx = labelfile["idx"].values
+        allen_id_image = lbidx[values.astype(int)]
+    elif file.endswith(".seg"):
+        allen_id_image = image_arr
     """assign label file values into image array"""
-    allen_id_image = np.zeros((h, w))  # create an empty image array
-    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-    values = image_arr[coordsy,coordsx]  # assign x,y coords from image_array into values
-    lbidx = labelfile["idx"].values
-    allen_id_image = lbidx[values.astype(int)]
+
     #return allen_id_image
 
     #def count_per_uniqueidx()
@@ -164,6 +192,8 @@ def flat_to_dataframe(flat_file, labelfile, rescaleXY=False):
     # create a list of unique regions and pixel counts per region
 
     df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
+    print("df_area_per_label")
+    print(df_area_per_label)
     # create a pandas df with regions and pixel counts
     return(df_area_per_label)
 
