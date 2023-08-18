@@ -247,9 +247,8 @@ class PyNutil:
             new_rows = []
             for index, row in all_region_df.iterrows():
                 mask = current_df["idx"] == row ["idx"]
-                current_region_row = current_df[mask]
-                region_area = current_region_row["pixel_count"].values
-                object_count = current_region_row["object_count"].values
+         pnt.save_analysis("outputs/test8_PyNutil")
+             object_count = current_region_row["object_count"].values
 
                 row["pixel_count"] = region_area[0]
                 row["object_count"] = object_count[0]
