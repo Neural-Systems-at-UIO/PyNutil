@@ -134,7 +134,7 @@ class PyNutil:
         return atlas_volume, atlas_labels
     
 
-    def get_coordinates(self, non_linear=True, method="all", object_cutoff=0):
+    def get_coordinates(self, non_linear=True, method="all", object_cutoff=0, use_flat=False):
         """Extracts pixel coordinates from the segmentation data.
 
         Parameters
@@ -177,6 +177,8 @@ class PyNutil:
             non_linear=non_linear,
             method=method,
             object_cutoff=object_cutoff,
+            atlas_volume=self.atlas_volume,
+            use_flat=use_flat
         )
         self.pixel_points = pixel_points
         self.centroids = centroids
@@ -241,43 +243,6 @@ class PyNutil:
             current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left', suffixes= (None,"_y")).drop(columns=["a","VIS", "MSH", "name_y","r_y","g_y","b_y"])
             current_df_new["area_fraction"] = current_df_new["pixel_count"] / current_df_new["region_area"]
             current_df_new.fillna(0, inplace=True)
-
-            # Several alternatives for the merge code above
-            """
-            new_rows = []
-            for index, row in all_region_df.iterrows():
-                mask = current_df["idx"] == row ["idx"]
-         pnt.save_analysis("outputs/test8_PyNutil")
-             object_count = current_region_row["object_count"].values
-
-                row["pixel_count"] = region_area[0]
-                row["object_count"] = object_count[0]
-
-                new_rows.append[row]
-            
-            current_df_new = pd.DataFrame(new_rows)
-            """
-            
-            """
-            new_rows = []
-            for index, row in current_df.iterrows():
-                mask = self.atlas_labels["idx"] == row["idx"]
-                current_region_row = self.atlas_labels[mask]
-                current_region_name = current_region_row["name"].values
-                current_region_red = current_region_row["r"].values
-                current_region_green = current_region_row["g"].values
-                current_region_blue = current_region_row["b"].values
-
-                row["name"] = current_region_name[0]
-                row["r"] = current_region_red[0]
-                row["g"] = current_region_green[0]
-                row["b"] = current_region_blue[0]
-                
-                new_rows.append(row)
-
-            current_df_new = pd.DataFrame(new_rows)"""
-            
-            #per_section_df.append(current_df_new)
             per_section_df.append(current_df_new)
             prev_pl += pl
             prev_cl += cl

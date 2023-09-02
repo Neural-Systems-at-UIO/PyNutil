@@ -121,6 +121,8 @@ def folder_to_atlas_space(
     non_linear=True,
     method="all",
     object_cutoff=0,
+    atlas_volume=None,
+    use_flat = False,
 ):
     """Apply Segmentation to atlas space to all segmentations in a folder."""
     """Return pixel_points, centroids, points_len, centroids_len, segmentation_filenames, """
@@ -153,8 +155,12 @@ def folder_to_atlas_space(
         seg_nr = int(number_sections([segmentation_path])[0])
         current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
         current_slice = slices[current_slice_index[0][0]]
-        current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
-        current_flat = flat_files[current_flat_file_index[0][0]]
+        if use_flat == True:
+            current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
+            current_flat = flat_files[current_flat_file_index[0][0]]
+        else:
+            current_flat = None
+
         x = threading.Thread(
             target=segmentation_to_atlas_space,
             args=(
@@ -170,6 +176,8 @@ def folder_to_atlas_space(
                 index,
                 method,
                 object_cutoff,
+                atlas_volume,
+                use_flat
             ),
         )
         threads.append(x)
@@ -199,7 +207,7 @@ def segmentation_to_atlas_space(
     slice,
     segmentation_path,
     atlas_labels, 
-    flat_file_atlas,
+    flat_file_atlas=None,
     pixel_id="auto",
     non_linear=True,
     points_list=None,
@@ -208,11 +216,13 @@ def segmentation_to_atlas_space(
     index=None,
     method="per_pixel",
     object_cutoff=0,
+    atlas_volume=None,
+    use_flat=False
     
 ):
     """Combines many functions to convert a segmentation to atlas space. It takes care
     of deformations."""
-    print(f"workissssssssssng on {segmentation_path}")
+    print(f"working on {segmentation_path}")
     if segmentation_path.endswith(".dzip"):
         print("Reconstructing dzi")
         segmentation = reconstruct_dzi(segmentation_path)
@@ -229,14 +239,17 @@ def segmentation_to_atlas_space(
         # Currently only works for a single label
         print("length of non background pixels: ", len(segmentation_no_background))
         pixel_id = segmentation_no_background[0]
-        print('detected pissssssxel_id: ', pixel_id)
+        print('detected pixel_id: ', pixel_id)
 
     # Transform pixels to registration space (the registered image and segmentation have different dimensions)
     seg_height = segmentation.shape[0]
     seg_width = segmentation.shape[1]
     reg_height = slice["height"]
     reg_width = slice["width"]
-    region_areas = flat_to_dataframe(flat_file_atlas, atlas_labels, (seg_width,seg_height))
+    if use_flat == True:
+        region_areas = flat_to_dataframe(atlas_labels, flat_file_atlas, (seg_width,seg_height))
+    else:
+        region_areas = flat_to_dataframe(atlas_labels, flat_file_atlas, (seg_width,seg_height), slice["anchoring"], atlas_volume)
     # This calculates reg/seg
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
