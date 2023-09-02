@@ -20,29 +20,27 @@ def load_visualign_json(filename):
             print(slice)
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
             slice["anchoring"] = slice["ouv"]
+        lz_compat_file = {
+            "name":name,
+            "target":vafile["atlas"],
+            "target-resolution":[ 456, 528, 320],
+            "slices":slices,
+        }
+          # save with .json extension need to see if i can remove this
+        with open(filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w") as f:
+            json.dump(lz_compat_file, f, indent=4)
     else:
         slices = vafile["slices"]
     # overwrite the existing file
-
     name = os.path.basename(filename)
-    slices = [{"filename":slice['filename'],
-               "nr":slice["nr"],
-               "width":slice["width"],
-               "height":slice["height"],
-               "anchoring":slice["anchoring"]} for slice in slices]
-    lz_compat_file = {
-        "name":name,
-        "target":vafile["atlas"],
-        "target-resolution":[ 456, 528, 320],
-        "slices":slices,
-
-    }
-    # save with .json extension
-    with open(filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w") as f:
-        json.dump(lz_compat_file, f, indent=4)
+  
     return slices
 
-
+def load_visualign_json(filename):
+    with open(filename) as f:
+        vafile = json.load(f)
+    slices = vafile["slices"]
+    return slices
 # related to read_and_write, used in write_points_to_meshview
 # this function returns a dictionary of region names
 def create_region_dict(points, regions):
