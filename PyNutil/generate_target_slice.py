@@ -29,7 +29,8 @@ def generate_target_slice(alignment, volume):
     Z_Coords = np.round(Z_Coords).astype(int)
 
     out_bounds_Coords = (
-        (X_Coords > bounds[0]) | (Y_Coords > bounds[1]) | (Z_Coords > bounds[2])
+        (X_Coords > bounds[0]) | (Y_Coords > bounds[1]) | (Z_Coords > bounds[2]) 
+        | (X_Coords < 0) | (Y_Coords < 0) | (Z_Coords < 0)
     )
     X_pad = X_Coords.copy()
     Y_pad = Y_Coords.copy()
