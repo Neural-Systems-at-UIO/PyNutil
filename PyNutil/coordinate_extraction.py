@@ -135,14 +135,21 @@ def folder_to_atlas_space(
         for file in glob(folder + "/segmentations/*")
         if any([file.endswith(type) for type in segmentation_file_types])
     ]
-    flat_files = [
-        file
-        for file in glob(folder + "/flat_files/*")
-        if any([file.endswith('.flat'), file.endswith('.seg')])
-    ]
+    if len(segmentations) == 0:
+        raise ValueError(
+            f"No segmentations found in folder {folder}. Make sure the folder contains a segmentations folder with segmentations."
+        )
     print(f"Found {len(segmentations)} segmentations in folder {folder}")
-    print(f"Found {len(flat_files)} flat files in folder {folder}")
-    
+    if use_flat == True:
+        flat_files = [
+            file
+            for file in glob(folder + "/flat_files/*")
+            if any([file.endswith('.flat'), file.endswith('.seg')])
+        ]
+        print(f"Found {len(flat_files)} flat files in folder {folder}")
+        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
+
+        
     # Order segmentations and section_numbers
     # segmentations = [x for _,x in sorted(zip(section_numbers,segmentations))]
     # section_numbers.sort()
@@ -150,11 +157,12 @@ def folder_to_atlas_space(
     centroids_list = [None] * len(segmentations)
     region_areas_list = [None] * len(segmentations)
     threads = []
-    flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
     for segmentation_path, index in zip(segmentations, range(len(segmentations))):
         seg_nr = int(number_sections([segmentation_path])[0])
         current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
         current_slice = slices[current_slice_index[0][0]]
+        if current_slice["anchoring"] == []:
+            continue
         if use_flat == True:
             current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
             current_flat = flat_files[current_flat_file_index[0][0]]
@@ -187,6 +195,7 @@ def folder_to_atlas_space(
     # Wait for threads to finish
     [t.join() for t in threads]
     # Flatten points_list
+    
 
     points_len = [len(points) for points in points_list]
     centroids_len = [len(centroids) for centroids in centroids_list]

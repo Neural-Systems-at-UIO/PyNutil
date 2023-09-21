@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import nrrd
 import re
-
+from .propagation import propagate
 
 # related to read and write
 # this function reads a VisuAlign JSON and returns the slices
@@ -19,7 +19,11 @@ def load_visualign_json(filename):
         for slice in slices:
             print(slice)
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
-            slice["anchoring"] = slice["ouv"]
+            if "ouv" in slice:
+                slice["anchoring"] = slice["ouv"]
+            else:
+                slice["anchoring"] = []
+        name = os.path.basename(filename)
         lz_compat_file = {
             "name":name,
             "target":vafile["atlas"],
@@ -31,16 +35,10 @@ def load_visualign_json(filename):
             json.dump(lz_compat_file, f, indent=4)
     else:
         slices = vafile["slices"]
-    # overwrite the existing file
-    name = os.path.basename(filename)
-  
+    slices = propagate(slices)
     return slices
 
-def load_visualign_json(filename):
-    with open(filename) as f:
-        vafile = json.load(f)
-    slices = vafile["slices"]
-    return slices
+
 # related to read_and_write, used in write_points_to_meshview
 # this function returns a dictionary of region names
 def create_region_dict(points, regions):
@@ -61,9 +59,9 @@ def write_points(points_dict, filename, info_file):
             "count": len(points_dict[name]) // 3,
             "name": str(info_file["name"].values[info_file["idx"] == name][0]),
             "triplets": points_dict[name],
-            "r": str(info_file["r"].values[info_file["idx"] == name][0]),
-            "g": str(info_file["g"].values[info_file["idx"] == name][0]),
-            "b": str(info_file["b"].values[info_file["idx"] == name][0]),
+            "r": int(info_file["r"].values[info_file["idx"] == name][0]),
+            "g": int(info_file["g"].values[info_file["idx"] == name][0]),
+            "b": int(info_file["b"].values[info_file["idx"] == name][0]),
         }
         for name, idx in zip(points_dict.keys(), range(len(points_dict.keys())))
     ]

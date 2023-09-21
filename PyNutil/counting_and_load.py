@@ -100,9 +100,9 @@ def pixel_count_per_region(
         current_region_blue = current_region_row["b"].values
 
         row["name"] = current_region_name[0]
-        row["r"] = current_region_red[0]
-        row["g"] = current_region_green[0]
-        row["b"] = current_region_blue[0]
+        row["r"] = int(current_region_red[0])
+        row["g"] = int(current_region_green[0])
+        row["b"] = int(current_region_blue[0])
 
         new_rows.append(row)
 
