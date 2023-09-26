@@ -1,7 +1,6 @@
 """This code was written by Gergely Csucs and Rembrandt Bakker"""
-
 import numpy as np
-
+from scipy.spatial import Delaunay
 
 def triangulate(w, h, markers):
     vertices = [
@@ -10,10 +9,7 @@ def triangulate(w, h, markers):
         [-0.1 * w, 1.1 * h, -0.1 * w, 1.1 * h],
         [1.1 * w, 1.1 * h, 1.1 * w, 1.1 * h],
     ]
-    #    vertices = [[0, 0, 0, 0],
-    #                [w, 0, w, 0],
-    #                [0, h, 0, h],
-    #                [w, h, w, h]]
+
     edges = [0] * ((len(markers) + 4) * (len(markers) + 4 - 1) // 2)
     triangles = [Triangle(0, 1, 2, vertices, edges), Triangle(1, 2, 3, vertices, edges)]
     edges[0] = edges[1] = edges[4] = edges[5] = 2
@@ -229,3 +225,22 @@ class Triangle:
             + (self.B[1] - self.A[1]) * uv1[ok, 0]
             + (self.C[1] - self.A[1]) * uv1[ok, 1]
         )
+
+
+##below this is a test 
+
+
+vertices = [[0, 0,43.54623148539514, 26.174656909777603],
+            [0, 0,90.8065913697207, 46.20231798893295],
+            [0, 0,56.29635559428633, 51.23696264352707],
+            [0, 0,90.87928419178107, 15.497996125973435],
+            [0, 0,33.966820908745454, 11.999395004637503],
+            [0, 0,37.29543353675751, 79.4420010252766]]
+triangulation = triangulate(100,100,vertices)
+new_coords = transform(triangulation, new_coords[0], new_coords[1])
+
+
+from scipy.spatial import Delaunay
+
+# assuming you have a list of points called "points"
+tri = Delaunay(points)
