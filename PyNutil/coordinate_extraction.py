@@ -153,9 +153,21 @@ def folder_to_atlas_space(
     # Order segmentations and section_numbers
     # segmentations = [x for _,x in sorted(zip(section_numbers,segmentations))]
     # section_numbers.sort()
-    points_list = [None] * len(segmentations)
-    centroids_list = [None] * len(segmentations)
-    region_areas_list = [None] * len(segmentations)
+    points_list = [np.array([])] * len(segmentations)
+    centroids_list = [np.array([])] * len(segmentations)
+    region_areas_list = [
+        pd.DataFrame({
+            "idx": [],
+            "name": [],
+            "r": [],
+            "g": [],
+            "b": [],
+            "region_area": [],
+            "pixel_count": [],
+            "object_count": [],
+            "area_fraction": []
+        })
+    ] * len(segmentations)
     threads = []
     for segmentation_path, index in zip(segmentations, range(len(segmentations))):
         seg_nr = int(number_sections([segmentation_path])[0])
@@ -197,10 +209,11 @@ def folder_to_atlas_space(
     # Flatten points_list
     
 
-    points_len = [len(points) for points in points_list]
-    centroids_len = [len(centroids) for centroids in centroids_list]
+    points_len = [len(points) if points is not None else 0 for points in points_list]
+    centroids_len = [len(centroids) if centroids is not None else 0 for centroids in centroids_list]
     points = np.concatenate(points_list)
     centroids = np.concatenate(centroids_list)
+
 
     return (
         np.array(points),
@@ -274,14 +287,21 @@ def segmentation_to_atlas_space(
 
     if non_linear:
         if "markers" in slice:
+            
             # This creates a triangulation using the reg width
             triangulation = triangulate(reg_width, reg_height, slice["markers"])
             if method in ["per_pixel", "all"]:
-                new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
+                if scaled_x is not None:
+                    new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
+                else:
+                    new_x, new_y = scaled_x, scaled_y
             if method in ["per_object", "all"]:
-                centroids_new_x, centroids_new_y = transform_vec(
-                    triangulation, scaled_centroidsX, scaled_centroidsY
-                )
+                if centroids is not None:
+                    centroids_new_x, centroids_new_y = transform_vec(
+                        triangulation, scaled_centroidsX, scaled_centroidsY
+                    )
+                else:
+                    centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
         else:
             print(
                 f"No markers found for {slice['filename']}, result for section will be linear."
@@ -297,13 +317,20 @@ def segmentation_to_atlas_space(
             centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
     # Scale U by Uxyz/RegWidth and V by Vxyz/RegHeight
     if method in ["per_pixel", "all"]:
-        points = transform_to_atlas_space(
-            slice["anchoring"], new_y, new_x, reg_height, reg_width
-        )
+        if new_x is not None:
+            points = transform_to_atlas_space(
+                slice["anchoring"], new_y, new_x, reg_height, reg_width
+            )
+        else:
+            points = np.array([])
     if method in ["per_object", "all"]:
-        centroids = transform_to_atlas_space(
-            slice["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width
-        )
+        if centroids_new_x is not None:
+            centroids = transform_to_atlas_space(
+                slice["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width
+            )
+        else:
+            centroids = np.array([])
+
     print(
         f"Finished and points len is: {len(points)} and centroids len is: {len(centroids)}"
     )
@@ -321,6 +348,8 @@ def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
 
     print(f"using pixel id {pixel_id}")
     print(f"Found {len(centroids)} objects in the segmentation")
+    if len(centroids) == 0:
+        return None, None, None
     centroidsX = centroids[:, 1]
     centroidsY = centroids[:, 0]
     scaled_centroidsY, scaled_centroidsX = scale_positions(
@@ -331,6 +360,8 @@ def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
 
 def get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale):
     id_pixels = find_matching_pixels(segmentation, pixel_id)
+    if len(id_pixels[0]) == 0:
+        return None, None
     # Scale the seg coordinates to reg/seg
     scaled_y, scaled_x = scale_positions(id_pixels[0], id_pixels[1], y_scale, x_scale)
     return scaled_y, scaled_x

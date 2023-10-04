@@ -219,6 +219,8 @@ class PyNutil:
         per_section_df = []
         current_centroids = None
         current_points = None
+        print("region areas list")
+        print(self.region_areas_list)
         for pl,cl,ra in zip(self.points_len, self.centroids_len, self.region_areas_list):
             if hasattr(self, "centroids"):
                 current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl]
@@ -227,6 +229,7 @@ class PyNutil:
             current_df = pixel_count_per_region(
                 current_points, current_centroids, self.atlas_labels
             )
+            print("current df", current_df)
 
 # create the df for section report and all report
 # pixel_count_per_region returns a df with idx, pixel count, name and RGB.
@@ -239,6 +242,7 @@ class PyNutil:
             Remove duplicate columns
             Calculate and add area_fraction to new column in the df.  
             """
+            
             all_region_df = self.atlas_labels.merge(ra, on = 'idx', how='left')           
             current_df_new = all_region_df.merge(current_df, on= 'idx', how= 'left', suffixes= (None,"_y")).drop(columns=["a","VIS", "MSH", "name_y","r_y","g_y","b_y"])
             current_df_new["area_fraction"] = current_df_new["pixel_count"] / current_df_new["region_area"]

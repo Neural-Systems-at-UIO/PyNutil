@@ -106,8 +106,7 @@ def pixel_count_per_region(
 
         new_rows.append(row)
 
-    df_counts_per_label_name = pd.DataFrame(new_rows)
-    
+    df_counts_per_label_name = pd.DataFrame(new_rows, columns=["idx", "name", "pixel_count", "object_count", "r", "g", "b"])
     #Task for Sharon:
     #If you can get the areas per region from the flat file here 
     #you can then use those areas to calculate the load per region here
