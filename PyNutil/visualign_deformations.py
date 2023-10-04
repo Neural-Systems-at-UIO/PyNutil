@@ -235,20 +235,3 @@ class Triangle:
         )
 
 
-##below this is a test 
-
-
-vertices = [[0, 0,43.54623148539514, 26.174656909777603],
-            [0, 0,90.8065913697207, 46.20231798893295],
-            [0, 0,56.29635559428633, 51.23696264352707],
-            [0, 0,90.87928419178107, 15.497996125973435],
-            [0, 0,33.966820908745454, 11.999395004637503],
-            [0, 0,37.29543353675751, 79.4420010252766]]
-triangulation = triangulate(100,100,vertices)
-new_coords = transform(triangulation, new_coords[0], new_coords[1])
-
-
-from scipy.spatial import Delaunay
-
-# assuming you have a list of points called "points"
-tri = Delaunay(points)
