@@ -32,12 +32,7 @@ def load_visualign_json(filename):
           # save with .json extension need to see if i can remove this
         with open(filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w") as f:
             json.dump(lz_compat_file, f, indent=4)
-        for slice in slices:
-            if "markers" in slice:
-                slice["markers"] = [
-                    [marker["x"], marker["y"], marker["nx"], marker["ny"]
-                     ] for marker in slice["markers"]
-                ]
+
     else:
         slices = vafile["slices"]
     
