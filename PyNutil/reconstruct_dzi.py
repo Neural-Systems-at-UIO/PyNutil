@@ -4,6 +4,7 @@ import os
 import zipfile
 import xmltodict
 
+
 def reconstruct_dzi(zip_file_path):
     """
     Reconstructs a Deep Zoom Image (DZI) from a zip file containing the tiles.
@@ -24,15 +25,21 @@ def reconstruct_dzi(zip_file_path):
 
         # Get the filenames of the highest level tiles
         highest_level_files = [
-            i for i in zip_file.namelist() if i.endswith(".png") and i.split("/")[-2] == highest_level
+            i
+            for i in zip_file.namelist()
+            if i.endswith(".png") and i.split("/")[-2] == highest_level
         ]
 
         # Read the DZI file
-        dzi_file = zip_file.open([i for i in zip_file.namelist() if i.endswith(".dzi")][0])
+        dzi_file = zip_file.open(
+            [i for i in zip_file.namelist() if i.endswith(".dzi")][0]
+        )
         xml = dzi_file.read()
         json_data = xmltodict.parse(xml)
         tileSize = json_data["Image"]["@TileSize"]
-        width, height = int(json_data["Image"]["Size"]["@Width"]), int(json_data["Image"]["Size"]["@Height"])
+        width, height = int(json_data["Image"]["Size"]["@Width"]), int(
+            json_data["Image"]["Size"]["@Height"]
+        )
 
         # Create an empty image
         image = np.zeros((height, width, 3), dtype=np.uint8)

@@ -89,7 +89,7 @@ def pixel_count_per_region(
     # Find colours corresponding to each region ID and add to the pandas dataframe
 
     # Look up name, r, g, b in df_allen_colours in df_counts_per_label based on "idx"
-    #Sharon, remove this here
+    # Sharon, remove this here
     new_rows = []
     for index, row in df_counts_per_label.iterrows():
         mask = df_label_colours["idx"] == row["idx"]
@@ -106,12 +106,14 @@ def pixel_count_per_region(
 
         new_rows.append(row)
 
-    df_counts_per_label_name = pd.DataFrame(new_rows, columns=["idx", "name", "pixel_count", "object_count", "r", "g", "b"])
-    #Task for Sharon:
-    #If you can get the areas per region from the flat file here 
-    #you can then use those areas to calculate the load per region here
+    df_counts_per_label_name = pd.DataFrame(
+        new_rows, columns=["idx", "name", "pixel_count", "object_count", "r", "g", "b"]
+    )
+    # Task for Sharon:
+    # If you can get the areas per region from the flat file here
+    # you can then use those areas to calculate the load per region here
     # and add to dataframe
-    #see messing around pyflat.py
+    # see messing around pyflat.py
 
     return df_counts_per_label_name
 
@@ -122,6 +124,7 @@ import struct
 import cv2
 import numpy as np
 import pandas as pd
+
 
 def read_flat_file(file):
     with open(file, "rb") as f:
@@ -134,43 +137,50 @@ def read_flat_file(file):
             image[y, x] = image_data[x + y * w]
     return image
 
+
 def read_seg_file(file):
-    with open(file,"rb") as f:
+    with open(file, "rb") as f:
+
         def byte():
             return f.read(1)[0]
+
         def code():
-            c=byte()
-            if(c<0):
+            c = byte()
+            if c < 0:
                 raise "!"
-            return c if c<128 else (c&127)|(code()<<7)
+            return c if c < 128 else (c & 127) | (code() << 7)
+
         if "SegRLEv1" != f.read(8).decode():
             raise "Header mismatch"
-        atlas=f.read(code()).decode()
+        atlas = f.read(code()).decode()
         print(f"Target atlas: {atlas}")
-        codes=[code() for x in range(code())]
-        w=code()
-        h=code()
-        data=[]
-        while len(data)<w*h:
-            data += [codes[byte() if len(codes)<=256 else code()]]*(code()+1)
+        codes = [code() for x in range(code())]
+        w = code()
+        h = code()
+        data = []
+        while len(data) < w * h:
+            data += [codes[byte() if len(codes) <= 256 else code()]] * (code() + 1)
     image_data = np.array(data)
     image = np.reshape(image_data, (h, w))
     return image
+
 
 def rescale_image(image, rescaleXY):
     w, h = rescaleXY
     return cv2.resize(image, (h, w), interpolation=cv2.INTER_NEAREST)
 
+
 def assign_labels_to_image(image, labelfile):
-    w,h = image.shape
+    w, h = image.shape
     allen_id_image = np.zeros((h, w))  # create an empty image array
     coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
- 
+
     values = image[coordsy, coordsx]
     lbidx = labelfile["idx"].values
 
     allen_id_image = lbidx[values.astype(int)]
     return allen_id_image
+
 
 def count_pixels_per_label(image):
     unique_ids, counts = np.unique(image, return_counts=True)
@@ -178,7 +188,10 @@ def count_pixels_per_label(image):
     df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
     return df_area_per_label
 
-def flat_to_dataframe(labelfile, file=None,  rescaleXY=None, image_vector=None, volume=None):
+
+def flat_to_dataframe(
+    labelfile, file=None, rescaleXY=None, image_vector=None, volume=None
+):
     if (image_vector is not None) and (volume is not None):
         image = generate_target_slice(image_vector, volume)
         image = np.float64(image)
@@ -186,8 +199,8 @@ def flat_to_dataframe(labelfile, file=None,  rescaleXY=None, image_vector=None, 
         image = read_flat_file(file)
     elif file.endswith(".seg"):
         image = read_seg_file(file)
-    print('datatype', image.dtype)
-    print('image shape open', image.shape)
+    print("datatype", image.dtype)
+    print("image shape open", image.shape)
 
     if rescaleXY:
         image = rescale_image(image, rescaleXY)

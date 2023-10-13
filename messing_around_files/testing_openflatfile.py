@@ -39,15 +39,15 @@ with open(base, "rb") as f:
 """assign label file values into image array"""
 
 labelfile = pd.read_csv(r"annotation_volumes\allen2017_colours.csv")
-#labelfile[]
-print(list(zip(val,count)))
+# labelfile[]
+print(list(zip(val, count)))
 
 
-temp_copy = labelfile.loc[val.astype(int),:].copy()
+temp_copy = labelfile.loc[val.astype(int), :].copy()
 
-temp_copy['region areas'] = count
+temp_copy["region areas"] = count
 
-temp_copy.to_csv('../outputs/region_areas_quick_test.csv',sep=';')
+temp_copy.to_csv("../outputs/region_areas_quick_test.csv", sep=";")
 
 allen_id_image = np.zeros((h, w))  # create an empty image array
 
