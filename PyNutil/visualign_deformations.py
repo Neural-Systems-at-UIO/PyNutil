@@ -2,12 +2,13 @@
 import numpy as np
 from scipy.spatial import Delaunay
 
+
 def triangulate(w, h, markers):
     vertices = [
         [-0.1 * w, -0.1 * h, -0.1 * w, -0.1 * h],
-        [ 1.1 * w, -0.1 * h,  1.1 * w, -0.1 * h],
-        [-0.1 * w,  1.1 * h, -0.1 * w,  1.1 * h],
-        [ 1.1 * w,  1.1 * h,  1.1 * w,  1.1 * h],
+        [1.1 * w, -0.1 * h, 1.1 * w, -0.1 * h],
+        [-0.1 * w, 1.1 * h, -0.1 * w, 1.1 * h],
+        [1.1 * w, 1.1 * h, 1.1 * w, 1.1 * h],
     ]
 
     edges = [0] * ((len(markers) + 4) * (len(markers) + 4 - 1) // 2)
@@ -155,7 +156,7 @@ class Triangle:
             [[bx - ax, by - ay, 0], [cx - ax, cy - ay, 0], [ax, ay, 1]]
         )
         if self.decomp == None:
-            print('e')
+            print("e")
         a2 = distsquare(bx, by, cx, cy)
         b2 = distsquare(ax, ay, cx, cy)
         c2 = distsquare(ax, ay, bx, by)
@@ -190,7 +191,6 @@ class Triangle:
 
     # xy: 2-dimensional array with one xy-pair per row
     def inforward_vec(self, x, y, xPrime, yPrime):
-
         uv1 = rowmul3_vec(x, y, self.forwarddecomp)
         # also compute the next step, since it uses the parameters of this triangle
         ok = (
@@ -213,7 +213,7 @@ class Triangle:
 
     def intriangle_vec(self, x, y, xPrime, yPrime):
         if self.decomp is None:
-            print('e')
+            print("e")
         uv1 = rowmul3_vec(x, y, self.decomp)
         # also compute the next step, since it uses the parameters of this triangle
         ok = (
@@ -233,5 +233,3 @@ class Triangle:
             + (self.B[1] - self.A[1]) * uv1[ok, 0]
             + (self.C[1] - self.A[1]) * uv1[ok, 1]
         )
-
-

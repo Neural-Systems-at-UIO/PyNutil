@@ -8,6 +8,7 @@ import nrrd
 import re
 from .propagation import propagate
 
+
 # related to read and write
 # this function reads a VisuAlign JSON and returns the slices
 def load_visualign_json(filename):
@@ -24,19 +25,21 @@ def load_visualign_json(filename):
 
         name = os.path.basename(filename)
         lz_compat_file = {
-            "name":name,
-            "target":vafile["atlas"],
-            "target-resolution":[ 456, 528, 320],
-            "slices":slices,
+            "name": name,
+            "target": vafile["atlas"],
+            "target-resolution": [456, 528, 320],
+            "slices": slices,
         }
-          # save with .json extension need to see if i can remove this
-        with open(filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w") as f:
+        # save with .json extension need to see if i can remove this
+        with open(
+            filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w"
+        ) as f:
             json.dump(lz_compat_file, f, indent=4)
 
     else:
         slices = vafile["slices"]
-    
-    slices = propagate(slices)
+    if len(slices) > 1:
+        slices = propagate(slices)
     return slices
 
 
@@ -95,24 +98,27 @@ def flat_to_array(file, labelfile):
             # It has the shape width times height
             data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
     elif file.endswith(".seg"):
-        with open(file,"rb") as f:
+        with open(file, "rb") as f:
+
             def byte():
                 return f.read(1)[0]
+
             def code():
-                c=byte()
-                if(c<0):
+                c = byte()
+                if c < 0:
                     raise "!"
-                return c if c<128 else (c&127)|(code()<<7)
+                return c if c < 128 else (c & 127) | (code() << 7)
+
             if "SegRLEv1" != f.read(8).decode():
                 raise "Header mismatch"
-            atlas=f.read(code()).decode()
+            atlas = f.read(code()).decode()
             print(f"Target atlas: {atlas}")
-            codes=[code() for x in range(code())]
-            w=code()
-            h=code()
-            data=[]
-            while len(data)<w*h:
-                data += [codes[byte() if len(codes)<=256 else code()]]*(code()+1)
+            codes = [code() for x in range(code())]
+            w = code()
+            h = code()
+            data = []
+            while len(data) < w * h:
+                data += [codes[byte() if len(codes) <= 256 else code()]] * (code() + 1)
 
     # convert flat file data into an array, previously data was a tuple
     imagedata = np.array(data)
@@ -124,13 +130,15 @@ def flat_to_array(file, labelfile):
             image[y, x] = imagedata[x + y * w]
 
     image_arr = np.array(image)
-    #return image_arr
+    # return image_arr
 
     """assign label file values into image array"""
     labelfile = pd.read_csv(labelfile)
     allen_id_image = np.zeros((h, w))  # create an empty image array
     coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-    values = image_arr[coordsx, coordsy]  # assign x,y coords from image_array into values
+    values = image_arr[
+        coordsx, coordsy
+    ]  # assign x,y coords from image_array into values
     lbidx = labelfile["idx"].values
     allen_id_image = lbidx[values.astype(int)]
     return allen_id_image

@@ -9,7 +9,7 @@ from tqdm import tqdm
 import cv2
 from skimage import measure
 import threading
-import re 
+import re
 from .reconstruct_dzi import reconstruct_dzi
 
 
@@ -41,6 +41,7 @@ def number_sections(filenames, legacy=False):
     if len(section_numbers) == 0:
         raise ValueError("No section numbers found in filenames")
     return section_numbers
+
 
 # related to coordinate_extraction
 def get_centroids_and_area(segmentation, pixel_cut_off=0):
@@ -122,7 +123,7 @@ def folder_to_atlas_space(
     method="all",
     object_cutoff=0,
     atlas_volume=None,
-    use_flat = False,
+    use_flat=False,
 ):
     """Apply Segmentation to atlas space to all segmentations in a folder."""
     """Return pixel_points, centroids, points_len, centroids_len, segmentation_filenames, """
@@ -144,29 +145,30 @@ def folder_to_atlas_space(
         flat_files = [
             file
             for file in glob(folder + "/flat_files/*")
-            if any([file.endswith('.flat'), file.endswith('.seg')])
+            if any([file.endswith(".flat"), file.endswith(".seg")])
         ]
         print(f"Found {len(flat_files)} flat files in folder {folder}")
         flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
 
-        
     # Order segmentations and section_numbers
     # segmentations = [x for _,x in sorted(zip(section_numbers,segmentations))]
     # section_numbers.sort()
     points_list = [np.array([])] * len(segmentations)
     centroids_list = [np.array([])] * len(segmentations)
     region_areas_list = [
-        pd.DataFrame({
-            "idx": [],
-            "name": [],
-            "r": [],
-            "g": [],
-            "b": [],
-            "region_area": [],
-            "pixel_count": [],
-            "object_count": [],
-            "area_fraction": []
-        })
+        pd.DataFrame(
+            {
+                "idx": [],
+                "name": [],
+                "r": [],
+                "g": [],
+                "b": [],
+                "region_area": [],
+                "pixel_count": [],
+                "object_count": [],
+                "area_fraction": [],
+            }
+        )
     ] * len(segmentations)
     threads = []
     for segmentation_path, index in zip(segmentations, range(len(segmentations))):
@@ -186,7 +188,7 @@ def folder_to_atlas_space(
             args=(
                 current_slice,
                 segmentation_path,
-                atlas_labels, 
+                atlas_labels,
                 current_flat,
                 pixel_id,
                 non_linear,
@@ -197,7 +199,7 @@ def folder_to_atlas_space(
                 method,
                 object_cutoff,
                 atlas_volume,
-                use_flat
+                use_flat,
             ),
         )
         threads.append(x)
@@ -207,13 +209,13 @@ def folder_to_atlas_space(
     # Wait for threads to finish
     [t.join() for t in threads]
     # Flatten points_list
-    
 
     points_len = [len(points) if points is not None else 0 for points in points_list]
-    centroids_len = [len(centroids) if centroids is not None else 0 for centroids in centroids_list]
+    centroids_len = [
+        len(centroids) if centroids is not None else 0 for centroids in centroids_list
+    ]
     points = np.concatenate(points_list)
     centroids = np.concatenate(centroids_list)
-
 
     return (
         np.array(points),
@@ -228,19 +230,18 @@ def folder_to_atlas_space(
 def segmentation_to_atlas_space(
     slice,
     segmentation_path,
-    atlas_labels, 
+    atlas_labels,
     flat_file_atlas=None,
     pixel_id="auto",
     non_linear=True,
     points_list=None,
     centroids_list=None,
-    region_areas_list=None, 
+    region_areas_list=None,
     index=None,
     method="per_pixel",
     object_cutoff=0,
     atlas_volume=None,
-    use_flat=False
-    
+    use_flat=False,
 ):
     """Combines many functions to convert a segmentation to atlas space. It takes care
     of deformations."""
@@ -261,7 +262,7 @@ def segmentation_to_atlas_space(
         # Currently only works for a single label
         print("length of non background pixels: ", len(segmentation_no_background))
         pixel_id = segmentation_no_background[0]
-        print('detected pixel_id: ', pixel_id)
+        print("detected pixel_id: ", pixel_id)
 
     # Transform pixels to registration space (the registered image and segmentation have different dimensions)
     seg_height = segmentation.shape[0]
@@ -269,9 +270,17 @@ def segmentation_to_atlas_space(
     reg_height = slice["height"]
     reg_width = slice["width"]
     if use_flat == True:
-        region_areas = flat_to_dataframe(atlas_labels, flat_file_atlas, (seg_width,seg_height))
+        region_areas = flat_to_dataframe(
+            atlas_labels, flat_file_atlas, (seg_width, seg_height)
+        )
     else:
-        region_areas = flat_to_dataframe(atlas_labels, flat_file_atlas, (seg_width,seg_height), slice["anchoring"], atlas_volume)
+        region_areas = flat_to_dataframe(
+            atlas_labels,
+            flat_file_atlas,
+            (seg_width, seg_height),
+            slice["anchoring"],
+            atlas_volume,
+        )
     # This calculates reg/seg
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
@@ -287,7 +296,6 @@ def segmentation_to_atlas_space(
 
     if non_linear:
         if "markers" in slice:
-            
             # This creates a triangulation using the reg width
             triangulation = triangulate(reg_width, reg_height, slice["markers"])
             if method in ["per_pixel", "all"]:
@@ -301,7 +309,10 @@ def segmentation_to_atlas_space(
                         triangulation, scaled_centroidsX, scaled_centroidsY
                     )
                 else:
-                    centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
+                    centroids_new_x, centroids_new_y = (
+                        scaled_centroidsX,
+                        scaled_centroidsY,
+                    )
         else:
             print(
                 f"No markers found for {slice['filename']}, result for section will be linear."
@@ -326,7 +337,11 @@ def segmentation_to_atlas_space(
     if method in ["per_object", "all"]:
         if centroids_new_x is not None:
             centroids = transform_to_atlas_space(
-                slice["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width
+                slice["anchoring"],
+                centroids_new_y,
+                centroids_new_x,
+                reg_height,
+                reg_width,
             )
         else:
             centroids = np.array([])
