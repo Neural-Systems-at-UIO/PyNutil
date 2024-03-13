@@ -1,6 +1,5 @@
 """This code was written by Gergely Csucs and Rembrandt Bakker"""
 import numpy as np
-from scipy.spatial import Delaunay
 
 
 def triangulate(w, h, markers):

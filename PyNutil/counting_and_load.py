@@ -1,9 +1,6 @@
 import numpy as np
 import pandas as pd
 import struct
-import matplotlib.pyplot as plt
-import os
-import nrrd
 import cv2
 from .generate_target_slice import generate_target_slice
 

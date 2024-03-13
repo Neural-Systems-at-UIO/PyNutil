@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import os
 
 
 def load_config() -> dict:
