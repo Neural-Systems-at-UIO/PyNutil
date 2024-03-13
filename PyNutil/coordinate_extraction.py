@@ -1,11 +1,9 @@
 import numpy as np
 import pandas as pd
-import json
 from .read_and_write import load_visualign_json
-from .counting_and_load import label_points, flat_to_dataframe
+from .counting_and_load import flat_to_dataframe
 from .visualign_deformations import triangulate, transform_vec
 from glob import glob
-from tqdm import tqdm
 import cv2
 from skimage import measure
 import threading
@@ -210,12 +208,23 @@ def folder_to_atlas_space(
     [t.join() for t in threads]
     # Flatten points_list
 
-    points_len = [len(points) if points is not None else 0 for points in points_list]
+    points_len = [
+        len(points) if None not in points else 0 for points in points_list
+        ]
     centroids_len = [
-        len(centroids) if centroids is not None else 0 for centroids in centroids_list
-    ]
-    points = np.concatenate(points_list)
-    centroids = np.concatenate(centroids_list)
+             len(centroids) if None not in centroids else 0 for centroids in centroids_list
+         ]
+    points_list = [points for points in points_list if None not in points]
+    centroids_list = [centroids for centroids in centroids_list if None not in centroids]
+    if len(points_list) == 0:
+        points = np.array([])
+    else:
+        points = np.concatenate(points_list)
+    if len(centroids_list) == 0:
+        centroids = np.array([])
+    else:
+        centroids = np.concatenate(centroids_list)
+
 
     return (
         np.array(points),
@@ -346,9 +355,7 @@ def segmentation_to_atlas_space(
         else:
             centroids = np.array([])
 
-    print(
-        f"Finished and points len is: {len(points)} and centroids len is: {len(centroids)}"
-    )
+
     points_list[index] = np.array(points)
     centroids_list[index] = np.array(centroids)
     region_areas_list[index] = region_areas

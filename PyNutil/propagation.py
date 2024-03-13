@@ -2,6 +2,7 @@ import math, re
 
 
 def propagate(arr):
+    arr = arr.copy()
     for slice in arr:
         if "nr" not in slice:
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
@@ -12,7 +13,7 @@ def propagate(arr):
     count = 0
     for slice in arr:
         if "anchoring" in slice:
-            a = slice["anchoring"].copy()
+            a = slice["anchoring"]
             for i in range(3):
                 a[i] += (a[i + 3] + a[i + 6]) / 2
             a.extend(

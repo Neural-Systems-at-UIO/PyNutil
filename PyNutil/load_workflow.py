@@ -1,10 +1,7 @@
 """Create workflow for calculating load based on atlas maps and segmentations"""
 
-import struct
-import matplotlib.pyplot as plt
 import pandas as pd
 import cv2
-import numpy as np
 
 # from read_and_write import flat_to_array, label_to_array
 from counting_and_load import flat_to_dataframe

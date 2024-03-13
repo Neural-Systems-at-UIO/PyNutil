@@ -2,7 +2,6 @@ import json
 import numpy as np
 import struct
 import pandas as pd
-import matplotlib.pyplot as plt
 import os
 import nrrd
 import re

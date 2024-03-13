@@ -161,7 +161,7 @@ class PyNutil:
             raise ValueError(
                 f"method {method} not recognised, valid methods are: per_pixel, per_object, or all"
             )
-        print("extracting coordinates")
+        print("extracting coordinates with method:", method)
         (
             pixel_points,
             centroids,
@@ -188,6 +188,7 @@ class PyNutil:
         self.centroids_len = centroids_len
         self.segmentation_filenames = segmentation_filenames
         self.region_areas_list = region_areas_list
+        self.method = method
 
     def quantify_coordinates(self):
         """Quantifies the pixel coordinates by region.
@@ -205,11 +206,11 @@ class PyNutil:
         print("quantifying coordinates")
         labeled_points_centroids = None
         labeled_points = None
-        if hasattr(self, "centroids"):
+        if self.method == "per_object" or self.method == "all":
             labeled_points_centroids = label_points(
                 self.centroids, self.atlas_volume, scale_factor=1
             )
-        if hasattr(self, "pixel_points"):
+        if self.method == "per_pixel" or self.method == "all":
             labeled_points = label_points(
                 self.pixel_points, self.atlas_volume, scale_factor=1
             )
@@ -224,9 +225,9 @@ class PyNutil:
         for pl, cl, ra in zip(
             self.points_len, self.centroids_len, self.region_areas_list
         ):
-            if hasattr(self, "centroids"):
+            if self.method == "per_object" or self.method == "all":
                 current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl]
-            if hasattr(self, "pixel_points"):
+            if self.method == "per_pixel" or self.method == "all":
                 current_points = labeled_points[prev_pl : prev_pl + pl]
             current_df = pixel_count_per_region(
                 current_points, current_centroids, self.atlas_labels
@@ -341,14 +342,14 @@ class PyNutil:
                 na_rep="",
                 index=False,
             )
-            if hasattr(self, "pixel_points"):
+            if self.method == "per_pixel" or self.method == "all":
                 write_points_to_meshview(
                     self.pixel_points[prev_pl : pl + prev_pl],
                     self.labeled_points[prev_pl : pl + prev_pl],
                     f"{output_folder}/per_section_meshview/{split_fn}_pixels.json",
                     self.atlas_labels,
                 )
-            if hasattr(self, "centroids"):
+            if self.method == "per_object" or self.method == "all":
                 write_points_to_meshview(
                     self.centroids[prev_cl : cl + prev_cl],
                     self.labeled_points_centroids[prev_cl : cl + prev_cl],
@@ -358,14 +359,14 @@ class PyNutil:
             prev_cl += cl
             prev_pl += pl
 
-        if hasattr(self, "pixel_points"):
+        if self.method == "per_pixel" or self.method == "all":
             write_points_to_meshview(
                 self.pixel_points,
                 self.labeled_points,
                 f"{output_folder}/whole_series_meshview/pixels_meshview.json",
                 self.atlas_labels,
             )
-        if hasattr(self, "centroids"):
+        if self.method == "per_object" or self.method == "all":
             write_points_to_meshview(
                 self.centroids,
                 self.labeled_points_centroids,
