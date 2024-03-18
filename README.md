@@ -5,7 +5,8 @@ For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
 
 # Usage
-Run testOOP.py outside of the PyNutil directory.
+Fill in the test.json with the path to the required input files. e.g. path to reference atlas volume, atlas label file, segmentations (from ilastik), alignment json (from QuickNII or VisuAlign)
+Then Run testOOP.py outside of the PyNutil directory to inititate the job. 
 
 ```
 from PyNutil import PyNutil
