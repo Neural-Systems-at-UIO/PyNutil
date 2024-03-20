@@ -166,7 +166,6 @@ def rescale_image(image, rescaleXY):
     w, h = rescaleXY
     return cv2.resize(image, (h, w), interpolation=cv2.INTER_NEAREST)
 
-
 def assign_labels_to_image(image, labelfile):
     w, h = image.shape
     allen_id_image = np.zeros((h, w))  # create an empty image array
@@ -179,8 +178,10 @@ def assign_labels_to_image(image, labelfile):
     return allen_id_image
 
 
-def count_pixels_per_label(image):
+def count_pixels_per_label(image, scale_factor=False):
     unique_ids, counts = np.unique(image, return_counts=True)
+    if scale_factor:
+        counts = counts * scale_factor
     area_per_label = list(zip(unique_ids, counts))
     df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
     return df_area_per_label
@@ -200,10 +201,15 @@ def flat_to_dataframe(
     print("image shape open", image.shape)
 
     if rescaleXY:
-        image = rescale_image(image, rescaleXY)
+        image_shapeY, image_shapeX = image.shape[0], image.shape[1]
+        image_pixels = image_shapeY * image_shapeX
+        seg_pixels = rescaleXY[0] * rescaleXY[1]
+        scale_factor = seg_pixels / image_pixels
+    else:
+        scale_factor = False
     if (image_vector is None) or (volume is None):
         allen_id_image = assign_labels_to_image(image, labelfile)
     else:
         allen_id_image = image
-    df_area_per_label = count_pixels_per_label(allen_id_image)
+    df_area_per_label = count_pixels_per_label(allen_id_image, scale_factor)
     return df_area_per_label

@@ -67,7 +67,6 @@ def transform_to_registration(seg_height, seg_width, reg_height, reg_width):
     x_scale = reg_width / seg_width
     return y_scale, x_scale
 
-
 # related to coordinate extraction
 def find_matching_pixels(segmentation, id):
     """This function returns the Y and X coordinates of all the pixels in the segmentation that match the id provided."""
@@ -261,8 +260,8 @@ def segmentation_to_atlas_space(
 
     else:
         segmentation = cv2.imread(segmentation_path)
-    # if pixel_id == "auto":
-    if True:
+    if pixel_id == "auto":
+
         # Remove the background from the segmentation
         segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
         # pixel_id = np.vstack(
@@ -294,6 +293,7 @@ def segmentation_to_atlas_space(
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
     )
+
     centroids, points = None, None
 
     if method in ["per_object", "all"]:
