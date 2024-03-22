@@ -5,8 +5,13 @@ For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
 
 # Usage
-Fill in the test.json with the path to the required input files. e.g. path to reference atlas volume, atlas label file, segmentations (from ilastik), alignment json (from QuickNII or VisuAlign)
-Then Run testOOP.py outside of the PyNutil directory to inititate the job. 
+As input PyNutil requires:
+1. An alignment JSON generated with the QuickNII or VisuAlign software
+2. A segmented image for each brain section with the feature-of-interests displayed in a unique RGB colour. 
+
+To run PyNutil, first fill in a test.json with the paths to the required input files. This includes the reference atlas volume, atlas label file, segmentation directory, and path to the alignment json (from QuickNII or VisuAlign).
+
+Then Run testOOP.py outside of the PyNutil directory (cd ..) to inititate the job. 
 
 ```
 from PyNutil import PyNutil
