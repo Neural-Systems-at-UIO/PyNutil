@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-def generate_target_slize(ouv, atlas):
+def generate_target_slice(ouv, atlas):
     width = None
     height = None
     ox, oy, oz, ux, uy, uz, vx, vy, vz = ouv
