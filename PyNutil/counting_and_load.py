@@ -3,7 +3,7 @@ import pandas as pd
 import struct
 import cv2
 from .generate_target_slice import generate_target_slice
-
+from .visualign_deformations import transform_vec
 
 # related to counting and load
 def label_points(points, label_volume, scale_factor=1):
@@ -117,10 +117,7 @@ def pixel_count_per_region(
 
 """Read flat file and write into an np array"""
 """Read flat file, write into an np array, assign label file values, return array"""
-import struct
-import cv2
-import numpy as np
-import pandas as pd
+
 
 
 def read_flat_file(file):
@@ -187,12 +184,41 @@ def count_pixels_per_label(image, scale_factor=False):
     return df_area_per_label
 
 
+def warp_image(image, triangulation, rescaleXY):
+    if rescaleXY is not None:
+        w,h = rescaleXY
+    else:
+        h, w = image.shape
+    reg_h, reg_w = image.shape
+    oldX, oldY = np.meshgrid(np.arange(reg_w), np.arange(reg_h))
+    oldX = oldX.flatten()
+    oldY = oldY.flatten()
+    h_scale = h / reg_h
+    w_scale = w / reg_w
+    oldX = oldX * w_scale
+    oldY = oldY * h_scale
+    newX, newY = transform_vec(triangulation, oldX, oldY)
+    newX = newX / w_scale
+    newY = newY / h_scale
+    newX = newX.reshape(reg_h, reg_w)
+    newY = newY.reshape(reg_h, reg_w)
+    newX = newX.astype(int)
+    newY = newY.astype(int)
+    newX[newX >= reg_w] = reg_w - 1
+    newY[newY >= reg_h] = reg_h - 1
+    newX[newX < 0] = 0
+    newY[newY < 0] = 0
+    new_image = image[newY, newX]
+    return new_image
+
 def flat_to_dataframe(
-    labelfile, file=None, rescaleXY=None, image_vector=None, volume=None
+    labelfile, file=None, rescaleXY=None, image_vector=None, volume=None, triangulation=None
 ):
     if (image_vector is not None) and (volume is not None):
         image = generate_target_slice(image_vector, volume)
         image = np.float64(image)
+        if triangulation is not None:
+            image = warp_image(image, triangulation, rescaleXY)
     elif file.endswith(".flat"):
         image = read_flat_file(file)
     elif file.endswith(".seg"):
