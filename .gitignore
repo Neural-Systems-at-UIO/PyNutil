@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+.# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -164,7 +164,5 @@ cython_debug/
 test_data/tTA_2877_NOP
 test_data/tTA_2877_NOP_horizontal_final_2017.json
 
-
-outputs/
 
 fileForMessingAround.py
