@@ -9,7 +9,9 @@ As input, PyNutil requires:
 1. An alignment JSON created with the QuickNII or VisuAlign software
 2. A segmentation file for each brain section with the feature-of-interests displayed in a unique RGB colour (it currently accepts many image formats: png, jpg, jpeg, etc).
 
-To run PyNutil, first fill in a test.json with the reference atlas and paths to the required input files. e.g. reference atlas volume, atlas label file, segmentation directory, and path to the alignment json (from QuickNII or VisuAlign). The atlases available in PyNutil are listed in PyNutil/metadata/config.json.
+To run PyNutil, first fill in a test.json with the reference atlas (volume and label file) and paths to the required input files. e.g. segmentation directory and path to the alignment json (from QuickNII or VisuAlign). 
+
+Note: The atlases available in PyNutil are listed in PyNutil/metadata/config.json.
 
 Then Run testOOP.py outside of the PyNutil directory (cd ..) to inititate the job. 
 
