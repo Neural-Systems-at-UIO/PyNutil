@@ -5,11 +5,11 @@ For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
 
 # Usage
-As input PyNutil requires:
-1. An alignment JSON generated with the QuickNII or VisuAlign software
-2. A segmentation file for each brain section with the feature-of-interests displayed in a unique RGB colour (it currently accepts many image formats, png, jpg, jpeg, etc).
+As input, PyNutil requires:
+1. An alignment JSON created with the QuickNII or VisuAlign software
+2. A segmentation file for each brain section with the feature-of-interests displayed in a unique RGB colour (it currently accepts many image formats: png, jpg, jpeg, etc).
 
-To run PyNutil, first fill in a test.json with the correct reference atlas and paths to the required input files. e.g. reference atlas volume, atlas label file, segmentation directory, and path to the alignment json (from QuickNII or VisuAlign).
+To run PyNutil, first fill in a test.json with the reference atlas and paths to the required input files. e.g. reference atlas volume, atlas label file, segmentation directory, and path to the alignment json (from QuickNII or VisuAlign). The atlases available in PyNutil are listed in PyNutil/metadata/config.json.
 
 Then Run testOOP.py outside of the PyNutil directory (cd ..) to inititate the job. 
 
@@ -18,13 +18,14 @@ from PyNutil import PyNutil
 
 pnt = PyNutil(settings_file=r"PyNutil/test/test.json")
 
+#Use flat can be set to True if you want to use flat files from QuickNII or VisuAlign
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 
 pnt.quantify_coordinates()
 
 pnt.save_analysis("PyNutil/outputs/myResults")
 ```
-PyNutil generates a series of reports which are saved to the "outputs" directory. 
+PyNutil generates a series of reports saved to the "outputs" directory. 
  
 # Acknowledgements
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
