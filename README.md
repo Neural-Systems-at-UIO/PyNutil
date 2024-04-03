@@ -13,7 +13,7 @@ To run PyNutil, first fill in a test.json with the reference atlas (volume and l
 
 Note: The atlases available in PyNutil are listed in PyNutil/metadata/config.json.
 
-Then Run testOOP.py outside of the PyNutil directory (cd ..) to inititate the job. 
+Then Run testOOP.py to inititate the job (requires Python version 3.8 or above). 
 
 ```
 from PyNutil import PyNutil
