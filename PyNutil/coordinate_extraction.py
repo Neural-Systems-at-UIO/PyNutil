@@ -243,13 +243,13 @@ def load_segmentation(segmentation_path: str):
     else:
         return cv2.imread(segmentation_path)
 
-def remove_background(segmentation: np.array):
+def detect_pixel_id(segmentation: np.array):
     """Remove the background from the segmentation and return the pixel id."""
     segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
     print("length of non background pixels: ", len(segmentation_no_background))
     pixel_id = segmentation_no_background[0]
     print("detected pixel_id: ", pixel_id)
-    return segmentation_no_background, pixel_id
+    return pixel_id
 
 def get_region_areas(use_flat, atlas_labels, flat_file_atlas, seg_width, seg_height, slice_dict, atlas_volume, triangulation):
     if use_flat:
@@ -299,7 +299,7 @@ def segmentation_to_atlas_space(
 ):
     segmentation = load_segmentation(segmentation_path)
     if pixel_id == "auto":
-        segmentation, pixel_id = remove_background(segmentation)
+        pixel_id = detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_dict["height"], slice_dict["width"]
     if non_linear and "markers" in slice_dict:

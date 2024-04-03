@@ -4,6 +4,6 @@
   "segmentation_folder": "PyNutil/test_data/PyTest_web",
   "alignment_json": "PyNutil/test_data/PyNutil_test.waln",
   "nonlinear": true,
-  "colour": [0, 0, 0],
+  "colour": "auto",
   "points_json_path": "PyNutil/outputs/test.json"
 }
