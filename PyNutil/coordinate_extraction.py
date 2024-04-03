@@ -309,6 +309,7 @@ def segmentation_to_atlas_space(
     region_areas = get_region_areas(use_flat, atlas_labels, flat_file_atlas, seg_width, seg_height, slice_dict, atlas_volume, triangulation)
     y_scale, x_scale = transform_to_registration(seg_height, seg_width, reg_height, reg_width)
     centroids, points = None, None
+    scaled_centroidsX, scaled_centroidsY, scaled_x, scaled_y = None, None, None, None 
     if method in ["per_object", "all"]:
         centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff)
     if method in ["per_pixel", "all"]:
