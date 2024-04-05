@@ -56,6 +56,6 @@ def waln_to_json(filename):
     else:
         pass
     
-waln_to_json("PyNutil_test_2.waln")    
+waln_to_json("PyNutil_test.waln")    
     
 
