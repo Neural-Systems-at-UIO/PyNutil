@@ -12,6 +12,8 @@ img = tiff.imread(path_to_file)
 shape = img.shape
 #Get the chunk size
 chunk_size = 512
+#invert the image if neccessary
+img = np.invert(img)
 #crop the image and save each chunk
 for i in range(0, shape[0], chunk_size):
     for j in range(0, shape[1], chunk_size):
