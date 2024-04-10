@@ -29,11 +29,8 @@ def load_visualign_json(filename):
             "target-resolution": [456, 528, 320],
             "slices": slices,
         }
-        # save with .json extension need to see if i can remove this
-        with open(
-            filename.replace(".waln", ".json").replace(".wwrp", ".json"), "w"
-        ) as f:
-            json.dump(lz_compat_file, f, indent=4)
+
+
 
     else:
         slices = vafile["slices"]
