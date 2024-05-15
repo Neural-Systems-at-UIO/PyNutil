@@ -23,7 +23,7 @@ from PyNutil import PyNutil
 pnt = PyNutil(settings_file=r"PyNutil/test/test.json")
 
 #Use flat can be set to True if you want to use flat files from QuickNII or VisuAlign
-pnt.get_coordinates(object_cutoff=0, use_flat=False)
+pnt.get_coordinates(object_cutoff=0, method ="all", use_flat=False)
 
 pnt.quantify_coordinates()
 
