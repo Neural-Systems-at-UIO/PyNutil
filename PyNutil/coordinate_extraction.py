@@ -246,7 +246,6 @@ def load_segmentation(segmentation_path: str):
 def detect_pixel_id(segmentation: np.array):
     """Remove the background from the segmentation and return the pixel id."""
     segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
-    print("length of non background pixels: ", len(segmentation_no_background))
     pixel_id = segmentation_no_background[0]
     print("detected pixel_id: ", pixel_id)
     return pixel_id

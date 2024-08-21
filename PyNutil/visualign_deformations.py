@@ -154,8 +154,6 @@ class Triangle:
         self.decomp = inv3x3(
             [[bx - ax, by - ay, 0], [cx - ax, cy - ay, 0], [ax, ay, 1]]
         )
-        if self.decomp == None:
-            print("e")
         a2 = distsquare(bx, by, cx, cy)
         b2 = distsquare(ax, ay, cx, cy)
         c2 = distsquare(ax, ay, bx, by)
@@ -211,8 +209,6 @@ class Triangle:
         )
 
     def intriangle_vec(self, x, y, xPrime, yPrime):
-        if self.decomp is None:
-            print("e")
         uv1 = rowmul3_vec(x, y, self.decomp)
         # also compute the next step, since it uses the parameters of this triangle
         ok = (

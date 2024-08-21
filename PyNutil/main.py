@@ -245,8 +245,6 @@ class PyNutil:
         per_section_df = []
         current_centroids = None
         current_points = None
-        print("region areas list")
-        print(self.region_areas_list)
         for pl, cl, ra in zip(
             self.points_len, self.centroids_len, self.region_areas_list
         ):
@@ -257,8 +255,6 @@ class PyNutil:
             current_df = pixel_count_per_region(
                 current_points, current_centroids, self.atlas_labels
             )
-            print("current df", current_df)
-
             # create the df for section report and all report
             # pixel_count_per_region returns a df with idx, pixel count, name and RGB.
             # ra is region area list from

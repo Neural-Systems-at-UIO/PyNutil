@@ -16,7 +16,6 @@ def waln_to_json(filename):
         vafile["slices"] = slices 
         
         for slice in slices:
-            print(slice) # this prints info from waln to screen.
             if "filename" in slice:
                 base_name = os.path.basename(slice["filename"]).split('.')[0]
                 new_filename = base_name + '.png'
@@ -24,18 +23,6 @@ def waln_to_json(filename):
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
             if "ouv" in slice:
                 slice["anchoring"] = slice["ouv"]        
-        
-        '''
-        for slice in slices:
-            print(slice) # this prints info from waln to screen.
-            if "filename" in slice:
-                name, old_extension = slice["filename"].rsplit('.',1)
-                new_filename = name + '.png'
-                slice["filename"] = new_filename
-            slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
-            if "ouv" in slice:
-                slice["anchoring"] = slice["ouv"]
-        '''
 
         name = os.path.basename(filename)
         va_compat_file = {
@@ -51,8 +38,6 @@ def waln_to_json(filename):
             #json.dump(va_compat_file, f, indent=4) 
             json.dump(va_compat_file, f, indent=4)
             
-        print("Waln or Wwrp converted successfully to JSON")
-
     else:
         pass
     

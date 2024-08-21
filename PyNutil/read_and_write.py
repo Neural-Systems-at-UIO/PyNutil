@@ -17,7 +17,6 @@ def load_visualign_json(filename):
         slices = vafile["sections"]
         vafile["slices"] = slices
         for slice in slices:
-            print(slice)
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
             if "ouv" in slice:
                 slice["anchoring"] = slice["ouv"]
@@ -108,7 +107,6 @@ def flat_to_array(file, labelfile):
             if "SegRLEv1" != f.read(8).decode():
                 raise "Header mismatch"
             atlas = f.read(code()).decode()
-            print(f"Target atlas: {atlas}")
             codes = [code() for x in range(code())]
             w = code()
             h = code()
@@ -158,9 +156,6 @@ def files_in_directory(directory):
     list_of_files = []
     for file in os.scandir(directory):
         if file.path.endswith(".flat") and file.is_file:
-            # print(filename.path)
-            # newfilename, file_ext = os.path.splitext(filename)
-            # print(newfilename)
             filename = os.path.basename(file)
             newfilename, file_ext = os.path.splitext(filename)
             list_of_files.append(newfilename)
