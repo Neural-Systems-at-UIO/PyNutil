@@ -14,7 +14,7 @@ pnt = PyNutil(
     colour=[0, 0, 0],
     atlas_name='allen_mouse_25um'
 )
-pnt.get_coordinates(object_cutoff=0, method="all")
+pnt.get_coordinates(object_cutoff=0)
 pnt.quantify_coordinates()
 pnt.save_analysis("../tests/outputs/test9_PyNutil_bigcaudoputamen_new")
 

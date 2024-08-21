@@ -1,7 +1,7 @@
 # PyNutil
 PyNutil is currently under development.
 
-PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain . It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183) to be run locally or to be intergrated with the QUINT workflow web-tools. It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
+PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain . It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183). It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
 
 For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
@@ -11,36 +11,42 @@ As input, PyNutil requires:
 1. An alignment JSON created with the QuickNII or VisuAlign software
 2. A segmentation file for each brain section with the feature-of-interests displayed in a unique RGB colour (it currently accepts many image formats: png, jpg, jpeg, etc).
 
-To run PyNutil, first fill in a test.json with the reference atlas (volume and label file) and paths to the required input files. e.g. segmentation directory and path to the alignment json (from QuickNII or VisuAlign). 
 
-Note: The atlases available in PyNutil are listed in PyNutil/metadata/config.json.
+Note: The atlases available in PyNutil are those listed via the [brainglobe_atlasapi](https://github.com/brainglobe/brainglobe-atlasapi).
 
-Then Run testOOP.py to inititate the job (requires Python version 3.8 or above). 
+PyNutil requires Python 3.8 or above
 
 ```python
 from PyNutil import PyNutil
+"""
+Here we define a quantifier object
+The segmentations should be images which come out of ilastik, segmenting an object of interest
+The alignment json should be out of DeepSlice, QuickNII, or VisuAlign, it defines the sections position in an atlas
+The colour says which colour is the object you want to quantify in your segmentation. It is defined in RGB
+Finally the atlas name is the relevant atlas from brainglobe_atlasapi you wish to use in Quantification.
+"""
+pnt = PyNutil(
+    segmentation_folder='../tests/test_data/big_caudoputamen_test/',
+    alignment_json='../tests/test_data/big_caudoputamen.json',
+    colour=[0, 0, 0],
+    atlas_name='allen_mouse_25um'
+)
 
-pnt = PyNutil(settings_file=r"PyNutil/test/test.json")
-
-#Use flat can be set to True if you want to use flat files from QuickNII or VisuAlign
-pnt.get_coordinates(object_cutoff=0, method ="all", use_flat=False)
+pnt.get_coordinates(object_cutoff=0)
 
 pnt.quantify_coordinates()
 
 pnt.save_analysis("PyNutil/outputs/myResults")
 ```
-PyNutil generates a series of reports saved to the "outputs" directory. 
+PyNutil generates a series of reports in the folder which you specify.
  # Feature Requests
 We are open to feature requests 😊 Simply open an issue in the github describing the feature you would like to see. 
 
 # Acknowledgements
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
 
-# Developers
-Harry Carey and Sharon C Yates.
-
 # Contributors
-Gergely Csucs, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
+Harry Carey, Sharon C Yates, Gergely Csucs, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
 
 # Licence
 GNU General Public License v3
