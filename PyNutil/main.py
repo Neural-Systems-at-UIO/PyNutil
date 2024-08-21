@@ -79,6 +79,8 @@ class PyNutil:
         alignment_json=None,
         colour=None,
         atlas_name=None,
+        atlas_path=None,
+        label_path=None,
         atlas_resolution_micron=None,
         settings_file=None,
     ) -> None:
@@ -109,7 +111,12 @@ class PyNutil:
         self.alignment_json = alignment_json
         self.colour = colour
         self.atlas_name = atlas_name
-        self.atlas_volume, self.atlas_labels = self.load_atlas_data(atlas_name=atlas_name)
+        if (atlas_path or label_path) and atlas_name:
+            raise ValueError("Please only specify an atlas_path and a label_path or an atlas_name, atlas and label paths are only used for loading custom atlases")
+        if atlas_path and label_path:
+            self.atlas_volume, self.atlas_labels = self.load_custom_atlas(atlas_path, label_path)
+        else:
+            self.atlas_volume, self.atlas_labels = self.load_atlas_data(atlas_name=atlas_name)
         ###This is just because of the migration to BrainGlobe
 
     def load_atlas_data(self, atlas_name):
