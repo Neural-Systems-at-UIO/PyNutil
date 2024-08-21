@@ -146,6 +146,11 @@ class PyNutil:
         print("atlas labels loaded ✅")
         return atlas_volume, atlas_labels
 
+    def load_custom_atlas(self, atlas_path, label_path):
+        atlas_volume = read_atlas_volume(atlas_path)
+        atlas_labels = pd.read_csv(label_path)
+        return atlas_volume, atlas_labels
+
     def get_coordinates(
         self, non_linear=True, method="all", object_cutoff=0, use_flat=False
     ):
