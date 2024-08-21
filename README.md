@@ -17,7 +17,7 @@ Note: The atlases available in PyNutil are listed in PyNutil/metadata/config.jso
 
 Then Run testOOP.py to inititate the job (requires Python version 3.8 or above). 
 
-```
+```python
 from PyNutil import PyNutil
 
 pnt = PyNutil(settings_file=r"PyNutil/test/test.json")
