@@ -81,7 +81,6 @@ class PyNutil:
         atlas_name=None,
         atlas_path=None,
         label_path=None,
-        atlas_resolution_micron=None,
         settings_file=None,
     ) -> None:
         self.config, self.metadata_path = metadata_loader.load_config()
