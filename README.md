@@ -1,7 +1,7 @@
 # PyNutil
 PyNutil is currently under development.
 
-PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain. It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183) to be run locally or to be intergrated with the QUINT workflow web-tools. It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
+PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain . It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183) to be run locally or to be intergrated with the QUINT workflow web-tools. It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
 
 For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
@@ -31,7 +31,7 @@ pnt.save_analysis("PyNutil/outputs/myResults")
 ```
 PyNutil generates a series of reports saved to the "outputs" directory. 
  # Feature Requests
-We are open to feature requests :) Simply open an issue in the github describing the feature you would like to see. 
+We are open to feature requests 😊 Simply open an issue in the github describing the feature you would like to see. 
 
 # Acknowledgements
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
