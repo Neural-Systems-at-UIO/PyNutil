@@ -30,7 +30,9 @@ pnt.quantify_coordinates()
 pnt.save_analysis("PyNutil/outputs/myResults")
 ```
 PyNutil generates a series of reports saved to the "outputs" directory. 
- 
+ # Feature Requests
+We are open to feature requests :) Simply open an issue in the github describing the feature you would like to see. 
+
 # Acknowledgements
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
 
