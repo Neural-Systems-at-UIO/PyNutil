@@ -1,6 +1,5 @@
 {
-  "volume_path": "allen2017",
-  "label_path": "PyNutil/annotation_volumes/allen2017_colours.csv",
+  "atlas_name": "allen_mouse_25um",
   "segmentation_folder": "PyNutil/test_data/PyTest_linear_seg",
   "alignment_json": "PyNutil/test_data/PyNutil_testdataset_linear.json",
   "nonlinear": true,
