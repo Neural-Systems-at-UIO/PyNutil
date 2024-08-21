@@ -1,5 +1,4 @@
-{   "volume_path": "allen2017",
-    "label_path": "annotation_volumes/allen2017_colours.csv",
+{   "atlas_name": "allen_mouse_25um",
     "segmentation_folder": "test_data/ttA_2877_NOP_segmentations",
     "alignment_json": "test_data/ttA_2877_NOP_horizontal_final_2017.json",
     "nonlinear": true,

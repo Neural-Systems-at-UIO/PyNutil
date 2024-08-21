@@ -5,6 +5,8 @@ from .counting_and_load import label_points, pixel_count_per_region
 import json
 import pandas as pd
 from datetime import datetime
+import numpy as np
+import brainglobe_atlasapi
 import os
 
 
@@ -19,8 +21,8 @@ class PyNutil:
         The path to the alignment JSON file.
     colour : int
         The colour of the segmentation data to extract.
-    volume_path : str
-        The name of the atlas volume to use.
+    atlas_name : str
+        The name of the atlas volume to use. Uses BrainGlobe API name
     settings_file : str, optional
         The path to a JSON file containing the above parameters.
 
@@ -76,7 +78,8 @@ class PyNutil:
         segmentation_folder=None,
         alignment_json=None,
         colour=None,
-        volume_path=None,
+        atlas_name=None,
+        atlas_resolution_micron=None,
         settings_file=None,
     ) -> None:
         self.config, self.metadata_path = metadata_loader.load_config()
@@ -87,28 +90,29 @@ class PyNutil:
                 segmentation_folder = settings["segmentation_folder"]
                 alignment_json = settings["alignment_json"]
                 colour = settings["colour"]
-                volume_path = settings["volume_path"]
+                atlas_name = settings["atlas_name"]
             except KeyError as exc:
                 raise KeyError(
-                    "settings file must contain segmentation_folder, alignment_json, colour, and volume_path"
+                    "settings file must contain segmentation_folder, alignment_json, colour, and atlas_name"
                 ) from exc
         # check if any values are None
-        if None in [segmentation_folder, alignment_json, colour, volume_path]:
+        if None in [segmentation_folder, alignment_json, colour, atlas_name]:
             raise ValueError(
                 "segmentation_folder, alignment_json, colour, and volume_path must all be specified and not be None"
             )
-        if volume_path not in self.config["annotation_volumes"]:
-            raise ValueError(
-                f"Atlas {volume_path} not found in config file, valid atlases are: \n{' , '.join(list(self.config['annotation_volumes'].keys()))}"
-            )
+        # if atlas_name not in self.config["annotation_volumes"]:
+        #     raise ValueError(
+        #         f"Atlas {atlas_name} not found in config file, valid atlases are: \n{' , '.join(list(self.config['annotation_volumes'].keys()))}"
+        #     )
 
         self.segmentation_folder = segmentation_folder
         self.alignment_json = alignment_json
         self.colour = colour
-        self.atlas = volume_path
-        self.atlas_volume, self.atlas_labels = self.load_atlas_data()
+        self.atlas_name = atlas_name
+        self.atlas_volume, self.atlas_labels = self.load_atlas_data(atlas_name=atlas_name)
+        ###This is just because of the migration to BrainGlobe
 
-    def load_atlas_data(self):
+    def load_atlas_data(self, atlas_name):
         """Loads the atlas volume and labels from disk.
 
         Returns
@@ -119,16 +123,26 @@ class PyNutil:
         """
         # load the metadata json as well as the path to stored data files
         # this could potentially be moved into init
-        atlas_root_path = self.config["annotation_volume_directory"]
-        current_atlas_path = self.config["annotation_volumes"][self.atlas]["volume"]
         print("loading atlas volume")
-        start_time = datetime.now()
-        atlas_volume = read_atlas_volume(f"{atlas_root_path}{current_atlas_path}")
-        time_taken = datetime.now() - start_time
-        print(f"atlas volume loaded in: {time_taken} ✅")
-        atlas_label_path = self.config["annotation_volumes"][self.atlas]["labels"]
-        print("loading atlas labels")
-        atlas_labels = pd.read_csv(f"{atlas_root_path}{atlas_label_path}")
+        atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
+        atlas_structures = {'idx':[i['id'] for i in atlas.structures_list],
+            'name':[i['name'] for i in atlas.structures_list],
+            'r':[i['rgb_triplet'][0] for i in atlas.structures_list],
+            'g':[i['rgb_triplet'][1] for i in atlas.structures_list],
+            'b':[i['rgb_triplet'][2] for i in atlas.structures_list]
+            }
+        atlas_structures['idx'].insert(0,0)
+        atlas_structures['name'].insert(0,'Clear Label')
+        atlas_structures['r'].insert(0,0)
+        atlas_structures['g'].insert(0,0)
+        atlas_structures['b'].insert(0,0)
+
+        atlas_labels = pd.DataFrame(atlas_structures)
+        if  "allen_mouse_" in atlas_name:
+            print("reorienting allen atlas into quicknii space...")
+            atlas_volume = np.transpose(atlas.annotation,[2,0,1])[:,::-1,::-1]
+        else:
+            atlas_volume = atlas.annotation
         print("atlas labels loaded ✅")
         return atlas_volume, atlas_labels
 
@@ -249,7 +263,7 @@ class PyNutil:
             all_region_df = self.atlas_labels.merge(ra, on="idx", how="left")
             current_df_new = all_region_df.merge(
                 current_df, on="idx", how="left", suffixes=(None, "_y")
-            ).drop(columns=["a", "VIS", "MSH", "name_y", "r_y", "g_y", "b_y"])
+            ).drop(columns=["name_y", "r_y", "g_y", "b_y"])
             current_df_new["area_fraction"] = (
                 current_df_new["pixel_count"] / current_df_new["region_area"]
             )

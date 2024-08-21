@@ -1,5 +1,4 @@
-{   "volume_path": "../annotation_volumes/annotation_10_reoriented_2022.nrrd",
-    "label_path": "../annotation_volumes/allen2022_colours_updated.csv",
+{   "atlas_name": "allen_mouse_25um",
     "segmentation_folder": "../test_data/oneSection15",
     "alignment_json": "../test_data/C68_nonlinear_no_markers.json",
     "nonlinear": true,
