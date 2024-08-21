@@ -5,7 +5,10 @@ PyNutil is a Python library for brain-wide quantification and spatial analysis o
 
 For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
-
+# Installation
+```
+pip install PyNutil
+```
 # Usage
 As input, PyNutil requires:
 1. An alignment JSON created with the QuickNII or VisuAlign software

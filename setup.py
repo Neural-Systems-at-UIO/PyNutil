@@ -5,7 +5,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="PyNutil",
-    version='0.1.4',
+    version='0.1.1',
     packages=find_packages(),
     license='MIT',
     description='a package to translate data between common coordinate templates',
@@ -13,10 +13,12 @@ setup(
     long_description_content_type='text/markdown',
     install_requires=[
         'numpy',
-        'nibabel',
-        'scipy',
-        'networkx',
+        'brainglobe_atlasapi',
         'pandas',
-        'requests'
+        'requests',
+        'pynrrd',
+        'xmltodict',
+        'opencv-python',
+        'scikit-image'
     ]
 )

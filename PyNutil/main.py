@@ -1,4 +1,3 @@
-from .metadata import metadata_loader
 from .read_and_write import read_atlas_volume, write_points_to_meshview
 from .coordinate_extraction import folder_to_atlas_space
 from .counting_and_load import label_points, pixel_count_per_region
