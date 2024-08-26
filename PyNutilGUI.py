@@ -3,21 +3,14 @@ import tkinter
 from tkinter import *
 from tkinter import ttk
 
-from tkinter import *
-from tkinter import ttk
-
-#Basic GUI example
-"""
-
+#Basic GUI example   
 root = Tk()
-ttk.Button(root, text="Hello World").grid()
-root.mainloop()
-"""
-
-root = Tk()
+#root.geometry("300x300")
 root.title("PyNutil")
-#photo = tkinter.PhotoImage(file = 'Logo_PyN.png')
+root.wm_iconbitmap("Logo_PyNutil.ico")
+#photo = tkinter.PhotoImage(file = 'Logo_PyNutil.ico')
 #root.wm_iconphoto(False, photo)
+
 
 atlas = ["Reference Atlas", "Allen CCFv3", "WHS v3", "WHS v4"]
 selected_atlas = StringVar(value=atlas[0])
@@ -33,14 +26,14 @@ def donothing():
    label = Label(filewin, text="Do nothing")
    label.pack()
    
-def about_text():
+def about_pynutil():
    filewin = Toplevel(root)
    label = Label(filewin, text="PyNutil is an application for brain-wide mapping using a reference brain atlas")
    label.pack()
+ 
 
 #Creating a menu
 root.option_add('*tearOff', FALSE)
-
 win = Toplevel(root)
 menubar = Menu(win)
 #win['menu'] = menubar
@@ -53,9 +46,9 @@ menubar.add_cascade(menu=menu_file, label='File')
 menubar.add_cascade(menu=menu_help, label='Help')
 
 menu_file.add_command(label='New', command=donothing)
-#menu_file.add_command(label='Open...', command=openFile)
 menu_file.add_command(label='Exit', command=root.quit)
-menu_help.add_command(label='About PyNutil', command=about_text)
+menu_help.add_command(label='About PyNutil', command=about_pynutil)
+
 
 #Creating a content frame"
 mainframe = ttk.Frame(root, padding="12 12 12 12") # left top right bottom
@@ -64,17 +57,17 @@ root.columnconfigure(0, weight=1) # column to expand if there is extra space
 root.rowconfigure(0, weight=1) # row to expand if there is extra space
 
 #ttk.Label(mainframe, text="PyNutil settings:").grid(column=0, row=1, sticky=W)
-ttk.Label(mainframe, text="Reference atlas").grid(column=1, row=1, sticky=W)
-ttk.Label(mainframe, text="Registration JSON").grid(column=1, row=2, sticky=W)
-ttk.Label(mainframe, text="Segmentation folder").grid(column=1, row=3, sticky=W)
-ttk.Label(mainframe, text="Object colour").grid(column=1, row=4, sticky=W)
-ttk.Label(mainframe, text="Output directory").grid(column=1, row=5, sticky=W)
+ttk.Label(mainframe, text="Reference atlas", width=20).grid(column=1, row=1, sticky=W)
+ttk.Label(mainframe, text="Registration JSON", width=20).grid(column=1, row=2, sticky=W)
+ttk.Label(mainframe, text="Segmentation folder", width=20).grid(column=1, row=3, sticky=W)
+ttk.Label(mainframe, text="Object colour", width=20).grid(column=1, row=4, sticky=W)
+ttk.Label(mainframe, text="Output directory", width=20).grid(column=1, row=5, sticky=W)
 
-ttk.Button(mainframe, text="Help", command="buttonpressed").grid(column=2, row=1, sticky=W)
-ttk.Button(mainframe, text="Help", command="buttonpressed").grid(column=2, row=2, sticky=W)
-ttk.Button(mainframe, text="Help", command="buttonpressed").grid(column=2, row=3, sticky=W)
-ttk.Button(mainframe, text="Help", command="buttonpressed").grid(column=2, row=4, sticky=W)
-ttk.Button(mainframe, text="Help", command="buttonpressed").grid(column=2, row=5, sticky=W)
+ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=2, row=1, sticky=W)
+ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=2, row=2, sticky=W)
+ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=2, row=3, sticky=W)
+ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=2, row=4, sticky=W)
+ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=2, row=5, sticky=W)
 
 ttk.OptionMenu(mainframe, selected_atlas, *atlas).grid(column=3, row=1, sticky=W)
 ttk.OptionMenu(mainframe, selected_directory, *directory).grid(column=3, row=2, sticky=W)
@@ -82,13 +75,11 @@ ttk.OptionMenu(mainframe, selected_directory, *directory).grid(column=3, row=3, 
 ttk.OptionMenu(mainframe, selected_colour, *colour).grid(column=3, row=4, sticky=W)
 ttk.OptionMenu(mainframe, selected_directory, *directory).grid(column=3, row=5, sticky=W)
 
-ttk.Button(mainframe, text="Browse...", command="buttonpressed").grid(column=4, row=1, sticky=W)
-ttk.Button(mainframe, text="Browse...", command="buttonpressed").grid(column=4, row=2, sticky=W)
-ttk.Button(mainframe, text="Browse...", command="buttonpressed").grid(column=4, row=3, sticky=W)
-ttk.Button(mainframe, text="Select colour", command="buttonpressed").grid(column=4, row=4, sticky=W)
-ttk.Button(mainframe, text="Browse...", command="buttonpressed").grid(column=4, row=5, sticky=W)
-
-
+ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=4, row=1, sticky=W)
+ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=4, row=2, sticky=W)
+ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=4, row=3, sticky=W)
+ttk.Button(mainframe, width=16, text="Select colour", command="buttonpressed").grid(column=4, row=4, sticky=W)
+ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=4, row=5, sticky=W)
 
 # sunken frame around mainframe
 """
