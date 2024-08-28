@@ -2,25 +2,34 @@ import tkinter
 
 from tkinter import *
 from tkinter import ttk
+import brainglobe_atlasapi
+import PyNutil
+from tkinter.filedialog import askopenfilename
+from tkinter import colorchooser
+
 
 #Basic GUI example   
 root = Tk()
 #root.geometry("300x300")
 root.title("PyNutil")
-root.wm_iconbitmap("Logo_PyNutil.ico")
-#photo = tkinter.PhotoImage(file = 'Logo_PyNutil.ico')
-#root.wm_iconphoto(False, photo)
+arguments = {
+   "registration_json":None,
+   "object_colour":None
+}
 
+atlas = brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
 
-atlas = ["Reference Atlas", "Allen CCFv3", "WHS v3", "WHS v4"]
-selected_atlas = StringVar(value=atlas[0])
+selected_atlas = StringVar(value="Reference Atlas")
 
 directory = ["select","select1", "select2"]
-selected_directory = StringVar(value=atlas[0])
+selected_directory = StringVar(value="directory")
 
 colour = ["colour","black","red","blue","green"]
 selected_colour = StringVar(value=colour[0])
 
+# root.wm_iconbitmap("Logo_PyNutil.ico")
+#photo = tkinter.PhotoImage(file = 'Logo_PyNutil.ico')
+#root.wm_iconphoto(False, photo)
 def donothing():
    filewin = Toplevel(root)
    label = Label(filewin, text="Do nothing")
@@ -72,17 +81,33 @@ ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column
 ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=3, row=5, sticky=W)
 ttk.Button(mainframe, text="Docs", width=8, command="buttonpressed").grid(column=3, row=6, sticky=W)
 
+def open_registration_json():
+   value = askopenfilename()
+   arguments["registration_json"] = value
+   print(arguments)
 
-ttk.OptionMenu(mainframe, selected_atlas, *atlas).grid(column=2, row=1, sticky=W)
+def choose_colour():
+   value = colorchooser.askcolor()
+   arguments["object_colour"] = value
+   print(list(value[0]))
+
+def start_analysis():
+   #your code here
+   return
+
+
+
+ttk.OptionMenu(mainframe, selected_atlas, "Reference Atlas", *atlas).grid(column=2, row=1, sticky=W)
 #ttk.OptionMenu(mainframe, selected_directory, *directory).grid(column=3, row=2, sticky=W)
 #ttk.OptionMenu(mainframe, selected_directory, *directory).grid(column=3, row=3, sticky=W)
 #ttk.OptionMenu(mainframe, selected_colour, *colour).grid(column=3, row=4, sticky=W)
 #ttk.OptionMenu(mainframe, selected_directory, *directory).grid(column=3, row=5, sticky=W)
 
 #ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=4, row=1, sticky=W)
-ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=2, row=2, sticky=W)
+ttk.Button(mainframe, width=16, text="Browse...", command=open_registration_json).grid(column=2, row=2, sticky=W)
+
 ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=2, row=3, sticky=W)
-ttk.Button(mainframe, width=16, text="Colour", command="buttonpressed").grid(column=2, row=4, sticky=W)
+ttk.Button(mainframe, width=16, text="Colour", command=choose_colour).grid(column=2, row=4, sticky=W)
 ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=2, row=5, sticky=W)
 ttk.Button(mainframe, width=16, text="Run", command="buttonpressed").grid(column= 2, row=6, sticky=W)
 
