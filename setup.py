@@ -13,7 +13,7 @@ setup(
     long_description_content_type='text/markdown',
     install_requires=[
         'numpy',
-        'brainglobe_atlasapi',
+        'brainglobe-atlasapi',
         'pandas',
         'requests',
         'pynrrd',
