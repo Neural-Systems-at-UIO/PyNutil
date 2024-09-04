@@ -5,8 +5,10 @@ from tkinter import ttk
 import brainglobe_atlasapi
 import PyNutil
 from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askdirectory
 from tkinter import colorchooser
 
+from PyNutil import PyNutil
 
 #Basic GUI example   
 root = Tk()
@@ -17,8 +19,11 @@ root.wm_iconbitmap("Logo_PyNutil.ico")
 #root.wm_iconphoto(False, photo)
 
 arguments = {
+   "reference_atlas":None,
    "registration_json":None,
-   "object_colour":None
+   "object_colour":None,
+   "segmentation_dir":None,
+   "output_dir": None 
 }
 
 atlas = brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
@@ -44,16 +49,34 @@ def about_pynutil():
 def open_registration_json():
    value = askopenfilename()
    arguments["registration_json"] = value
-   print(arguments)
+   print(arguments["registration_json"])
 
 def choose_colour():
    value = colorchooser.askcolor()
    arguments["object_colour"] = value
    print(list(value[0]))
-
+   
+def open_segmentation_dir():
+   value = askdirectory()
+   arguments["segmentation_dir"] = value
+   print(arguments["segmentation_dir"])
+   
+def select_output_dir():
+   value = askdirectory()
+   arguments["output_dir"] = value
+   print(arguments["output_dir"])
+   
 def start_analysis():
-   #your code here
-   return
+   pnt = PyNutil(
+      segmentation_folder= open_segmentation_dir, #'../tests/test_data/big_caudoputamen_test/',
+      alignment_json= open_registration_json, #'../tests/test_data/big_caudoputamen.json',
+      colour= choose_colour,        #[0, 0, 0],
+      atlas_name='allen_mouse_25um'
+      )
+   
+   pnt.get_coordinates(object_cutoff=0)
+   pnt.quantify_coordinates()
+   pnt.save_analysis("../tests/outputs/test9_PyNutil_bigcaudoputamen_new")
 
 #Creating a menu
 root.option_add('*tearOff', FALSE)
@@ -93,12 +116,12 @@ ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column
 #Select registration JSON
 ttk.Label(mainframe, text="Select registration JSON:", width=25).grid(column=1, row=2, sticky=W)
 ttk.Button(mainframe, width=16, text="Browse...", command=open_registration_json).grid(column=2, row=2, sticky=W)
-Text(mainframe, height = 1, width =40).grid(column=3, row=2, sticky= W)
+Text(mainframe, height = 1, width =40 ).grid(column=3, row=2, sticky= W)
 ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=4, row=2, sticky=W)
 
 #Select segmentation folder
 ttk.Label(mainframe, text="Select segmentation folder:", width=25).grid(column=1, row=3, sticky=W)
-ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=2, row=3, sticky=W)
+ttk.Button(mainframe, width=16, text="Browse...", command=open_segmentation_dir).grid(column=2, row=3, sticky=W)
 Text(mainframe, height = 1, width =40).grid(column=3, row=3, sticky= W)
 ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=4, row=3, sticky=W)
 
@@ -110,7 +133,7 @@ ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column
 
 #Select output directory
 ttk.Label(mainframe, text="Select output directory:", width=25).grid(column=1, row=5, sticky=W)
-ttk.Button(mainframe, width=16, text="Browse...", command="buttonpressed").grid(column=2, row=5, sticky=W)
+ttk.Button(mainframe, width=16, text="Browse...", command=select_output_dir).grid(column=2, row=5, sticky=W)
 Text(mainframe, height = 1, width =40).grid(column=3, row=5, sticky= W)
 ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(column=4, row=5, sticky=W)
 
