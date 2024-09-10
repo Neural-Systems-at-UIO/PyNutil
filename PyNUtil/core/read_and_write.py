@@ -29,8 +29,6 @@ def load_visualign_json(filename):
             "slices": slices,
         }
 
-
-
     else:
         slices = vafile["slices"]
     if len(slices) > 1:
@@ -74,12 +72,6 @@ def write_points(points_dict, filename, info_file):
 def write_points_to_meshview(points, point_names, filename, info_file):
     region_dict = create_region_dict(points, point_names)
     write_points(region_dict, filename, info_file)
-
-
-# I think this might not need to be its own function :)
-def save_dataframe_as_csv(df_to_save, output_csv):
-    """Function for saving a df as a CSV file"""
-    df_to_save.to_csv(output_csv, sep=";", na_rep="", index=False)
 
 
 def flat_to_array(file, labelfile):
@@ -139,16 +131,50 @@ def flat_to_array(file, labelfile):
 
 
 def label_to_array(label_path, image_array):
-    """assign label file values into image array, return array"""
-    labelfile = pd.read_csv(label_path)
-    allen_id_image = np.zeros((h, w))  # create an empty image array
-    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-    values = image_array[
-        coordsx, coordsy
-    ]  # assign x,y coords from image_array into values
-    lbidx = labelfile["idx"].values
-    allen_id_image = lbidx[values.astype(int)]  # assign allen IDs into image array
-    return allen_id_image
+    """
+    Assign label file values into image array and return the resulting array.
+
+    Args:
+        label_path (str): Path to the label file (CSV format).
+        image_array (numpy.ndarray): Input image array.
+
+    Returns:
+        numpy.ndarray: Array with Allen IDs assigned.
+
+    Raises:
+        FileNotFoundError: If the label file is not found.
+        ValueError: If the image array is empty or has invalid dimensions.
+    """
+    try:
+        # Check if image_array is valid and notify
+        if image_array.size == 0:
+            raise ValueError("Input image array is empty.")
+
+        h, w = image_array.shape
+        if h == 0 or w == 0:
+            raise ValueError("Invalid image dimensions.")
+
+        # Read label file
+        try:
+            labelfile = pd.read_csv(label_path)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Label file not found: {label_path}")
+        allen_id_image = np.zeros((h, w), dtype=np.int64)
+        coordsy, coordsx = np.meshgrid(np.arange(w), np.arange(h))
+        values = image_array[
+            coordsx, coordsy
+        ]  # Assign x,y coords from image_array into values
+        lbidx = labelfile["idx"].values
+        allen_id_image = lbidx[
+            values.astype(int)
+        ]  # Assign Allen IDs to the image array
+
+        return allen_id_image
+
+    except Exception as e:
+        raise RuntimeError(
+            f"An error occurred while processing the label array: {str(e)}"
+        )
 
 
 def files_in_directory(directory):

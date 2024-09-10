@@ -63,9 +63,7 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
 # related to coordinate extraction
 def transform_to_registration(seg_height, seg_width, reg_height, reg_width):
     """This function returns the scaling factors to transform the segmentation to the registration space."""
-    y_scale = reg_height / seg_height
-    x_scale = reg_width / seg_width
-    return y_scale, x_scale
+    return reg_height / seg_height, reg_width / seg_width
 
 # related to coordinate extraction
 def find_matching_pixels(segmentation, id):

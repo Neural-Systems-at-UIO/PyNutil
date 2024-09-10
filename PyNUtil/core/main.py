@@ -127,7 +127,7 @@ class PyNutil:
         """
         # load the metadata json as well as the path to stored data files
         # this could potentially be moved into init
-        print("loading atlas volume")
+        print(f"Loading Atlas {atlas_name}")
         atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
         atlas_structures = {'idx':[i['id'] for i in atlas.structures_list],
             'name':[i['name'] for i in atlas.structures_list],
@@ -147,7 +147,7 @@ class PyNutil:
             atlas_volume = np.transpose(atlas.annotation,[2,0,1])[:,::-1,::-1]
         else:
             atlas_volume = atlas.annotation
-        print("atlas labels loaded ✅")
+        print("Atlas labels loaded")
         return atlas_volume, atlas_labels
 
     def load_custom_atlas(self, atlas_path, label_path):
