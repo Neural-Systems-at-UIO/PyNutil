@@ -9,14 +9,14 @@ from PyNutil import PyNutil
 ###The colour says which colour is the object you want to quantify in your segmentation. It is defined in RGB
 ###Finally the atlas name is the relevant atlas from brainglobe_atlasapi you wish to use in Quantification.
 pnt = PyNutil(
-    segmentation_folder='../tests/test_data/big_caudoputamen_test/',
-    alignment_json='../tests/test_data/big_caudoputamen.json',
+    segmentation_folder='../tests/test_data/PyNutil_nonlinear_test/',
+    alignment_json='../tests/test_data/PyNutil_testdataset_Nonlin_SY_fixed.json',
     colour=[0, 0, 0],
     atlas_name='allen_mouse_25um'
 )
 pnt.get_coordinates(object_cutoff=0)
 pnt.quantify_coordinates()
-pnt.save_analysis("../tests/outputs/test9_PyNutil_bigcaudoputamen_new")
+pnt.save_analysis("../tests/outputs/PyNutil_nonlinear_noflat")
 
 
 
