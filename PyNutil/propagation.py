@@ -122,12 +122,3 @@ def orthonormalize(arr):
         arr[i + 6] -= arr[i + 3] * dot
     normalize(arr, 6)
 
-
-if __name__ == "__main__":
-    import json, sys
-
-    with open(sys.argv[1]) as f:
-        series = json.load(f)
-    propagate(series["slices"])
-    with open(sys.argv[2], "w") as f:
-        json.dump(series, f)
