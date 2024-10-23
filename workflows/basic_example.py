@@ -10,6 +10,8 @@ from PyNutil import PyNutil
 ###The alignment json should be out of DeepSlice, QuickNII, or VisuAlign, it defines the sections position in an atlas
 ###The colour says which colour is the object you want to quantify in your segmentation. It is defined in RGB
 ###Finally the atlas name is the relevant atlas from brainglobe_atlasapi you wish to use in Quantification.
+
+
 pnt = PyNutil(
     segmentation_folder="../tests/test_data/nonlinear_allen_mouse/",
     alignment_json="../tests/test_data/nonlinear_allen_mouse/alignment.json",
@@ -18,4 +20,3 @@ pnt = PyNutil(
 )
 pnt.get_coordinates(object_cutoff=0)
 pnt.quantify_coordinates()
-pnt.centroids

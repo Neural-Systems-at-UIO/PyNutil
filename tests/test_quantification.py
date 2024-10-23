@@ -1,11 +1,13 @@
 import unittest
 import os
 import sys
+
 sys.path.append(os.path.abspath("/home/harryc/github/PyNutil/"))
 import numpy as np
 import pandas as pd
 from PyNutil import PyNutil
-import json 
+import json
+
 
 class TestQuantification(unittest.TestCase):
     def setUp(self):
@@ -30,17 +32,20 @@ class TestQuantification(unittest.TestCase):
             "whole_series_report",
             "counts.csv",
         )
-        expected_region_area = pd.read_csv(expected_region_area_path, sep=';')
+        expected_region_area = pd.read_csv(expected_region_area_path, sep=";")
         np.testing.assert_array_almost_equal(
-            pnt.label_df["region_area"].values, expected_region_area["region_area"].values
+            pnt.label_df["region_area"].values,
+            expected_region_area["region_area"].values,
         )
-test_case_files = [
-    "brainglobe_atlas.json"
-]
+
+
+test_case_files = ["brainglobe_atlas.json", "custom_atlas.json"]
 for test_case_file in test_case_files:
+
     def test_method(self, test_case_file=test_case_file):
         self.run_test_case(test_case_file)
+
     setattr(TestQuantification, f'test_{test_case_file.split(".")[0]}', test_method)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

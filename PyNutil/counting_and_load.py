@@ -231,7 +231,6 @@ def flat_to_dataframe(
     elif file.endswith(".seg"):
         image = read_seg_file(file)
 
-
     if rescaleXY:
         image_shapeY, image_shapeX = image.shape[0], image.shape[1]
         image_pixels = image_shapeY * image_shapeX
