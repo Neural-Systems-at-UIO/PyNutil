@@ -45,7 +45,7 @@ class PyNutil:
     def _check_atlas_name(self):
         if not self.atlas_name:
             raise ValueError("Atlas name must be specified")
-            
+
     def _load_settings(self, settings_file):
         if settings_file:
             with open(settings_file, "r") as f:
@@ -58,7 +58,6 @@ class PyNutil:
 
     def load_atlas_data(self, atlas_name):
         """Loads the atlas volume and labels from disk."""
-        print("loading atlas volume")
         atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
         atlas_structures = {
             "idx": [i["id"] for i in atlas.structures_list],
@@ -79,28 +78,23 @@ class PyNutil:
         return atlas_volume, atlas_labels
 
     def _process_atlas_volume(self, atlas):
-        if "allen_mouse_" in self.atlas_name:
-            print("reorienting allen atlas into quicknii space...")
-            return np.transpose(atlas.annotation, [2, 0, 1])[:, ::-1, ::-1]
-        else:
-            return atlas.annotation
+        print("reorienting brainglobe atlas into quicknii space...")
+        return np.transpose(atlas.annotation, [2, 0, 1])[:, ::-1, ::-1]
+ 
 
     def load_custom_atlas(self, atlas_path, label_path):
         atlas_volume = read_atlas_volume(atlas_path)
         atlas_labels = pd.read_csv(label_path)
         return atlas_volume, atlas_labels
 
-    def get_coordinates(self, non_linear=True, method="all", object_cutoff=0, use_flat=False):
+    def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False):
         """Extracts pixel coordinates from the segmentation data."""
-        self._validate_method(method)
-        print("extracting coordinates with method:", method)
         pixel_points, centroids, region_areas_list, points_len, centroids_len, segmentation_filenames = folder_to_atlas_space(
             self.segmentation_folder,
             self.alignment_json,
             self.atlas_labels,
             pixel_id=self.colour,
             non_linear=non_linear,
-            method=method,
             object_cutoff=object_cutoff,
             atlas_volume=self.atlas_volume,
             use_flat=use_flat,
@@ -111,19 +105,14 @@ class PyNutil:
         self.centroids_len = centroids_len
         self.segmentation_filenames = segmentation_filenames
         self.region_areas_list = region_areas_list
-        self.method = method
 
-    def _validate_method(self, method):
-        valid_methods = ["per_pixel", "per_object", "all"]
-        if method not in valid_methods:
-            raise ValueError(f"method {method} not recognised, valid methods are: {', '.join(valid_methods)}")
 
     def quantify_coordinates(self):
         """Quantifies the pixel coordinates by region."""
         self._check_coordinates_extracted()
         print("quantifying coordinates")
-        labeled_points_centroids = self._label_points(self.centroids) if self.method in ["per_object", "all"] else None
-        labeled_points = self._label_points(self.pixel_points) if self.method in ["per_pixel", "all"] else None
+        labeled_points_centroids = self._label_points(self.centroids)
+        labeled_points = self._label_points(self.pixel_points) 
 
         self._quantify_per_section(labeled_points, labeled_points_centroids)
         self._combine_slice_reports()
@@ -146,8 +135,8 @@ class PyNutil:
         per_section_df = []
 
         for pl, cl, ra in zip(self.points_len, self.centroids_len, self.region_areas_list):
-            current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl] if self.method in ["per_object", "all"] else None
-            current_points = labeled_points[prev_pl : prev_pl + pl] if self.method in ["per_pixel", "all"] else None
+            current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl] 
+            current_points = labeled_points[prev_pl : prev_pl + pl] 
             current_df = pixel_count_per_region(current_points, current_centroids, self.atlas_labels)
             current_df_new = self._merge_dataframes(current_df, ra)
             per_section_df.append(current_df_new)
@@ -213,13 +202,9 @@ class PyNutil:
             prev_pl += pl
 
     def _save_per_section_meshview(self, output_folder, split_fn, pl, cl, prev_pl, prev_cl):
-        if self.method in ["per_pixel", "all"]:
             write_points_to_meshview(self.pixel_points[prev_pl : pl + prev_pl], self.labeled_points[prev_pl : pl + prev_pl], f"{output_folder}/per_section_meshview/{split_fn}_pixels.json", self.atlas_labels)
-        if self.method in ["per_object", "all"]:
             write_points_to_meshview(self.centroids[prev_cl : cl + prev_cl], self.labeled_points_centroids[prev_cl : cl + prev_cl], f"{output_folder}/per_section_meshview/{split_fn}_centroids.json", self.atlas_labels)
 
     def _save_whole_series_meshview(self, output_folder):
-        if self.method in ["per_pixel", "all"]:
             write_points_to_meshview(self.pixel_points, self.labeled_points, f"{output_folder}/whole_series_meshview/pixels_meshview.json", self.atlas_labels)
-        if self.method in ["per_object", "all"]:
             write_points_to_meshview(self.centroids, self.labeled_points_centroids, f"{output_folder}/whole_series_meshview/objects_meshview.json", self.atlas_labels)

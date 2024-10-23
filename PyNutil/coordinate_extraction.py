@@ -118,7 +118,6 @@ def folder_to_atlas_space(
     atlas_labels,
     pixel_id=[0, 0, 0],
     non_linear=True,
-    method="all",
     object_cutoff=0,
     atlas_volume=None,
     use_flat=False,
@@ -194,7 +193,6 @@ def folder_to_atlas_space(
                 centroids_list,
                 region_areas_list,
                 index,
-                method,
                 object_cutoff,
                 atlas_volume,
                 use_flat,
@@ -237,9 +235,7 @@ def folder_to_atlas_space(
 
 def load_segmentation(segmentation_path: str):
     """Load a segmentation from a file."""
-    print(f"working on {segmentation_path}")
     if segmentation_path.endswith(".dzip"):
-        print("Reconstructing dzi")
         return reconstruct_dzi(segmentation_path)
     else:
         return cv2.imread(segmentation_path)
@@ -282,7 +278,6 @@ def get_region_areas(
 def get_transformed_coordinates(
     non_linear,
     slice_dict,
-    method,
     scaled_x,
     scaled_y,
     centroids,
@@ -292,17 +287,15 @@ def get_transformed_coordinates(
 ):
     new_x, new_y, centroids_new_x, centroids_new_y = None, None, None, None
     if non_linear and "markers" in slice_dict:
-        if method in ["per_pixel", "all"] and scaled_x is not None:
+        if scaled_x is not None:
             new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
-        if method in ["per_object", "all"] and centroids is not None:
+        if centroids is not None:
             centroids_new_x, centroids_new_y = transform_vec(
                 triangulation, scaled_centroidsX, scaled_centroidsY
             )
     else:
-        if method in ["per_pixel", "all"]:
-            new_x, new_y = scaled_x, scaled_y
-        if method in ["per_object", "all"]:
-            centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
+        new_x, new_y = scaled_x, scaled_y
+        centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
     return new_x, new_y, centroids_new_x, centroids_new_y
 
 
@@ -317,7 +310,6 @@ def segmentation_to_atlas_space(
     centroids_list=None,
     region_areas_list=None,
     index=None,
-    method="per_pixel",
     object_cutoff=0,
     atlas_volume=None,
     use_flat=False,
@@ -346,17 +338,14 @@ def segmentation_to_atlas_space(
     )
     centroids, points = None, None
     scaled_centroidsX, scaled_centroidsY, scaled_x, scaled_y = None, None, None, None
-    if method in ["per_object", "all"]:
-        centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
-            segmentation, pixel_id, y_scale, x_scale, object_cutoff
-        )
-    if method in ["per_pixel", "all"]:
-        scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
+    centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
+        segmentation, pixel_id, y_scale, x_scale, object_cutoff
+    )
+    scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
 
     new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
         non_linear,
         slice_dict,
-        method,
         scaled_x,
         scaled_y,
         centroids,
@@ -364,11 +353,11 @@ def segmentation_to_atlas_space(
         scaled_centroidsY,
         triangulation,
     )
-    if method in ["per_pixel", "all"] and new_x is not None:
+    if new_x is not None:
         points = transform_to_atlas_space(
             slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
         )
-    if method in ["per_object", "all"] and centroids_new_x is not None:
+    if centroids_new_x is not None:
         centroids = transform_to_atlas_space(
             slice_dict["anchoring"],
             centroids_new_y,
@@ -387,9 +376,6 @@ def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
     centroids, area, coords = get_centroids_and_area(
         binary_seg, pixel_cut_off=object_cutoff
     )
-
-    print(f"using pixel id {pixel_id}")
-    print(f"Found {len(centroids)} objects in the segmentation")
     if len(centroids) == 0:
         return None, None, None
     centroidsX = centroids[:, 1]

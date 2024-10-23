@@ -34,7 +34,6 @@ class TestQuantification(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             pnt.label_df["region_area"].values, expected_region_area["region_area"].values
         )
-
 test_case_files = [
     "brainglobe_atlas.json"
 ]
