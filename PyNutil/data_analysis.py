@@ -1,6 +1,5 @@
 import pandas as pd
-from .counting_and_load import pixel_count_per_region
-from .coordinate_processing import label_points_group
+from .counting_and_load import pixel_count_per_region, label_points
  
 
 def quantify_labeled_points(
@@ -12,8 +11,8 @@ def quantify_labeled_points(
     atlas_labels,
     atlas_volume
 ):
-    labeled_points_centroids = label_points_group(centroids, atlas_volume)
-    labeled_points = label_points_group(pixel_points, atlas_volume)
+    labeled_points_centroids = label_points(centroids, atlas_volume)
+    labeled_points = label_points(pixel_points, atlas_volume, scale_factor=1)
 
     per_section_df = _quantify_per_section(
         labeled_points,

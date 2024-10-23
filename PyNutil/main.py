@@ -2,9 +2,10 @@ import json
 import os
 
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
-from .coordinate_processing import extract_coordinates, label_points_group
 from .data_analysis import quantify_labeled_points
 from .io.file_operations import save_analysis_output
+from .coordinate_extraction import folder_to_atlas_space
+from .counting_and_load import label_points
 
 
 class PyNutil:
@@ -64,7 +65,7 @@ class PyNutil:
             self.points_len,
             self.centroids_len,
             self.segmentation_filenames,
-        ) = extract_coordinates(
+        ) = folder_to_atlas_space(
             self.segmentation_folder,
             self.alignment_json,
             self.atlas_labels,
