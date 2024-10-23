@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from .read_and_write import load_visualign_json
+from .io.read_and_write import load_visualign_json
 from .counting_and_load import flat_to_dataframe
 from .visualign_deformations import triangulate, transform_vec
 from glob import glob
@@ -8,7 +8,7 @@ import cv2
 from skimage import measure
 import threading
 import re
-from .reconstruct_dzi import reconstruct_dzi
+from .io.reconstruct_dzi import reconstruct_dzi
 
 
 def number_sections(filenames, legacy=False):

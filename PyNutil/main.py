@@ -1,10 +1,10 @@
 import json
 import os
 
-from .atlas_loader import load_atlas_data, load_custom_atlas
+from .io.atlas_loader import load_atlas_data, load_custom_atlas
 from .coordinate_processing import extract_coordinates, label_points_group
 from .data_analysis import quantify_labeled_points
-from .file_operations import save_analysis_output
+from .io.file_operations import save_analysis_output
 
 
 class PyNutil:
