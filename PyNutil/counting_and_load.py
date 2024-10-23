@@ -5,6 +5,7 @@ import cv2
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import transform_vec
 
+
 # related to counting and load
 def label_points(points, label_volume, scale_factor=1):
     """This function takes a list of points and assigns them to a region based on the region_volume.
@@ -119,7 +120,6 @@ def pixel_count_per_region(
 """Read flat file, write into an np array, assign label file values, return array"""
 
 
-
 def read_flat_file(file):
     with open(file, "rb") as f:
         b, w, h = struct.unpack(">BII", f.read(9))
@@ -163,6 +163,7 @@ def rescale_image(image, rescaleXY):
     w, h = rescaleXY
     return cv2.resize(image, (h, w), interpolation=cv2.INTER_NEAREST)
 
+
 def assign_labels_to_image(image, labelfile):
     w, h = image.shape
     allen_id_image = np.zeros((h, w))  # create an empty image array
@@ -186,7 +187,7 @@ def count_pixels_per_label(image, scale_factor=False):
 
 def warp_image(image, triangulation, rescaleXY):
     if rescaleXY is not None:
-        w,h = rescaleXY
+        w, h = rescaleXY
     else:
         h, w = image.shape
     reg_h, reg_w = image.shape
@@ -211,8 +212,14 @@ def warp_image(image, triangulation, rescaleXY):
     new_image = image[newY, newX]
     return new_image
 
+
 def flat_to_dataframe(
-    labelfile, file=None, rescaleXY=None, image_vector=None, volume=None, triangulation=None
+    labelfile,
+    file=None,
+    rescaleXY=None,
+    image_vector=None,
+    volume=None,
+    triangulation=None,
 ):
     if (image_vector is not None) and (volume is not None):
         image = generate_target_slice(image_vector, volume)

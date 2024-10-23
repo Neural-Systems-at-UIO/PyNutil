@@ -109,11 +109,17 @@ class PyNutil:
         self.colour = colour
         self.atlas_name = atlas_name
         if (atlas_path or label_path) and atlas_name:
-            raise ValueError("Please only specify an atlas_path and a label_path or an atlas_name, atlas and label paths are only used for loading custom atlases")
+            raise ValueError(
+                "Please only specify an atlas_path and a label_path or an atlas_name, atlas and label paths are only used for loading custom atlases"
+            )
         if atlas_path and label_path:
-            self.atlas_volume, self.atlas_labels = self.load_custom_atlas(atlas_path, label_path)
+            self.atlas_volume, self.atlas_labels = self.load_custom_atlas(
+                atlas_path, label_path
+            )
         else:
-            self.atlas_volume, self.atlas_labels = self.load_atlas_data(atlas_name=atlas_name)
+            self.atlas_volume, self.atlas_labels = self.load_atlas_data(
+                atlas_name=atlas_name
+            )
         ###This is just because of the migration to BrainGlobe
 
     def load_atlas_data(self, atlas_name):
@@ -129,22 +135,23 @@ class PyNutil:
         # this could potentially be moved into init
         print("loading atlas volume")
         atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
-        atlas_structures = {'idx':[i['id'] for i in atlas.structures_list],
-            'name':[i['name'] for i in atlas.structures_list],
-            'r':[i['rgb_triplet'][0] for i in atlas.structures_list],
-            'g':[i['rgb_triplet'][1] for i in atlas.structures_list],
-            'b':[i['rgb_triplet'][2] for i in atlas.structures_list]
-            }
-        atlas_structures['idx'].insert(0,0)
-        atlas_structures['name'].insert(0,'Clear Label')
-        atlas_structures['r'].insert(0,0)
-        atlas_structures['g'].insert(0,0)
-        atlas_structures['b'].insert(0,0)
+        atlas_structures = {
+            "idx": [i["id"] for i in atlas.structures_list],
+            "name": [i["name"] for i in atlas.structures_list],
+            "r": [i["rgb_triplet"][0] for i in atlas.structures_list],
+            "g": [i["rgb_triplet"][1] for i in atlas.structures_list],
+            "b": [i["rgb_triplet"][2] for i in atlas.structures_list],
+        }
+        atlas_structures["idx"].insert(0, 0)
+        atlas_structures["name"].insert(0, "Clear Label")
+        atlas_structures["r"].insert(0, 0)
+        atlas_structures["g"].insert(0, 0)
+        atlas_structures["b"].insert(0, 0)
 
         atlas_labels = pd.DataFrame(atlas_structures)
-        if  "allen_mouse_" in atlas_name:
+        if "allen_mouse_" in atlas_name:
             print("reorienting allen atlas into quicknii space...")
-            atlas_volume = np.transpose(atlas.annotation,[2,0,1])[:,::-1,::-1]
+            atlas_volume = np.transpose(atlas.annotation, [2, 0, 1])[:, ::-1, ::-1]
         else:
             atlas_volume = atlas.annotation
         print("atlas labels loaded ✅")

@@ -67,6 +67,7 @@ def transform_to_registration(seg_height, seg_width, reg_height, reg_width):
     x_scale = reg_width / seg_width
     return y_scale, x_scale
 
+
 # related to coordinate extraction
 def find_matching_pixels(segmentation, id):
     """This function returns the Y and X coordinates of all the pixels in the segmentation that match the id provided."""
@@ -207,14 +208,14 @@ def folder_to_atlas_space(
     [t.join() for t in threads]
     # Flatten points_list
 
-    points_len = [
-        len(points) if None not in points else 0 for points in points_list
-        ]
+    points_len = [len(points) if None not in points else 0 for points in points_list]
     centroids_len = [
-             len(centroids) if None not in centroids else 0 for centroids in centroids_list
-         ]
+        len(centroids) if None not in centroids else 0 for centroids in centroids_list
+    ]
     points_list = [points for points in points_list if None not in points]
-    centroids_list = [centroids for centroids in centroids_list if None not in centroids]
+    centroids_list = [
+        centroids for centroids in centroids_list if None not in centroids
+    ]
     if len(points_list) == 0:
         points = np.array([])
     else:
@@ -223,7 +224,6 @@ def folder_to_atlas_space(
         centroids = np.array([])
     else:
         centroids = np.concatenate(centroids_list)
-
 
     return (
         np.array(points),
@@ -234,6 +234,7 @@ def folder_to_atlas_space(
         segmentations,
     )
 
+
 def load_segmentation(segmentation_path: str):
     """Load a segmentation from a file."""
     print(f"working on {segmentation_path}")
@@ -243,6 +244,7 @@ def load_segmentation(segmentation_path: str):
     else:
         return cv2.imread(segmentation_path)
 
+
 def detect_pixel_id(segmentation: np.array):
     """Remove the background from the segmentation and return the pixel id."""
     segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
@@ -250,7 +252,17 @@ def detect_pixel_id(segmentation: np.array):
     print("detected pixel_id: ", pixel_id)
     return pixel_id
 
-def get_region_areas(use_flat, atlas_labels, flat_file_atlas, seg_width, seg_height, slice_dict, atlas_volume, triangulation):
+
+def get_region_areas(
+    use_flat,
+    atlas_labels,
+    flat_file_atlas,
+    seg_width,
+    seg_height,
+    slice_dict,
+    atlas_volume,
+    triangulation,
+):
     if use_flat:
         region_areas = flat_to_dataframe(
             atlas_labels, flat_file_atlas, (seg_width, seg_height)
@@ -262,23 +274,37 @@ def get_region_areas(use_flat, atlas_labels, flat_file_atlas, seg_width, seg_hei
             (seg_width, seg_height),
             slice_dict["anchoring"],
             atlas_volume,
-            triangulation
+            triangulation,
         )
     return region_areas
 
-def get_transformed_coordinates(non_linear, slice_dict, method, scaled_x, scaled_y, centroids, scaled_centroidsX, scaled_centroidsY, triangulation):
+
+def get_transformed_coordinates(
+    non_linear,
+    slice_dict,
+    method,
+    scaled_x,
+    scaled_y,
+    centroids,
+    scaled_centroidsX,
+    scaled_centroidsY,
+    triangulation,
+):
     new_x, new_y, centroids_new_x, centroids_new_y = None, None, None, None
     if non_linear and "markers" in slice_dict:
         if method in ["per_pixel", "all"] and scaled_x is not None:
             new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
         if method in ["per_object", "all"] and centroids is not None:
-            centroids_new_x, centroids_new_y = transform_vec(triangulation, scaled_centroidsX, scaled_centroidsY)
+            centroids_new_x, centroids_new_y = transform_vec(
+                triangulation, scaled_centroidsX, scaled_centroidsY
+            )
     else:
         if method in ["per_pixel", "all"]:
             new_x, new_y = scaled_x, scaled_y
         if method in ["per_object", "all"]:
             centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
     return new_x, new_y, centroids_new_x, centroids_new_y
+
 
 def segmentation_to_atlas_space(
     slice_dict,
@@ -305,20 +331,51 @@ def segmentation_to_atlas_space(
         triangulation = triangulate(reg_width, reg_height, slice_dict["markers"])
     else:
         triangulation = None
-    region_areas = get_region_areas(use_flat, atlas_labels, flat_file_atlas, seg_width, seg_height, slice_dict, atlas_volume, triangulation)
-    y_scale, x_scale = transform_to_registration(seg_height, seg_width, reg_height, reg_width)
+    region_areas = get_region_areas(
+        use_flat,
+        atlas_labels,
+        flat_file_atlas,
+        seg_width,
+        seg_height,
+        slice_dict,
+        atlas_volume,
+        triangulation,
+    )
+    y_scale, x_scale = transform_to_registration(
+        seg_height, seg_width, reg_height, reg_width
+    )
     centroids, points = None, None
-    scaled_centroidsX, scaled_centroidsY, scaled_x, scaled_y = None, None, None, None 
+    scaled_centroidsX, scaled_centroidsY, scaled_x, scaled_y = None, None, None, None
     if method in ["per_object", "all"]:
-        centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff)
+        centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
+            segmentation, pixel_id, y_scale, x_scale, object_cutoff
+        )
     if method in ["per_pixel", "all"]:
         scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
 
-    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(non_linear, slice_dict, method, scaled_x, scaled_y, centroids, scaled_centroidsX, scaled_centroidsY, triangulation)
+    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
+        non_linear,
+        slice_dict,
+        method,
+        scaled_x,
+        scaled_y,
+        centroids,
+        scaled_centroidsX,
+        scaled_centroidsY,
+        triangulation,
+    )
     if method in ["per_pixel", "all"] and new_x is not None:
-        points = transform_to_atlas_space(slice_dict["anchoring"], new_y, new_x, reg_height, reg_width)
+        points = transform_to_atlas_space(
+            slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
+        )
     if method in ["per_object", "all"] and centroids_new_x is not None:
-        centroids = transform_to_atlas_space(slice_dict["anchoring"], centroids_new_y, centroids_new_x, reg_height, reg_width)
+        centroids = transform_to_atlas_space(
+            slice_dict["anchoring"],
+            centroids_new_y,
+            centroids_new_x,
+            reg_height,
+            reg_width,
+        )
     points_list[index] = np.array(points if points is not None else [])
     centroids_list[index] = np.array(centroids if centroids is not None else [])
     region_areas_list[index] = region_areas

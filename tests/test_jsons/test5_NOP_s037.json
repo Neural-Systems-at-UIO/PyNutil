@@ -1,9 +1,0 @@
-{   "atlas_name": "allen_mouse_25um",
-    "segmentation_folder": "test_data/ttA_2877_NOP_s037_seg",
-    "alignment_json": "test_data/ttA_2877_NOP_horizontal_final_2017.json",
-    "nonlinear": false,
-    "colour": [0, 0, 255],
-    "points_json_path": "outputs/test5_points.json",
-    "counts_per_label_name": "outputs/test5_counts_per_allenID_2017_false.csv"
-}
-

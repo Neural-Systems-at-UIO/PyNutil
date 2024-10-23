@@ -1,8 +1,0 @@
-{
-  "atlas_name": "allen_mouse_25um",
-  "segmentation_folder": "PyNutil/test_data/PyTest_bigcaudoputamen_seg",
-  "alignment_json": "PyNutil/test_data/PyNutil_testdataset_Nonlin_SY_fixed_bigcaudoputamen.json",
-  "nonlinear": true,
-  "colour": [0, 0, 0],
-  "points_json_path": "PyNutil/outputs/test8_PyNutil.json"
-}

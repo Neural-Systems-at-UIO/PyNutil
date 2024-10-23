@@ -1,8 +1,0 @@
-{   "atlas_name": "allen_mouse_25um",
-    "label_path": "annotation_volumes/allen2017_colours.csv",
-    "segmentation_folder": "test_data/PyTest_seg",
-    "alignment_json": "test_data/PyNutil_testdataset_Nonlin_SY.json",
-    "nonlinear": true,
-    "colour": [0, 0, 0],
-    "points_json_path": "outputs/test7_PyNutil.json"
-}

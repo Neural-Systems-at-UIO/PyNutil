@@ -1,8 +1,0 @@
-{
-  "atlas_name": "allen_mouse_25um",
-  "segmentation_folder": "PyNutil/test_data/PyTest_web",
-  "alignment_json": "PyNutil/test_data/PyNutil_test.waln",
-  "nonlinear": true,
-  "colour": "auto",
-  "points_json_path": "PyNutil/outputs/test.json"
-}

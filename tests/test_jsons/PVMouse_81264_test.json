@@ -1,7 +1,0 @@
-{   
-    "atlas_name": "allen_mouse_25um",
-    "segmentation_folder": "test_data/ext-d000033_PVMouseExtraction_pub-Nutil_Quantifier_analysis-81264-Input_dir",
-    "alignment_json": "test_data/PVMouse_81264_nonlin.json",
-    "nonlinear": true,
-    "colour": [255, 0, 0]
-}

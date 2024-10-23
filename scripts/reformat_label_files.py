@@ -150,4 +150,4 @@ reformat_WHS_label(
     "../annotation_volumes/WHS_Atlas_Rat_Brain_v2.label",
     "../annotation_volumes/WHS_v2_colours.csv",
 )
-reformat_WHS_label("Kim_Unified_Mouse.label","Kim_Unified_Mouse_colours.csv")
+reformat_WHS_label("Kim_Unified_Mouse.label", "Kim_Unified_Mouse_colours.csv")

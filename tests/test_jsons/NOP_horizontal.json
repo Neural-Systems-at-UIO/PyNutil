@@ -1,7 +1,0 @@
-{   
-    "atlas_name": "allen_mouse_25um",
-    "segmentation_folder": "tests/test_data/ttA_2877_NOP_segmentations",
-    "alignment_json": "tests/test_data/ttA_2877_NOP_horizontal_final_2017.json",
-    "nonlinear": true,
-    "colour": [0, 0, 255]
-}

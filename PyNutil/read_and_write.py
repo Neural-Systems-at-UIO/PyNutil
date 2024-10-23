@@ -29,8 +29,6 @@ def load_visualign_json(filename):
             "slices": slices,
         }
 
-
-
     else:
         slices = vafile["slices"]
     if len(slices) > 1:

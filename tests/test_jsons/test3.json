@@ -1,8 +1,0 @@
-{   "atlas_name": "allen_mouse_25um",
-    "segmentation_folder": "test_data/oneSection15",
-    "alignment_json": "test_data/C68_nonlinear.json",
-    "nonlinear": true,
-    "colour": [255, 0, 255],
-    "points_json_path": "outputs/test3_points.json",
-    "counts_per_label_name": "outputs/test3_counts_per_idx.csv"
-}
