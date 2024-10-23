@@ -95,10 +95,10 @@ class PyNutil:
                     "settings file must contain segmentation_folder, alignment_json, colour, and atlas_name"
                 ) from exc
         # check if any values are None
-        if None in [segmentation_folder, alignment_json, colour, atlas_name]:
-            raise ValueError(
-                "segmentation_folder, alignment_json, colour, and volume_path must all be specified and not be None"
-            )
+        # if None in [segmentation_folder, alignment_json, colour, atlas_name]:
+        #     raise ValueError(
+        #         "segmentation_folder, alignment_json, colour, and volume_path must all be specified and not be None"
+        #     )
         # if atlas_name not in self.config["annotation_volumes"]:
         #     raise ValueError(
         #         f"Atlas {atlas_name} not found in config file, valid atlases are: \n{' , '.join(list(self.config['annotation_volumes'].keys()))}"

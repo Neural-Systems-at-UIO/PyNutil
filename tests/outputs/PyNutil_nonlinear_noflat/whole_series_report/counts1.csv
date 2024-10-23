@@ -23,7 +23,7 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 656;Secondary motor area, layer 1;31;157;90;10910.243563263051;0.0;0.0;0.0
 962;Secondary motor area, layer 2/3;31;157;90;19397.12468557639;0.0;0.0;0.0
 767;Secondary motor area, layer 5;31;157;90;25194.789259494057;0.0;0.0;0.0
-1021;Secondary motor area, layer 6a;31;157;90;20982.02417227346;0.0;0.0;0.0
+1021;Secondary motor area, layer 6a;31;157;90;20982.024172273465;0.0;0.0;0.0
 1085;Secondary motor area, layer 6b;31;157;90;869.1384281887156;0.0;0.0;0.0
 453;Somatosensory areas;24;128;100;0.0;0.0;0.0;0.0
 322;Primary somatosensory area;24;128;100;0.0;0.0;0.0;0.0
@@ -56,12 +56,12 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 1102;Primary somatosensory area, mouth, layer 6a;24;128;100;29816.560665862286;0.0;0.0;0.0
 2;Primary somatosensory area, mouth, layer 6b;24;128;100;1748.5020143561217;0.0;0.0;0.0
 369;Primary somatosensory area, upper limb;24;128;100;0.0;0.0;0.0;0.0
-450;Primary somatosensory area, upper limb, layer 1;24;128;100;6881.531319658889;0.0;0.0;0.0
+450;Primary somatosensory area, upper limb, layer 1;24;128;100;6881.531319658888;0.0;0.0;0.0
 854;Primary somatosensory area, upper limb, layer 2/3;24;128;100;15102.558334526268;0.0;0.0;0.0
 577;Primary somatosensory area, upper limb, layer 4;24;128;100;7689.318799975459;0.0;0.0;0.0
 625;Primary somatosensory area, upper limb, layer 5;24;128;100;11360.150514325445;0.0;0.0;0.0
 945;Primary somatosensory area, upper limb, layer 6a;24;128;100;12771.222315384774;0.0;0.0;0.0
-1026;Primary somatosensory area, upper limb, layer 6b;24;128;100;950.9396920182417;0.0;0.0;0.0
+1026;Primary somatosensory area, upper limb, layer 6b;24;128;100;950.9396920182415;0.0;0.0;0.0
 361;Primary somatosensory area, trunk;24;128;100;0.0;0.0;0.0;0.0
 1006;Primary somatosensory area, trunk, layer 1;24;128;100;2607.4152845661465;0.0;0.0;0.0
 670;Primary somatosensory area, trunk, layer 2/3;24;128;100;4754.698460091208;0.0;0.0;0.0
@@ -189,11 +189,11 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 211;Anterior cingulate area, dorsal part, layer 2/3;64;166;102;6482.750158489948;0.0;0.0;0.0
 1015;Anterior cingulate area, dorsal part, layer 5;64;166;102;13435.857583999672;0.0;0.0;0.0
 919;Anterior cingulate area, dorsal part, layer 6a;64;166;102;9059.489969120023;0.0;0.0;0.0
-927;Anterior cingulate area, dorsal part, layer 6b;64;166;102;368.10568723286775;0.0;0.0;0.0
+927;Anterior cingulate area, dorsal part, layer 6b;64;166;102;368.1056872328677;0.0;0.0;0.0
 48;Anterior cingulate area, ventral part;64;166;102;0.0;0.0;0.0;0.0
 588;Anterior cingulate area, ventral part, layer 1;64;166;102;7648.418168060696;0.0;0.0;0.0
 296;Anterior cingulate area, ventral part, layer 2/3;64;166;102;7934.722591464038;0.0;0.0;0.0
-772;Anterior cingulate area, ventral part, layer 5;64;166;102;16881.735822818464;0.0;0.0;0.0
+772;Anterior cingulate area, ventral part, layer 5;64;166;102;16881.73582281846;0.0;0.0;0.0
 810;Anterior cingulate area, ventral part, 6a;64;166;102;6472.5250005112575;0.0;0.0;0.0
 819;Anterior cingulate area, ventral part, 6b;64;166;102;1114.5422196772938;0.0;0.0;0.0
 972;Prelimbic area;47;168;80;0.0;0.0;0.0;0.0
@@ -340,7 +340,7 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 918;Entorhinal area, lateral part;50;184;37;0.0;0.0;0.0;0.0
 1121;Entorhinal area, lateral part, layer 1;50;184;37;8323.278594654286;0.0;0.0;0.0
 20;Entorhinal area, lateral part, layer 2;50;184;37;13129.10284463895;0.0;0.0;0.0
-52;Entorhinal area, lateral part, layer 3;50;184;37;12791.672631342153;0.0;0.0;0.0
+52;Entorhinal area, lateral part, layer 3;50;184;37;12791.672631342155;0.0;0.0;0.0
 139;Entorhinal area, lateral part, layer 5;50;184;37;14540.174645698275;0.0;0.0;0.0
 28;Entorhinal area, lateral part, layer 6a;50;184;37;7566.61690423117;0.0;0.0;0.0
 926;Entorhinal area, medial part, dorsal zone;50;184;37;0.0;0.0;0.0;0.0
@@ -357,7 +357,7 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 589508447;Hippocampo-amygdalar transition area;51;185;50;4110.5135074336895;0.0;0.0;0.0
 484682508;Area prostriata;51;185;50;0.0;0.0;0.0;0.0
 703;Cortical subplate;138;218;135;5010.3274095584775;0.0;0.0;0.0
-583;Claustrum;138;218;135;9110.615759013477;0.0;0.0;0.0
+583;Claustrum;138;218;135;9110.615759013475;0.0;0.0;0.0
 942;Endopiriform nucleus;160;238;157;0.0;0.0;0.0;0.0
 952;Endopiriform nucleus, dorsal part;160;238;157;24264.299883433196;0.0;0.0;0.0
 966;Endopiriform nucleus, ventral part;160;238;157;13701.711691445633;0.0;0.0;0.0
@@ -394,7 +394,7 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 559;Central amygdalar nucleus, medial part;128;192;226;12760.997157406082;0.0;0.0;0.0
 1105;Intercalated amygdalar nucleus;128;192;226;3885.5600319024925;0.0;0.0;0.0
 403;Medial amygdalar nucleus;128;192;226;34192.92828074194;0.0;0.0;0.0
-803;Pallidum;133;153;204;14315.221170167079;0.0;0.0;0.0
+803;Pallidum;133;153;204;14315.22117016708;0.0;0.0;0.0
 818;Pallidum, dorsal region;133;153;204;0.0;0.0;0.0;0.0
 1022;Globus pallidus, external segment;133;153;204;19305.098263768174;0.0;0.0;0.0
 1031;Globus pallidus, internal segment;133;153;204;4836.499723920734;0.0;0.0;0.0
@@ -535,7 +535,7 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 797;Zona incerta;242;72;59;23906.41935417902;0.0;0.0;0.0
 804;Fields of Forel;242;72;59;0.0;0.0;0.0;0.0
 10671;Median eminence;242;72;59;0.0;0.0;0.0;0.0
-313;Midbrain;255;100;255;14550.399803676966;0.0;0.0;0.0
+313;Midbrain;255;100;255;14550.399803676968;0.0;0.0;0.0
 339;Midbrain, sensory related;255;122;255;0.0;0.0;0.0;0.0
 302;Superior colliculus, sensory related;255;122;255;0.0;0.0;0.0;0.0
 851;Superior colliculus, optic layer;255;122;255;2699.4417063743635;0.0;0.0;0.0
