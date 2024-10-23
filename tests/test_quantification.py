@@ -37,6 +37,8 @@ class TestQuantification(unittest.TestCase):
             pnt.label_df["region_area"].values,
             expected_region_area["region_area"].values,
         )
+        save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs")
+        pnt.save_analysis(save_path)
 
 
 test_case_files = ["brainglobe_atlas.json", "custom_atlas.json"]

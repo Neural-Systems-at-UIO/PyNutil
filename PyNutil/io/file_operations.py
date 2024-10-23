@@ -115,7 +115,7 @@ def _save_per_section_meshview(
     write_points_to_meshview(
         pixel_points[prev_pl : pl + prev_pl],
         labeled_points[prev_pl : pl + prev_pl],
-        f"{output_folder}/per_section_meshview/{split}_pixels.json",
+        f"{output_folder}/per_section_meshview/{split_fn}_pixels.json",
         atlas_labels,
     )
     write_points_to_meshview(
