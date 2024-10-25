@@ -14,12 +14,12 @@ from PyNutil import PyNutil
 ###The object_cutoff is a cut-off for min object size
 
 pnt = PyNutil(
-    segmentation_folder="../tests/test_data/nonlinear_allen_mouse/",
-    alignment_json="../tests/test_data/nonlinear_allen_mouse/alignment.json",
+    segmentation_folder="../tests/test_data/linear_allen_mouse/",
+    alignment_json="../tests/test_data/linear_allen_mouse/alignment_linear.json",
     colour=[0, 0, 0],
     atlas_path="../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
     label_path="../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv",
 )
 pnt.get_coordinates(object_cutoff=0)
 pnt.quantify_coordinates()
-pnt.save_analysis("../demo_data/test_nonlinear_allen_mouse")
+pnt.save_analysis("../test_result/test_linear_allen_mouse")
