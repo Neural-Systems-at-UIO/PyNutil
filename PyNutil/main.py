@@ -9,6 +9,21 @@ from .processing.counting_and_load import label_points
 
 
 class PyNutil:
+    """
+    A class used to perform brain-wide quantification and spatial analysis of features in serial section images.
+
+    Methods
+    -------
+    __init__(self, segmentation_folder=None, alignment_json=None, colour=None, atlas_name=None, atlas_path=None, label_path=None, settings_file=None)
+        Initializes the PyNutil class with the given parameters.
+    get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False)
+        Extracts pixel coordinates from the segmentation data.
+    quantify_coordinates(self)
+        Quantifies the pixel coordinates by region.
+    save_analysis(self, output_folder)
+        Saves the pixel coordinates and pixel counts to different files in the specified output folder.
+    """
+
     def __init__(
         self,
         segmentation_folder=None,
@@ -19,6 +34,33 @@ class PyNutil:
         label_path=None,
         settings_file=None,
     ):
+        """
+        Initializes the PyNutil class with the given parameters.
+
+        Parameters
+        ----------
+        segmentation_folder : str, optional
+            The folder containing the segmentation files (default is None).
+        alignment_json : str, optional
+            The path to the alignment JSON file (default is None).
+        colour : list, optional
+            The RGB colour of the object to be quantified in the segmentation (default is None).
+        atlas_name : str, optional
+            The name of the atlas in the brainglobe api to be used for quantification (default is None).
+        atlas_path : str, optional
+            The path to the custom atlas volume file, only specify if you don't want to use brainglobe (default is None).
+        label_path : str, optional
+            The path to the custom atlas label file, only specify if you don't want to use brainglobe (default is None).
+        settings_file : str, optional
+            The path to the settings JSON file. This file contains the above parameters and is used for automation (default is None).
+
+        Raises
+        ------
+        KeyError
+            If the settings file does not contain the required keys.
+        ValueError
+            If both atlas_path and atlas_name are specified or if neither is specified.
+        """
         if settings_file is not None:
             with open(settings_file, "r") as f:
                 settings = json.load(f)
@@ -57,7 +99,22 @@ class PyNutil:
             raise ValueError("When atlas_path and label_path are not specified, atlas_name must be specified.")
 
     def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False):
-        """Extracts pixel coordinates from the segmentation data."""
+        """
+        Extracts pixel coordinates from the segmentation data.
+
+        Parameters
+        ----------
+        non_linear : bool, optional
+            Whether to use non-linear transformation from the VisuAlign markers (default is True).
+        object_cutoff : int, optional
+            The minimum size of objects to be considered (default is 0).
+        use_flat : bool, optional
+            Whether to use flat file atlas maps exported from QuickNII or VisuAlign. This is usually not needed since we can calculate them automatically. This setting is for testing and compatibility purposes (default is False).
+
+        Returns
+        -------
+        None
+        """
         (
             self.pixel_points,
             self.centroids,
@@ -77,7 +134,18 @@ class PyNutil:
         )
 
     def quantify_coordinates(self):
-        """Quantifies the pixel coordinates by region."""
+        """
+        Quantifies the pixel coordinates by region.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If get_coordinates has not been run before running quantify_coordinates.
+        """
         if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
             raise ValueError("Please run get_coordinates before running quantify_coordinates.")
 
@@ -92,7 +160,18 @@ class PyNutil:
         )
 
     def save_analysis(self, output_folder):
-        """Saves the pixel coordinates and pixel counts to different files in the specified output folder."""
+        """
+        Saves the pixel coordinates and pixel counts to different files in the specified output folder.
+
+        Parameters
+        ----------
+        output_folder : str
+            The folder where the analysis output will be saved.
+
+        Returns
+        -------
+        None
+        """
         save_analysis_output(
             self.pixel_points,
             self.centroids,
