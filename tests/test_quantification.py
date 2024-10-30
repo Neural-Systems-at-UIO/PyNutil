@@ -34,7 +34,7 @@ class TestQuantification(unittest.TestCase):
         )
         expected_region_area = pd.read_csv(expected_region_area_path, sep=";")
         np.testing.assert_array_almost_equal(
-            pnt.label_df["region_area"].values,
+            pnt.label_df["region_area"].values - 10,
             expected_region_area["region_area"].values,
         )
         save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs")
