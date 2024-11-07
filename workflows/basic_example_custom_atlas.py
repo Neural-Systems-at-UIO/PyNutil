@@ -12,6 +12,7 @@ from PyNutil import PyNutil
 ###The atlas_path is the path to the relevant atlas.nrrd
 ###The label_path is the path to the corresponding atlas .csv
 ###The object_cutoff is a cut-off for min object size
+### get_coordinates, if use_flat=True, place flat files in folder titled "flat_files" at same level as "segmentations" folder 
 
 pnt = PyNutil(
     segmentation_folder="../tests/test_data/linear_allen_mouse/",
@@ -20,6 +21,6 @@ pnt = PyNutil(
     atlas_path="../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
     label_path="../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv",
 )
-pnt.get_coordinates(object_cutoff=0)
+pnt.get_coordinates(object_cutoff=0, use_flat=True)
 pnt.quantify_coordinates()
 pnt.save_analysis("../test_result/test_linear_allen_mouse")
