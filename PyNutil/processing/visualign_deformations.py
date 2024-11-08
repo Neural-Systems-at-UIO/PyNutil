@@ -1,4 +1,4 @@
-"""This code was written by Gergely Csucs and Rembrandt Bakker"""
+"""This code was written by Gergely Csucs, Harry Carey and Rembrandt Bakker"""
 
 import numpy as np
 
@@ -14,8 +14,8 @@ def triangulate(w, h, markers):
     edges = [0] * ((len(markers) + 4) * (len(markers) + 4 - 1) // 2)
     triangles = [Triangle(0, 1, 2, vertices, edges), Triangle(1, 2, 3, vertices, edges)]
     edges[0] = edges[1] = edges[4] = edges[5] = 2
-    markers = list(set(tuple(m) for m in markers))
-    markers = [list(m) for m in markers]
+    # markers = list(set(tuple(m) for m in markers))
+    # markers = [list(m) for m in markers]
 
     for marker in markers:
         x, y = marker[2:4]
