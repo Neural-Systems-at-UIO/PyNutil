@@ -20,6 +20,9 @@ def number_sections(filenames, legacy=False):
     :return: list of section numbers
     :rtype: list[int]
     """
+    if not filenames:
+        raise ValueError("No filenames provided")
+
     filenames = [filename.split("\\")[-1] for filename in filenames]
     section_numbers = []
     for filename in filenames:
