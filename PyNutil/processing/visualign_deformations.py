@@ -4,13 +4,14 @@ import numpy as np
 
 
 def triangulate(w, h, markers):
+
     vertices = [
         [-0.1 * w, -0.1 * h, -0.1 * w, -0.1 * h],
         [1.1 * w, -0.1 * h, 1.1 * w, -0.1 * h],
         [-0.1 * w, 1.1 * h, -0.1 * w, 1.1 * h],
         [1.1 * w, 1.1 * h, 1.1 * w, 1.1 * h],
     ]
-
+    
     edges = [0] * ((len(markers) + 4) * (len(markers) + 4 - 1) // 2)
     triangles = [Triangle(0, 1, 2, vertices, edges), Triangle(1, 2, 3, vertices, edges)]
     edges[0] = edges[1] = edges[4] = edges[5] = 2
@@ -59,8 +60,8 @@ def transform(triangulation, x, y):
 
 
 def transform_vec(triangulation, x, y):
-    xPrime = np.zeros(x.shape, float)
-    yPrime = np.zeros(y.shape, float)
+    xPrime = np.zeros(x.shape, np.float64)
+    yPrime = np.zeros(y.shape, np.float64)
     for triangle in triangulation:
         triangle.intriangle_vec(x, y, xPrime, yPrime)
     return (xPrime, yPrime)
@@ -82,8 +83,8 @@ def forwardtransform(triangulation, x, y):
 
 # xy: 2-dimensional array with one xy-pair per row
 def forwardtransform_vec(triangulation, x, y):
-    xPrime = np.zeros(x.shape, float)
-    yPrime = np.zeros(y.shape, float)
+    xPrime = np.zeros(x.shape, np.float64)
+    yPrime = np.zeros(y.shape, np.float64)
     for triangle in triangulation:
         triangle.inforward_vec(x, y, xPrime, yPrime)
     return (xPrime, yPrime)
