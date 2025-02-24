@@ -209,10 +209,7 @@ def warp_image(image, triangulation, rescaleXY):
     newY[newY >= reg_h] = reg_h - 1
     newX[newX < 0] = 0
     newY[newY < 0] = 0
-    new_image = np.zeros_like(image)
-    mask = (newX <= reg_w) & (newY <= reg_h) & (newX > 0) & (newY > 0)
-    new_image[mask] = image[mask]
-    new_image[~mask] = 0
+    new_image = image[newY, newX]
     return new_image
 
 
@@ -227,8 +224,14 @@ def flat_to_dataframe(
     if (image_vector is not None) and (volume is not None):
         image = generate_target_slice(image_vector, volume)
         image = np.float64(image)
+        random_number = np.random.randint(0,1000)
+        outim = ((image==0) * 255).astype(np.uint8)
+        cv2.imwrite(f"{random_number}_linear.jpg",  outim)
         if triangulation is not None:
             image = warp_image(image, triangulation, rescaleXY)
+            outim = ((image==0) * 255).astype(np.uint8)
+
+            cv2.imwrite(f"{random_number}_warped.jpg", outim)
     elif file.endswith(".flat"):
         image = read_flat_file(file)
     elif file.endswith(".seg"):

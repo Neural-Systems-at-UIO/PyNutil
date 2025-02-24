@@ -13,14 +13,15 @@ from PyNutil import PyNutil
 ###The label_path is the path to the corresponding atlas .csv
 ###The object_cutoff is a cut-off for min object size
 ### get_coordinates, if use_flat=True, place flat files in folder titled "flat_files" at same level as "segmentations" folder 
+#This does not use BrainGlobe API.
 
 pnt = PyNutil(
-    segmentation_folder="../tests/test_data/linear_allen_mouse/",
-    alignment_json="../tests/test_data/linear_allen_mouse/alignment_linear.json",
+    segmentation_folder="../tests/test_data/nonlinear_allen_mouse/",
+    alignment_json="../tests/test_data/nonlinear_allen_mouse/alignment.json",
     colour=[0, 0, 0],
     atlas_path="../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
     label_path="../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv",
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/test_linear_allen_mouse")
+pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_24_02_25")
