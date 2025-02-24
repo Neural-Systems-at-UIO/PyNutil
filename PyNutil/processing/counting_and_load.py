@@ -209,10 +209,7 @@ def warp_image(image, triangulation, rescaleXY):
     newY[newY >= reg_h] = reg_h - 1
     newX[newX < 0] = 0
     newY[newY < 0] = 0
-    new_image = np.zeros_like(image)
-    mask = (newX <= reg_w) & (newY <= reg_h) & (newX > 0) & (newY > 0)
-    new_image[mask] = image[mask]
-    new_image[~mask] = 0
+    new_image = image[newY, newX]
     return new_image
 
 
