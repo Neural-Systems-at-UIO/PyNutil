@@ -1,6 +1,5 @@
 import pandas as pd
 from .counting_and_load import pixel_count_per_region, label_points
- 
 
 def quantify_labeled_points(
     pixel_points,
@@ -23,9 +22,9 @@ def quantify_labeled_points(
         atlas_labels,
     )
     label_df = _combine_slice_reports(per_section_df, atlas_labels)
-    
+
     return labeled_points, labeled_points_centroids, label_df, per_section_df
-    
+
 
 def _quantify_per_section(labeled_points, labeled_points_centroids, points_len, centroids_len, region_areas_list, atlas_labels):
     prev_pl = 0
