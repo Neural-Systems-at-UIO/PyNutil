@@ -230,11 +230,8 @@ def flat_to_dataframe(
     if (image_vector is not None) and (volume is not None):
         image = generate_target_slice(image_vector, volume)
         image = np.float64(image)
-        random_number = np.random.randint(0,1000)
-        cv2.imwrite(f"{random_number}_linear.jpg",  outim)
         if triangulation is not None:
             image = warp_image(image, triangulation, rescaleXY)
-            outim = ((image==0) * 255).astype(np.uint8)
     elif file.endswith(".flat"):
         image = read_flat_file(file)
     elif file.endswith(".seg"):
