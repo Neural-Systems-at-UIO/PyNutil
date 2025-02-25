@@ -2,36 +2,44 @@
 PyNutil is under development. 
 
 > [!WARNING]
-> PyNutil currently has known bugs (errors in region_area and area_fraction calculations). Do not use. 
+> PyNutil currently has bugs (errors in region_area). Do not use. 
 
 PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain. It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183). It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
 
 For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
+
+# Available Atlases
+
+PyNutil can be run using a custom atlas in .nrrd format (e.g. tests/test_data/Allen_mouse_2017_atlas)  
+
+Pynutil can also be used with the atlases available in the [BrainGlobe_Atlas API](https://github.com/brainglobe/brainglobe-atlasapi). 
+
 # Installation
 ```
 pip install PyNutil
 ```
 # Usage
+
+PyNutil requires Python 3.8 or above.
+
 As input, PyNutil requires:
-1. An alignment JSON created with the QuickNII or VisuAlign software
-2. A segmentation file for each brain section with the feature-of-interests displayed in a unique RGB colour (it currently accepts many image formats: png, jpg, jpeg, etc).
+1. An atlas
+2. A corresponding alignment JSON created with the QuickNII or VisuAlign software.
+3. A segmentation file for each brain section with the features to be quantified displayed with a unique RGB colour code (it currently accepts many image formats: png, jpg, jpeg, etc).
 
-
-Note: The atlases available in PyNutil are those listed via the [brainglobe_atlasapi](https://github.com/brainglobe/brainglobe-atlasapi).
-
-PyNutil requires Python 3.8 or above
-
-```python
+```
 from PyNutil import PyNutil
+
 """
 Here we define a quantifier object
-The segmentations should be images which come out of ilastik, segmenting an object of interest
-The alignment json should be out of DeepSlice, QuickNII, or VisuAlign, it defines the sections position in an atlas
+The segmentations should be images which come out of ilastik, segmenting objects-of-interest
+The alignment json should be from DeepSlice, QuickNII, or VisuAlign, it defines the sections position in an atlas
 The colour says which colour is the object you want to quantify in your segmentation. It is defined in RGB
-Finally the atlas name is the relevant atlas from brainglobe_atlasapi or a custom atlas.
+Finally the atlas name is the relevant atlas from brainglobe_atlasapi or a custom atlas in nrrd format.
 
-basic_example_custom_atlas.py
+basic_example.py (brainglobe_atlasapi)
+basic_example_custom_atlas.py (custom atlas)
 
 """
 pnt = PyNutil(
@@ -48,6 +56,7 @@ pnt.quantify_coordinates()
 pnt.save_analysis("PyNutil/outputs/myResults")
 ```
 PyNutil generates a series of reports in the folder which you specify.
+
  # Feature Requests
 We are open to feature requests 😊 Simply open an issue in the github describing the feature you would like to see. 
 
@@ -55,7 +64,7 @@ We are open to feature requests 😊 Simply open an issue in the github describi
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
 
 # Contributors
-Harry Carey, Sharon C Yates, Gergely Csucs, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
+Harry Carey, Sharon C Yates, Gergely Csucs, Arda Balkir, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
 
 # Licence
 GNU General Public License v3
