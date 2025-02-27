@@ -57,7 +57,8 @@ jobs:
         
     - name: Build with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --icon=Logo_PyNutil.ico --osx-bundle-identifier com.pynutil.app --name PyNutil PyNutilGUI.py
+        # Build without specifying an icon for macOS to avoid format issues
+        pyinstaller --onefile --windowed --osx-bundle-identifier com.pynutil.app --name PyNutil PyNutilGUI.py
         
     - name: Create DMG
       run: |
@@ -69,7 +70,7 @@ jobs:
         size = '500M'
         files = [app]
         symlinks = {'Applications': '/Applications'}
-        badge_icon = 'Logo_PyNutil.ico'
+        # Remove badge_icon to avoid icon format issues
         icon_locations = {
             appname + '.app': (140, 120),
             'Applications': (360, 120)
