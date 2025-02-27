@@ -28,7 +28,7 @@ As input, PyNutil requires:
 2. A corresponding alignment JSON created with the QuickNII or VisuAlign software.
 3. A segmentation file for each brain section with the features to be quantified displayed with a unique RGB colour code (it currently accepts many image formats: png, jpg, jpeg, etc).
 
-```
+```python
 from PyNutil import PyNutil
 
 """
