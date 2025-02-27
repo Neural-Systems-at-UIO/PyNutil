@@ -2,7 +2,7 @@ name: Build Application
 
 on:
   release:
-    types: [created, published]  # Trigger on new releases
+    types: [published]  # Only trigger on published releases
   workflow_dispatch:  # Allow manual triggering
 
 # Add global permissions
