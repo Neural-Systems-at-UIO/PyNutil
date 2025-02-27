@@ -1,4 +1,9 @@
 PyQt6
-brainglobe_atlasapi
-# Add the PyNutil dependency - if it's installable via pip
-# Otherwise, ensure the local package is properly set up
+brainglobe-atlasapi
+pynrrd
+numpy
+pandas
+opencv-python
+scikit-image
+
+

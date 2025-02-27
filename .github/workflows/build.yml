@@ -30,16 +30,13 @@ jobs:
       run: |
         pyinstaller --onefile --windowed --icon=Logo_PyNutil.ico --name PyNutil PyNutilGUI.py
         
-    - name: Create ZIP archive
-      run: |
-        cd dist
-        powershell Compress-Archive -Path PyNutil.exe -DestinationPath PyNutil-Windows.zip
+    # Remove the ZIP archive creation step
         
     - name: Upload EXE artifact
       uses: actions/upload-artifact@v4
       with:
         name: PyNutil-Windows
-        path: dist/PyNutil-Windows.zip
+        path: dist/PyNutil.exe  # Direct path to the exe file
         retention-days: 5
 
   build-macos:
@@ -93,7 +90,6 @@ jobs:
   create-release:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
-    # Add job-specific permissions (optional, but more explicit)
     permissions:
       contents: write
     steps:
@@ -104,7 +100,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            PyNutil-Windows/PyNutil-Windows.zip
+            PyNutil-Windows/PyNutil.exe  # Updated path to the exe file
             PyNutil-macOS/PyNutil-macOS.dmg
-          # Explicitly set the token
           token: ${{ github.token }}
