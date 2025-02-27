@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton,
     QFileDialog, QColorDialog, QComboBox, QMenuBar, QTextBrowser, QPlainTextEdit, QMessageBox, QTextBrowser
 )
-from PyQt6.QtGui import QAction, QColor
+from PyQt6.QtGui import QAction, QColor, QIcon
 from PyQt6.QtCore import QMetaObject, Qt, Q_ARG, QThread, pyqtSignal, QObject, QUrl
 # Add this import
 from PyQt6.QtGui import QDesktopServices
@@ -58,6 +58,14 @@ class PyNutilGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PyNutil")
+
+        # Set the application icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Logo_PyNutil.ico")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+        else:
+            print(f"Warning: Icon file not found at {icon_path}")
+
         self.arguments = {
             "reference_atlas": None,
             "registration_json": None,
