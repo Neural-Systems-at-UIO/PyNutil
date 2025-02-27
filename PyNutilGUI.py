@@ -376,7 +376,10 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
         # If all validations pass, start the worker
         self.worker = AnalysisWorker(self.arguments, self.atlas_combo.currentText())
-        # We need to modify how messages are appended since we're now using HTML
+        # Disable the run button until analysis finishes
+        self.run_button.setEnabled(False)
+        # Re-enable the run button when the worker finishes
+        self.worker.finished.connect(lambda: self.run_button.setEnabled(True))
         self.worker.log_signal.connect(self.append_text_to_output)
         self.worker.start()
 
