@@ -96,10 +96,14 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         
+      - name: List downloaded artifacts
+        run: |
+          find . -type f | sort
+        
       - name: Attach Artifacts to Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            PyNutil-Windows/PyNutil.exe  # Updated path to the exe file
+            PyNutil-Windows/PyNutil.exe
             PyNutil-macOS/PyNutil-macOS.dmg
           token: ${{ github.token }}

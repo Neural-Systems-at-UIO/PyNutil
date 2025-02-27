@@ -5,5 +5,5 @@ numpy
 pandas
 opencv-python
 scikit-image
-
+xmltodict
 
