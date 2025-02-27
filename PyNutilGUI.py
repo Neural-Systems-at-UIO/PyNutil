@@ -4,17 +4,45 @@ from PyQt6.QtWidgets import (
     QFileDialog, QColorDialog, QComboBox, QMenuBar, QTextBrowser, QPlainTextEdit, QMessageBox, QTextBrowser
 )
 from PyQt6.QtGui import QAction, QColor, QIcon
-from PyQt6.QtCore import QMetaObject, Qt, Q_ARG, QThread, pyqtSignal, QObject, QUrl
+from PyQt6.QtCore import QMetaObject, Qt, Q_ARG, QThread, pyqtSignal, QObject, QUrl, pyqtSlot
 # Add this import
 from PyQt6.QtGui import QDesktopServices
 
 import brainglobe_atlasapi
+import brainglobe_atlasapi.utils as bg_utils
 import PyNutil
 import threading
 import io
 import contextlib
 import json
 import os
+
+#  Patch retrieve_over_http to update progress via GUI's update_progress slot
+original_retrieve = bg_utils.retrieve_over_http
+def patched_retrieve_over_http(url, output_file_path, fn_update=None):
+    def patched_fn_update(completed, total):
+        if total > 0:
+            percent = completed / total
+            total_mb = total / (1024 * 1024)  # Convert bytes to MB
+        else:
+            percent = 0
+            total_mb = 0
+
+        bar_length = 30
+        filled_length = int(round(bar_length * percent))
+        bar = '=' * filled_length + '-' * (bar_length - filled_length)
+
+        # Add total file size in MB to progress text
+        progress_text = f"First time using this atlas<br>Downloading Atlas File: [{bar}] {percent*100:.1f}% ({total_mb:.2f} MB)"
+
+        if hasattr(PyNutilGUI, "instance") and PyNutilGUI.instance:
+            QMetaObject.invokeMethod(PyNutilGUI.instance, "update_progress",
+                                     Qt.ConnectionType.QueuedConnection,
+                                     Q_ARG(str, progress_text))
+        if fn_update:
+            fn_update(completed, total)
+    return original_retrieve(url, output_file_path, fn_update=patched_fn_update)
+bg_utils.retrieve_over_http = patched_retrieve_over_http
 
 class TextRedirector(QObject):
     text_written = pyqtSignal(str)
@@ -39,6 +67,7 @@ class AnalysisWorker(QThread):
         sys.stdout = TextRedirector()
         sys.stdout.text_written.connect(self.log_signal.emit)
         try:
+            print("Starting analysis... This may take a moment")
             pnt = PyNutil.PyNutil(
                 segmentation_folder=self.arguments["segmentation_dir"],
                 alignment_json=self.arguments["registration_json"],
@@ -57,6 +86,7 @@ class AnalysisWorker(QThread):
 class PyNutilGUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        PyNutilGUI.instance = self  # store the instance for progress updates
         self.setWindowTitle("PyNutil")
 
         # Set the application icon
@@ -226,6 +256,10 @@ class PyNutilGUI(QMainWindow):
 
         self.setMinimumSize(1000, 600)
 
+        # Initialize log storage variables
+        self.log_collection = ""
+        self.current_progress = ""
+
     def donothing(self):
         pass
 
@@ -348,9 +382,8 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def append_text_to_output(self, text):
         """Append text to the output box as HTML."""
-        # QTextBrowser appends work a little differently
-        self.output_box.append(text.replace("\n", "<br>"))
-        # Ensure we scroll to the bottom after appending
+        self.log_collection += text.replace("\n", "<br>") + "<br>"
+        self.output_box.setHtml(self.log_collection + self.current_progress)
         sb = self.output_box.verticalScrollBar()
         sb.setValue(sb.maximum())
 
@@ -397,6 +430,11 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load settings: {str(e)}")
             self.output_box.setHtml(f"Error loading settings: {str(e)}")
+
+    @pyqtSlot(str)
+    def update_progress(self, text: str):
+        self.current_progress = text
+        self.output_box.setHtml(self.log_collection + self.current_progress)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
