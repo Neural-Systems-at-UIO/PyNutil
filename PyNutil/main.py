@@ -90,6 +90,8 @@ class PyNutil:
                 )
 
             if atlas_path and label_path:
+                self.atlas_path = atlas_path
+                self.label_path = label_path
                 self.atlas_volume, self.atlas_labels = load_custom_atlas(
                     atlas_path, label_path
                 )
@@ -208,6 +210,13 @@ class PyNutil:
                 self.segmentation_filenames,
                 self.atlas_labels,
                 output_folder,
+                segmentation_folder=self.segmentation_folder,
+                alignment_json=self.alignment_json,
+                colour=self.colour,
+                atlas_name=getattr(self, 'atlas_name', None),
+                atlas_path=getattr(self, 'atlas_path', None),
+                label_path=getattr(self, 'label_path', None),
+                settings_file=getattr(self, 'settings_file', None)
             )
             print(f"Saved output to {output_folder}")
         except Exception as e:

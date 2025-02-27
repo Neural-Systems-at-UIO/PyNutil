@@ -1,4 +1,5 @@
 import os
+import json
 from .read_and_write import read_atlas_volume, write_points_to_meshview
 
 
@@ -14,7 +15,38 @@ def save_analysis_output(
     segmentation_filenames,
     atlas_labels,
     output_folder,
+    segmentation_folder=None,
+    alignment_json=None,
+    colour=None,
+    atlas_name=None,
+    atlas_path=None,
+    label_path=None,
+    settings_file=None
 ):
+    """
+    Save the analysis output to the specified folder.
+
+    Parameters
+    ----------
+    # ...existing code...
+    output_folder : str
+        The folder where the output will be saved.
+    segmentation_folder : str, optional
+        The folder containing the segmentation files (default is None).
+    alignment_json : str, optional
+        The path to the alignment JSON file (default is None).
+    colour : list, optional
+        The RGB colour of the object to be quantified in the segmentation (default is None).
+    atlas_name : str, optional
+        The name of the atlas in the brainglobe api to be used for quantification (default is None).
+    atlas_path : str, optional
+        The path to the custom atlas volume file, only specific if you don't want to use brainglobe (default is None).
+    label_path : str, optional
+        The path to the custom atlas label file, only specific if you don't want to use brainglobe (default is None).
+    settings_file : str, optional
+        The path to the settings file that was used (default is None).
+    """
+    # Create the output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
     os.makedirs(f"{output_folder}/whole_series_report", exist_ok=True)
     os.makedirs(f"{output_folder}/per_section_meshview", exist_ok=True)
@@ -54,6 +86,28 @@ def save_analysis_output(
         atlas_labels,
         output_folder,
     )
+
+    # Save settings to JSON file for reference
+    settings_dict = {
+        "segmentation_folder": segmentation_folder,
+        "alignment_json": alignment_json,
+        "colour": colour,
+    }
+
+    # Add atlas information to settings
+    if atlas_name:
+        settings_dict["atlas_name"] = atlas_name
+    if atlas_path:
+        settings_dict["atlas_path"] = atlas_path
+    if label_path:
+        settings_dict["label_path"] = label_path
+    if settings_file:
+        settings_dict["settings_file"] = settings_file
+
+    # Write settings to file
+    settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
+    with open(settings_file_path, "w") as f:
+        json.dump(settings_dict, f, indent=4)
 
 
 def _save_per_section_reports(
