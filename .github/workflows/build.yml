@@ -1,0 +1,98 @@
+name: Build Application
+
+on:
+  release:
+    types: [created, published]  # Trigger on new releases
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --onefile --windowed --icon=Logo_PyNutil.ico --name PyNutil PyNutilGUI.py
+        
+    - name: Create ZIP archive
+      run: |
+        cd dist
+        powershell Compress-Archive -Path PyNutil.exe -DestinationPath PyNutil-Windows.zip
+        
+    - name: Upload EXE artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: PyNutil-Windows
+        path: dist/PyNutil-Windows.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        pip install dmgbuild
+        
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --onefile --windowed --icon=Logo_PyNutil.icns --osx-bundle-identifier com.pynutil.app --name PyNutil PyNutilGUI.py
+        
+    - name: Create DMG
+      run: |
+        pip install dmgbuild
+        cat > dmg_settings.py << EOF
+        app = 'dist/PyNutil.app'
+        appname = 'PyNutil'
+        format = 'UDBZ'
+        size = '500M'
+        files = [app]
+        symlinks = {'Applications': '/Applications'}
+        badge_icon = 'Logo_PyNutil.icns'
+        icon_locations = {
+            appname + '.app': (140, 120),
+            'Applications': (360, 120)
+        }
+        background = 'builtin-arrow'
+        EOF
+        dmgbuild -s dmg_settings.py "PyNutil" "dist/PyNutil-macOS.dmg" || true
+        
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: PyNutil-macOS
+        path: dist/PyNutil-macOS.dmg
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        
+      - name: Attach Artifacts to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            PyNutil-Windows/PyNutil-Windows.zip
+            PyNutil-macOS/PyNutil-macOS.dmg
