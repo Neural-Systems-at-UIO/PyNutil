@@ -64,7 +64,7 @@ We are open to feature requests 😊 Simply open an issue in the github describi
 PyNutil is developed at the Neural Systems Laboratory at the Institute of Basic Medical Sciences, University of Oslo, Norway with support from the EBRAINS infrastructure, and funding support from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).
 
 # Contributors
-Harry Carey, Sharon C Yates, Gergely Csucs, Arda Balkir, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Punchades, Jan G Bjaalie.
+Harry Carey, Sharon C Yates, Gergely Csucs, Arda Balkir, Ingvild Bjerke, Rembrandt Bakker, Nicolaas Groeneboom, Maja A Puchades, Jan G Bjaalie.
 
 # Licence
 GNU General Public License v3
