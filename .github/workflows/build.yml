@@ -98,4 +98,3 @@ jobs:
           files: |
             PyNutil-Windows/PyNutil-Windows.zip
             PyNutil-macOS/PyNutil-macOS.dmg
-
