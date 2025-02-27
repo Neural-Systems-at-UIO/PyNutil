@@ -1,198 +1,253 @@
-import tkinter
-
-from tkinter import *
-from tkinter import ttk
+import sys
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton,
+    QFileDialog, QColorDialog, QComboBox, QMenuBar, QTextEdit, QPlainTextEdit
+)
+from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QMetaObject, Qt, Q_ARG, QThread
 import brainglobe_atlasapi
 import PyNutil
-from tkinter.filedialog import askopenfilename
-from tkinter.filedialog import askdirectory
-from tkinter import colorchooser
+import threading
+import io
+import contextlib
+import json
+import os
 
-from PyNutil import PyNutil
+class PyNutilGUI(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("PyNutil")
+        self.arguments = {
+            "reference_atlas": None,
+            "registration_json": None,
+            "object_colour": None,
+            "segmentation_dir": None,
+            "output_dir": None,
+        }
+        self.recent_files_path = os.path.join(os.path.expanduser("~"), ".pynutil_recent_files.json")
+        self.recent_files = self.load_recent_files()
+        self.initUI()
 
-# Basic GUI example
-root = Tk()
-# root.geometry("300x300")
-root.title("PyNutil")
-root.wm_iconbitmap("Logo_PyNutil.ico")
-# photo = tkinter.PhotoImage(file = 'Logo_PyNutil.ico')
-# root.wm_iconphoto(False, photo)
+    def load_recent_files(self):
+        if os.path.exists(self.recent_files_path):
+            with open(self.recent_files_path, "r") as file:
+                data = json.load(file)
+                # Ensure each recent is a list
+                for key in ["registration_json", "segmentation_dir", "output_dir"]:
+                    if not isinstance(data.get(key, []), list):
+                        data[key] = [data.get(key)] if data.get(key) else []
+                return data
+        return {
+            "registration_json": [],
+            "segmentation_dir": [],
+            "output_dir": []
+        }
 
-arguments = {
-    "reference_atlas": None,
-    "registration_json": None,
-    "object_colour": None,
-    "segmentation_dir": None,
-    "output_dir": None,
-}
+    def save_recent_files(self):
+        with open(self.recent_files_path, "w") as file:
+            json.dump(self.recent_files, file)
 
-atlas = brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
+    def populate_dropdown(self, dropdown, recents):
+        dropdown.clear()
+        # Add empty item first so nothing is selected by default
+        dropdown.addItem("")
+        for item in recents:
+            dropdown.addItem(item)
+        # Set to non-editable (default behavior)
+        dropdown.setEditable(False)
+        # Make sure no item is selected by default
+        dropdown.setCurrentIndex(-1)
 
-selected_atlas = StringVar(value="Reference Atlas")
+    def initUI(self):
+        central_widget = QWidget()
+        main_layout = QHBoxLayout()
+        left_layout = QVBoxLayout()
 
-directory = ["select", "select1", "select2"]
-selected_directory = StringVar(value="directory")
+        # Menu bar
+        menubar = QMenuBar(self)
+        file_menu = menubar.addMenu('File')
+        help_menu = menubar.addMenu('Help')
 
-colour = ["colour", "black", "red", "blue", "green"]
-selected_colour = StringVar(value=colour[0])
+        new_action = QAction('New', self)
+        new_action.triggered.connect(self.donothing)
+        file_menu.addAction(new_action)
 
+        exit_action = QAction('Exit', self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
 
-def donothing():
-    filewin = Toplevel(root)
-    label = Label(filewin, text="Do nothing")
-    label.pack()
+        about_action = QAction('About PyNutil', self)
+        about_action.triggered.connect(self.about_pynutil)
+        help_menu.addAction(about_action)
 
+        self.setMenuBar(menubar)
 
-def about_pynutil():
-    filewin = Toplevel(root)
-    label = Label(
-        filewin,
-        text="PyNutil is an application for brain-wide mapping using a reference brain atlas",
-    )
-    label.pack()
+        # Select reference atlas
+        left_layout.addWidget(QLabel("Select reference atlas:"))
+        self.atlas_combo = QComboBox()
+        atlas = brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
+        self.atlas_combo.addItems(atlas)
+        # Set no selection by default
+        self.atlas_combo.setCurrentIndex(-1)
+        left_layout.addWidget(self.atlas_combo)
 
+        # Select registration JSON
+        left_layout.addWidget(QLabel("Select registration JSON:"))
+        self.registration_json_button = QPushButton("Browse...")
+        self.registration_json_button.clicked.connect(self.open_registration_json)
+        self.registration_json_dropdown = QComboBox()
+        self.populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
+        self.registration_json_dropdown.currentIndexChanged.connect(self.set_registration_json)
+        left_layout.addWidget(self.registration_json_button)
+        left_layout.addWidget(self.registration_json_dropdown)
 
-def open_registration_json():
-    value = askopenfilename()
-    arguments["registration_json"] = value
-    print(arguments["registration_json"])
+        # Select segmentation folder
+        left_layout.addWidget(QLabel("Select segmentation folder:"))
+        self.segmentation_dir_button = QPushButton("Browse...")
+        self.segmentation_dir_button.clicked.connect(self.open_segmentation_dir)
+        self.segmentation_dir_dropdown = QComboBox()
+        self.populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
+        self.segmentation_dir_dropdown.currentIndexChanged.connect(self.set_segmentation_dir)
+        left_layout.addWidget(self.segmentation_dir_button)
+        left_layout.addWidget(self.segmentation_dir_dropdown)
 
+        # Select object colour
+        left_layout.addWidget(QLabel("Select object colour:"))
+        self.colour_button = QPushButton("Colour")
+        self.colour_button.clicked.connect(self.choose_colour)
+        left_layout.addWidget(self.colour_button)
+        self.colour_dropdown = QComboBox()
+        self.populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+        self.colour_dropdown.currentIndexChanged.connect(self.set_colour)
+        left_layout.addWidget(self.colour_dropdown)
 
-def choose_colour():
-    value = colorchooser.askcolor()
-    arguments["object_colour"] = value
-    print(list(value[0]))
+        # Select output directory
+        left_layout.addWidget(QLabel("Select output directory:"))
+        self.output_dir_button = QPushButton("Browse...")
+        self.output_dir_button.clicked.connect(self.select_output_dir)
+        self.output_dir_dropdown = QComboBox()
+        self.populate_dropdown(self.output_dir_dropdown, self.recent_files["output_dir"])
+        self.output_dir_dropdown.currentIndexChanged.connect(self.set_output_dir)
+        left_layout.addWidget(self.output_dir_button)
+        left_layout.addWidget(self.output_dir_dropdown)
 
+        # Start analysis
+        left_layout.addWidget(QLabel("Start analysis:"))
+        self.run_button = QPushButton("Run")
+        self.run_button.clicked.connect(self.start_analysis)
+        left_layout.addWidget(self.run_button)
 
-def open_segmentation_dir():
-    value = askdirectory()
-    arguments["segmentation_dir"] = value
-    print(arguments["segmentation_dir"])
+        # Output box
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(QLabel("Output:"))
+        self.output_box = QPlainTextEdit()
+        self.output_box.setReadOnly(True)
+        right_layout.addWidget(self.output_box)
 
+        main_layout.addLayout(left_layout)
+        main_layout.addLayout(right_layout)
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
 
-def select_output_dir():
-    value = askdirectory()
-    arguments["output_dir"] = value
-    print(arguments["output_dir"])
+    def donothing(self):
+        pass
 
+    def about_pynutil(self):
+        about_msg = QLabel("PyNutil is an application for brain-wide mapping using a reference brain atlas")
+        about_msg.show()
 
-def start_analysis():
-    pnt = PyNutil(
-        segmentation_folder=open_segmentation_dir,  #'../tests/test_data/big_caudoputamen_test/',
-        alignment_json=open_registration_json,  #'../tests/test_data/big_caudoputamen.json',
-        colour=choose_colour,  # [0, 0, 0],
-        atlas_name="allen_mouse_25um",
-    )
+    def set_registration_json(self, index):
+        if index >= 0:
+            value = self.registration_json_dropdown.itemText(index)
+            self.arguments["registration_json"] = value
 
-    pnt.get_coordinates(object_cutoff=0)
-    pnt.quantify_coordinates()
-    pnt.save_analysis("../tests/outputs/test9_PyNutil_bigcaudoputamen_new")
+    def set_segmentation_dir(self, index):
+        if index >= 0:
+            value = self.segmentation_dir_dropdown.itemText(index)
+            self.arguments["segmentation_dir"] = value
 
+    def set_output_dir(self, index):
+        if index >= 0:
+            value = self.output_dir_dropdown.itemText(index)
+            self.arguments["output_dir"] = value
 
-# Creating a menu
-root.option_add("*tearOff", FALSE)
-# win = Toplevel(root)
-# menubar = Menu(win)
-menubar = Menu(root)
-# win['menu'] = menubar
-root.config(menu=menubar)
+    def set_colour(self, index):
+        if index >= 0:
+            value = self.colour_dropdown.itemText(index)
+            self.arguments["object_colour"] = value
 
-# menubar = Menu(root)
-menu_file = Menu(menubar)
-menu_help = Menu(menubar)
-menubar.add_cascade(menu=menu_file, label="File")
-menubar.add_cascade(menu=menu_help, label="Help")
+    def update_recent(self, key, value):
+        # Insert new entry at the beginning, remove duplicates
+        recents = self.recent_files.get(key, [])
+        if value in recents:
+            recents.remove(value)
+        recents.insert(0, value)
+        # Optional: Limit length
+        self.recent_files[key] = recents[:5]
+        self.save_recent_files()
 
-menu_file.add_command(label="New", command=donothing)
-menu_file.add_command(label="Exit", command=root.quit)
-menu_help.add_command(label="About PyNutil", command=about_pynutil)
+    def open_registration_json(self):
+        value, _ = QFileDialog.getOpenFileName(self, "Open Registration JSON")
+        if value:
+            self.arguments["registration_json"] = value
+            self.update_recent("registration_json", value)
+            self.populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
+            # Set the dropdown to select the new item (index 1, after the empty item)
+            self.registration_json_dropdown.setCurrentIndex(1)
 
-# Creating a content frame"
-mainframe = ttk.Frame(root, padding="12 12 12 12")  # left top right bottom
-mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-root.columnconfigure(0, weight=1)  # column to expand if there is extra space
-root.rowconfigure(0, weight=1)  # row to expand if there is extra space
+    def choose_colour(self):
+        value = QColorDialog.getColor()
+        if value.isValid():
+            self.arguments["object_colour"] = value.name()
+            self.update_recent("object_colour", value.name())
+            self.populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+            # Set the dropdown to select the new item
+            self.colour_dropdown.setCurrentIndex(1)
 
-# Creating a content frame"
-bottomframe = ttk.Frame(root, padding="12 12 12 12")  # left top right bottom
-mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-root.columnconfigure(0, weight=1)  # column to expand if there is extra space
-root.rowconfigure(0, weight=1)  # row to expand if there is extra space
+    def open_segmentation_dir(self):
+        value = QFileDialog.getExistingDirectory(self, "Select Segmentation Directory")
+        if value:
+            self.arguments["segmentation_dir"] = value
+            self.update_recent("segmentation_dir", value)
+            self.populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
+            # Set the dropdown to select the new item
+            self.segmentation_dir_dropdown.setCurrentIndex(1)
 
-# Select reference atlas
-ttk.Label(mainframe, text="Select reference atlas:", width=25).grid(
-    column=1, row=1, sticky=W
-)
-ttk.OptionMenu(mainframe, selected_atlas, "Reference Atlas", *atlas).grid(
-    column=2, row=1, columnspan=2
-)
-ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(
-    column=4, row=1, sticky=W
-)
+    def select_output_dir(self):
+        value = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+        if value:
+            self.arguments["output_dir"] = value
+            self.update_recent("output_dir", value)
+            self.populate_dropdown(self.output_dir_dropdown, self.recent_files["output_dir"])
+            # Set the dropdown to select the new item
+            self.output_dir_dropdown.setCurrentIndex(1)
 
-# Select registration JSON
-ttk.Label(mainframe, text="Select registration JSON:", width=25).grid(
-    column=1, row=2, sticky=W
-)
-ttk.Button(mainframe, width=16, text="Browse...", command=open_registration_json).grid(
-    column=2, row=2, sticky=W
-)
-Text(mainframe, height=1, width=40).grid(column=3, row=2, sticky=W)
-ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(
-    column=4, row=2, sticky=W
-)
+    def start_analysis(self):
+        self.output_box.clear()
+        thread = threading.Thread(target=self.run_analysis)
+        thread.start()
 
-# Select segmentation folder
-ttk.Label(mainframe, text="Select segmentation folder:", width=25).grid(
-    column=1, row=3, sticky=W
-)
-ttk.Button(mainframe, width=16, text="Browse...", command=open_segmentation_dir).grid(
-    column=2, row=3, sticky=W
-)
-Text(mainframe, height=1, width=40).grid(column=3, row=3, sticky=W)
-ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(
-    column=4, row=3, sticky=W
-)
+    def run_analysis(self):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            try:
+                pnt = PyNutil.PyNutil(
+                    segmentation_folder=self.arguments["segmentation_dir"],
+                    alignment_json=self.arguments["registration_json"],
+                    colour=self.arguments["object_colour"],
+                    atlas_name=self.atlas_combo.currentText(),
+                )
 
-# Select object colour
-ttk.Label(mainframe, text="Select object colour:", width=25).grid(
-    column=1, row=4, sticky=W
-)
-ttk.Button(mainframe, width=16, text="Colour", command=choose_colour).grid(
-    column=2, row=4, sticky=W
-)
-Text(mainframe, height=1, width=40).grid(column=3, row=4, sticky=W)
-ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(
-    column=4, row=4, sticky=W
-)
+                pnt.get_coordinates(object_cutoff=0)
+                pnt.quantify_coordinates()
+                pnt.save_analysis(self.arguments["output_dir"])
+            except Exception as e:
+                print(f"Error: {e}")
+        output = buffer.getvalue()
+        QMetaObject.invokeMethod(self.output_box, "setPlainText", Qt.ConnectionType.QueuedConnection, Q_ARG(str, output))
 
-# Select output directory
-ttk.Label(mainframe, text="Select output directory:", width=25).grid(
-    column=1, row=5, sticky=W
-)
-ttk.Button(mainframe, width=16, text="Browse...", command=select_output_dir).grid(
-    column=2, row=5, sticky=W
-)
-Text(mainframe, height=1, width=40).grid(column=3, row=5, sticky=W)
-ttk.Button(mainframe, text="Help", width=8, command="buttonpressed").grid(
-    column=4, row=5, sticky=W
-)
-
-# Start analysis
-ttk.Label(mainframe, text="Start analysis:", width=25).grid(column=1, row=6, sticky=W)
-ttk.Button(mainframe, width=52, text="Run", command="buttonpressed").grid(
-    column=3, row=6
-)
-ttk.Button(mainframe, text="Docs", width=8, command="buttonpressed").grid(
-    column=4, row=6, sticky=W
-)
-
-# sunken frame around mainframe
-"""
-mainframe['borderwidth'] = 2
-mainframe['relief'] = 'sunken'
-"""
-
-# button.configure()
-
-root.mainloop()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    gui = PyNutilGUI()
+    gui.show()
+    sys.exit(app.exec())

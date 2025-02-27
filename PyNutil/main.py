@@ -61,42 +61,47 @@ class PyNutil:
         ValueError
             If both atlas_path and atlas_name are specified or if neither is specified.
         """
-        if settings_file is not None:
-            with open(settings_file, "r") as f:
-                settings = json.load(f)
-            try:
-                segmentation_folder = settings["segmentation_folder"]
-                alignment_json = settings["alignment_json"]
-                colour = settings["colour"]
-                if "atlas_path" in settings and "label_path" in settings:
-                    atlas_path = settings["atlas_path"]
-                    label_path = settings["label_path"]
-                else:
-                    atlas_name = settings["atlas_name"]
-            except KeyError as exc:
-                raise KeyError(
-                    "Settings file must contain segmentation_folder, alignment_json, colour, and either atlas_path and label_path or atlas_name"
-                ) from exc
+        try:
+            if settings_file is not None:
+                with open(settings_file, "r") as f:
+                    settings = json.load(f)
+                try:
+                    segmentation_folder = settings["segmentation_folder"]
+                    alignment_json = settings["alignment_json"]
+                    colour = settings["colour"]
+                    if "atlas_path" in settings and "label_path" in settings:
+                        atlas_path = settings["atlas_path"]
+                        label_path = settings["label_path"]
+                    else:
+                        atlas_name = settings["atlas_name"]
+                except KeyError as exc:
+                    raise KeyError(
+                        "Settings file must contain segmentation_folder, alignment_json, colour, and either atlas_path and label_path or atlas_name"
+                    ) from exc
 
-        self.segmentation_folder = segmentation_folder
-        self.alignment_json = alignment_json
-        self.colour = colour
-        self.atlas_name = atlas_name
+            self.segmentation_folder = segmentation_folder
+            self.alignment_json = alignment_json
+            self.colour = colour
+            self.atlas_name = atlas_name
 
-        if (atlas_path or label_path) and atlas_name:
-            raise ValueError(
-                "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."
-            )
+            if (atlas_path or label_path) and atlas_name:
+                raise ValueError(
+                    "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."
+                )
 
-        if atlas_path and label_path:
-            self.atlas_volume, self.atlas_labels = load_custom_atlas(
-                atlas_path, label_path
-            )
-        else:
-            self._check_atlas_name()
-            self.atlas_volume, self.atlas_labels = load_atlas_data(
-                atlas_name=atlas_name
-            )
+            if atlas_path and label_path:
+                self.atlas_volume, self.atlas_labels = load_custom_atlas(
+                    atlas_path, label_path
+                )
+            else:
+                self._check_atlas_name()
+                self.atlas_volume, self.atlas_labels = load_atlas_data(
+                    atlas_name=atlas_name
+                )
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            raise ValueError(f"Error loading settings file: {e}")
+        except Exception as e:
+            raise ValueError(f"Initialization error: {e}")
 
     def _check_atlas_name(self):
         if not self.atlas_name:
@@ -121,23 +126,26 @@ class PyNutil:
         -------
         None
         """
-        (
-            self.pixel_points,
-            self.centroids,
-            self.region_areas_list,
-            self.points_len,
-            self.centroids_len,
-            self.segmentation_filenames,
-        ) = folder_to_atlas_space(
-            self.segmentation_folder,
-            self.alignment_json,
-            self.atlas_labels,
-            self.colour,
-            non_linear,
-            object_cutoff,
-            self.atlas_volume,
-            use_flat,
-        )
+        try:
+            (
+                self.pixel_points,
+                self.centroids,
+                self.region_areas_list,
+                self.points_len,
+                self.centroids_len,
+                self.segmentation_filenames,
+            ) = folder_to_atlas_space(
+                self.segmentation_folder,
+                self.alignment_json,
+                self.atlas_labels,
+                self.colour,
+                non_linear,
+                object_cutoff,
+                self.atlas_volume,
+                use_flat,
+            )
+        except Exception as e:
+            raise ValueError(f"Error extracting coordinates: {e}")
 
     def quantify_coordinates(self):
         """
@@ -156,21 +164,23 @@ class PyNutil:
             raise ValueError(
                 "Please run get_coordinates before running quantify_coordinates."
             )
-
-        (
-            self.labeled_points,
-            self.labeled_points_centroids,
-            self.label_df,
-            self.per_section_df,
-        ) = quantify_labeled_points(
-            self.pixel_points,
-            self.centroids,
-            self.points_len,
-            self.centroids_len,
-            self.region_areas_list,
-            self.atlas_labels,
-            self.atlas_volume,
-        )
+        try:
+            (
+                self.labeled_points,
+                self.labeled_points_centroids,
+                self.label_df,
+                self.per_section_df,
+            ) = quantify_labeled_points(
+                self.pixel_points,
+                self.centroids,
+                self.points_len,
+                self.centroids_len,
+                self.region_areas_list,
+                self.atlas_labels,
+                self.atlas_volume,
+            )
+        except Exception as e:
+            raise ValueError(f"Error quantifying coordinates: {e}")
 
     def save_analysis(self, output_folder):
         """
@@ -185,16 +195,20 @@ class PyNutil:
         -------
         None
         """
-        save_analysis_output(
-            self.pixel_points,
-            self.centroids,
-            self.label_df,
-            self.per_section_df,
-            self.labeled_points,
-            self.labeled_points_centroids,
-            self.points_len,
-            self.centroids_len,
-            self.segmentation_filenames,
-            self.atlas_labels,
-            output_folder,
-        )
+        try:
+            save_analysis_output(
+                self.pixel_points,
+                self.centroids,
+                self.label_df,
+                self.per_section_df,
+                self.labeled_points,
+                self.labeled_points_centroids,
+                self.points_len,
+                self.centroids_len,
+                self.segmentation_filenames,
+                self.atlas_labels,
+                output_folder,
+            )
+            print(f"Saved output to {output_folder}")
+        except Exception as e:
+            raise ValueError(f"Error saving analysis: {e}")

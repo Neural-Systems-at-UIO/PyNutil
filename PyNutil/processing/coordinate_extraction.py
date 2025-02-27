@@ -14,6 +14,8 @@ from .transformations import (
     get_transformed_coordinates,
 )
 from .utils import (
+    get_flat_files,
+    get_segmentations,
     number_sections,
     find_matching_pixels,
     scale_positions,
@@ -42,23 +44,6 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     coords = np.array([label.coords for label in labels_info], dtype=object)
     return centroids, area, coords
 
-
-def find_matching_pixels(segmentation, id):
-    """
-    Returns the Y and X coordinates of all the pixels in the segmentation that match the id provided.
-
-    Args:
-        segmentation (ndarray): Segmentation array.
-        id (int): ID to match.
-
-    Returns:
-        tuple: Y and X coordinates of matching pixels.
-    """
-    mask = segmentation == id
-    mask = np.all(mask, axis=2)
-    id_positions = np.where(mask)
-    id_y, id_x = id_positions[0], id_positions[1]
-    return id_y, id_x
 
 
 def create_threads(
@@ -130,24 +115,6 @@ def create_threads(
     return threads
 
 
-def scale_positions(id_y, id_x, y_scale, x_scale):
-    """
-    Scales the Y and X coordinates to the registration space.
-
-    Args:
-        id_y (ndarray): Y coordinates.
-        id_x (ndarray): X coordinates.
-        y_scale (float): Y scaling factor.
-        x_scale (float): X scaling factor.
-
-    Returns:
-        tuple: Scaled Y and X coordinates.
-    """
-    id_y = id_y * y_scale
-    id_x = id_x * x_scale
-    return id_y, id_x
-
-
 def folder_to_atlas_space(
     folder,
     quint_alignment,
@@ -211,51 +178,7 @@ def folder_to_atlas_space(
     )
 
 
-def get_segmentations(folder):
-    """
-    Gets the list of segmentation files in the folder.
 
-    Args:
-        folder (str): Path to the folder.
-
-    Returns:
-        list: List of segmentation files.
-    """
-    segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg", ".dzip"]
-    segmentations = [
-        file
-        for file in glob(folder + "/segmentations/*")
-        if any([file.endswith(type) for type in segmentation_file_types])
-    ]
-    if len(segmentations) == 0:
-        raise ValueError(
-            f"No segmentations found in folder {folder}. Make sure the folder contains a segmentations folder with segmentations."
-        )
-    print(f"Found {len(segmentations)} segmentations in folder {folder}")
-    return segmentations
-
-
-def get_flat_files(folder, use_flat):
-    """
-    Gets the list of flat files in the folder.
-
-    Args:
-        folder (str): Path to the folder.
-        use_flat (bool): Whether to use flat files.
-
-    Returns:
-        tuple: List of flat files and their section numbers.
-    """
-    if use_flat:
-        flat_files = [
-            file
-            for file in glob(folder + "/flat_files/*")
-            if any([file.endswith(".flat"), file.endswith(".seg")])
-        ]
-        print(f"Found {len(flat_files)} flat files in folder {folder}")
-        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
-        return flat_files, flat_file_nrs
-    return [], []
 
 
 def initialize_lists(length):
