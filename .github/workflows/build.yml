@@ -5,6 +5,10 @@ on:
     types: [created, published]  # Trigger on new releases
   workflow_dispatch:  # Allow manual triggering
 
+# Add global permissions
+permissions:
+  contents: write
+  
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -89,6 +93,9 @@ jobs:
   create-release:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
+    # Add job-specific permissions (optional, but more explicit)
+    permissions:
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -99,3 +106,5 @@ jobs:
           files: |
             PyNutil-Windows/PyNutil-Windows.zip
             PyNutil-macOS/PyNutil-macOS.dmg
+          # Explicitly set the token
+          token: ${{ github.token }}
