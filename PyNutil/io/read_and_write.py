@@ -6,6 +6,83 @@ import os
 import nrrd
 import re
 from .propagation import propagate
+import numpy as np
+import struct
+import cv2
+from .reconstruct_dzi import reconstruct_dzi
+
+
+def read_flat_file(file):
+    """
+    Reads a flat file and returns an image array.
+
+    Args:
+        file (str): Path to the flat file.
+
+    Returns:
+        ndarray: Image array.
+    """
+    with open(file, "rb") as f:
+        b, w, h = struct.unpack(">BII", f.read(9))
+        data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
+    image_data = np.array(data)
+    image = np.zeros((h, w))
+    for x in range(w):
+        for y in range(h):
+            image[y, x] = image_data[x + y * w]
+    return image
+
+
+def read_seg_file(file):
+    """
+    Reads a segmentation file and returns an image array.
+
+    Args:
+        file (str): Path to the segmentation file.
+
+    Returns:
+        ndarray: Image array.
+    """
+    with open(file, "rb") as f:
+
+        def byte():
+            return f.read(1)[0]
+
+        def code():
+            c = byte()
+            if c < 0:
+                raise "!"
+            return c if c < 128 else (c & 127) | (code() << 7)
+
+        if "SegRLEv1" != f.read(8).decode():
+            raise "Header mismatch"
+        atlas = f.read(code()).decode()
+        print(f"Target atlas: {atlas}")
+        codes = [code() for x in range(code())]
+        w = code()
+        h = code()
+        data = []
+        while len(data) < w * h:
+            data += [codes[byte() if len(codes) <= 256 else code()]] * (code() + 1)
+    image_data = np.array(data)
+    image = np.reshape(image_data, (h, w))
+    return image
+
+
+def load_segmentation(segmentation_path: str):
+    """
+    Loads a segmentation from a file.
+
+    Args:
+        segmentation_path (str): Path to the segmentation file.
+
+    Returns:
+        ndarray: Segmentation array.
+    """
+    if segmentation_path.endswith(".dzip"):
+        return reconstruct_dzi(segmentation_path)
+    else:
+        return cv2.imread(segmentation_path)
 
 
 # related to read and write

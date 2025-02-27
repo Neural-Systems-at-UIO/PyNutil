@@ -4,7 +4,17 @@ import numpy as np
 
 
 def triangulate(w, h, markers):
+    """
+    Triangulates a set of markers.
 
+    Args:
+        w (int): Width of the image.
+        h (int): Height of the image.
+        markers (list): List of markers.
+
+    Returns:
+        list: List of triangles.
+    """
     vertices = [
         [-0.1 * w, -0.1 * h, -0.1 * w, -0.1 * h],
         [1.1 * w, -0.1 * h, 1.1 * w, -0.1 * h],
@@ -15,8 +25,6 @@ def triangulate(w, h, markers):
     edges = [0] * ((len(markers) + 4) * (len(markers) + 4 - 1) // 2)
     triangles = [Triangle(0, 1, 2, vertices, edges), Triangle(1, 2, 3, vertices, edges)]
     edges[0] = edges[1] = edges[4] = edges[5] = 2
-    # markers = list(set(tuple(m) for m in markers))
-    # markers = [list(m) for m in markers]
 
     for marker in markers:
         x, y = marker[2:4]
@@ -46,6 +54,17 @@ def triangulate(w, h, markers):
 
 
 def transform(triangulation, x, y):
+    """
+    Transforms a point using a triangulation.
+
+    Args:
+        triangulation (list): List of triangles.
+        x (float): X coordinate of the point.
+        y (float): Y coordinate of the point.
+
+    Returns:
+        tuple: Transformed coordinates.
+    """
     for triangle in triangulation:
         uv1 = triangle.intriangle(x, y)
         if uv1:
@@ -60,6 +79,17 @@ def transform(triangulation, x, y):
 
 
 def transform_vec(triangulation, x, y):
+    """
+    Transforms a set of points using a triangulation.
+
+    Args:
+        triangulation (list): List of triangles.
+        x (ndarray): X coordinates of the points.
+        y (ndarray): Y coordinates of the points.
+
+    Returns:
+        tuple: Transformed coordinates.
+    """
     xPrime = np.zeros(x.shape, np.float64)
     yPrime = np.zeros(y.shape, np.float64)
     for triangle in triangulation:
@@ -68,6 +98,17 @@ def transform_vec(triangulation, x, y):
 
 
 def forwardtransform(triangulation, x, y):
+    """
+    Forward transforms a point using a triangulation.
+
+    Args:
+        triangulation (list): List of triangles.
+        x (float): X coordinate of the point.
+        y (float): Y coordinate of the point.
+
+    Returns:
+        tuple: Transformed coordinates.
+    """
     for triangle in triangulation:
         uv1 = triangle.inforward(x, y)
         if uv1:
@@ -81,8 +122,18 @@ def forwardtransform(triangulation, x, y):
             )
 
 
-# xy: 2-dimensional array with one xy-pair per row
 def forwardtransform_vec(triangulation, x, y):
+    """
+    Forward transforms a set of points using a triangulation.
+
+    Args:
+        triangulation (list): List of triangles.
+        x (ndarray): X coordinates of the points.
+        y (ndarray): Y coordinates of the points.
+
+    Returns:
+        tuple: Transformed coordinates.
+    """
     xPrime = np.zeros(x.shape, np.float64)
     yPrime = np.zeros(y.shape, np.float64)
     for triangle in triangulation:
@@ -91,6 +142,15 @@ def forwardtransform_vec(triangulation, x, y):
 
 
 def inv3x3(m):
+    """
+    Inverts a 3x3 matrix.
+
+    Args:
+        m (list): 3x3 matrix.
+
+    Returns:
+        list: Inverted 3x3 matrix.
+    """
     det = (
         m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2])
         - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
@@ -118,18 +178,61 @@ def inv3x3(m):
 
 
 def rowmul3(v, m):
+    """
+    Multiplies a row vector by a 3x3 matrix.
+
+    Args:
+        v (list): Row vector.
+        m (list): 3x3 matrix.
+
+    Returns:
+        list: Resulting row vector.
+    """
     return [sum(v[j] * m[j][i] for j in range(3)) for i in range(3)]
 
 
 def rowmul3_vec(x, y, m):
+    """
+    Multiplies a set of row vectors by a 3x3 matrix.
+
+    Args:
+        x (ndarray): X coordinates of the vectors.
+        y (ndarray): Y coordinates of the vectors.
+        m (list): 3x3 matrix.
+
+    Returns:
+        ndarray: Resulting coordinates.
+    """
     return np.outer(x, m[0]) + np.outer(y, m[1]) + m[2]
 
 
 def distsquare(ax, ay, bx, by):
+    """
+    Calculates the squared distance between two points.
+
+    Args:
+        ax (float): X coordinate of the first point.
+        ay (float): Y coordinate of the first point.
+        bx (float): X coordinate of the second point.
+        by (float): Y coordinate of the second point.
+
+    Returns:
+        float: Squared distance between the points.
+    """
     return (ax - bx) * (ax - bx) + (ay - by) * (ay - by)
 
 
 def edgeindex(a, b):
+    """
+    Calculates the index of an edge in the edge list.
+
+    Args:
+        a (int): Index of the first vertex.
+        b (int): Index of the second vertex.
+
+    Returns:
+        int: Index of the edge.
+    """
     i = min(a, b)
     j = max(a, b)
     return j * (j - 1) // 2 + i
@@ -137,6 +240,16 @@ def edgeindex(a, b):
 
 class Triangle:
     def __init__(self, a, b, c, vlist, elist):
+        """
+        Initializes a triangle.
+
+        Args:
+            a (int): Index of the first vertex.
+            b (int): Index of the second vertex.
+            c (int): Index of the third vertex.
+            vlist (list): List of vertices.
+            elist (list): List of edges.
+        """
         self.A = vlist[a]
         self.B = vlist[b]
         self.C = vlist[c]
@@ -168,30 +281,70 @@ class Triangle:
         self.r2den = distsquare(ax * self.den, ay * self.den, self.Mdenx, self.Mdeny)
 
     def removeedges(self):
+        """
+        Removes the edges of the triangle.
+        """
         for edge in self.edges:
             self.elist[edge] -= 1
         del self.edges
         del self.elist
 
     def incircle(self, x, y):
+        """
+        Checks if a point is inside the circumcircle of the triangle.
+
+        Args:
+            x (float): X coordinate of the point.
+            y (float): Y coordinate of the point.
+
+        Returns:
+            bool: True if the point is inside the circumcircle, False otherwise.
+        """
         return (
             distsquare(x * self.den, y * self.den, self.Mdenx, self.Mdeny) < self.r2den
         )
 
     def intriangle(self, x, y):
+        """
+        Checks if a point is inside the triangle.
+
+        Args:
+            x (float): X coordinate of the point.
+            y (float): Y coordinate of the point.
+
+        Returns:
+            list: Barycentric coordinates of the point if inside, None otherwise.
+        """
         uv1 = rowmul3([x, y, 1], self.decomp)
         if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
             return uv1
 
     def inforward(self, x, y):
+        """
+        Checks if a point is inside the forward-transformed triangle.
+
+        Args:
+            x (float): X coordinate of the point.
+            y (float): Y coordinate of the point.
+
+        Returns:
+            list: Barycentric coordinates of the point if inside, None otherwise.
+        """
         uv1 = rowmul3([x, y, 1], self.forwarddecomp)
         if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
             return uv1
 
-    # xy: 2-dimensional array with one xy-pair per row
     def inforward_vec(self, x, y, xPrime, yPrime):
+        """
+        Checks if a set of points are inside the forward-transformed triangle.
+
+        Args:
+            x (ndarray): X coordinates of the points.
+            y (ndarray): Y coordinates of the points.
+            xPrime (ndarray): Transformed X coordinates of the points.
+            yPrime (ndarray): Transformed Y coordinates of the points.
+        """
         uv1 = rowmul3_vec(x, y, self.forwarddecomp)
-        # also compute the next step, since it uses the parameters of this triangle
         ok = (
             (uv1[:, 0] >= 0)
             & (uv1[:, 0] <= 1)
@@ -211,8 +364,16 @@ class Triangle:
         )
 
     def intriangle_vec(self, x, y, xPrime, yPrime):
+        """
+        Checks if a set of points are inside the triangle.
+
+        Args:
+            x (ndarray): X coordinates of the points.
+            y (ndarray): Y coordinates of the points.
+            xPrime (ndarray): Transformed X coordinates of the points.
+            yPrime (ndarray): Transformed Y coordinates of the points.
+        """
         uv1 = rowmul3_vec(x, y, self.decomp)
-        # also compute the next step, since it uses the parameters of this triangle
         ok = (
             (uv1[:, 0] >= 0)
             & (uv1[:, 0] <= 1)
