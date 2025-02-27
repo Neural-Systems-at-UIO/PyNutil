@@ -1,5 +1,5 @@
 idx;name;r;g;b;a;VIS;MSH;region_area;pixel_count;object_count;area_fraction
-0;Clear Label;0;0;0;5.0;5.0;5.0;3401040.9210822303;0.0;0.0;0.0
+0;Clear Label;0;0;0;5.0;5.0;5.0;3417953.3323789854;0.0;0.0;0.0
 997;root;255;255;255;5.0;5.0;5.0;33569.1936440418;0.0;0.0;0.0
 8;Basic cell groups and regions;191;218;227;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 567;Cerebrum;176;240;255;5.0;5.0;5.0;0.0;0.0;0.0;0.0
@@ -432,13 +432,13 @@ idx;name;r;g;b;a;VIS;MSH;region_area;pixel_count;object_count;area_fraction
 200;Cortical amygdalar area, anterior part, layer 2;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 208;Cortical amygdalar area, anterior part, layer 3;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 647;Cortical amygdalar area, posterior part;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
-655;Cortical amygdalar area, posterior part, lateral zone;97;231;183;5.0;5.0;5.0;11861.183255281294;0.0;0.0;0.0
+655;Cortical amygdalar area, posterior part, lateral zone;97;231;183;5.0;5.0;5.0;7934.7225914640385;0.0;0.0;0.0
 584;Cortical amygdalar area, posterior part, lateral zone, layers 1-2;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 376;Cortical amygdalar area, posterior part, lateral zone, layers 1-3;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 216;Cortical amygdalar area, posterior part, lateral zone, layer 1;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 224;Cortical amygdalar area, posterior part, lateral zone, layer 2;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 232;Cortical amygdalar area, posterior part, lateral zone, layer 3;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
-663;Cortical amygdalar area, posterior part, medial zone;97;231;183;5.0;5.0;5.0;22975.92997811816;0.0;0.0;0.0
+663;Cortical amygdalar area, posterior part, medial zone;97;231;183;5.0;5.0;5.0;16063.7231845232;0.0;0.0;0.0
 592;Cortical amygdalar area, posterior part, medial zone, layers 1-2;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 383;Cortical amygdalar area, posterior part, medial zone, layers 1-3;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 240;Cortical amygdalar area, posterior part, medial zone, layer 1;97;231;183;5.0;5.0;5.0;0.0;0.0;0.0;0.0
@@ -449,7 +449,7 @@ idx;name;r;g;b;a;VIS;MSH;region_area;pixel_count;object_count;area_fraction
 408;Piriform-amygdalar area, molecular layer;89;218;171;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 416;Piriform-amygdalar area, pyramidal layer;89;218;171;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 424;Piriform-amygdalar area, polymorph layer;89;218;171;5.0;5.0;5.0;0.0;0.0;0.0;0.0
-566;Postpiriform transition area;168;236;211;5.0;5.0;5.0;43937.50383443424;0.0;0.0;0.0
+566;Postpiriform transition area;168;236;211;5.0;5.0;5.0;37863.759995091925;0.0;0.0;0.0
 517;Postpiriform transition area, layers 1-3;168;236;211;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 1140;Postpiriform transition area, layers 1;168;236;211;5.0;5.0;5.0;0.0;0.0;0.0;0.0
 1141;Postpiriform transition area, layers 2;168;236;211;5.0;5.0;5.0;0.0;0.0;0.0;0.0

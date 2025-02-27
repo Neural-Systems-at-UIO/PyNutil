@@ -1,5 +1,5 @@
 idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
-0;Clear Label;0;0;0;753461.2159757868;0.0;0.0;0.0
+0;Clear Label;0;0;0;770373.6272725413;0.0;0.0;0.0
 997;root;255;255;255;16288.676660054398;0.0;0.0;0.0
 8;Basic cell groups and regions;191;218;227;0.0;0.0;0.0;0.0
 567;Cerebrum;176;240;255;0.0;0.0;0.0;0.0
@@ -319,10 +319,10 @@ idx;name;r;g;b;region_area;pixel_count;object_count;area_fraction
 631;Cortical amygdalar area;97;231;183;0.0;0.0;0.0;0.0
 639;Cortical amygdalar area, anterior part;97;231;183;0.0;0.0;0.0;0.0
 647;Cortical amygdalar area, posterior part;97;231;183;0.0;0.0;0.0;0.0
-655;Cortical amygdalar area, posterior part, lateral zone;97;231;183;10470.561770179349;0.0;0.0;0.0
-663;Cortical amygdalar area, posterior part, medial zone;97;231;183;14836.704227080309;0.0;0.0;0.0
+655;Cortical amygdalar area, posterior part, lateral zone;97;231;183;6544.101106362094;0.0;0.0;0.0
+663;Cortical amygdalar area, posterior part, medial zone;97;231;183;7924.497433485347;0.0;0.0;0.0
 788;Piriform-amygdalar area;89;218;171;0.0;0.0;0.0;0.0
-566;Postpiriform transition area;168;236;211;43937.50383443424;0.0;0.0;0.0
+566;Postpiriform transition area;168;236;211;37863.759995091925;0.0;0.0;0.0
 1089;Hippocampal formation;126;208;75;388.55600319024927;0.0;0.0;0.0
 1080;Hippocampal region;126;208;75;0.0;0.0;0.0;0.0
 375;Ammon's horn;126;208;75;0.0;0.0;0.0;0.0
