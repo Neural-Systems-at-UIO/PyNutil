@@ -89,14 +89,20 @@ class PyNutil:
             )
 
         if atlas_path and label_path:
-            self.atlas_volume, self.atlas_labels = load_custom_atlas(atlas_path, label_path)
+            self.atlas_volume, self.atlas_labels = load_custom_atlas(
+                atlas_path, label_path
+            )
         else:
             self._check_atlas_name()
-            self.atlas_volume, self.atlas_labels = load_atlas_data(atlas_name=atlas_name)
+            self.atlas_volume, self.atlas_labels = load_atlas_data(
+                atlas_name=atlas_name
+            )
 
     def _check_atlas_name(self):
         if not self.atlas_name:
-            raise ValueError("When atlas_path and label_path are not specified, atlas_name must be specified.")
+            raise ValueError(
+                "When atlas_path and label_path are not specified, atlas_name must be specified."
+            )
 
     def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False):
         """
@@ -147,16 +153,23 @@ class PyNutil:
             If get_coordinates has not been run before running quantify_coordinates.
         """
         if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
-            raise ValueError("Please run get_coordinates before running quantify_coordinates.")
+            raise ValueError(
+                "Please run get_coordinates before running quantify_coordinates."
+            )
 
-        self.labeled_points, self.labeled_points_centroids, self.label_df, self.per_section_df = quantify_labeled_points(
+        (
+            self.labeled_points,
+            self.labeled_points_centroids,
+            self.label_df,
+            self.per_section_df,
+        ) = quantify_labeled_points(
             self.pixel_points,
             self.centroids,
             self.points_len,
             self.centroids_len,
             self.region_areas_list,
             self.atlas_labels,
-            self.atlas_volume
+            self.atlas_volume,
         )
 
     def save_analysis(self, output_folder):

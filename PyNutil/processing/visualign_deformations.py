@@ -11,7 +11,7 @@ def triangulate(w, h, markers):
         [-0.1 * w, 1.1 * h, -0.1 * w, 1.1 * h],
         [1.1 * w, 1.1 * h, 1.1 * w, 1.1 * h],
     ]
-    
+
     edges = [0] * ((len(markers) + 4) * (len(markers) + 4 - 1) // 2)
     triangles = [Triangle(0, 1, 2, vertices, edges), Triangle(1, 2, 3, vertices, edges)]
     edges[0] = edges[1] = edges[4] = edges[5] = 2

@@ -121,4 +121,3 @@ def orthonormalize(arr):
     for i in range(3):
         arr[i + 6] -= arr[i + 3] * dot
     normalize(arr, 6)
-

@@ -30,7 +30,9 @@ def save_analysis_output(
         )
     else:
         print("No quantification found, so only coordinates will be saved.")
-        print("If you want to save the quantification, please run quantify_coordinates.")
+        print(
+            "If you want to save the quantification, please run quantify_coordinates."
+        )
 
     _save_per_section_reports(
         per_section_df,
@@ -126,7 +128,14 @@ def _save_per_section_meshview(
     )
 
 
-def _save_whole_series_meshview(pixel_points, labeled_points, centroids, labeled_points_centroids, atlas_labels, output_folder):
+def _save_whole_series_meshview(
+    pixel_points,
+    labeled_points,
+    centroids,
+    labeled_points_centroids,
+    atlas_labels,
+    output_folder,
+):
     write_points_to_meshview(
         pixel_points,
         labeled_points,
