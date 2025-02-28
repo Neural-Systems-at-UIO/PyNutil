@@ -1,9 +1,6 @@
 # PyNutil
 PyNutil is under development. 
 
-> [!WARNING]
-> PyNutil currently has bugs (errors in region_area). Do not use. 
-
 PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain. It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183). It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
 
 For more information about the QUINT workflow:
