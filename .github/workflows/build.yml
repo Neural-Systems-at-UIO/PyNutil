@@ -28,15 +28,18 @@ jobs:
         
     - name: Build with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --icon=Logo_PyNutil.ico --name PyNutil PyNutilGUI.py
+        pyinstaller --windowed --icon=Logo_PyNutil.ico --name PyNutil gui/PyNutilGUI.py
         
-    # Remove the ZIP archive creation step
+    - name: Create Windows ZIP archive
+      run: |
+        cd dist
+        powershell Compress-Archive -Path PyNutil -DestinationPath PyNutil-Windows.zip
         
-    - name: Upload EXE artifact
+    - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
         name: PyNutil-Windows
-        path: dist/PyNutil.exe  # Direct path to the exe file
+        path: dist/PyNutil-Windows.zip
         retention-days: 5
 
   build-macos:
@@ -59,7 +62,7 @@ jobs:
     - name: Build with PyInstaller
       run: |
         # Build without specifying an icon for macOS to avoid format issues
-        pyinstaller --onefile --windowed --osx-bundle-identifier com.pynutil.app --name PyNutil PyNutilGUI.py
+        pyinstaller --windowed --osx-bundle-identifier com.pynutil.app --name PyNutil gui/PyNutilGUI.py
         
     - name: Create DMG
       run: |
@@ -104,6 +107,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            PyNutil-Windows/PyNutil.exe
+            PyNutil-Windows/PyNutil-Windows.zip
             PyNutil-macOS/PyNutil-macOS.dmg
           token: ${{ github.token }}
