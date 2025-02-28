@@ -28,7 +28,7 @@ jobs:
         
     - name: Build with PyInstaller
       run: |
-        pyinstaller --windowed --icon=Logo_PyNutil.ico --name PyNutil gui/PyNutilGUI.py
+        pyinstaller --windowed --icon=gui/Logo_PyNutil.ico --name PyNutil gui/PyNutilGUI.py
         
     - name: Create Windows ZIP archive
       run: |
