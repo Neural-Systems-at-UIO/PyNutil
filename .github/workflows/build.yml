@@ -55,7 +55,7 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         pip install dmgbuild
-        
+        pip install .
     - name: Build with PyInstaller
       run: |
         # Build without specifying an icon for macOS to avoid format issues
