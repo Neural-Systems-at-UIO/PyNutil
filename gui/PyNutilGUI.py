@@ -19,6 +19,18 @@ import brainglobe_atlasapi
 import brainglobe_atlasapi.utils as bg_utils
 import PyNutil
 
+# Import UI component utilities
+from gui.ui_components import (
+    create_labeled_combo_with_button,
+    create_horizontal_combo_with_button,
+    get_path_display_name,
+    populate_dropdown,
+    create_atlas_installation_dialog,
+    create_run_buttons_layout,
+    select_path,
+    create_path_selection_section
+)
+
 #  Patch retrieve_over_http to update progress via GUI's update_progress slot
 original_retrieve = bg_utils.retrieve_over_http
 def patched_retrieve_over_http(url, output_file_path, fn_update=None):
@@ -251,43 +263,21 @@ class PyNutilGUI(QMainWindow):
         with open(self.recent_files_path, "w") as file:
             json.dump(self.recent_files, file)
 
-    def get_path_display_name(self, path):
-        """Extract the filename or last directory from a path for display."""
-        if not path:
-            return ""
-        if os.path.isfile(path) or path.endswith((".json", ".txt")):
-            return os.path.basename(path)
-        else:
-            # For directories, show the last directory name
-            path = path.rstrip(os.path.sep)  # Remove trailing slashes
-            return os.path.basename(path)
-
-    def populate_dropdown(self, dropdown, recents):
-        dropdown.clear()
-        dropdown.addItem("")
-
-        # Store the full paths as user data but show shortened displays
-        for item in recents:
-            display_text = self.get_path_display_name(item)
-            dropdown.addItem(display_text)
-            # Store the full path as user data in the item
-            dropdown.setItemData(dropdown.count() - 1, item)
-
-        dropdown.setEditable(False)
-        dropdown.setCurrentIndex(-1)
-
     def initUI(self):
         central_widget = QWidget()
         main_layout = QHBoxLayout()
 
+        # Create left panel
         left_layout = QVBoxLayout()
         left_widget = QWidget()
         left_widget.setMaximumWidth(300)
         left_widget.setLayout(left_layout)
 
+        # Create menu bar
         menubar = QMenuBar(self)
         file_menu = menubar.addMenu('File')
         help_menu = menubar.addMenu('Help')
+
         load_settings_action = QAction('Load Settings', self)
         load_settings_action.triggered.connect(self.load_settings_from_file)
         file_menu.addAction(load_settings_action)
@@ -302,87 +292,89 @@ class PyNutilGUI(QMainWindow):
 
         self.setMenuBar(menubar)
 
-        left_layout.addWidget(QLabel("Select reference atlas:"))
+        # Atlas selection - use a more compact approach
+        atlas_layout = QVBoxLayout()
+        atlas_layout.addWidget(QLabel("Select reference atlas:"))
 
         # Create horizontal layout for atlas dropdown and install button
-        atlas_selection_layout = QHBoxLayout()
-
-        # Add atlas dropdown to horizontal layout
+        atlas_h_layout = QHBoxLayout()
         self.atlas_combo = QComboBox()
-        self.atlas_combo.setStyleSheet("QComboBox { combobox-popup: 0; }");
+        self.atlas_combo.setStyleSheet("QComboBox { combobox-popup: 0; }")
         self.populate_atlas_dropdown()
         self.atlas_combo.setCurrentIndex(-1)
-        atlas_selection_layout.addWidget(self.atlas_combo, 1)  # Stretch factor 1 to make it take most space
 
-        # Add small install button with plus symbol to horizontal layout
         self.install_atlas_button = QPushButton("+")
         self.install_atlas_button.setToolTip("Install or Add Atlas")
-        self.install_atlas_button.setMaximumWidth(30)  # Make the button small
+        self.install_atlas_button.setMaximumWidth(30)
         self.install_atlas_button.clicked.connect(self.show_install_atlas_dialog)
-        atlas_selection_layout.addWidget(self.install_atlas_button, 0)  # No stretch (0)
 
-        # Add the horizontal layout to the main left layout
-        left_layout.addLayout(atlas_selection_layout)
+        atlas_h_layout.addWidget(self.atlas_combo, 1)
+        atlas_h_layout.addWidget(self.install_atlas_button, 0)
 
-        left_layout.addWidget(QLabel("Select registration JSON:"))
-        self.registration_json_button = QPushButton("Browse...")
-        self.registration_json_button.clicked.connect(self.open_registration_json)
-        self.registration_json_dropdown = QComboBox()
-        self.registration_json_dropdown.setStyleSheet("QComboBox { combobox-popup: 0; }");
+        # Add the horizontal layout to the vertical layout
+        atlas_layout.addLayout(atlas_h_layout)
 
-        self.populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
-        self.registration_json_dropdown.currentIndexChanged.connect(self.set_registration_json)
-        left_layout.addWidget(self.registration_json_button)
-        left_layout.addWidget(self.registration_json_dropdown)
+        # Add to the main left layout with minimal margin
+        left_layout.addLayout(atlas_layout)
+        # left_layout.setSpacing(10)  # Control spacing between sections
 
-        left_layout.addWidget(QLabel("Select segmentation folder:"))
-        self.segmentation_dir_button = QPushButton("Browse...")
-        self.segmentation_dir_button.clicked.connect(self.open_segmentation_dir)
-        self.segmentation_dir_dropdown = QComboBox()
-        self.segmentation_dir_dropdown.setStyleSheet("QComboBox { combobox-popup: 0; }");
+        # Registration JSON selection using unified path selection function
+        registration_layout, self.registration_json_dropdown, _ = create_path_selection_section(
+            parent=self,
+            label_text="Select registration JSON:",
+            path_type="file",
+            title="Open Registration JSON",
+            key="registration_json",
+            recents=self.recent_files["registration_json"],
+            callback=self.set_registration_json,
+            argument_dict=self.arguments
+        )
+        left_layout.addLayout(registration_layout)
 
-        self.populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
-        self.segmentation_dir_dropdown.currentIndexChanged.connect(self.set_segmentation_dir)
-        left_layout.addWidget(self.segmentation_dir_button)
-        left_layout.addWidget(self.segmentation_dir_dropdown)
+        # Segmentation directory selection using unified path selection function
+        segmentation_layout, self.segmentation_dir_dropdown, _ = create_path_selection_section(
+            parent=self,
+            label_text="Select segmentation folder:",
+            path_type="directory",
+            title="Select Segmentation Directory",
+            key="segmentation_dir",
+            recents=self.recent_files["segmentation_dir"],
+            callback=self.set_segmentation_dir,
+            argument_dict=self.arguments
+        )
+        left_layout.addLayout(segmentation_layout)
 
-        left_layout.addWidget(QLabel("Select object colour:"))
-        self.colour_button = QPushButton("Colour")
-        self.colour_button.clicked.connect(self.choose_colour)
-        left_layout.addWidget(self.colour_button)
-        self.colour_dropdown = QComboBox()
-        self.colour_dropdown.setStyleSheet("QComboBox { combobox-popup: 0; }");
-        self.populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+        # Object color selection
+        color_layout, self.colour_dropdown, self.colour_button = create_labeled_combo_with_button(
+            "Select object colour:",
+            button_text="Colour",
+            button_callback=self.choose_colour
+        )
+        populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
         self.colour_dropdown.currentIndexChanged.connect(self.set_colour)
-        left_layout.addWidget(self.colour_dropdown)
+        left_layout.addLayout(color_layout)
 
-        left_layout.addWidget(QLabel("Select output directory:"))
-        self.output_dir_button = QPushButton("Browse...")
-        self.output_dir_button.clicked.connect(self.select_output_dir)
-        self.output_dir_dropdown = QComboBox()
-        self.colour_dropdown.setStyleSheet("QComboBox { combobox-popup: 0; }");
-        self.populate_dropdown(self.output_dir_dropdown, self.recent_files["output_dir"])
-        self.output_dir_dropdown.currentIndexChanged.connect(self.set_output_dir)
-        left_layout.addWidget(self.output_dir_button)
-        left_layout.addWidget(self.output_dir_dropdown)
+        # Output directory selection using unified path selection function
+        output_layout, self.output_dir_dropdown, _ = create_path_selection_section(
+            parent=self,
+            label_text="Select output directory:",
+            path_type="directory",
+            title="Select Output Directory",
+            key="output_dir",
+            recents=self.recent_files["output_dir"],
+            callback=self.set_output_dir,
+            argument_dict=self.arguments
+        )
+        left_layout.addLayout(output_layout)
 
+        # Run and cancel buttons
         left_layout.addWidget(QLabel("Start analysis:"))
-
-        # Create a layout for the run and cancel buttons
-        run_buttons_layout = QHBoxLayout()
-
-        self.run_button = QPushButton("Run")
+        run_buttons_layout, self.run_button, self.cancel_button = create_run_buttons_layout()
         self.run_button.clicked.connect(self.start_analysis)
-
-        self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.cancel_analysis)
-        self.cancel_button.setEnabled(False)  # Disabled by default
-
-        run_buttons_layout.addWidget(self.run_button)
-        run_buttons_layout.addWidget(self.cancel_button)
-
         left_layout.addLayout(run_buttons_layout)
 
+        # Create right panel with output browser
         right_layout = QVBoxLayout()
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
@@ -390,13 +382,14 @@ class PyNutilGUI(QMainWindow):
         output_label = QLabel("Output:")
         right_layout.addWidget(output_label)
 
-        # Replace QTextEdit with QTextBrowser
+        # Output text browser
         self.output_box = QTextBrowser()
-        self.output_box.setOpenExternalLinks(True)  # This works with QTextBrowser
+        self.output_box.setOpenExternalLinks(True)
         self.output_box.setMinimumWidth(600)
         self.output_box.setMinimumHeight(400)
         right_layout.addWidget(self.output_box)
 
+        # Add panels to main layout
         main_layout.addWidget(left_widget, 1)
         main_layout.addWidget(right_widget, 3)
 
@@ -419,9 +412,6 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
         self.output_box.clear()
         self.output_box.setHtml(help_text.replace("\n", "<br>"))
-        # These settings are no longer needed as QTextBrowser handles them automatically
-        # self.output_box.document().setDefaultStyleSheet("a { color: blue; text-decoration: underline; }")
-        # self.output_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
 
     def set_registration_json(self, index):
         if index >= 0:
@@ -458,14 +448,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.recent_files[key] = recents[:5]
         self.save_recent_files()
 
-    def open_registration_json(self):
-        value, _ = QFileDialog.getOpenFileName(self, "Open Registration JSON")
-        if value:
-            self.arguments["registration_json"] = value
-            self.update_recent("registration_json", value)
-            self.populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
-            self.registration_json_dropdown.setCurrentIndex(1)
-
+    # We still need the color chooser since it's different from file/directory selection
     def choose_colour(self):
         value = QColorDialog.getColor()
         if value.isValid():
@@ -473,26 +456,10 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             self.arguments["object_colour"] = rgb_list
             rgb_str = f"[{value.red()}, {value.green()}, {value.blue()}]"
             self.update_recent("object_colour", rgb_str)
-            self.populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+            populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
             # For color items, store the RGB string in the user data too
             self.colour_dropdown.setItemData(1, rgb_str)
             self.colour_dropdown.setCurrentIndex(1)
-
-    def open_segmentation_dir(self):
-        value = QFileDialog.getExistingDirectory(self, "Select Segmentation Directory")
-        if value:
-            self.arguments["segmentation_dir"] = value
-            self.update_recent("segmentation_dir", value)
-            self.populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
-            self.segmentation_dir_dropdown.setCurrentIndex(1)
-
-    def select_output_dir(self):
-        value = QFileDialog.getExistingDirectory(self, "Select Output Directory")
-        if value:
-            self.arguments["output_dir"] = value
-            self.update_recent("output_dir", value)
-            self.populate_dropdown(self.output_dir_dropdown, self.recent_files["output_dir"])
-            self.output_dir_dropdown.setCurrentIndex(1)
 
     def start_analysis(self):
         # Clear both the output box and the log collection variables
@@ -628,13 +595,13 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             if "segmentation_folder" in settings and settings["segmentation_folder"]:
                 self.arguments["segmentation_dir"] = settings["segmentation_folder"]
                 self.update_recent("segmentation_dir", settings["segmentation_folder"])
-                self.populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
+                populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
                 self.segmentation_dir_dropdown.setCurrentIndex(1)
 
             if "alignment_json" in settings and settings["alignment_json"]:
                 self.arguments["registration_json"] = settings["alignment_json"]
                 self.update_recent("registration_json", settings["alignment_json"])
-                self.populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
+                populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
                 self.registration_json_dropdown.setCurrentIndex(1)
 
             if "colour" in settings and settings["colour"]:
@@ -642,7 +609,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 self.arguments["object_colour"] = rgb_list
                 rgb_str = f"[{rgb_list[0]}, {rgb_list[1]}, {rgb_list[2]}]"
                 self.update_recent("object_colour", rgb_str)
-                self.populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+                populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
                 self.colour_dropdown.setCurrentIndex(1)
 
             if "atlas_name" in settings and settings["atlas_name"]:
@@ -758,74 +725,30 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def show_install_atlas_dialog(self):
         """Show a dialog to install a new atlas."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Install Atlas")
+        (
+            dialog,
+            brain_globe_radio, custom_radio,
+            brain_globe_group, custom_group,
+            self.brain_globe_combo,
+            install_brain_globe_button,
+            self.custom_atlas_name_edit,
+            self.custom_atlas_path_edit,
+            self.custom_label_path_edit,
+            browse_atlas_button,
+            browse_label_button,
+            add_custom_button
+        ) = create_atlas_installation_dialog(self)
 
-        layout = QVBoxLayout(dialog)
-
-        # Radio buttons for selecting atlas type
-        radio_group = QButtonGroup(dialog)
-        brain_globe_radio = QRadioButton("Install BrainGlobe Atlas")
-        custom_radio = QRadioButton("Add Custom Atlas")
-        radio_group.addButton(brain_globe_radio)
-        radio_group.addButton(custom_radio)
-
-        layout.addWidget(brain_globe_radio)
-        layout.addWidget(custom_radio)
-
-        # Group box for BrainGlobe atlas installation
-        brain_globe_group = QGroupBox("BrainGlobe Atlas")
-        brain_globe_layout = QVBoxLayout()
-        brain_globe_group.setLayout(brain_globe_layout)
-
-        self.brain_globe_combo = QComboBox()
+        # Populate brainglobe atlas combo
         available_atlases = brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
         self.brain_globe_combo.addItems(available_atlases)
-        brain_globe_layout.addWidget(self.brain_globe_combo)
 
-        install_brain_globe_button = QPushButton("Install")
+        # Connect buttons to functions
         install_brain_globe_button.clicked.connect(self.install_brain_globe_atlas)
-        brain_globe_layout.addWidget(install_brain_globe_button)
-
-        layout.addWidget(brain_globe_group)
-
-        # Group box for custom atlas addition
-        custom_group = QGroupBox("Custom Atlas")
-        custom_layout = QGridLayout()
-        custom_group.setLayout(custom_layout)
-
-        custom_layout.addWidget(QLabel("Atlas Name:"), 0, 0)
-        self.custom_atlas_name_edit = QLineEdit()
-        custom_layout.addWidget(self.custom_atlas_name_edit, 0, 1)
-
-        custom_layout.addWidget(QLabel("Atlas Path:"), 1, 0)
-        self.custom_atlas_path_edit = QLineEdit()
-        custom_layout.addWidget(self.custom_atlas_path_edit, 1, 1)
-        browse_atlas_button = QPushButton("Browse")
         browse_atlas_button.clicked.connect(self.browse_custom_atlas_path)
-        custom_layout.addWidget(browse_atlas_button, 1, 2)
-
-        custom_layout.addWidget(QLabel("Label Path:"), 2, 0)
-        self.custom_label_path_edit = QLineEdit()
-        custom_layout.addWidget(self.custom_label_path_edit, 2, 1)
-        browse_label_button = QPushButton("Browse")
         browse_label_button.clicked.connect(self.browse_custom_label_path)
-        custom_layout.addWidget(browse_label_button, 2, 2)
-
-        add_custom_button = QPushButton("Add Custom Atlas")
         add_custom_button.clicked.connect(self.add_custom_atlas)
-        custom_layout.addWidget(add_custom_button, 3, 0, 1, 3)
 
-        layout.addWidget(custom_group)
-
-        # Show/hide group boxes based on selected radio button
-        brain_globe_radio.toggled.connect(brain_globe_group.setVisible)
-        custom_radio.toggled.connect(custom_group.setVisible)
-
-        brain_globe_radio.setChecked(True)
-        custom_group.setVisible(False)
-
-        dialog.setLayout(layout)
         dialog.exec()
 
     def install_brain_globe_atlas(self):
@@ -899,13 +822,21 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def browse_custom_atlas_path(self):
         """Browse for custom atlas path."""
-        path, _ = QFileDialog.getOpenFileName(self, "Select Custom Atlas File")
+        path = select_path(
+            parent=self,
+            path_type="file",
+            title="Select Custom Atlas File"
+        )
         if path:
             self.custom_atlas_path_edit.setText(path)
 
     def browse_custom_label_path(self):
         """Browse for custom label path."""
-        path, _ = QFileDialog.getOpenFileName(self, "Select Custom Label File")
+        path = select_path(
+            parent=self,
+            path_type="file",
+            title="Select Custom Label File"
+        )
         if path:
             self.custom_label_path_edit.setText(path)
 
