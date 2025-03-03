@@ -1,6 +1,6 @@
 
 {   
-    "segmentation_folder":"tests/test_data/nonlinear_allen_mouse/",
+    "segmentation_folder":"tests/test_data/nonlinear_allen_mouse/segmentations/",
     "alignment_json":"tests/test_data/nonlinear_allen_mouse/alignment.json",
     "colour":[0, 0, 0],
     "atlas_path":"tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
