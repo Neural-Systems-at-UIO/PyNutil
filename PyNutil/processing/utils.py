@@ -104,7 +104,7 @@ def get_segmentations(folder):
     segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg", ".dzip"]
     segmentations = [
         file
-        for file in glob(folder + "/segmentations/*")
+        for file in glob(folder + "/*")
         if any([file.endswith(type) for type in segmentation_file_types])
     ]
     if len(segmentations) == 0:
