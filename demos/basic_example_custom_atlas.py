@@ -20,7 +20,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 pnt = PyNutil(
     segmentation_folder=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/"
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
     ),
     alignment_json=os.path.join(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
@@ -36,4 +36,4 @@ pnt = PyNutil(
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_24_02_25")
+pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25")
