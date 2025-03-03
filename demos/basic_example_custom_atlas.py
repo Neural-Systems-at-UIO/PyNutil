@@ -36,4 +36,4 @@ pnt = PyNutil(
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25")
+pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25v2")
