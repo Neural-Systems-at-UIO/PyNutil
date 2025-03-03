@@ -40,8 +40,8 @@ basic_example_custom_atlas.py (custom atlas)
 
 """
 pnt = PyNutil(
-    segmentation_folder='../tests/test_data/big_caudoputamen_test/',
-    alignment_json='../tests/test_data/big_caudoputamen.json',
+    segmentation_folder='../tests/test_data/non_linear_allen_mouse/segmentations/',
+    alignment_json='../tests/test_data/non_linear_allen_mouse/alignment.json',
     colour=[0, 0, 0],
     atlas_name='allen_mouse_25um'
 )
@@ -50,7 +50,7 @@ pnt.get_coordinates(object_cutoff=0)
 
 pnt.quantify_coordinates()
 
-pnt.save_analysis("PyNutil/outputs/myResults")
+pnt.save_analysis("PyNutil/test_result/myResults")
 ```
 PyNutil generates a series of reports in the folder which you specify.
 
