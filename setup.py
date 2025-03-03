@@ -1,12 +1,16 @@
+import os
 from setuptools import setup, find_packages
 from pathlib import Path
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
+# Get version from environment variable or fallback to default
+version = os.environ.get("PACKAGE_VERSION")
+
 setup(
     name="PyNutil",
-    version="0.1.1",
+    version=version,
     packages=find_packages(),
     license="MIT",
     description="a package to translate data between common coordinate templates",
