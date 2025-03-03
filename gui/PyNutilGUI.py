@@ -20,7 +20,7 @@ import brainglobe_atlasapi.utils as bg_utils
 import PyNutil
 
 # Import UI component utilities
-from gui.ui_components import (
+from ui_components import (
     create_labeled_combo_with_button,
     create_horizontal_combo_with_button,
     get_path_display_name,
