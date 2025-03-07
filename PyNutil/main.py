@@ -132,6 +132,8 @@ class PyNutil:
             (
                 self.pixel_points,
                 self.centroids,
+                self.points_labels,
+                self.centroids_labels,
                 self.region_areas_list,
                 self.points_len,
                 self.centroids_len,
@@ -178,8 +180,10 @@ class PyNutil:
                 self.points_len,
                 self.centroids_len,
                 self.region_areas_list,
+                self.points_labels,
+                self.centroids_labels,
                 self.atlas_labels,
-                self.atlas_volume,
+                # self.atlas_volume,
             )
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")

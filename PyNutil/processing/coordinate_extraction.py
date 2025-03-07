@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from ..io.read_and_write import load_visualign_json
-from .counting_and_load import flat_to_dataframe
+from .counting_and_load import flat_to_dataframe, rescale_image
 from .visualign_deformations import triangulate
 from glob import glob
 import cv2
@@ -144,8 +144,7 @@ def folder_to_atlas_space(
     slices = load_visualign_json(quint_alignment)
     segmentations = get_segmentations(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
-
-    points_list, centroids_list, region_areas_list = initialize_lists(
+    points_list, centroids_list, region_areas_list, centroids_labels, points_labels = initialize_lists(
         len(segmentations)
     )
     threads = create_threads(
@@ -158,19 +157,22 @@ def folder_to_atlas_space(
         non_linear,
         points_list,
         centroids_list,
+        centroids_labels,
+        points_labels,
         region_areas_list,
         object_cutoff,
         atlas_volume,
         use_flat,
     )
     start_and_join_threads(threads)
-
-    points, centroids, points_len, centroids_len = process_results(
-        points_list, centroids_list
+    points, centroids, points_labels, centroids_labels, points_len, centroids_len = process_results(
+        points_list, centroids_list, points_labels, centroids_labels
     )
     return (
         points,
         centroids,
+        points_labels,
+        centroids_labels,
         region_areas_list,
         points_len,
         centroids_len,
@@ -193,6 +195,9 @@ def initialize_lists(length):
     """
     points_list = [np.array([])] * length
     centroids_list = [np.array([])] * length
+    centroids_labels  = [np.array([])] * length
+    points_labels  = [np.array([])] * length
+
     region_areas_list = [
         pd.DataFrame(
             {
@@ -208,7 +213,7 @@ def initialize_lists(length):
             }
         )
     ] * length
-    return points_list, centroids_list, region_areas_list
+    return points_list, centroids_list, region_areas_list, centroids_labels, points_labels
 
 
 def create_threads(
@@ -221,6 +226,8 @@ def create_threads(
     non_linear,
     points_list,
     centroids_list,
+    centroids_labels,
+    points_labels,
     region_areas_list,
     object_cutoff,
     atlas_volume,
@@ -239,6 +246,8 @@ def create_threads(
         non_linear (bool): Whether to use non-linear transformation.
         points_list (list): List to store points.
         centroids_list (list): List to store centroids.
+        centroids_labels(list): List to store centroids labels.
+        points_labels(list): List to store points labels.
         region_areas_list (list): List to store region areas.
         object_cutoff (int): Pixel cutoff to remove small objects.
         atlas_volume (ndarray): Volume with atlas labels.
@@ -269,6 +278,8 @@ def create_threads(
                 non_linear,
                 points_list,
                 centroids_list,
+                points_labels,
+                centroids_labels,
                 region_areas_list,
                 index,
                 object_cutoff,
@@ -339,11 +350,11 @@ def get_region_areas(
         DataFrame: DataFrame with region areas.
     """
     if use_flat:
-        region_areas = flat_to_dataframe(
+        region_areas, atlas_map = flat_to_dataframe(
             atlas_labels, flat_file_atlas, (seg_width, seg_height)
         )
     else:
-        region_areas = flat_to_dataframe(
+        region_areas, atlas_map = flat_to_dataframe(
             atlas_labels,
             flat_file_atlas,
             (seg_width, seg_height),
@@ -351,7 +362,7 @@ def get_region_areas(
             atlas_volume,
             triangulation,
         )
-    return region_areas
+    return region_areas, atlas_map
 
 
 def segmentation_to_atlas_space(
@@ -363,6 +374,8 @@ def segmentation_to_atlas_space(
     non_linear=True,
     points_list=None,
     centroids_list=None,
+    points_labels=None,
+    centroids_labels=None,
     region_areas_list=None,
     index=None,
     object_cutoff=0,
@@ -393,7 +406,7 @@ def segmentation_to_atlas_space(
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_dict["height"], slice_dict["width"]
     triangulation = get_triangulation(slice_dict, reg_width, reg_height, non_linear)
-    region_areas = get_region_areas(
+    region_areas, atlas_map = get_region_areas(
         use_flat,
         atlas_labels,
         flat_file_atlas,
@@ -403,6 +416,7 @@ def segmentation_to_atlas_space(
         atlas_volume,
         triangulation,
     )
+    atlas_map = rescale_image(atlas_map, (reg_width, reg_height))
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
     )
@@ -412,7 +426,9 @@ def segmentation_to_atlas_space(
         segmentation, pixel_id, y_scale, x_scale, object_cutoff
     )
     scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
-
+    per_point_labels = atlas_map[np.round(scaled_x).astype(int), np.round(scaled_y).astype(int)]
+    per_centroid_labels = atlas_map[np.round(scaled_centroidsX).astype(int), np.round(scaled_centroidsY).astype(int)]
+    # per_point_region =
     new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
         non_linear,
         slice_dict,
@@ -435,7 +451,8 @@ def segmentation_to_atlas_space(
     points_list[index] = np.array(points if points is not None else [])
     centroids_list[index] = np.array(centroids if centroids is not None else [])
     region_areas_list[index] = region_areas
-
+    centroids_labels[index] = np.array(per_centroid_labels if centroids is not None else [])
+    points_labels[index] = np.array(per_point_labels if points is not None else [])
 
 def get_triangulation(slice_dict, reg_width, reg_height, non_linear):
     """

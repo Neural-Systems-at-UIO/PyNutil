@@ -82,7 +82,7 @@ def pixel_count_per_region(
         df_counts_per_label.loc[df_counts_per_label['idx'] == clc, 'object_count'] = lcc
     new_rows = []
     for index, row in df_counts_per_label.iterrows():
-        mask = df_label_colours["idx"] == row["idx"]
+        mask = df_label_colours["idx"] == row["idx"].astype(int)
         current_region_row = df_label_colours[mask]
         current_region_name = current_region_row["name"].values
         current_region_red = current_region_row["r"].values
@@ -92,7 +92,6 @@ def pixel_count_per_region(
         row["r"] = int(current_region_red[0])
         row["g"] = int(current_region_green[0])
         row["b"] = int(current_region_blue[0])
-
         new_rows.append(row)
 
     df_counts_per_label_name = pd.DataFrame(
@@ -174,7 +173,7 @@ def rescale_image(image, rescaleXY):
 
     Args:
         image (ndarray): Image array.
-        rescaleXY (tuple): Tuple with new dimensions.
+        rescaleXY (tuple): Tuple with new width and height.
 
     Returns:
         ndarray: Rescaled image.
@@ -290,6 +289,7 @@ def flat_to_dataframe(
 
     Returns:
         DataFrame: DataFrame with area per label.
+        np.array: array in shape of alignment XY scaled by rescaleXY with allen ID for each point
     """
     image = load_image(file, image_vector, volume, triangulation, rescaleXY)
     scale_factor = calculate_scale_factor(image, rescaleXY)
@@ -299,7 +299,7 @@ def flat_to_dataframe(
         else image
     )
     df_area_per_label = count_pixels_per_label(allen_id_image, scale_factor)
-    return df_area_per_label
+    return df_area_per_label, allen_id_image
 
 
 def load_image(file, image_vector, volume, triangulation, rescaleXY):

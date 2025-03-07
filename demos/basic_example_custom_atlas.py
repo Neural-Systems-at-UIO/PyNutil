@@ -20,12 +20,12 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 pnt = PyNutil(
     segmentation_folder=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
+        script_dir, "../tests/test_data/blank_images/segmentations/"
     ),
     alignment_json=os.path.join(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
     ),
-    colour=[0, 0, 0],
+    colour=[255, 255, 255],
     atlas_path=os.path.join(
         script_dir,
         "../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
@@ -33,7 +33,8 @@ pnt = PyNutil(
     label_path=os.path.join(
         script_dir, "../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
     ),
+
 )
-pnt.get_coordinates(object_cutoff=0, use_flat=False)
+pnt.get_coordinates(object_cutoff=0, use_flat=False, non_linear=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25v2")
+pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25v3")
