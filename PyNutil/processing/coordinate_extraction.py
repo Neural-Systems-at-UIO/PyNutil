@@ -426,8 +426,15 @@ def segmentation_to_atlas_space(
         segmentation, pixel_id, y_scale, x_scale, object_cutoff
     )
     scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
-    per_point_labels = atlas_map[np.round(scaled_x).astype(int), np.round(scaled_y).astype(int)]
-    per_centroid_labels = atlas_map[np.round(scaled_centroidsX).astype(int), np.round(scaled_centroidsY).astype(int)]
+    if scaled_x is not None:
+        per_point_labels = atlas_map[np.round(scaled_x).astype(int), np.round(scaled_y).astype(int)]
+    else:
+        per_point_labels = np.array([])
+    if scaled_centroidsX is not None:
+        per_centroid_labels = atlas_map[np.round(scaled_centroidsX).astype(int), np.round(scaled_centroidsY).astype(int)]
+    else:
+        per_centroid_labels = np.array([])
+
     # per_point_region =
     new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
         non_linear,

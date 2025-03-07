@@ -25,7 +25,7 @@ pnt = PyNutil(
     alignment_json=os.path.join(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
     ),
-    colour=[255, 255, 255],
+    colour=[0, 0, 0],
     atlas_path=os.path.join(
         script_dir,
         "../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
@@ -35,6 +35,6 @@ pnt = PyNutil(
     ),
 
 )
-pnt.get_coordinates(object_cutoff=0, use_flat=False, non_linear=False)
+pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
 pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25v3")
