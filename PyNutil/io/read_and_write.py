@@ -11,6 +11,42 @@ import struct
 import cv2
 from .reconstruct_dzi import reconstruct_dzi
 
+def open_custom_region_file(path):
+    """
+    Opens a custom region file created by QCAlign or manually by the user.
+
+    Parameters
+    ----------
+    path : str
+        the path to the TSV or XLSX file containing the custom region mappings.
+        If the file extension is not XLSX we will assume it is TSV. By default
+        QCAlign exports TSV files with a TXT extension.
+
+    Returns
+    ----------
+    custom_region_to_rgb : dict
+        mapping of custom region name to the RGB colour you would like to assign it.
+    custom_region_to_atlas_ids : dict
+        mapping of custom region name to the regions it is composed of from the atlas
+        you have chosen.
+    """
+    if path.lower().endswith(".xlsx"):
+        df = pd.read_excel(path)
+    else:
+        df = pd.read_csv(path, sep="\t")
+    if len(df.columns) < 2:
+        raise ValueError("Expected at least two columns in the file.")
+    custom_region_names = df.columns[1:]
+    rgb_values = df.iloc[0,:].values[1:]
+    try:
+        rgb_values = [list(int(i) for i in rgb.split(';')) for rgb in rgb_values]
+    except ValueError:
+        print("Error: Non integer value found in rgb list")
+    atlas_ids = df.iloc[1:,1:].T.values
+    atlas_ids = [[int(j) for j in i if not j is np.nan] for i in atlas_ids]
+    custom_region_to_rgb = dict(zip(custom_region_names,rgb_values))
+    custom_region_to_atlas_ids = dict(zip(custom_region_names,atlas_ids))
+    return custom_region_to_rgb, custom_region_to_atlas_ids
 
 def read_flat_file(file):
     """
