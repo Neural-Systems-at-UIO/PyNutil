@@ -2,8 +2,10 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import sys
 import io
 
+
 class TextRedirector(QObject):
     """Redirects text output to a Qt signal."""
+
     text_written = pyqtSignal(str)
 
     def write(self, text):
@@ -12,6 +14,7 @@ class TextRedirector(QObject):
 
     def flush(self):
         pass
+
 
 class LogManager:
     """Manages application logging."""

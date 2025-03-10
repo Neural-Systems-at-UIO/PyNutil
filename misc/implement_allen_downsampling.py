@@ -2,10 +2,12 @@ import nrrd
 import requests
 import numpy as np
 
+
 def download_to_file(url, filename):
     response = requests.get(url)
     with open(filename, "wb") as file:
         file.write(response.content)
+
 
 def float_downsample_alternating(volume, pattern):
     def make_indices(max_dim, pattern):
@@ -40,5 +42,5 @@ allen_10, header_10 = nrrd.read("annotation_10.nrrd")
 downsampled_50_to_100 = float_downsample_alternating(allen_50, [2])
 (downsampled_50_to_100 != allen_100).sum()
 
-downsampled_10_to_25 = float_downsample_alternating(allen_10, [3,2])
+downsampled_10_to_25 = float_downsample_alternating(allen_10, [3, 2])
 (downsampled_10_to_25 != allen_25).sum()

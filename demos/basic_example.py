@@ -6,8 +6,12 @@ from PyNutil import PyNutil
 
 # Configuration
 script_dir = os.path.dirname(os.path.abspath(__file__))
-segmentation_folder = os.path.join(script_dir, "../tests/test_data/nonlinear_allen_mouse/")
-alignment_json = os.path.join(script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json")
+segmentation_folder = os.path.join(
+    script_dir, "../tests/test_data/nonlinear_allen_mouse/"
+)
+alignment_json = os.path.join(
+    script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
+)
 colour = [0, 0, 0]
 atlas_name = "allen_mouse_25um"
 output_folder = "../test_result/bg_test"

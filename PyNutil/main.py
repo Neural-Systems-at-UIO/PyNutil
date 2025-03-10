@@ -32,6 +32,7 @@ class PyNutil:
         atlas_name=None,
         atlas_path=None,
         label_path=None,
+        custom_region_path=None,
         settings_file=None,
     ):
         """
@@ -51,6 +52,8 @@ class PyNutil:
             The path to the custom atlas volume file, only specify if you don't want to use brainglobe (default is None).
         label_path : str, optional
             The path to the custom atlas label file, only specify if you don't want to use brainglobe (default is None).
+        custom_region_path : str, optional
+            The path to a custom region id file. This can be found
         settings_file : str, optional
             The path to the settings JSON file. This file contains the above parameters and is used for automation (default is None).
 
@@ -69,6 +72,8 @@ class PyNutil:
                     segmentation_folder = settings["segmentation_folder"]
                     alignment_json = settings["alignment_json"]
                     colour = settings["colour"]
+                    if "custom_region_path" in settings:
+                        custom_region_path = settings["custom_region_path"]
                     if "atlas_path" in settings and "label_path" in settings:
                         atlas_path = settings["atlas_path"]
                         label_path = settings["label_path"]
@@ -83,7 +88,14 @@ class PyNutil:
             self.alignment_json = alignment_json
             self.colour = colour
             self.atlas_name = atlas_name
-
+            if custom_region_path:
+                custom_regions_rgb, custom_regions_ids = open_custom_region_file(
+                    custom_region_path
+                )
+            else:
+                custom_regions_rgb, custom_regions_ids = None, None
+            self.custom_regions_rgb = custom_regions_rgb
+            self.custom_regions_ids = custom_regions_ids
             if (atlas_path or label_path) and atlas_name:
                 raise ValueError(
                     "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."
@@ -217,12 +229,11 @@ class PyNutil:
                 segmentation_folder=self.segmentation_folder,
                 alignment_json=self.alignment_json,
                 colour=self.colour,
-                atlas_name=getattr(self, 'atlas_name', None),
-                atlas_path=getattr(self, 'atlas_path', None),
-                label_path=getattr(self, 'label_path', None),
-                settings_file=getattr(self, 'settings_file', None)
+                atlas_name=getattr(self, "atlas_name", None),
+                atlas_path=getattr(self, "atlas_path", None),
+                label_path=getattr(self, "label_path", None),
+                settings_file=getattr(self, "settings_file", None),
             )
             print(f"Saved output to {output_folder}")
         except Exception as e:
             raise ValueError(f"Error saving analysis: {e}")
-

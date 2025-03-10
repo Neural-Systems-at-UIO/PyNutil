@@ -33,7 +33,6 @@ pnt = PyNutil(
     label_path=os.path.join(
         script_dir, "../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
     ),
-
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()

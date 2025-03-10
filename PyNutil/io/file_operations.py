@@ -21,7 +21,7 @@ def save_analysis_output(
     atlas_name=None,
     atlas_path=None,
     label_path=None,
-    settings_file=None
+    settings_file=None,
 ):
     """
     Save the analysis output to the specified folder.
