@@ -20,7 +20,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 pnt = PyNutil(
     segmentation_folder=os.path.join(
-        script_dir, "../tests/test_data/blank_images/segmentations/"
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
     ),
     alignment_json=os.path.join(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
