@@ -24,11 +24,9 @@ def open_custom_region_file(path):
 
     Returns
     ----------
-    custom_region_to_rgb : dict
-        mapping of custom region name to the RGB colour you would like to assign it.
-    custom_region_to_atlas_ids : dict
-        mapping of custom region name to the regions it is composed of from the atlas
-        you have chosen.
+    custom_region_to_dict : dict
+
+
     """
     if path.lower().endswith(".xlsx"):
         df = pd.read_excel(path)
@@ -36,7 +34,7 @@ def open_custom_region_file(path):
         df = pd.read_csv(path, sep="\t")
     if len(df.columns) < 2:
         raise ValueError("Expected at least two columns in the file.")
-    custom_region_names = df.columns[1:]
+    custom_region_names = df.columns[1:].to_list()
     rgb_values = df.iloc[0,:].values[1:]
     try:
         rgb_values = [list(int(i) for i in rgb.split(';')) for rgb in rgb_values]
@@ -44,9 +42,34 @@ def open_custom_region_file(path):
         print("Error: Non integer value found in rgb list")
     atlas_ids = df.iloc[1:,1:].T.values
     atlas_ids = [[int(j) for j in i if not j is np.nan] for i in atlas_ids]
-    custom_region_to_rgb = dict(zip(custom_region_names,rgb_values))
-    custom_region_to_atlas_ids = dict(zip(custom_region_names,atlas_ids))
-    return custom_region_to_rgb, custom_region_to_atlas_ids
+    new_ids = []
+    new_id = 1
+    for i in range(len(atlas_ids)):
+        if 0 in atlas_ids[i]:
+            new_ids.append(0)
+        else:
+            new_ids.append(new_id)
+            new_id += 1
+    if 0 not in new_ids:
+        new_ids.append(0)
+        custom_region_names.append("unlabeled")
+        rgb_values.append([0,0,0])
+        atlas_ids.append([0])
+
+    custom_region_dict = {
+        "custom_ids" : new_ids,
+        "custom_names" : custom_region_names,
+        "rgb_values" : rgb_values,
+        "subregion_ids" : atlas_ids
+    }
+    df = pd.DataFrame({
+        "idx": custom_region_dict["custom_ids"],
+        "name": custom_region_dict["custom_names"],
+        "r": [c[0] for c in custom_region_dict["rgb_values"]],
+        "g": [c[1] for c in custom_region_dict["rgb_values"]],
+        "b": [c[2] for c in custom_region_dict["rgb_values"]],
+    })
+    return custom_region_dict, df
 
 def read_flat_file(file):
     """
