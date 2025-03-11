@@ -7,7 +7,7 @@ from PyNutil import PyNutil
 # Configuration
 script_dir = os.path.dirname(os.path.abspath(__file__))
 segmentation_folder = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/"
+    script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
 )
 alignment_json = os.path.join(
     script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
@@ -22,6 +22,9 @@ pnt = PyNutil(
     alignment_json=alignment_json,
     colour=colour,
     atlas_name=atlas_name,
+     custom_region_path=os.path.join(
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt"
+    ),
 )
 
 # Execute workflow

@@ -179,6 +179,7 @@ class AnalysisWorker(QThread):
                 "segmentation_folder": self.arguments["segmentation_dir"],
                 "alignment_json": self.arguments["registration_json"],
                 "colour": self.arguments["object_colour"],
+                "custom_region_path": self.arguments.get("custom_region_path"),
             }
 
             # Handle atlas options - either use atlas_name or custom atlas paths
@@ -297,32 +298,40 @@ class PyNutilGUI(QMainWindow):
             "output_dir": None,
             "label_path": None,  # Added for custom atlases
             "atlas_path": None,  # Added for custom atlases
+            "custom_region_path": None,  # Added for custom region file (optional)
         }
         self.recent_files_path = os.path.join(
             os.path.expanduser("~"), ".pynutil_recent_files.json"
         )
         self.recent_files = self.load_recent_files()
+        if "custom_region" not in self.recent_files:
+            self.recent_files["custom_region"] = []
         self.initUI()
 
     def load_recent_files(self):
-        if os.path.exists(self.recent_files_path):
-            with open(self.recent_files_path, "r") as file:
-                data = json.load(file)
-                for key in ["registration_json", "segmentation_dir", "output_dir"]:
-                    if not isinstance(data.get(key, []), list):
-                        data[key] = [data.get(key)] if data.get(key) else []
-                if "object_colour" not in data:
-                    data["object_colour"] = []
-                if "custom_atlases" not in data:
-                    data["custom_atlases"] = []
-                return data
-        return {
-            "registration_json": [],
-            "segmentation_dir": [],
-            "output_dir": [],
-            "object_colour": [],
-            "custom_atlases": [],
-        }
+        if not os.path.exists(self.recent_files_path):
+            data = {
+                "registration_json": [""],
+                "segmentation_dir": [""],
+                "output_dir": [""],
+                "object_colour": [""],
+                "custom_atlases": [],
+                "custom_region": [""],
+            }
+            with open(self.recent_files_path, "w") as file:
+                json.dump(data, file)
+            return data
+        with open(self.recent_files_path, "r") as file:
+            data = json.load(file)
+            for key in ["registration_json", "segmentation_dir", "output_dir", "object_colour", "custom_region"]:
+                if not isinstance(data.get(key, []), list):
+                    data[key] = []
+                # Ensure there is one default empty item if the list is empty
+                if len(data.get(key, [])) == 0:
+                    data[key] = [""]
+            if "custom_atlases" not in data:
+                data["custom_atlases"] = []
+            return data
 
     def save_recent_files(self):
         with open(self.recent_files_path, "w") as file:
@@ -427,6 +436,19 @@ class PyNutilGUI(QMainWindow):
         self.colour_dropdown.currentIndexChanged.connect(self.set_colour)
         left_layout.addLayout(color_layout)
 
+        # Custom region file selection (optional)
+        custom_region_layout, self.custom_region_dropdown, _ = create_path_selection_section(
+            parent=self,
+            label_text="Select custom region file (optional):",
+            path_type="file",
+            title="Select Custom Region File",
+            key="custom_region",
+            recents=self.recent_files.get("custom_region", []),
+            callback=self.set_custom_region_file,
+            argument_dict=self.arguments,
+        )
+        left_layout.addLayout(custom_region_layout)
+
         # Output directory selection using unified path selection function
         output_layout, self.output_dir_dropdown, _ = create_path_selection_section(
             parent=self,
@@ -490,35 +512,41 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def set_registration_json(self, index):
         if index >= 0:
-            # Get the full path from the user data, not the display text
-            value = self.registration_json_dropdown.itemData(index)
+            value = self.registration_json_dropdown.itemData(index) or self.registration_json_dropdown.currentText()
             self.arguments["registration_json"] = value
 
     def set_segmentation_dir(self, index):
         if index >= 0:
-            value = self.segmentation_dir_dropdown.itemData(index)
+            value = self.segmentation_dir_dropdown.itemData(index) or self.segmentation_dir_dropdown.currentText()
             self.arguments["segmentation_dir"] = value
 
     def set_output_dir(self, index):
         if index >= 0:
-            value = self.output_dir_dropdown.itemData(index)
+            value = self.output_dir_dropdown.itemData(index) or self.output_dir_dropdown.currentText()
             self.arguments["output_dir"] = value
+
+    def set_custom_region_file(self, index):
+        if index >= 0:
+            value = self.custom_region_dropdown.itemData(index) or self.custom_region_dropdown.currentText()
+            self.arguments["custom_region_path"] = value
 
     def set_colour(self, index):
         if index >= 0:
-            value = self.colour_dropdown.itemData(
-                index
-            ) or self.colour_dropdown.itemText(index)
+            value = self.colour_dropdown.itemData(index) or self.colour_dropdown.currentText()
             if value:
                 try:
                     rgb_str = value.strip("[]")
                     rgb_values = [int(x.strip()) for x in rgb_str.split(",")]
                     self.arguments["object_colour"] = rgb_values
-                except:
+                except Exception:
                     self.arguments["object_colour"] = [0, 0, 0]
 
     def update_recent(self, key, value):
+        if not value.strip():
+            return  # ignore empty values
         recents = self.recent_files.get(key, [])
+        # Remove any default empty entries
+        recents = [entry for entry in recents if entry.strip()]
         if value in recents:
             recents.remove(value)
         recents.insert(0, value)
@@ -593,6 +621,16 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             self.arguments["label_path"] = None
             self.arguments["use_custom_atlas"] = False
             self.arguments["atlas_name"] = atlas_name
+
+        # Include custom region file (optional)
+        # If no custom region file is selected, it remains None.
+        # Prepare worker parameters
+        pnt_args = {
+            "segmentation_folder": self.arguments["segmentation_dir"],
+            "alignment_json": self.arguments["registration_json"],
+            "colour": self.arguments["object_colour"],
+            "custom_region_path": self.arguments.get("custom_region_path"),
+        }
 
         # If all validations pass, start the worker
         self.worker = AnalysisWorker(self.arguments)
@@ -680,7 +718,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                     self.segmentation_dir_dropdown,
                     self.recent_files["segmentation_dir"],
                 )
-                self.segmentation_dir_dropdown.setCurrentIndex(1)
+                self.segmentation_dir_dropdown.setCurrentIndex(0)
 
             if "alignment_json" in settings and settings["alignment_json"]:
                 self.arguments["registration_json"] = settings["alignment_json"]
@@ -689,7 +727,8 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                     self.registration_json_dropdown,
                     self.recent_files["registration_json"],
                 )
-                self.registration_json_dropdown.setCurrentIndex(1)
+                # Set index 0 to correctly select the loaded alignment JSON.
+                self.registration_json_dropdown.setCurrentIndex(0)
 
             if "colour" in settings and settings["colour"]:
                 rgb_list = settings["colour"]
@@ -700,6 +739,14 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                     self.colour_dropdown, self.recent_files.get("object_colour", [])
                 )
                 self.colour_dropdown.setCurrentIndex(1)
+
+            if "custom_region" in settings and settings["custom_region"]:
+                self.arguments["custom_region_path"] = settings["custom_region"]
+                self.update_recent("custom_region", settings["custom_region"])
+                populate_dropdown(
+                    self.custom_region_dropdown, self.recent_files.get("custom_region", [])
+                )
+                self.custom_region_dropdown.setCurrentIndex(1)
 
             if "atlas_name" in settings and settings["atlas_name"]:
                 atlas_name = settings["atlas_name"]
@@ -807,20 +854,23 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             self.append_text_to_output("Atlas download finished.")
 
     def populate_atlas_dropdown(self):
-        """Populate the atlas dropdown with installed BrainGlobe atlases and custom atlases."""
         self.atlas_combo.clear()
-        self.atlas_combo.addItem("")
-
+        added_empty = False
         # Add installed BrainGlobe atlases
-        installed_atlases = brainglobe_atlasapi.list_atlases.get_atlases_lastversions()
-        for atlas in installed_atlases:
-            self.atlas_combo.addItem(atlas)
-
+        for atlas in brainglobe_atlasapi.list_atlases.get_atlases_lastversions():
+            if atlas == "":
+                if not added_empty:
+                    self.atlas_combo.addItem(atlas)
+                    added_empty = True
+            else:
+                self.atlas_combo.addItem(atlas)
         # Add custom atlases from recent files
-        custom_atlases = self.recent_files.get("custom_atlases", [])
-        for atlas in custom_atlases:
-            # Add the custom atlas name as text and store the full atlas info as user data
-            self.atlas_combo.addItem(atlas["name"], userData=atlas)
+        for atlas in self.recent_files.get("custom_atlases", []):
+            name = atlas.get("name", "")
+            if name == "":
+                pass
+            else:
+                self.atlas_combo.addItem(name, userData=atlas)
 
     def show_install_atlas_dialog(self):
         """Show a dialog to install a new atlas."""
