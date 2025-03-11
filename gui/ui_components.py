@@ -3,12 +3,22 @@ UI Component utilities for PyNutil GUI
 """
 
 from PyQt6.QtWidgets import (
-    QComboBox, QLabel, QHBoxLayout, QPushButton, QVBoxLayout,
-    QFileDialog, QDialog, QRadioButton, QButtonGroup, QGroupBox,
-    QLineEdit, QGridLayout
+    QComboBox,
+    QLabel,
+    QHBoxLayout,
+    QPushButton,
+    QVBoxLayout,
+    QFileDialog,
+    QDialog,
+    QRadioButton,
+    QButtonGroup,
+    QGroupBox,
+    QLineEdit,
+    QGridLayout,
 )
 from PyQt6.QtCore import Qt
 import os
+
 
 def create_labeled_combo_with_button(
     label_text: str,
@@ -20,7 +30,7 @@ def create_labeled_combo_with_button(
     parent=None,
     layout_type: str = "vertical",
     spacing: int = 6,  # Add spacing parameter (default Qt spacing is 6)
-    margins: tuple = None  # Add margins parameter (left, top, right, bottom)
+    margins: tuple = None,  # Add margins parameter (left, top, right, bottom)
 ) -> tuple:
     """
     Create a labeled combo box with an associated button.
@@ -140,6 +150,7 @@ def create_labeled_combo_with_button(
 
     return layout, combo_box, button
 
+
 def create_horizontal_combo_with_button(
     combo_stretch: int = 1,
     button_text: str = "+",
@@ -149,7 +160,7 @@ def create_horizontal_combo_with_button(
     combo_callback=None,
     parent=None,
     spacing: int = 1,  # Add spacing parameter
-    margins: tuple = None  # Add margins parameter
+    margins: tuple = None,  # Add margins parameter
 ) -> tuple:
     """
     Create a horizontal layout with a combo box and a button.
@@ -186,6 +197,7 @@ def create_horizontal_combo_with_button(
 
     return layout, combo_box, button
 
+
 def get_path_display_name(path):
     """Extract the filename or last directory from a path for display."""
     if not path:
@@ -196,6 +208,7 @@ def get_path_display_name(path):
         # For directories, show the last directory name
         path = path.rstrip(os.path.sep)  # Remove trailing slashes
         return os.path.basename(path)
+
 
 def populate_dropdown(dropdown, recents, clear_first=True):
     """
@@ -225,6 +238,7 @@ def populate_dropdown(dropdown, recents, clear_first=True):
 
     dropdown.setEditable(False)
     dropdown.setCurrentIndex(-1)
+
 
 def create_atlas_installation_dialog(parent=None):
     """Create a dialog for installing or adding atlases."""
@@ -293,13 +307,20 @@ def create_atlas_installation_dialog(parent=None):
 
     return (
         dialog,
-        brain_globe_radio, custom_radio,
-        brain_globe_group, custom_group,
+        brain_globe_radio,
+        custom_radio,
+        brain_globe_group,
+        custom_group,
         brain_globe_combo,
         install_brain_globe_button,
-        custom_atlas_name_edit, custom_atlas_path_edit, custom_label_path_edit,
-        browse_atlas_button, browse_label_button, add_custom_button
+        custom_atlas_name_edit,
+        custom_atlas_path_edit,
+        custom_label_path_edit,
+        browse_atlas_button,
+        browse_label_button,
+        add_custom_button,
     )
+
 
 def create_run_buttons_layout(spacing: int = 0, margins: tuple = None):
     """Create a horizontal layout with Run and Cancel buttons."""
@@ -321,14 +342,17 @@ def create_run_buttons_layout(spacing: int = 0, margins: tuple = None):
 
     return layout, run_button, cancel_button
 
-def select_path(parent,
-               path_type="file",
-               title="Select",
-               update_function=None,
-               key=None,
-               dropdown=None,
-               argument_dict=None,
-               filter=""):
+
+def select_path(
+    parent,
+    path_type="file",
+    title="Select",
+    update_function=None,
+    key=None,
+    dropdown=None,
+    argument_dict=None,
+    filter="",
+):
     """
     Unified function for selecting files or directories.
 
@@ -368,19 +392,22 @@ def select_path(parent,
 
     return path
 
-def create_path_selection_section(parent,
-                                 label_text,
-                                 path_type="file",
-                                 button_text="Browse...",
-                                 title="Select",
-                                 key=None,
-                                 filter="",
-                                 recents=None,
-                                 callback=None,
-                                 argument_dict=None,
-                                 layout_type="label_on_top",
-                                 spacing: int = 3,  # Add spacing with a smaller default
-                                 margins: tuple = (0, 0, 0, 0)):  # Add margins with zero default
+
+def create_path_selection_section(
+    parent,
+    label_text,
+    path_type="file",
+    button_text="Browse...",
+    title="Select",
+    key=None,
+    filter="",
+    recents=None,
+    callback=None,
+    argument_dict=None,
+    layout_type="label_on_top",
+    spacing: int = 3,  # Add spacing with a smaller default
+    margins: tuple = (0, 0, 0, 0),
+):  # Add margins with zero default
     """
     Create a complete section for path selection (label, button, dropdown).
 
@@ -402,6 +429,7 @@ def create_path_selection_section(parent,
     Returns:
         tuple: (layout, dropdown, button)
     """
+
     def on_button_click():
         select_path(
             parent=parent,
@@ -410,7 +438,7 @@ def create_path_selection_section(parent,
             update_function=parent.update_recent,
             key=key,
             dropdown=dropdown,
-            argument_dict=argument_dict
+            argument_dict=argument_dict,
         )
 
     # Create layout with label, button and dropdown
@@ -420,7 +448,7 @@ def create_path_selection_section(parent,
         button_callback=on_button_click,
         layout_type=layout_type,
         spacing=spacing,
-        margins=margins
+        margins=margins,
     )
 
     # Populate dropdown with recent items if provided

@@ -8,12 +8,39 @@ import os
 from typing import Dict, List, Optional, Union, Any
 
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton,
-    QFileDialog, QColorDialog, QComboBox, QMenuBar, QTextBrowser, QPlainTextEdit, QMessageBox,
-    QDialog, QRadioButton, QButtonGroup, QLineEdit, QGridLayout, QGroupBox, QProgressDialog
+    QApplication,
+    QMainWindow,
+    QLabel,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QPushButton,
+    QFileDialog,
+    QColorDialog,
+    QComboBox,
+    QMenuBar,
+    QTextBrowser,
+    QPlainTextEdit,
+    QMessageBox,
+    QDialog,
+    QRadioButton,
+    QButtonGroup,
+    QLineEdit,
+    QGridLayout,
+    QGroupBox,
+    QProgressDialog,
 )
 from PyQt6.QtGui import QAction, QColor, QIcon, QDesktopServices
-from PyQt6.QtCore import QMetaObject, Qt, Q_ARG, QThread, pyqtSignal, QObject, QUrl, pyqtSlot
+from PyQt6.QtCore import (
+    QMetaObject,
+    Qt,
+    Q_ARG,
+    QThread,
+    pyqtSignal,
+    QObject,
+    QUrl,
+    pyqtSlot,
+)
 
 import brainglobe_atlasapi
 import brainglobe_atlasapi.utils as bg_utils
@@ -28,27 +55,32 @@ from ui_components import (
     create_atlas_installation_dialog,
     create_run_buttons_layout,
     select_path,
-    create_path_selection_section
+    create_path_selection_section,
 )
 
 #  Patch retrieve_over_http to update progress via GUI's update_progress slot
 original_retrieve = bg_utils.retrieve_over_http
+
+
 def patched_retrieve_over_http(url, output_file_path, fn_update=None):
     # Try to extract atlas name from URL or path
     atlas_name = "Atlas"
     # URLs usually have this format: http://example.com/path/atlas_name/file.nii.gz
     # So we can try to extract the atlas name from the URL parts
-    url_parts = url.split('/')
+    url_parts = url.split("/")
     if len(url_parts) >= 2:
         potential_atlas_name = url_parts[-2]
-        if potential_atlas_name and not potential_atlas_name.startswith('http'):
+        if potential_atlas_name and not potential_atlas_name.startswith("http"):
             atlas_name = potential_atlas_name
 
     # Signal the start of atlas download with the atlas name
     if hasattr(PyNutilGUI, "instance") and PyNutilGUI.instance:
-        QMetaObject.invokeMethod(PyNutilGUI.instance, "atlas_download_started",
-                                 Qt.ConnectionType.QueuedConnection,
-                                 Q_ARG(str, atlas_name))
+        QMetaObject.invokeMethod(
+            PyNutilGUI.instance,
+            "atlas_download_started",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG(str, atlas_name),
+        )
 
     def patched_fn_update(completed, total):
         if total > 0:
@@ -68,13 +100,19 @@ def patched_retrieve_over_http(url, output_file_path, fn_update=None):
 
         if hasattr(PyNutilGUI, "instance") and PyNutilGUI.instance:
             # Always send the signal to update the UI with the dialog
-            QMetaObject.invokeMethod(PyNutilGUI.instance, "update_download_progress",
-                                    Qt.ConnectionType.QueuedConnection,
-                                    Q_ARG(str, progress_text),
-                                    Q_ARG(int, percent_int))
+            QMetaObject.invokeMethod(
+                PyNutilGUI.instance,
+                "update_download_progress",
+                Qt.ConnectionType.QueuedConnection,
+                Q_ARG(str, progress_text),
+                Q_ARG(int, percent_int),
+            )
 
             # Check if download should be cancelled
-            if hasattr(PyNutilGUI.instance, "download_cancelled") and PyNutilGUI.instance.download_cancelled:
+            if (
+                hasattr(PyNutilGUI.instance, "download_cancelled")
+                and PyNutilGUI.instance.download_cancelled
+            ):
                 raise Exception("Download cancelled by user")
 
         if fn_update:
@@ -84,18 +122,26 @@ def patched_retrieve_over_http(url, output_file_path, fn_update=None):
         result = original_retrieve(url, output_file_path, fn_update=patched_fn_update)
         # Signal the end of the download if successful
         if hasattr(PyNutilGUI, "instance") and PyNutilGUI.instance:
-            QMetaObject.invokeMethod(PyNutilGUI.instance, "atlas_download_finished",
-                                    Qt.ConnectionType.QueuedConnection)
+            QMetaObject.invokeMethod(
+                PyNutilGUI.instance,
+                "atlas_download_finished",
+                Qt.ConnectionType.QueuedConnection,
+            )
         return result
     except Exception as e:
         # Signal the end of download even if there was an exception
         if hasattr(PyNutilGUI, "instance") and PyNutilGUI.instance:
-            QMetaObject.invokeMethod(PyNutilGUI.instance, "atlas_download_finished",
-                                    Qt.ConnectionType.QueuedConnection)
+            QMetaObject.invokeMethod(
+                PyNutilGUI.instance,
+                "atlas_download_finished",
+                Qt.ConnectionType.QueuedConnection,
+            )
         # Re-raise the exception
         raise e
 
+
 bg_utils.retrieve_over_http = patched_retrieve_over_http
+
 
 class TextRedirector(QObject):
     text_written = pyqtSignal(str)
@@ -106,6 +152,7 @@ class TextRedirector(QObject):
 
     def flush(self):
         pass
+
 
 class AnalysisWorker(QThread):
     log_signal = pyqtSignal(str)
@@ -138,7 +185,9 @@ class AnalysisWorker(QThread):
             if self.arguments.get("use_custom_atlas", False):
                 pnt_args["atlas_path"] = self.arguments["atlas_path"]
                 pnt_args["label_path"] = self.arguments["label_path"]
-                print(f"Using custom atlas: {self.arguments.get('custom_atlas_name', 'Custom')}")
+                print(
+                    f"Using custom atlas: {self.arguments.get('custom_atlas_name', 'Custom')}"
+                )
             else:
                 pnt_args["atlas_name"] = self.arguments["atlas_name"]
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
@@ -174,8 +223,10 @@ class AnalysisWorker(QThread):
         self.cancelled = True
         print("Cancellation requested, please wait...")
 
+
 class AtlasInstallWorker(QThread):
     """Worker thread for installing BrainGlobe atlases"""
+
     progress_signal = pyqtSignal(str)
     finished_signal = pyqtSignal(bool, str)  # Success flag and message
 
@@ -193,9 +244,14 @@ class AtlasInstallWorker(QThread):
             brainglobe_atlasapi.bg_atlas.BrainGlobeAtlas(self.atlas_name)
 
             if self.cancelled:
-                self.finished_signal.emit(False, f"Installation of {self.atlas_name} was cancelled.")
+                self.finished_signal.emit(
+                    False, f"Installation of {self.atlas_name} was cancelled."
+                )
             else:
-                self.finished_signal.emit(True, f"BrainGlobe atlas '{self.atlas_name}' installed successfully.")
+                self.finished_signal.emit(
+                    True,
+                    f"BrainGlobe atlas '{self.atlas_name}' installed successfully.",
+                )
 
         except Exception as e:
             error_msg = f"Error installing BrainGlobe atlas: {str(e)}"
@@ -206,7 +262,10 @@ class AtlasInstallWorker(QThread):
 
     def cancel(self):
         self.cancelled = True
-        PyNutilGUI.instance.download_cancelled = True  # Use the existing cancellation mechanism
+        PyNutilGUI.instance.download_cancelled = (
+            True  # Use the existing cancellation mechanism
+        )
+
 
 class PyNutilGUI(QMainWindow):
     def __init__(self):
@@ -217,10 +276,14 @@ class PyNutilGUI(QMainWindow):
         # Add flags to track download state
         self.download_cancelled = False  # Track if user requested cancellation
         self.is_downloading_atlas = False  # Track if atlas download is in progress
-        self.current_atlas_name = None  # Track the name of the atlas currently being downloaded
+        self.current_atlas_name = (
+            None  # Track the name of the atlas currently being downloaded
+        )
 
         # Set the application icon
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Logo_PyNutil.ico")
+        icon_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "Logo_PyNutil.ico"
+        )
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         else:
@@ -233,14 +296,16 @@ class PyNutilGUI(QMainWindow):
             "segmentation_dir": None,
             "output_dir": None,
             "label_path": None,  # Added for custom atlases
-            "atlas_path": None,   # Added for custom atlases
+            "atlas_path": None,  # Added for custom atlases
         }
-        self.recent_files_path = os.path.join(os.path.expanduser("~"), ".pynutil_recent_files.json")
+        self.recent_files_path = os.path.join(
+            os.path.expanduser("~"), ".pynutil_recent_files.json"
+        )
         self.recent_files = self.load_recent_files()
         self.initUI()
 
     def load_recent_files(self):
-        if (os.path.exists(self.recent_files_path)):
+        if os.path.exists(self.recent_files_path):
             with open(self.recent_files_path, "r") as file:
                 data = json.load(file)
                 for key in ["registration_json", "segmentation_dir", "output_dir"]:
@@ -256,7 +321,7 @@ class PyNutilGUI(QMainWindow):
             "segmentation_dir": [],
             "output_dir": [],
             "object_colour": [],
-            "custom_atlases": []
+            "custom_atlases": [],
         }
 
     def save_recent_files(self):
@@ -275,18 +340,18 @@ class PyNutilGUI(QMainWindow):
 
         # Create menu bar
         menubar = QMenuBar(self)
-        file_menu = menubar.addMenu('File')
-        help_menu = menubar.addMenu('Help')
+        file_menu = menubar.addMenu("File")
+        help_menu = menubar.addMenu("Help")
 
-        load_settings_action = QAction('Load Settings', self)
+        load_settings_action = QAction("Load Settings", self)
         load_settings_action.triggered.connect(self.load_settings_from_file)
         file_menu.addAction(load_settings_action)
 
-        exit_action = QAction('Exit', self)
+        exit_action = QAction("Exit", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        about_action = QAction('About PyNutil', self)
+        about_action = QAction("About PyNutil", self)
         about_action.triggered.connect(self.about_pynutil)
         help_menu.addAction(about_action)
 
@@ -319,38 +384,46 @@ class PyNutilGUI(QMainWindow):
         # left_layout.setSpacing(10)  # Control spacing between sections
 
         # Registration JSON selection using unified path selection function
-        registration_layout, self.registration_json_dropdown, _ = create_path_selection_section(
-            parent=self,
-            label_text="Select registration JSON:",
-            path_type="file",
-            title="Open Registration JSON",
-            key="registration_json",
-            recents=self.recent_files["registration_json"],
-            callback=self.set_registration_json,
-            argument_dict=self.arguments
+        registration_layout, self.registration_json_dropdown, _ = (
+            create_path_selection_section(
+                parent=self,
+                label_text="Select registration JSON:",
+                path_type="file",
+                title="Open Registration JSON",
+                key="registration_json",
+                recents=self.recent_files["registration_json"],
+                callback=self.set_registration_json,
+                argument_dict=self.arguments,
+            )
         )
         left_layout.addLayout(registration_layout)
 
         # Segmentation directory selection using unified path selection function
-        segmentation_layout, self.segmentation_dir_dropdown, _ = create_path_selection_section(
-            parent=self,
-            label_text="Select segmentation folder:",
-            path_type="directory",
-            title="Select Segmentation Directory",
-            key="segmentation_dir",
-            recents=self.recent_files["segmentation_dir"],
-            callback=self.set_segmentation_dir,
-            argument_dict=self.arguments
+        segmentation_layout, self.segmentation_dir_dropdown, _ = (
+            create_path_selection_section(
+                parent=self,
+                label_text="Select segmentation folder:",
+                path_type="directory",
+                title="Select Segmentation Directory",
+                key="segmentation_dir",
+                recents=self.recent_files["segmentation_dir"],
+                callback=self.set_segmentation_dir,
+                argument_dict=self.arguments,
+            )
         )
         left_layout.addLayout(segmentation_layout)
 
         # Object color selection
-        color_layout, self.colour_dropdown, self.colour_button = create_labeled_combo_with_button(
-            "Select object colour:",
-            button_text="Colour",
-            button_callback=self.choose_colour
+        color_layout, self.colour_dropdown, self.colour_button = (
+            create_labeled_combo_with_button(
+                "Select object colour:",
+                button_text="Colour",
+                button_callback=self.choose_colour,
+            )
         )
-        populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+        populate_dropdown(
+            self.colour_dropdown, self.recent_files.get("object_colour", [])
+        )
         self.colour_dropdown.currentIndexChanged.connect(self.set_colour)
         left_layout.addLayout(color_layout)
 
@@ -363,13 +436,15 @@ class PyNutilGUI(QMainWindow):
             key="output_dir",
             recents=self.recent_files["output_dir"],
             callback=self.set_output_dir,
-            argument_dict=self.arguments
+            argument_dict=self.arguments,
         )
         left_layout.addLayout(output_layout)
 
         # Run and cancel buttons
         left_layout.addWidget(QLabel("Start analysis:"))
-        run_buttons_layout, self.run_button, self.cancel_button = create_run_buttons_layout()
+        run_buttons_layout, self.run_button, self.cancel_button = (
+            create_run_buttons_layout()
+        )
         self.run_button.clicked.connect(self.start_analysis)
         self.cancel_button.clicked.connect(self.cancel_analysis)
         left_layout.addLayout(run_buttons_layout)
@@ -431,7 +506,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def set_colour(self, index):
         if index >= 0:
-            value = self.colour_dropdown.itemData(index) or self.colour_dropdown.itemText(index)
+            value = self.colour_dropdown.itemData(
+                index
+            ) or self.colour_dropdown.itemText(index)
             if value:
                 try:
                     rgb_str = value.strip("[]")
@@ -456,7 +533,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             self.arguments["object_colour"] = rgb_list
             rgb_str = f"[{value.red()}, {value.green()}, {value.blue()}]"
             self.update_recent("object_colour", rgb_str)
-            populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+            populate_dropdown(
+                self.colour_dropdown, self.recent_files.get("object_colour", [])
+            )
             # For color items, store the RGB string in the user data too
             self.colour_dropdown.setItemData(1, rgb_str)
             self.colour_dropdown.setCurrentIndex(1)
@@ -489,7 +568,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             error_message = "Error: The following required settings are missing:<br>"
             for setting in missing_settings:
                 error_message += f"- {setting}<br>"
-            error_message += "<br>Please provide all required settings before running the analysis."
+            error_message += (
+                "<br>Please provide all required settings before running the analysis."
+            )
             self.output_box.setHtml(error_message)
             return
 
@@ -531,7 +612,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
     def cancel_analysis(self):
         """Handle cancellation of analysis or download"""
         # Cancel analysis if a worker thread is running
-        if hasattr(self, 'worker') and self.worker.isRunning():
+        if hasattr(self, "worker") and self.worker.isRunning():
             self.worker.cancel()
             # UI buttons will be updated via the finished signal
 
@@ -589,19 +670,25 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             return
 
         try:
-            with open(file_path, 'r') as file:
+            with open(file_path, "r") as file:
                 settings = json.load(file)
 
             if "segmentation_folder" in settings and settings["segmentation_folder"]:
                 self.arguments["segmentation_dir"] = settings["segmentation_folder"]
                 self.update_recent("segmentation_dir", settings["segmentation_folder"])
-                populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
+                populate_dropdown(
+                    self.segmentation_dir_dropdown,
+                    self.recent_files["segmentation_dir"],
+                )
                 self.segmentation_dir_dropdown.setCurrentIndex(1)
 
             if "alignment_json" in settings and settings["alignment_json"]:
                 self.arguments["registration_json"] = settings["alignment_json"]
                 self.update_recent("registration_json", settings["alignment_json"])
-                populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
+                populate_dropdown(
+                    self.registration_json_dropdown,
+                    self.recent_files["registration_json"],
+                )
                 self.registration_json_dropdown.setCurrentIndex(1)
 
             if "colour" in settings and settings["colour"]:
@@ -609,7 +696,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 self.arguments["object_colour"] = rgb_list
                 rgb_str = f"[{rgb_list[0]}, {rgb_list[1]}, {rgb_list[2]}]"
                 self.update_recent("object_colour", rgb_str)
-                populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
+                populate_dropdown(
+                    self.colour_dropdown, self.recent_files.get("object_colour", [])
+                )
                 self.colour_dropdown.setCurrentIndex(1)
 
             if "atlas_name" in settings and settings["atlas_name"]:
@@ -633,7 +722,11 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
     def update_download_progress(self, text: str, percent: int):
         """Update the progress dialog during atlas download"""
         # Always ensure progress dialog exists and is visible
-        if not (hasattr(self, 'progress_dialog') and self.progress_dialog and self.progress_dialog.isVisible()):
+        if not (
+            hasattr(self, "progress_dialog")
+            and self.progress_dialog
+            and self.progress_dialog.isVisible()
+        ):
             # If the dialog isn't visible, create it or show it
             self.ensure_progress_dialog_visible()
 
@@ -643,9 +736,11 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def ensure_progress_dialog_visible(self):
         """Make sure the progress dialog is created and visible"""
-        if not hasattr(self, 'progress_dialog') or not self.progress_dialog:
+        if not hasattr(self, "progress_dialog") or not self.progress_dialog:
             # Create a new progress dialog
-            self.progress_dialog = QProgressDialog("Downloading atlas...", "Cancel", 0, 100, self)
+            self.progress_dialog = QProgressDialog(
+                "Downloading atlas...", "Cancel", 0, 100, self
+            )
             self.progress_dialog.setWindowTitle("Atlas Download")
             self.progress_dialog.setModal(True)
             self.progress_dialog.setMinimumWidth(400)
@@ -691,11 +786,15 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.is_downloading_atlas = False
 
         # Close any progress dialog that might still be visible
-        if hasattr(self, 'progress_dialog') and self.progress_dialog and self.progress_dialog.isVisible():
+        if (
+            hasattr(self, "progress_dialog")
+            and self.progress_dialog
+            and self.progress_dialog.isVisible()
+        ):
             self.progress_dialog.close()
 
         # Only re-enable run button if there's no analysis running
-        if not hasattr(self, 'worker') or not self.worker.isRunning():
+        if not hasattr(self, "worker") or not self.worker.isRunning():
             self.run_button.setEnabled(True)
             self.cancel_button.setEnabled(False)
 
@@ -727,8 +826,10 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         """Show a dialog to install a new atlas."""
         (
             dialog,
-            brain_globe_radio, custom_radio,
-            brain_globe_group, custom_group,
+            brain_globe_radio,
+            custom_radio,
+            brain_globe_group,
+            custom_group,
             self.brain_globe_combo,
             install_brain_globe_button,
             self.custom_atlas_name_edit,
@@ -736,11 +837,13 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             self.custom_label_path_edit,
             browse_atlas_button,
             browse_label_button,
-            add_custom_button
+            add_custom_button,
         ) = create_atlas_installation_dialog(self)
 
         # Populate brainglobe atlas combo
-        available_atlases = brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
+        available_atlases = (
+            brainglobe_atlasapi.list_atlases.get_all_atlases_lastversions()
+        )
         self.brain_globe_combo.addItems(available_atlases)
 
         # Connect buttons to functions
@@ -755,14 +858,18 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         """Install the selected BrainGlobe atlas with progress monitoring"""
         atlas_name = self.brain_globe_combo.currentText()
         if not atlas_name:
-            QMessageBox.warning(self, "Warning", "Please select a BrainGlobe atlas to install.")
+            QMessageBox.warning(
+                self, "Warning", "Please select a BrainGlobe atlas to install."
+            )
             return
 
         # Store the current atlas name so it can be used in download dialogs
         self.current_atlas_name = atlas_name
 
         # Create progress dialog with range 0-100 for percentage
-        self.progress_dialog = QProgressDialog(f"Installing atlas: {atlas_name}...", "Cancel", 0, 100, self)
+        self.progress_dialog = QProgressDialog(
+            f"Installing atlas: {atlas_name}...", "Cancel", 0, 100, self
+        )
         self.progress_dialog.setWindowTitle(f"Installing Atlas: {atlas_name}")
         self.progress_dialog.setModal(True)
         self.progress_dialog.setMinimumWidth(400)
@@ -771,7 +878,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
         # Add custom cancel button with generalized cancel method
         cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(self.cancel_download)  # Use generalized cancel method
+        cancel_button.clicked.connect(
+            self.cancel_download
+        )  # Use generalized cancel method
         self.progress_dialog.setCancelButton(cancel_button)
 
         # Create and start worker thread
@@ -813,19 +922,21 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.append_text_to_output("Cancelling download. Please wait...")
 
         # Close the progress dialog immediately
-        if hasattr(self, 'progress_dialog') and self.progress_dialog and self.progress_dialog.isVisible():
+        if (
+            hasattr(self, "progress_dialog")
+            and self.progress_dialog
+            and self.progress_dialog.isVisible()
+        ):
             self.progress_dialog.close()
 
         # Also cancel specific workers if available
-        if hasattr(self, 'install_worker') and self.install_worker.isRunning():
+        if hasattr(self, "install_worker") and self.install_worker.isRunning():
             self.install_worker.cancel()
 
     def browse_custom_atlas_path(self):
         """Browse for custom atlas path."""
         path = select_path(
-            parent=self,
-            path_type="file",
-            title="Select Custom Atlas File"
+            parent=self, path_type="file", title="Select Custom Atlas File"
         )
         if path:
             self.custom_atlas_path_edit.setText(path)
@@ -833,9 +944,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
     def browse_custom_label_path(self):
         """Browse for custom label path."""
         path = select_path(
-            parent=self,
-            path_type="file",
-            title="Select Custom Label File"
+            parent=self, path_type="file", title="Select Custom Label File"
         )
         if path:
             self.custom_label_path_edit.setText(path)
@@ -847,14 +956,16 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         label_path = self.custom_label_path_edit.text().strip()
 
         if not atlas_name or not atlas_path or not label_path:
-            QMessageBox.warning(self, "Warning", "Please provide all fields for the custom atlas.")
+            QMessageBox.warning(
+                self, "Warning", "Please provide all fields for the custom atlas."
+            )
             return
 
         # Create custom atlas dictionary
         custom_atlas = {
             "name": atlas_name,
             "atlas_path": atlas_path,
-            "label_path": label_path
+            "label_path": label_path,
         }
 
         # Check if atlas with same name already exists
@@ -865,7 +976,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 existing_atlases[i] = custom_atlas
                 self.save_recent_files()
                 self.populate_atlas_dropdown()
-                self.append_text_to_output(f"Custom atlas '{atlas_name}' updated successfully.")
+                self.append_text_to_output(
+                    f"Custom atlas '{atlas_name}' updated successfully."
+                )
                 return
 
         # Add new custom atlas if not updating an existing one
@@ -876,17 +989,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.populate_atlas_dropdown()
         self.append_text_to_output(f"Custom atlas '{atlas_name}' added successfully.")
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     gui = PyNutilGUI()
     gui.show()
     sys.exit(app.exec())
-
-
-
-
-
-
-
-
-

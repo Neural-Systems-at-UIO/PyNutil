@@ -1,12 +1,9 @@
 import json
-import os
-
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
 from .processing.data_analysis import quantify_labeled_points
 from .io.file_operations import save_analysis_output
+from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
-from .processing.counting_and_load import label_points
-
 
 class PyNutil:
     """
@@ -32,6 +29,7 @@ class PyNutil:
         atlas_name=None,
         atlas_path=None,
         label_path=None,
+        custom_region_path=None,
         settings_file=None,
     ):
         """
@@ -51,6 +49,8 @@ class PyNutil:
             The path to the custom atlas volume file, only specify if you don't want to use brainglobe (default is None).
         label_path : str, optional
             The path to the custom atlas label file, only specify if you don't want to use brainglobe (default is None).
+        custom_region_path : str, optional
+            The path to a custom region id file. This can be found
         settings_file : str, optional
             The path to the settings JSON file. This file contains the above parameters and is used for automation (default is None).
 
@@ -69,6 +69,8 @@ class PyNutil:
                     segmentation_folder = settings["segmentation_folder"]
                     alignment_json = settings["alignment_json"]
                     colour = settings["colour"]
+                    if "custom_region_path" in settings:
+                        custom_region_path = settings["custom_region_path"]
                     if "atlas_path" in settings and "label_path" in settings:
                         atlas_path = settings["atlas_path"]
                         label_path = settings["label_path"]
@@ -83,7 +85,16 @@ class PyNutil:
             self.alignment_json = alignment_json
             self.colour = colour
             self.atlas_name = atlas_name
-
+            self.custom_region_path = custom_region_path
+            if custom_region_path:
+                custom_regions_dict, custom_atlas_labels = open_custom_region_file(
+                    custom_region_path
+                )
+            else:
+                custom_regions_dict = None
+                custom_atlas_labels = None
+            self.custom_regions_dict = custom_regions_dict
+            self.custom_atlas_labels = custom_atlas_labels
             if (atlas_path or label_path) and atlas_name:
                 raise ValueError(
                     "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."
@@ -133,8 +144,11 @@ class PyNutil:
                 self.pixel_points,
                 self.centroids,
                 self.points_labels,
+                self.points_custom_labels,
                 self.centroids_labels,
+                self.centroids_custom_labels,
                 self.region_areas_list,
+                self.custom_region_areas_list,
                 self.points_len,
                 self.centroids_len,
                 self.segmentation_filenames,
@@ -142,6 +156,7 @@ class PyNutil:
                 self.segmentation_folder,
                 self.alignment_json,
                 self.atlas_labels,
+                self.custom_regions_dict,
                 self.colour,
                 non_linear,
                 object_cutoff,
@@ -170,21 +185,37 @@ class PyNutil:
             )
         try:
             (
-                self.labeled_points,
-                self.labeled_points_centroids,
                 self.label_df,
-                self.per_section_df,
+                self.per_section_df
             ) = quantify_labeled_points(
-                self.pixel_points,
-                self.centroids,
                 self.points_len,
                 self.centroids_len,
                 self.region_areas_list,
                 self.points_labels,
                 self.centroids_labels,
                 self.atlas_labels,
-                # self.atlas_volume,
             )
+            if self.custom_regions_dict is not None:
+                (
+                    self.custom_label_df,
+                    self.custom_per_section_df
+                ) = quantify_labeled_points(
+                    self.points_len,
+                    self.centroids_len,
+                    self.custom_region_areas_list,
+                    self.points_custom_labels,
+                    self.centroids_custom_labels,
+                    self.custom_atlas_labels,
+                )
+                # Create a mapping from each subregion ID to its custom name
+                mapping = {}
+                for subregions, name in zip(self.custom_regions_dict["subregion_ids"], self.custom_regions_dict["custom_names"]):
+                    for sid in subregions:
+                        mapping[sid] = name
+                # Use map to populate the new column, defaulting to empty string
+                self.label_df["custom region name"] = self.label_df["idx"].map(mapping).fillna("")
+                for i in self.per_section_df:
+                     i["custom region name"] = i["idx"].map(mapping).fillna("")
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")
 
@@ -207,8 +238,8 @@ class PyNutil:
                 self.centroids,
                 self.label_df,
                 self.per_section_df,
-                self.labeled_points,
-                self.labeled_points_centroids,
+                self.points_labels,
+                self.centroids_labels,
                 self.points_len,
                 self.centroids_len,
                 self.segmentation_filenames,
@@ -217,12 +248,36 @@ class PyNutil:
                 segmentation_folder=self.segmentation_folder,
                 alignment_json=self.alignment_json,
                 colour=self.colour,
-                atlas_name=getattr(self, 'atlas_name', None),
-                atlas_path=getattr(self, 'atlas_path', None),
-                label_path=getattr(self, 'label_path', None),
-                settings_file=getattr(self, 'settings_file', None)
+                atlas_name=getattr(self, "atlas_name", None),
+                custom_region_path = getattr(self, "custom_region_path", None),
+                atlas_path=getattr(self, "atlas_path", None),
+                label_path=getattr(self, "label_path", None),
+                settings_file=getattr(self, "settings_file", None),
+                prepend = ""
             )
+            if self.custom_regions_dict is not None:
+                save_analysis_output(
+                    self.pixel_points,
+                    self.centroids,
+                    self.custom_label_df,
+                    self.per_section_df,
+                    self.points_custom_labels,
+                    self.centroids_custom_labels,
+                    self.points_len,
+                    self.centroids_len,
+                    self.segmentation_filenames,
+                    self.custom_atlas_labels,
+                    output_folder,
+                    segmentation_folder=self.segmentation_folder,
+                    alignment_json=self.alignment_json,
+                    colour=self.colour,
+                    atlas_name=getattr(self, "atlas_name", None),
+                    custom_region_path = getattr(self, "custom_region_path", None),
+                    atlas_path=getattr(self, "atlas_path", None),
+                    label_path=getattr(self, "label_path", None),
+                    settings_file=getattr(self, "settings_file", None),
+                    prepend="custom_"
+                )
             print(f"Saved output to {output_folder}")
         except Exception as e:
             raise ValueError(f"Error saving analysis: {e}")
-

@@ -20,7 +20,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 pnt = PyNutil(
     segmentation_folder=os.path.join(
-        script_dir, "../tests/test_data/blank_images/segmentations/"
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
     ),
     alignment_json=os.path.join(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
@@ -33,8 +33,10 @@ pnt = PyNutil(
     label_path=os.path.join(
         script_dir, "../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
     ),
-
+    custom_region_path=os.path.join(
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt"
+    ),
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/test_nonlinear_allen_mouse_noflat_03_03_25v3")
+pnt.save_analysis("../test_result/custom_regions_test_11_02_2025")

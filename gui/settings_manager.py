@@ -2,6 +2,7 @@ import json
 import os
 from typing import Dict, List, Any, Optional
 
+
 class SettingsManager:
     """Manages application settings and recent files."""
 
@@ -39,7 +40,7 @@ class SettingsManager:
             "segmentation_dir": [],
             "output_dir": [],
             "object_colour": [],
-            "custom_atlases": []
+            "custom_atlases": [],
         }
 
     def save_settings(self) -> None:

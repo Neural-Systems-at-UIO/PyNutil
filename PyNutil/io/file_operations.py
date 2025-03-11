@@ -1,6 +1,6 @@
 import os
 import json
-from .read_and_write import read_atlas_volume, write_points_to_meshview
+from .read_and_write import write_points_to_meshview
 
 
 def save_analysis_output(
@@ -19,9 +19,11 @@ def save_analysis_output(
     alignment_json=None,
     colour=None,
     atlas_name=None,
+    custom_region_path=None,
     atlas_path=None,
     label_path=None,
-    settings_file=None
+    settings_file=None,
+    prepend=None
 ):
     """
     Save the analysis output to the specified folder.
@@ -55,7 +57,7 @@ def save_analysis_output(
 
     if label_df is not None:
         label_df.to_csv(
-            f"{output_folder}/whole_series_report/counts.csv",
+            f"{output_folder}/whole_series_report/{prepend}counts.csv",
             sep=";",
             na_rep="",
             index=False,
@@ -77,6 +79,7 @@ def save_analysis_output(
         labeled_points_centroids,
         atlas_labels,
         output_folder,
+        prepend
     )
     _save_whole_series_meshview(
         pixel_points,
@@ -85,6 +88,7 @@ def save_analysis_output(
         labeled_points_centroids,
         atlas_labels,
         output_folder,
+        prepend
     )
 
     # Save settings to JSON file for reference
@@ -92,6 +96,7 @@ def save_analysis_output(
         "segmentation_folder": segmentation_folder,
         "alignment_json": alignment_json,
         "colour": colour,
+        "custom_region_path" : custom_region_path
     }
 
     # Add atlas information to settings
@@ -103,7 +108,8 @@ def save_analysis_output(
         settings_dict["label_path"] = label_path
     if settings_file:
         settings_dict["settings_file"] = settings_file
-
+    if custom_region_path:
+        settings_dict["custom_region_path"] = custom_region_path
     # Write settings to file
     settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
     with open(settings_file_path, "w") as f:
@@ -121,6 +127,7 @@ def _save_per_section_reports(
     labeled_points_centroids,
     atlas_labels,
     output_folder,
+    prepend
 ):
     prev_pl = 0
     prev_cl = 0
@@ -133,7 +140,7 @@ def _save_per_section_reports(
     ):
         split_fn = fn.split(os.sep)[-1].split(".")[0]
         df.to_csv(
-            f"{output_folder}/per_section_reports/{split_fn}.csv",
+            f"{output_folder}/per_section_reports/{prepend}{split_fn}.csv",
             sep=";",
             na_rep="",
             index=False,
@@ -150,6 +157,7 @@ def _save_per_section_reports(
             labeled_points_centroids,
             atlas_labels,
             output_folder,
+            prepend
         )
         prev_cl += cl
         prev_pl += pl
@@ -167,17 +175,18 @@ def _save_per_section_meshview(
     labeled_points_centroids,
     atlas_labels,
     output_folder,
+    prepend
 ):
     write_points_to_meshview(
         pixel_points[prev_pl : pl + prev_pl],
         labeled_points[prev_pl : pl + prev_pl],
-        f"{output_folder}/per_section_meshview/{split_fn}_pixels.json",
+        f"{output_folder}/per_section_meshview/{prepend}{split_fn}_pixels.json",
         atlas_labels,
     )
     write_points_to_meshview(
         centroids[prev_cl : cl + prev_cl],
         labeled_points_centroids[prev_cl : cl + prev_cl],
-        f"{output_folder}/per_section_meshview/{split_fn}_centroids.json",
+        f"{output_folder}/per_section_meshview/{prepend}{split_fn}_centroids.json",
         atlas_labels,
     )
 
@@ -189,16 +198,17 @@ def _save_whole_series_meshview(
     labeled_points_centroids,
     atlas_labels,
     output_folder,
+    prepend
 ):
     write_points_to_meshview(
         pixel_points,
         labeled_points,
-        f"{output_folder}/whole_series_meshview/pixels_meshview.json",
+        f"{output_folder}/whole_series_meshview/{prepend}pixels_meshview.json",
         atlas_labels,
     )
     write_points_to_meshview(
         centroids,
         labeled_points_centroids,
-        f"{output_folder}/whole_series_meshview/objects_meshview.json",
+        f"{output_folder}/whole_series_meshview/{prepend}objects_meshview.json",
         atlas_labels,
     )

@@ -79,7 +79,7 @@ def pixel_count_per_region(
         counts_per_label, columns=["idx", "pixel_count", "object_count"]
     )
     for clc, lcc in zip(counted_labels_centroids, label_counts_centroids):
-        df_counts_per_label.loc[df_counts_per_label['idx'] == clc, 'object_count'] = lcc
+        df_counts_per_label.loc[df_counts_per_label["idx"] == clc, "object_count"] = lcc
     new_rows = []
     for index, row in df_counts_per_label.iterrows():
         mask = df_label_colours["idx"] == row["idx"].astype(int)
@@ -299,7 +299,7 @@ def flat_to_dataframe(
         else image
     )
     df_area_per_label = count_pixels_per_label(allen_id_image, scale_factor)
-    return df_area_per_label, allen_id_image
+    return df_area_per_label, allen_id_image, scale_factor
 
 
 def load_image(file, image_vector, volume, triangulation, rescaleXY):
