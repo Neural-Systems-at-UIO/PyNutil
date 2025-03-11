@@ -23,7 +23,7 @@ def save_analysis_output(
     atlas_path=None,
     label_path=None,
     settings_file=None,
-    prepend=None
+    prepend=None,
 ):
     """
     Save the analysis output to the specified folder.
@@ -79,7 +79,7 @@ def save_analysis_output(
         labeled_points_centroids,
         atlas_labels,
         output_folder,
-        prepend
+        prepend,
     )
     _save_whole_series_meshview(
         pixel_points,
@@ -88,7 +88,7 @@ def save_analysis_output(
         labeled_points_centroids,
         atlas_labels,
         output_folder,
-        prepend
+        prepend,
     )
 
     # Save settings to JSON file for reference
@@ -96,7 +96,7 @@ def save_analysis_output(
         "segmentation_folder": segmentation_folder,
         "alignment_json": alignment_json,
         "colour": colour,
-        "custom_region_path" : custom_region_path
+        "custom_region_path": custom_region_path,
     }
 
     # Add atlas information to settings
@@ -127,7 +127,7 @@ def _save_per_section_reports(
     labeled_points_centroids,
     atlas_labels,
     output_folder,
-    prepend
+    prepend,
 ):
     prev_pl = 0
     prev_cl = 0
@@ -157,7 +157,7 @@ def _save_per_section_reports(
             labeled_points_centroids,
             atlas_labels,
             output_folder,
-            prepend
+            prepend,
         )
         prev_cl += cl
         prev_pl += pl
@@ -175,7 +175,7 @@ def _save_per_section_meshview(
     labeled_points_centroids,
     atlas_labels,
     output_folder,
-    prepend
+    prepend,
 ):
     write_points_to_meshview(
         pixel_points[prev_pl : pl + prev_pl],
@@ -198,7 +198,7 @@ def _save_whole_series_meshview(
     labeled_points_centroids,
     atlas_labels,
     output_folder,
-    prepend
+    prepend,
 ):
     write_points_to_meshview(
         pixel_points,

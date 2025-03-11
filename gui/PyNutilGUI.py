@@ -323,7 +323,13 @@ class PyNutilGUI(QMainWindow):
             return data
         with open(self.recent_files_path, "r") as file:
             data = json.load(file)
-            for key in ["registration_json", "segmentation_dir", "output_dir", "object_colour", "custom_region"]:
+            for key in [
+                "registration_json",
+                "segmentation_dir",
+                "output_dir",
+                "object_colour",
+                "custom_region",
+            ]:
                 if not isinstance(data.get(key, []), list):
                     data[key] = []
                 # Ensure there is one default empty item if the list is empty
@@ -437,15 +443,17 @@ class PyNutilGUI(QMainWindow):
         left_layout.addLayout(color_layout)
 
         # Custom region file selection (optional)
-        custom_region_layout, self.custom_region_dropdown, _ = create_path_selection_section(
-            parent=self,
-            label_text="Select custom region file (optional):",
-            path_type="file",
-            title="Select Custom Region File",
-            key="custom_region",
-            recents=self.recent_files.get("custom_region", []),
-            callback=self.set_custom_region_file,
-            argument_dict=self.arguments,
+        custom_region_layout, self.custom_region_dropdown, _ = (
+            create_path_selection_section(
+                parent=self,
+                label_text="Select custom region file (optional):",
+                path_type="file",
+                title="Select Custom Region File",
+                key="custom_region",
+                recents=self.recent_files.get("custom_region", []),
+                callback=self.set_custom_region_file,
+                argument_dict=self.arguments,
+            )
         )
         left_layout.addLayout(custom_region_layout)
 
@@ -512,27 +520,42 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def set_registration_json(self, index):
         if index >= 0:
-            value = self.registration_json_dropdown.itemData(index) or self.registration_json_dropdown.currentText()
+            value = (
+                self.registration_json_dropdown.itemData(index)
+                or self.registration_json_dropdown.currentText()
+            )
             self.arguments["registration_json"] = value
 
     def set_segmentation_dir(self, index):
         if index >= 0:
-            value = self.segmentation_dir_dropdown.itemData(index) or self.segmentation_dir_dropdown.currentText()
+            value = (
+                self.segmentation_dir_dropdown.itemData(index)
+                or self.segmentation_dir_dropdown.currentText()
+            )
             self.arguments["segmentation_dir"] = value
 
     def set_output_dir(self, index):
         if index >= 0:
-            value = self.output_dir_dropdown.itemData(index) or self.output_dir_dropdown.currentText()
+            value = (
+                self.output_dir_dropdown.itemData(index)
+                or self.output_dir_dropdown.currentText()
+            )
             self.arguments["output_dir"] = value
 
     def set_custom_region_file(self, index):
         if index >= 0:
-            value = self.custom_region_dropdown.itemData(index) or self.custom_region_dropdown.currentText()
+            value = (
+                self.custom_region_dropdown.itemData(index)
+                or self.custom_region_dropdown.currentText()
+            )
             self.arguments["custom_region_path"] = value
 
     def set_colour(self, index):
         if index >= 0:
-            value = self.colour_dropdown.itemData(index) or self.colour_dropdown.currentText()
+            value = (
+                self.colour_dropdown.itemData(index)
+                or self.colour_dropdown.currentText()
+            )
             if value:
                 try:
                     rgb_str = value.strip("[]")
@@ -744,7 +767,8 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 self.arguments["custom_region_path"] = settings["custom_region"]
                 self.update_recent("custom_region", settings["custom_region"])
                 populate_dropdown(
-                    self.custom_region_dropdown, self.recent_files.get("custom_region", [])
+                    self.custom_region_dropdown,
+                    self.recent_files.get("custom_region", []),
                 )
                 self.custom_region_dropdown.setCurrentIndex(1)
 

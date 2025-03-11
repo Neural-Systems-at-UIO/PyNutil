@@ -45,7 +45,6 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     return centroids, area, coords
 
 
-
 def folder_to_atlas_space(
     folder,
     quint_alignment,
@@ -76,9 +75,16 @@ def folder_to_atlas_space(
     slices = load_visualign_json(quint_alignment)
     segmentations = get_segmentations(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
-    points_list, centroids_list, region_areas_list, custom_region_areas_list, centroids_labels, centroids_custom_labels, points_labels, points_custom_labels = (
-        initialize_lists(len(segmentations))
-    )
+    (
+        points_list,
+        centroids_list,
+        region_areas_list,
+        custom_region_areas_list,
+        centroids_labels,
+        centroids_custom_labels,
+        points_labels,
+        points_custom_labels,
+    ) = initialize_lists(len(segmentations))
     threads = create_threads(
         segmentations,
         slices,
@@ -101,8 +107,22 @@ def folder_to_atlas_space(
         use_flat,
     )
     start_and_join_threads(threads)
-    points, centroids, points_labels, points_custom_labels, centroids_labels, centroids_custom_labels, points_len, centroids_len = (
-        process_results(points_list, centroids_list, points_labels, points_custom_labels, centroids_labels, centroids_custom_labels)
+    (
+        points,
+        centroids,
+        points_labels,
+        points_custom_labels,
+        centroids_labels,
+        centroids_custom_labels,
+        points_len,
+        centroids_len,
+    ) = process_results(
+        points_list,
+        centroids_list,
+        points_labels,
+        points_custom_labels,
+        centroids_labels,
+        centroids_custom_labels,
     )
     return (
         points,
@@ -145,7 +165,7 @@ def initialize_lists(length):
         centroids_labels,
         centroids_custom_labels,
         points_labels,
-        points_custom_labels
+        points_custom_labels,
     )
 
 
@@ -273,7 +293,7 @@ def get_region_areas(
     slice_dict,
     atlas_volume,
     triangulation,
-    custom_regions_dict = None
+    custom_regions_dict=None,
 ):
     """
     Gets the region areas.
@@ -372,10 +392,9 @@ def segmentation_to_atlas_space(
         slice_dict,
         atlas_volume,
         triangulation,
-        custom_regions_dict
+        custom_regions_dict,
     )
     atlas_map = rescale_image(atlas_map, (reg_width, reg_height))
-
 
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
@@ -441,10 +460,16 @@ def segmentation_to_atlas_space(
         per_point_custom_labels = vectorized_map(per_point_labels)
     else:
         per_centroid_custom_labels, per_point_custom_labels = None, None
-    centroids_custom_labels[index] =np.array(
-        per_centroid_custom_labels if ((centroids is not None) and (custom_regions_dict is not None)) else []
+    centroids_custom_labels[index] = np.array(
+        per_centroid_custom_labels
+        if ((centroids is not None) and (custom_regions_dict is not None))
+        else []
     )
-    points_custom_labels[index] = np.array(per_point_custom_labels if ((points is not None) and (custom_regions_dict is not None)) else [])
+    points_custom_labels[index] = np.array(
+        per_point_custom_labels
+        if ((points is not None) and (custom_regions_dict is not None))
+        else []
+    )
 
 
 def get_triangulation(slice_dict, reg_width, reg_height, non_linear):

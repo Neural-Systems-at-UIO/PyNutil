@@ -198,7 +198,14 @@ def start_and_join_threads(threads):
     [t.join() for t in threads]
 
 
-def process_results(points_list, centroids_list, points_labels, points_custom_labels, centroids_labels, centroids_custom_labels):
+def process_results(
+    points_list,
+    centroids_list,
+    points_labels,
+    points_custom_labels,
+    centroids_labels,
+    centroids_custom_labels,
+):
     """
     Processes the results from the threads.
 
@@ -237,4 +244,13 @@ def process_results(points_list, centroids_list, points_labels, points_custom_la
         centroids = np.concatenate(centroids_list)
         centroids_labels = np.concatenate(centroids_labels)
         centroids_custom_labels = np.concatenate(centroids_custom_labels)
-    return points, centroids, points_labels,points_custom_labels, centroids_labels,centroids_custom_labels, points_len, centroids_len
+    return (
+        points,
+        centroids,
+        points_labels,
+        points_custom_labels,
+        centroids_labels,
+        centroids_custom_labels,
+        points_len,
+        centroids_len,
+    )

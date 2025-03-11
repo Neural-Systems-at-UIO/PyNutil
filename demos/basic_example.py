@@ -22,8 +22,9 @@ pnt = PyNutil(
     alignment_json=alignment_json,
     colour=colour,
     atlas_name=atlas_name,
-     custom_region_path=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt"
+    custom_region_path=os.path.join(
+        script_dir,
+        "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
     ),
 )
 

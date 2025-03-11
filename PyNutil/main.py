@@ -5,6 +5,7 @@ from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
 
+
 class PyNutil:
     """
     A class used to perform brain-wide quantification and spatial analysis of features in serial section images.
@@ -184,10 +185,7 @@ class PyNutil:
                 "Please run get_coordinates before running quantify_coordinates."
             )
         try:
-            (
-                self.label_df,
-                self.per_section_df
-            ) = quantify_labeled_points(
+            (self.label_df, self.per_section_df) = quantify_labeled_points(
                 self.points_len,
                 self.centroids_len,
                 self.region_areas_list,
@@ -196,26 +194,30 @@ class PyNutil:
                 self.atlas_labels,
             )
             if self.custom_regions_dict is not None:
-                (
-                    self.custom_label_df,
-                    self.custom_per_section_df
-                ) = quantify_labeled_points(
-                    self.points_len,
-                    self.centroids_len,
-                    self.custom_region_areas_list,
-                    self.points_custom_labels,
-                    self.centroids_custom_labels,
-                    self.custom_atlas_labels,
+                (self.custom_label_df, self.custom_per_section_df) = (
+                    quantify_labeled_points(
+                        self.points_len,
+                        self.centroids_len,
+                        self.custom_region_areas_list,
+                        self.points_custom_labels,
+                        self.centroids_custom_labels,
+                        self.custom_atlas_labels,
+                    )
                 )
                 # Create a mapping from each subregion ID to its custom name
                 mapping = {}
-                for subregions, name in zip(self.custom_regions_dict["subregion_ids"], self.custom_regions_dict["custom_names"]):
+                for subregions, name in zip(
+                    self.custom_regions_dict["subregion_ids"],
+                    self.custom_regions_dict["custom_names"],
+                ):
                     for sid in subregions:
                         mapping[sid] = name
                 # Use map to populate the new column, defaulting to empty string
-                self.label_df["custom region name"] = self.label_df["idx"].map(mapping).fillna("")
+                self.label_df["custom region name"] = (
+                    self.label_df["idx"].map(mapping).fillna("")
+                )
                 for i in self.per_section_df:
-                     i["custom region name"] = i["idx"].map(mapping).fillna("")
+                    i["custom region name"] = i["idx"].map(mapping).fillna("")
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")
 
@@ -249,11 +251,11 @@ class PyNutil:
                 alignment_json=self.alignment_json,
                 colour=self.colour,
                 atlas_name=getattr(self, "atlas_name", None),
-                custom_region_path = getattr(self, "custom_region_path", None),
+                custom_region_path=getattr(self, "custom_region_path", None),
                 atlas_path=getattr(self, "atlas_path", None),
                 label_path=getattr(self, "label_path", None),
                 settings_file=getattr(self, "settings_file", None),
-                prepend = ""
+                prepend="",
             )
             if self.custom_regions_dict is not None:
                 save_analysis_output(
@@ -272,11 +274,11 @@ class PyNutil:
                     alignment_json=self.alignment_json,
                     colour=self.colour,
                     atlas_name=getattr(self, "atlas_name", None),
-                    custom_region_path = getattr(self, "custom_region_path", None),
+                    custom_region_path=getattr(self, "custom_region_path", None),
                     atlas_path=getattr(self, "atlas_path", None),
                     label_path=getattr(self, "label_path", None),
                     settings_file=getattr(self, "settings_file", None),
-                    prepend="custom_"
+                    prepend="custom_",
                 )
             print(f"Saved output to {output_folder}")
         except Exception as e:

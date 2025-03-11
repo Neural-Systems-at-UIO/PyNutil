@@ -34,7 +34,8 @@ pnt = PyNutil(
         script_dir, "../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
     ),
     custom_region_path=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt"
+        script_dir,
+        "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
     ),
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
