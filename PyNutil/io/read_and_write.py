@@ -162,15 +162,6 @@ def load_visualign_json(filename):
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
             if "ouv" in slice:
                 slice["anchoring"] = slice["ouv"]
-
-        name = os.path.basename(filename)
-        lz_compat_file = {
-            "name": name,
-            "target": vafile["atlas"],
-            "target-resolution": [456, 528, 320],
-            "slices": slices,
-        }
-
     else:
         slices = vafile["slices"]
     if len(slices) > 1:

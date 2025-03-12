@@ -4,7 +4,6 @@ from .processing.data_analysis import quantify_labeled_points, map_to_custom_reg
 from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
-import numpy as np
 
 
 
