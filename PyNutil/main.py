@@ -1,84 +1,12 @@
 import json
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
-from .processing.data_analysis import quantify_labeled_points
+from .processing.data_analysis import quantify_labeled_points, map_to_custom_regions, apply_custom_regions
 from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
 import numpy as np
 
 
-def map_to_custom_regions(custom_regions_dict, points_labels):
-    custom_points_labels = np.zeros_like(points_labels)
-    for i in np.unique(points_labels):
-        new_id = np.where([i in r for r in custom_regions_dict["subregion_ids"]])[0]
-        if len(new_id) > 1:
-            raise ValueError(f"error, region id {i} is in more than one custom region")
-        if len(new_id) == 0:
-            continue
-        new_id = new_id[0]
-        new_id = custom_regions_dict["custom_ids"][new_id]
-        custom_points_labels[points_labels == i] = int(new_id)
-    return custom_points_labels
-
-
-def apply_custom_regions(df, custom_regions_dict):
-    # Create mappings
-    id_mapping = {}
-    name_mapping = {}
-    rgb_mapping = {}
-
-    for cid, cname, rgb, subregions in zip(
-        custom_regions_dict["custom_ids"],
-        custom_regions_dict["custom_names"],
-        custom_regions_dict["rgb_values"],
-        custom_regions_dict["subregion_ids"],
-    ):
-        for sid in subregions:
-            id_mapping[sid] = cid
-            name_mapping[sid] = cname
-            rgb_mapping[sid] = rgb
-
-    # Update the original df with new columns
-    df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
-    temp_df = df.copy()
-    temp_df["idx"] = temp_df["idx"].map(id_mapping)
-
-    temp_df["r"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][0] if x in rgb_mapping else None
-    )
-    temp_df["g"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][1] if x in rgb_mapping else None
-    )
-    temp_df["b"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][2] if x in rgb_mapping else None
-    )
-
-    # Group and aggregate
-    grouped_df = (
-        temp_df[temp_df["custom_region_name"] != ""]
-        .groupby("custom_region_name", dropna=True)
-        .agg(
-            {
-                "pixel_count": "sum",
-                "region_area": "sum",
-                "object_count": "sum",
-                "r": "first",
-                "g": "first",
-                "b": "first",
-            }
-        )
-        .reset_index()
-    )
-
-    grouped_df = grouped_df.rename(columns={"custom_region_name": "name"})
-
-    grouped_df["area_fraction"] = grouped_df["pixel_count"] / grouped_df["region_area"]
-    common_columns = [col for col in df.columns if col in grouped_df.columns]
-    grouped_df = grouped_df.reindex(
-        columns=common_columns
-        + [col for col in grouped_df.columns if col not in common_columns]
-    )
-    return grouped_df, df
 
 
 class PyNutil:
