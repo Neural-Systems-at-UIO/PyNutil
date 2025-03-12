@@ -4,7 +4,63 @@ from .processing.data_analysis import quantify_labeled_points
 from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
+import numpy as np
 
+def map_to_custom_regions(custom_regions_dict, points_labels):
+    custom_points_labels = np.zeros_like(points_labels)
+    for i in np.unique(points_labels):
+        new_id = np.where([i in r for r in custom_regions_dict["subregion_ids"]])[0]
+        if len(new_id) > 1:
+            raise ValueError(f"error, region id {i} is in more than one custom region")
+        if len(new_id) == 0:
+            continue
+        new_id = new_id[0]
+        new_id = custom_regions_dict["custom_ids"][new_id]
+        custom_points_labels[points_labels == i] = int(new_id)
+    return custom_points_labels
+
+def apply_custom_regions(df, custom_regions_dict):
+    # Create mappings
+    id_mapping = {}
+    name_mapping = {}
+    rgb_mapping = {}
+
+    for cid, cname, rgb, subregions in zip(
+        custom_regions_dict["custom_ids"],
+        custom_regions_dict["custom_names"],
+        custom_regions_dict["rgb_values"],
+        custom_regions_dict["subregion_ids"],
+    ):
+        for sid in subregions:
+            id_mapping[sid] = cid
+            name_mapping[sid] = cname
+            rgb_mapping[sid] = rgb
+
+    # Update the original df with new columns
+    df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
+    temp_df = df.copy()
+    temp_df["idx"] = temp_df["idx"].map(id_mapping)
+
+    temp_df["r"] = temp_df["idx"].map(lambda x: rgb_mapping[x][0] if x in rgb_mapping else None)
+    temp_df["g"] = temp_df["idx"].map(lambda x: rgb_mapping[x][1] if x in rgb_mapping else None)
+    temp_df["b"] = temp_df["idx"].map(lambda x: rgb_mapping[x][2] if x in rgb_mapping else None)
+
+    # Group and aggregate
+    grouped_df = temp_df[temp_df["custom_region_name"] != ""].groupby("custom_region_name", dropna=True).agg({
+        "pixel_count": "sum",
+        "region_area": "sum",
+        "object_count": "sum",
+        "r": "first",
+        "g": "first",
+        "b": "first",
+    }).reset_index()
+
+    grouped_df = grouped_df.rename(columns={"custom_region_name": "name"})
+
+    grouped_df["area_fraction"] = grouped_df["pixel_count"] / grouped_df["region_area"]
+    common_columns = [col for col in df.columns if col in grouped_df.columns]
+    grouped_df = grouped_df.reindex(columns=common_columns + [col for col in grouped_df.columns if col not in common_columns])
+    return grouped_df, df
 
 class PyNutil:
     """
@@ -145,11 +201,8 @@ class PyNutil:
                 self.pixel_points,
                 self.centroids,
                 self.points_labels,
-                self.points_custom_labels,
                 self.centroids_labels,
-                self.centroids_custom_labels,
                 self.region_areas_list,
-                self.custom_region_areas_list,
                 self.points_len,
                 self.centroids_len,
                 self.segmentation_filenames,
@@ -157,15 +210,24 @@ class PyNutil:
                 self.segmentation_folder,
                 self.alignment_json,
                 self.atlas_labels,
-                self.custom_regions_dict,
                 self.colour,
                 non_linear,
                 object_cutoff,
                 self.atlas_volume,
                 use_flat,
             )
+            if self.custom_regions_dict is not None:
+                self.points_custom_labels = map_to_custom_regions(self.custom_regions_dict, self.points_labels)
+                self.centroids_custom_labels = map_to_custom_regions(self.custom_regions_dict, self.centroids_labels)
+
         except Exception as e:
             raise ValueError(f"Error extracting coordinates: {e}")
+
+
+
+        except Exception as e:
+            raise ValueError(f"Error extracting coordinates: {e}")
+
 
     def quantify_coordinates(self):
         """
@@ -194,30 +256,12 @@ class PyNutil:
                 self.atlas_labels,
             )
             if self.custom_regions_dict is not None:
-                (self.custom_label_df, self.custom_per_section_df) = (
-                    quantify_labeled_points(
-                        self.points_len,
-                        self.centroids_len,
-                        self.custom_region_areas_list,
-                        self.points_custom_labels,
-                        self.centroids_custom_labels,
-                        self.custom_atlas_labels,
-                    )
-                )
-                # Create a mapping from each subregion ID to its custom name
-                mapping = {}
-                for subregions, name in zip(
-                    self.custom_regions_dict["subregion_ids"],
-                    self.custom_regions_dict["custom_names"],
-                ):
-                    for sid in subregions:
-                        mapping[sid] = name
-                # Use map to populate the new column, defaulting to empty string
-                self.label_df["custom region name"] = (
-                    self.label_df["idx"].map(mapping).fillna("")
-                )
+                self.custom_label_df, self.label_df = apply_custom_regions(self.label_df, self.custom_regions_dict)
+                self.custom_per_section_df = []
                 for i in self.per_section_df:
-                    i["custom region name"] = i["idx"].map(mapping).fillna("")
+                    c, i = apply_custom_regions(i, self.custom_regions_dict)
+                    self.custom_per_section_df.append(c)
+                self.custom_label_df
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")
 

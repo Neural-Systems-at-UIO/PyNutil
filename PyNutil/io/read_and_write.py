@@ -72,6 +72,8 @@ def open_custom_region_file(path):
             "b": [c[2] for c in custom_region_dict["rgb_values"]],
         }
     )
+    if df["name"].duplicated().any():
+        raise ValueError("Duplicate region names found in custom region file.")
     return custom_region_dict, df
 
 
