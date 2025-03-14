@@ -270,10 +270,7 @@ def warp_image(image, triangulation, rescaleXY):
 
 def flat_to_dataframe(
     image,
-    labelfile,
-    rescaleXY=None,
-    image_vector=None,
-    volume=None,):
+    rescaleXY=None):
     """
     Converts a flat file to a DataFrame.
 
@@ -290,16 +287,11 @@ def flat_to_dataframe(
         np.array: array in shape of alignment XY scaled by rescaleXY with allen ID for each point
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
-    allen_id_image = (
-        assign_labels_to_image(image, labelfile)
-        if (image_vector is None or volume is None)
-        else image
-    )
-    df_area_per_label = count_pixels_per_label(allen_id_image, scale_factor)
-    return df_area_per_label, allen_id_image
+    df_area_per_label = count_pixels_per_label(image, scale_factor)
+    return df_area_per_label
 
 
-def load_image(file, image_vector, volume, triangulation, rescaleXY):
+def load_image(file, image_vector, volume, triangulation, rescaleXY, labelfile=None):
     """
     Loads an image from a file or generates it from a vector and volume.
 
@@ -318,10 +310,13 @@ def load_image(file, image_vector, volume, triangulation, rescaleXY):
         image = np.float64(image)
         if triangulation is not None:
             image = warp_image(image, triangulation, rescaleXY)
-    elif file.endswith(".flat"):
-        image = read_flat_file(file)
-    elif file.endswith(".seg"):
-        image = read_seg_file(file)
+    else:
+        if file.endswith(".flat"):
+            image = read_flat_file(file)
+        if file.endswith(".seg"):
+            image = read_seg_file(file)
+        image = assign_labels_to_image(image, labelfile)
+
     return image
 
 

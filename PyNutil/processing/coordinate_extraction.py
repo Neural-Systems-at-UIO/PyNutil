@@ -360,6 +360,7 @@ def detect_pixel_id(segmentation: np.array):
 
 
 def get_region_areas(
+    use_flat,
     atlas_labels,
     flat_file_atlas,
     seg_width,
@@ -385,10 +386,10 @@ def get_region_areas(
     Returns:
         DataFrame: DataFrame with region areas.
     """
-    image = load_image(flat_file_atlas,slice_dict["anchoring"], atlas_volume, triangulation, (seg_width, seg_height))
+    atlas_map = load_image(flat_file_atlas,slice_dict["anchoring"], atlas_volume, triangulation, (seg_width, seg_height), atlas_labels)
 
-    region_areas, atlas_map = flat_to_dataframe(
-        image, atlas_labels, flat_file_atlas, (seg_width, seg_height)
+    region_areas = flat_to_dataframe(
+        atlas_map, (seg_width, seg_height)
     )
     return region_areas, atlas_map
 
@@ -440,6 +441,7 @@ def segmentation_to_atlas_space(
     else:
         damage_mask = None
     region_areas, atlas_map = get_region_areas(
+        use_flat,
         atlas_labels,
         flat_file_atlas,
         seg_width,
