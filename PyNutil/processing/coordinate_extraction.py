@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from ..io.read_and_write import load_visualign_json
-from .counting_and_load import flat_to_dataframe, rescale_image
+from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .visualign_deformations import triangulate
 from glob import glob
 import cv2
@@ -44,6 +44,37 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     coords = np.array([label.coords for label in labels_info], dtype=object)
     return centroids, area, coords
 
+def update_spacing(anchoring, width, height, grid_spacing):
+    if len(anchoring) != 9:
+        print("Anchoring does not have 9 elements.")
+    ow = np.sqrt(sum([anchoring[i+3] ** 2 for i in range(3)]))
+    oh = np.sqrt(sum([anchoring[i+6] ** 2 for i in range(3)]))
+    xspacing = int(width * grid_spacing / ow)
+    yspacing = int(height * grid_spacing / oh)
+    return xspacing, yspacing
+
+def create_damage_mask(section, grid_spacing):
+    width = section["width"]
+    height = section["height"]
+    anchoring = section["anchoring"]
+    grid_values = section["grid"]
+    gridx = section["gridx"]
+    gridy = section["gridy"]
+
+    xspacing, yspacing = update_spacing(anchoring, width, height, grid_spacing)
+    x_coords = np.arange(gridx, width, xspacing)
+    y_coords = np.arange(gridy, height, yspacing)
+
+    num_markers = len(grid_values)
+    markers = [(x_coords[i % len(x_coords)], y_coords[i // len(x_coords)]) for i in range(num_markers)]
+
+    binary_image = np.ones((len(y_coords), len(x_coords)), dtype=int)
+
+    for i, (x, y) in enumerate(markers):
+        if grid_values[i] == 4:
+            binary_image[y // yspacing, x // xspacing] = 0
+
+    return binary_image
 
 def create_threads(
     segmentations,
@@ -140,7 +171,7 @@ def folder_to_atlas_space(
     Returns:
         tuple: Points, centroids, region areas list, points length, centroids length, segmentations.
     """
-    slices = load_visualign_json(quint_alignment)
+    slices, gridspacing = load_visualign_json(quint_alignment)
     segmentations = get_segmentations(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
     points_list, centroids_list, region_areas_list, centroids_labels, points_labels = (
@@ -162,6 +193,7 @@ def folder_to_atlas_space(
         object_cutoff,
         atlas_volume,
         use_flat,
+        gridspacing
     )
     start_and_join_threads(threads)
     points, centroids, points_labels, centroids_labels, points_len, centroids_len = (
@@ -234,6 +266,7 @@ def create_threads(
     object_cutoff,
     atlas_volume,
     use_flat,
+    gridspacing
 ):
     """
     Creates threads for processing segmentations.
@@ -287,6 +320,7 @@ def create_threads(
                 object_cutoff,
                 atlas_volume,
                 use_flat,
+                gridspacing
             ),
         )
         threads.append(x)
@@ -326,7 +360,6 @@ def detect_pixel_id(segmentation: np.array):
 
 
 def get_region_areas(
-    use_flat,
     atlas_labels,
     flat_file_atlas,
     seg_width,
@@ -334,6 +367,7 @@ def get_region_areas(
     slice_dict,
     atlas_volume,
     triangulation,
+    damage_mask
 ):
     """
     Gets the region areas.
@@ -351,19 +385,11 @@ def get_region_areas(
     Returns:
         DataFrame: DataFrame with region areas.
     """
-    if use_flat:
-        region_areas, atlas_map = flat_to_dataframe(
-            atlas_labels, flat_file_atlas, (seg_width, seg_height)
-        )
-    else:
-        region_areas, atlas_map = flat_to_dataframe(
-            atlas_labels,
-            flat_file_atlas,
-            (seg_width, seg_height),
-            slice_dict["anchoring"],
-            atlas_volume,
-            triangulation,
-        )
+    image = load_image(flat_file_atlas,slice_dict["anchoring"], atlas_volume, triangulation, (seg_width, seg_height))
+
+    region_areas, atlas_map = flat_to_dataframe(
+        image, atlas_labels, flat_file_atlas, (seg_width, seg_height)
+    )
     return region_areas, atlas_map
 
 
@@ -383,6 +409,7 @@ def segmentation_to_atlas_space(
     object_cutoff=0,
     atlas_volume=None,
     use_flat=False,
+    grid_spacing=None,
 ):
     """
     Converts a segmentation to atlas space.
@@ -408,8 +435,11 @@ def segmentation_to_atlas_space(
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_dict["height"], slice_dict["width"]
     triangulation = get_triangulation(slice_dict, reg_width, reg_height, non_linear)
+    if "grid" in slice_dict:
+        damage_mask = create_damage_mask(slice_dict, grid_spacing)
+    else:
+        damage_mask = None
     region_areas, atlas_map = get_region_areas(
-        use_flat,
         atlas_labels,
         flat_file_atlas,
         seg_width,
@@ -417,6 +447,7 @@ def segmentation_to_atlas_space(
         slice_dict,
         atlas_volume,
         triangulation,
+        damage_mask
     )
     atlas_map = rescale_image(atlas_map, (reg_width, reg_height))
     y_scale, x_scale = transform_to_registration(

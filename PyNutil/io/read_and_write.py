@@ -166,7 +166,8 @@ def load_visualign_json(filename):
         slices = vafile["slices"]
     if len(slices) > 1:
         slices = propagate(slices)
-    return slices
+    gridspacing = vafile["gridspacing"] if "gridspacing" in vafile else None
+    return slices, gridspacing
 
 
 # related to read_and_write, used in write_points_to_meshview

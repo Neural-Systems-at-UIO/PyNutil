@@ -269,13 +269,11 @@ def warp_image(image, triangulation, rescaleXY):
 
 
 def flat_to_dataframe(
+    image,
     labelfile,
-    file=None,
     rescaleXY=None,
     image_vector=None,
-    volume=None,
-    triangulation=None,
-):
+    volume=None,):
     """
     Converts a flat file to a DataFrame.
 
@@ -291,7 +289,6 @@ def flat_to_dataframe(
         DataFrame: DataFrame with area per label.
         np.array: array in shape of alignment XY scaled by rescaleXY with allen ID for each point
     """
-    image = load_image(file, image_vector, volume, triangulation, rescaleXY)
     scale_factor = calculate_scale_factor(image, rescaleXY)
     allen_id_image = (
         assign_labels_to_image(image, labelfile)
