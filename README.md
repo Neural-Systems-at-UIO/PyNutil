@@ -13,9 +13,13 @@ PyNutil can be run using a custom atlas in .nrrd format (e.g. tests/test_data/Al
 Pynutil can also be used with the atlases available in the [BrainGlobe_Atlas API](https://github.com/brainglobe/brainglobe-atlasapi). 
 
 # Installation
+## Python package
 ```
 pip install PyNutil
 ```
+## GUI
+download the executable for windows and macOS via the github releases tab
+
 # Usage
 
 PyNutil requires Python 3.8 or above.
