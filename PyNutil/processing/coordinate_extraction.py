@@ -389,7 +389,7 @@ def get_region_areas(
     atlas_map = load_image(flat_file_atlas,slice_dict["anchoring"], atlas_volume, triangulation, (seg_width, seg_height), atlas_labels)
 
     region_areas = flat_to_dataframe(
-        atlas_map, (seg_width, seg_height)
+        atlas_map, damage_mask, (seg_width, seg_height)
     )
     return region_areas, atlas_map
 

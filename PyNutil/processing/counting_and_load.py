@@ -270,6 +270,7 @@ def warp_image(image, triangulation, rescaleXY):
 
 def flat_to_dataframe(
     image,
+    damage_mask,
     rescaleXY=None):
     """
     Converts a flat file to a DataFrame.
@@ -287,7 +288,16 @@ def flat_to_dataframe(
         np.array: array in shape of alignment XY scaled by rescaleXY with allen ID for each point
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
-    df_area_per_label = count_pixels_per_label(image, scale_factor)
+    if damage_mask is not None:
+        damage_mask = cv2.resize(damage_mask.astype(np.uint8), (image.shape[::-1]), interpolation=cv2.INTER_NEAREST).astype(bool)
+        undamaged_df_area_per_label = count_pixels_per_label(image[damage_mask], scale_factor)
+        damaged_df_area_per_label = count_pixels_per_label(image[~damage_mask], scale_factor)
+        undamaged_df_area_per_label = undamaged_df_area_per_label.rename(columns={"region_area": "undamaged_region_area"})
+        damaged_df_area_per_label = damaged_df_area_per_label.rename(columns={"region_area": "damaged_region_area"})
+        df_area_per_label = pd.merge(undamaged_df_area_per_label, damaged_df_area_per_label, on='idx', how='outer').fillna(0)
+        df_area_per_label["region_area"] = df_area_per_label["undamaged_region_area"] + df_area_per_label["damaged_region_area"]
+    else:
+        df_area_per_label = count_pixels_per_label(image, scale_factor)
     return df_area_per_label
 
 
