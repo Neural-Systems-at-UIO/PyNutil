@@ -111,8 +111,6 @@ def quantify_labeled_points(
     Returns:
         tuple: Labeled points, labeled centroids, label DataFrame, per section DataFrame.
     """
-    # labeled_points_centroids = label_points(centroids, atlas_volume)
-    # labeled_points = label_points(pixel_points, atlas_volume, scale_factor=1)
 
     per_section_df = _quantify_per_section(
         labeled_points,

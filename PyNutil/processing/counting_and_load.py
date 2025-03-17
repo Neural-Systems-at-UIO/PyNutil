@@ -6,48 +6,6 @@ from .generate_target_slice import generate_target_slice
 from .visualign_deformations import transform_vec
 
 
-# related to counting and load
-def label_points(points, label_volume, scale_factor=1):
-    """
-    Assigns points to regions based on the label_volume.
-
-    Args:
-        points (list): List of points.
-        label_volume (ndarray): Volume with region labels.
-        scale_factor (int, optional): Scaling factor for points. Defaults to 1.
-
-    Returns:
-        ndarray: Labels for each point.
-    """
-    # First convert the points to 3 columns
-    points = np.reshape(points, (-1, 3))
-    # Scale the points
-    points = points * scale_factor
-    # Round the points to the nearest whole number
-    points = np.round(points).astype(int)
-    x = points[:, 0]
-    y = points[:, 1]
-    z = points[:, 2]
-
-    # make sure the points are within the volume
-    x[x < 0] = 0
-    y[y < 0] = 0
-    z[z < 0] = 0
-    mask = (
-        (x > label_volume.shape[0] - 1)
-        | (y > label_volume.shape[1] - 1)
-        | (z > label_volume.shape[2] - 1)
-    )
-    x[mask] = 0
-    y[mask] = 0
-    z[mask] = 0
-
-    # Get the label value for each point
-    labels = label_volume[x, y, z]
-
-    return labels
-
-
 # related to counting_and_load
 def pixel_count_per_region(
     labels_dict_points,
