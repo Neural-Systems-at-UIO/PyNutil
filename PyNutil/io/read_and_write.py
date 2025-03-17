@@ -162,20 +162,12 @@ def load_visualign_json(filename):
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
             if "ouv" in slice:
                 slice["anchoring"] = slice["ouv"]
-
-        name = os.path.basename(filename)
-        lz_compat_file = {
-            "name": name,
-            "target": vafile["atlas"],
-            "target-resolution": [456, 528, 320],
-            "slices": slices,
-        }
-
     else:
         slices = vafile["slices"]
     if len(slices) > 1:
         slices = propagate(slices)
-    return slices
+    gridspacing = vafile["gridspacing"] if "gridspacing" in vafile else None
+    return slices, gridspacing
 
 
 # related to read_and_write, used in write_points_to_meshview
@@ -275,19 +267,6 @@ def flat_to_array(file, labelfile):
     ]  # assign x,y coords from image_array into values
     lbidx = labelfile["idx"].values
     allen_id_image = lbidx[values.astype(int)]
-    return allen_id_image
-
-
-def label_to_array(label_path, image_array):
-    """assign label file values into image array, return array"""
-    labelfile = pd.read_csv(label_path)
-    allen_id_image = np.zeros((h, w))  # create an empty image array
-    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-    values = image_array[
-        coordsx, coordsy
-    ]  # assign x,y coords from image_array into values
-    lbidx = labelfile["idx"].values
-    allen_id_image = lbidx[values.astype(int)]  # assign allen IDs into image array
     return allen_id_image
 
 

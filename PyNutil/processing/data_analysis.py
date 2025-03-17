@@ -36,7 +36,6 @@ def apply_custom_regions(df, custom_regions_dict):
     # Update the original df with new columns
     df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
     temp_df = df.copy()
-    temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
     temp_df["r"] = temp_df["idx"].map(
         lambda x: rgb_mapping[x][0] if x in rgb_mapping else None
@@ -47,6 +46,7 @@ def apply_custom_regions(df, custom_regions_dict):
     temp_df["b"] = temp_df["idx"].map(
         lambda x: rgb_mapping[x][2] if x in rgb_mapping else None
     )
+    temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
     # Group and aggregate
     grouped_df = (
@@ -55,8 +55,14 @@ def apply_custom_regions(df, custom_regions_dict):
         .agg(
             {
                 "pixel_count": "sum",
+                "undamaged_pixel_count": "sum",
+                "damaged_pixel_counts": "sum",
                 "region_area": "sum",
+                "undamaged_region_area": "sum",
+                "damaged_region_area": "sum",
                 "object_count": "sum",
+                "undamaged_object_count": "sum",
+                "damaged_object_count": "sum",
                 "r": "first",
                 "g": "first",
                 "b": "first",
@@ -68,6 +74,7 @@ def apply_custom_regions(df, custom_regions_dict):
     grouped_df = grouped_df.rename(columns={"custom_region_name": "name"})
 
     grouped_df["area_fraction"] = grouped_df["pixel_count"] / grouped_df["region_area"]
+    grouped_df["undamaged_area_fraction"] = grouped_df["undamaged_pixel_count"] / grouped_df["undamaged_region_area"]
     common_columns = [col for col in df.columns if col in grouped_df.columns]
     grouped_df = grouped_df.reindex(
         columns=common_columns
@@ -82,7 +89,8 @@ def quantify_labeled_points(
     labeled_points,
     labeled_points_centroids,
     atlas_labels,
-    # atlas_volume,
+    per_point_undamaged,
+    per_centroid_undamaged
 ):
     """
     Quantifies labeled points and returns various DataFrames.
@@ -109,6 +117,8 @@ def quantify_labeled_points(
         centroids_len,
         region_areas_list,
         atlas_labels,
+        per_point_undamaged,
+        per_centroid_undamaged
     )
     label_df = _combine_slice_reports(per_section_df, atlas_labels)
 
@@ -122,6 +132,8 @@ def _quantify_per_section(
     centroids_len,
     region_areas_list,
     atlas_labels,
+    per_point_undamaged,
+    per_centroid_undamaged
 ):
     """
     Quantifies labeled points per section.
@@ -144,8 +156,10 @@ def _quantify_per_section(
     for pl, cl, ra in zip(points_len, centroids_len, region_areas_list):
         current_centroids = labeled_points_centroids[prev_cl : prev_cl + cl]
         current_points = labeled_points[prev_pl : prev_pl + pl]
+        current_points_undamaged = per_point_undamaged[prev_pl : prev_pl + pl]
+        current_centroids_undamaged = per_centroid_undamaged[prev_cl : prev_cl + cl]
         current_df = pixel_count_per_region(
-            current_points, current_centroids, atlas_labels
+            current_points, current_centroids, current_points_undamaged, current_centroids_undamaged, atlas_labels
         )
         current_df_new = _merge_dataframes(current_df, ra, atlas_labels)
         per_section_df.append(current_df_new)
@@ -197,6 +211,7 @@ def _combine_slice_reports(per_section_df, atlas_labels):
         .drop(columns=["area_fraction"])
     )
     label_df["area_fraction"] = label_df["pixel_count"] / label_df["region_area"]
+    label_df["undamaged_area_fraction"] = label_df["undamaged_pixel_count"] / label_df["undamaged_region_area"]
     label_df.fillna(0, inplace=True)
 
     label_df = label_df.set_index("idx")

@@ -23,7 +23,7 @@ pnt = PyNutil(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
     ),
     alignment_json=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/damage_markers.json"
     ),
     colour=[0, 0, 0],
     atlas_path=os.path.join(
@@ -40,4 +40,4 @@ pnt = PyNutil(
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/custom_regions_test_12_02_2025")
+pnt.save_analysis("../test_result/damage_regions_test_17_03_2025")

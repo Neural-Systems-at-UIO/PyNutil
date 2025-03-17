@@ -52,7 +52,6 @@ def get_transformed_coordinates(
     slice_dict,
     scaled_x,
     scaled_y,
-    centroids,
     scaled_centroidsX,
     scaled_centroidsY,
     triangulation,
@@ -77,7 +76,7 @@ def get_transformed_coordinates(
     if non_linear and "markers" in slice_dict:
         if scaled_x is not None:
             new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
-        if centroids is not None:
+        if scaled_centroidsX is not None:
             centroids_new_x, centroids_new_y = transform_vec(
                 triangulation, scaled_centroidsX, scaled_centroidsY
             )
