@@ -1,5 +1,7 @@
 """This code was written by Gergely Csucs, Harry Carey and Rembrandt Bakker"""
+
 import numpy as np
+
 
 def triangulate(w, h, markers):
     """

@@ -1,6 +1,7 @@
 import numpy as np
 from .visualign_deformations import transform_vec
 
+
 def transform_to_registration(seg_height, seg_width, reg_height, reg_width):
     """
     Returns the scaling factors to transform the segmentation to the registration space.

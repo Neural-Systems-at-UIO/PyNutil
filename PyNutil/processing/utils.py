@@ -3,6 +3,7 @@ import pandas as pd
 import re
 from glob import glob
 
+
 def number_sections(filenames, legacy=False):
     """
     Returns the section numbers of filenames.
@@ -196,7 +197,14 @@ def start_and_join_threads(threads):
     [t.join() for t in threads]
 
 
-def process_results(points_list, centroids_list, points_labels, centroids_labels, points_undamaged_list, centroids_undamaged_list):
+def process_results(
+    points_list,
+    centroids_list,
+    points_labels,
+    centroids_labels,
+    points_undamaged_list,
+    centroids_undamaged_list,
+):
     """
     Processes the results from the threads.
 
@@ -218,7 +226,9 @@ def process_results(points_list, centroids_list, points_labels, centroids_labels
     points_labels = [pl for pl in points_labels if None not in pl]
     centroids_labels = [cl for cl in centroids_labels if None not in cl]
     points_undamaged_list = [pul for pul in points_undamaged_list if None not in pul]
-    centroids_undamaged_list = [cul for cul in centroids_undamaged_list if None not in cul]
+    centroids_undamaged_list = [
+        cul for cul in centroids_undamaged_list if None not in cul
+    ]
     if len(points_list) == 0:
         points = np.array([])
         points_labels = np.array([])
@@ -237,4 +247,13 @@ def process_results(points_list, centroids_list, points_labels, centroids_labels
         centroids_labels = np.concatenate(centroids_labels)
         centroids_undamaged = np.concatenate(centroids_undamaged_list)
 
-    return points, centroids, points_labels, centroids_labels, points_len, centroids_len, points_undamaged, centroids_undamaged
+    return (
+        points,
+        centroids,
+        points_labels,
+        centroids_labels,
+        points_len,
+        centroids_len,
+        points_undamaged,
+        centroids_undamaged,
+    )

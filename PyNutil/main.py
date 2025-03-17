@@ -1,9 +1,14 @@
 import json
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
-from .processing.data_analysis import quantify_labeled_points, map_to_custom_regions, apply_custom_regions
+from .processing.data_analysis import (
+    quantify_labeled_points,
+    map_to_custom_regions,
+    apply_custom_regions,
+)
 from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
+
 
 class PyNutil:
     """
@@ -150,7 +155,7 @@ class PyNutil:
                 self.centroids_len,
                 self.segmentation_filenames,
                 self.per_point_undamaged,
-                self.per_centroid_undamaged
+                self.per_centroid_undamaged,
             ) = folder_to_atlas_space(
                 self.segmentation_folder,
                 self.alignment_json,
@@ -201,7 +206,7 @@ class PyNutil:
                 self.centroids_labels,
                 self.atlas_labels,
                 self.per_point_undamaged,
-                self.per_centroid_undamaged
+                self.per_centroid_undamaged,
             )
             if self.custom_regions_dict is not None:
                 self.custom_label_df, self.label_df = apply_custom_regions(
