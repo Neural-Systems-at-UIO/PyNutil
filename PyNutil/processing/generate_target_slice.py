@@ -1,7 +1,6 @@
 import numpy as np
 import math
 
-
 def generate_target_slice(ouv, atlas):
     """
     Generates a target slice from the atlas using the given orientation and vectors.

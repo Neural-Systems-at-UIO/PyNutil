@@ -4,7 +4,6 @@ import os
 import zipfile
 import xmltodict
 
-
 def reconstruct_dzi(zip_file_path):
     """
     Reconstructs a Deep Zoom Image (DZI) from a zip file containing the tiles.

@@ -5,7 +5,6 @@ import cv2
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import transform_vec
 
-
 # related to counting and load
 def label_points(points, label_volume, scale_factor=1):
     """

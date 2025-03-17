@@ -1,9 +1,7 @@
 import numpy as np
 import pandas as pd
 import re
-import threading
 from glob import glob
-
 
 def number_sections(filenames, legacy=False):
     """

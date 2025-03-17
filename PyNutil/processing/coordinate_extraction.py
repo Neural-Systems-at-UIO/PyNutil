@@ -3,7 +3,6 @@ import pandas as pd
 from ..io.read_and_write import load_visualign_json
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .visualign_deformations import triangulate
-from glob import glob
 import cv2
 from skimage import measure
 import threading

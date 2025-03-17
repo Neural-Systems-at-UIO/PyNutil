@@ -1,5 +1,5 @@
 import pandas as pd
-from .counting_and_load import pixel_count_per_region, label_points
+from .counting_and_load import pixel_count_per_region
 import numpy as np
 
 def map_to_custom_regions(custom_regions_dict, points_labels):

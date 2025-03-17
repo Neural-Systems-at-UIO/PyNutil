@@ -1,6 +1,5 @@
 import math, re
 
-
 def propagate(arr):
     arr = arr.copy()
     for slice in arr:

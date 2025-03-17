@@ -5,9 +5,6 @@ from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
 
-
-
-
 class PyNutil:
     """
     A class used to perform brain-wide quantification and spatial analysis of features in serial section images.
