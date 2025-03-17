@@ -54,7 +54,9 @@ def save_analysis_output(
     os.makedirs(f"{output_folder}/per_section_meshview", exist_ok=True)
     os.makedirs(f"{output_folder}/per_section_reports", exist_ok=True)
     os.makedirs(f"{output_folder}/whole_series_meshview", exist_ok=True)
-
+    # Filter out rows where 'region_area' is 0 in label_df
+    if label_df is not None and "region_area" in label_df.columns:
+        label_df = label_df[label_df["region_area"] != 0]
     if label_df is not None:
         label_df.to_csv(
             f"{output_folder}/whole_series_report/{prepend}counts.csv",

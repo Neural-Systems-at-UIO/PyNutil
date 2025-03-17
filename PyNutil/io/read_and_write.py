@@ -270,19 +270,6 @@ def flat_to_array(file, labelfile):
     return allen_id_image
 
 
-def label_to_array(label_path, image_array):
-    """assign label file values into image array, return array"""
-    labelfile = pd.read_csv(label_path)
-    allen_id_image = np.zeros((h, w))  # create an empty image array
-    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-    values = image_array[
-        coordsx, coordsy
-    ]  # assign x,y coords from image_array into values
-    lbidx = labelfile["idx"].values
-    allen_id_image = lbidx[values.astype(int)]  # assign allen IDs into image array
-    return allen_id_image
-
-
 def files_in_directory(directory):
     """return list of flat file names in a directory"""
     list_of_files = []

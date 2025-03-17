@@ -198,7 +198,7 @@ def start_and_join_threads(threads):
     [t.join() for t in threads]
 
 
-def process_results(points_list, centroids_list, points_labels, centroids_labels):
+def process_results(points_list, centroids_list, points_labels, centroids_labels, points_undamaged_list, centroids_undamaged_list):
     """
     Processes the results from the threads.
 
@@ -219,16 +219,24 @@ def process_results(points_list, centroids_list, points_labels, centroids_labels
     ]
     points_labels = [pl for pl in points_labels if None not in pl]
     centroids_labels = [cl for cl in centroids_labels if None not in cl]
+    points_undamaged_list = [pul for pul in points_undamaged_list if None not in pul]
+    centroids_undamaged_list = [cul for cul in centroids_undamaged_list if None not in cul]
     if len(points_list) == 0:
         points = np.array([])
         points_labels = np.array([])
+        points_undamaged = np.array([])
     else:
         points = np.concatenate(points_list)
         points_labels = np.concatenate(points_labels)
+        points_undamaged = np.concatenate(points_undamaged_list)
+
     if len(centroids_list) == 0:
         centroids = np.array([])
         centroids_labels = np.array([])
+        centroids_undamaged = np.array([])
     else:
         centroids = np.concatenate(centroids_list)
         centroids_labels = np.concatenate(centroids_labels)
-    return points, centroids, points_labels, centroids_labels, points_len, centroids_len
+        centroids_undamaged = np.concatenate(centroids_undamaged_list)
+
+    return points, centroids, points_labels, centroids_labels, points_len, centroids_len, points_undamaged, centroids_undamaged

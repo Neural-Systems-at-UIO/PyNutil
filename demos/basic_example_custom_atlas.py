@@ -40,4 +40,4 @@ pnt = PyNutil(
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/damage_regions_test_14_02_2025")
+pnt.save_analysis("../test_result/damage_regions_test_17_03_2025")

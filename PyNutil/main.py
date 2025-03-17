@@ -152,6 +152,8 @@ class PyNutil:
                 self.points_len,
                 self.centroids_len,
                 self.segmentation_filenames,
+                self.per_point_undamaged,
+                self.per_centroid_undamaged
             ) = folder_to_atlas_space(
                 self.segmentation_folder,
                 self.alignment_json,
@@ -201,6 +203,8 @@ class PyNutil:
                 self.points_labels,
                 self.centroids_labels,
                 self.atlas_labels,
+                self.per_point_undamaged,
+                self.per_centroid_undamaged
             )
             if self.custom_regions_dict is not None:
                 self.custom_label_df, self.label_df = apply_custom_regions(

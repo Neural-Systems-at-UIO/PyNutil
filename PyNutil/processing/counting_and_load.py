@@ -50,7 +50,7 @@ def label_points(points, label_volume, scale_factor=1):
 
 # related to counting_and_load
 def pixel_count_per_region(
-    labels_dict_points, labeled_dict_centroids, df_label_colours
+    labels_dict_points, labeled_dict_centroids, current_points_undamaged, current_centroids_undamaged, df_label_colours
 ):
     """
     Counts the number of pixels per region and writes to a DataFrame.
@@ -63,47 +63,91 @@ def pixel_count_per_region(
     Returns:
         DataFrame: DataFrame with counts and colours per region.
     """
-    counted_labels_points, label_counts_points = np.unique(
-        labels_dict_points, return_counts=True
+    counted_labels_points_undamaged, label_counts_points_undamaged = np.unique(
+        labels_dict_points[current_points_undamaged], return_counts=True
     )
-    counted_labels_centroids, label_counts_centroids = np.unique(
-        labeled_dict_centroids, return_counts=True
+    counted_labels_points_damaged, label_counts_points_damaged = np.unique(
+        labels_dict_points[~current_points_undamaged], return_counts=True
+    )
+    counted_labels_centroids_undamaged, label_counts_centroids_undamaged = np.unique(
+        labeled_dict_centroids[current_centroids_undamaged], return_counts=True
+    )
+    counted_labels_centroids_damaged, label_counts_centroids_damaged = np.unique(
+        labeled_dict_centroids[~current_centroids_undamaged], return_counts=True
     )
     # Which regions have pixels, and how many pixels are there per region
-    dummy_column = np.zeros(len(counted_labels_points))
-    counts_per_label = list(
-        zip(counted_labels_points, label_counts_points, dummy_column)
-    )
     # Create a list of unique regions and pixel counts per region
+    counts_per_label = {
+        "idx" : [],
+        "name" : [],
+        "r" : [],
+        "g" : [],
+        "b" : [],
+        "pixel_count" : [],
+        "undamaged_pixel_count" : [],
+        "damaged_pixel_counts" : [],
+        "object_count" : [],
+        "undamaged_object_count" : [],
+        "damaged_object_count" : [],
+        }
+    for index, row in df_label_colours.iterrows():
+        if row["idx"] in counted_labels_points_undamaged:
+            clpu = label_counts_points_undamaged[counted_labels_points_undamaged == row["idx"]][0]
+        else:
+            clpu = 0
+        if row["idx"] in counted_labels_points_damaged:
+            clpd = label_counts_points_damaged[counted_labels_points_damaged == row["idx"]][0]
+        else:
+            clpd = 0
+        if row["idx"] in counted_labels_centroids_undamaged:
+            clcu = counted_labels_centroids_undamaged[counted_labels_centroids_undamaged == row["idx"]][0]
+        else:
+            clcu = 0
+        if row["idx"] in counted_labels_centroids_damaged:
+            clcd = counted_labels_centroids_damaged[counted_labels_centroids_damaged == row["idx"]][0]
+        else:
+            clcd = 0
+        if clcd==clcu==clpd==clpu==0:
+            continue
+
+        counts_per_label["idx"].append(
+            row["idx"]
+        )
+        counts_per_label["name"].append(
+            row["name"]
+        )
+        counts_per_label["r"].append(
+            int(row["r"])
+        )
+        counts_per_label["g"].append(
+            int(row["g"])
+        )
+        counts_per_label["b"].append(
+            int(row["b"])
+        )
+        counts_per_label["pixel_count"].append(
+            clpu + clpd
+        )
+        counts_per_label["undamaged_pixel_count"].append(
+            clpu
+        )
+        counts_per_label["damaged_pixel_counts"].append(
+            clpd
+        )
+        counts_per_label["object_count"].append(
+            clcu + clcd
+        )
+        counts_per_label["undamaged_object_count"].append(
+            clcu
+        )
+        counts_per_label["damaged_object_count"].append(
+            clcd
+        )
+
     df_counts_per_label = pd.DataFrame(
-        counts_per_label, columns=["idx", "pixel_count", "object_count"]
+        counts_per_label
     )
-    for clc, lcc in zip(counted_labels_centroids, label_counts_centroids):
-        df_counts_per_label.loc[df_counts_per_label["idx"] == clc, "object_count"] = lcc
-    new_rows = []
-    for index, row in df_counts_per_label.iterrows():
-        mask = df_label_colours["idx"] == row["idx"].astype(int)
-        current_region_row = df_label_colours[mask]
-        current_region_name = current_region_row["name"].values
-        current_region_red = current_region_row["r"].values
-        current_region_green = current_region_row["g"].values
-        current_region_blue = current_region_row["b"].values
-        row["name"] = current_region_name[0]
-        row["r"] = int(current_region_red[0])
-        row["g"] = int(current_region_green[0])
-        row["b"] = int(current_region_blue[0])
-        new_rows.append(row)
-
-    df_counts_per_label_name = pd.DataFrame(
-        new_rows, columns=["idx", "name", "pixel_count", "object_count", "r", "g", "b"]
-    )
-    # Task for Sharon:
-    # If you can get the areas per region from the flat file here
-    # you can then use those areas to calculate the load per region here
-    # and add to dataframe
-    # see messing around pyflat.py
-
-    return df_counts_per_label_name
+    return df_counts_per_label
 
 
 """Read flat file and write into an np array"""
@@ -298,6 +342,9 @@ def flat_to_dataframe(
         df_area_per_label["region_area"] = df_area_per_label["undamaged_region_area"] + df_area_per_label["damaged_region_area"]
     else:
         df_area_per_label = count_pixels_per_label(image, scale_factor)
+        df_area_per_label["undamaged_region_area"] = df_area_per_label["region_area"]
+        df_area_per_label["damaged_region_area"] = 0
+
     return df_area_per_label
 
 
