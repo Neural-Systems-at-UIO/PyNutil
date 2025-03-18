@@ -3,7 +3,6 @@ import pandas as pd
 from ..io.read_and_write import load_visualign_json
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .visualign_deformations import triangulate
-from glob import glob
 import cv2
 from skimage import measure
 import threading
@@ -44,14 +43,16 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     coords = np.array([label.coords for label in labels_info], dtype=object)
     return centroids, area, coords
 
+
 def update_spacing(anchoring, width, height, grid_spacing):
     if len(anchoring) != 9:
         print("Anchoring does not have 9 elements.")
-    ow = np.sqrt(sum([anchoring[i+3] ** 2 for i in range(3)]))
-    oh = np.sqrt(sum([anchoring[i+6] ** 2 for i in range(3)]))
+    ow = np.sqrt(sum([anchoring[i + 3] ** 2 for i in range(3)]))
+    oh = np.sqrt(sum([anchoring[i + 6] ** 2 for i in range(3)]))
     xspacing = int(width * grid_spacing / ow)
     yspacing = int(height * grid_spacing / oh)
     return xspacing, yspacing
+
 
 def create_damage_mask(section, grid_spacing):
     width = section["width"]
@@ -66,7 +67,10 @@ def create_damage_mask(section, grid_spacing):
     y_coords = np.arange(gridy, height, yspacing)
 
     num_markers = len(grid_values)
-    markers = [(x_coords[i % len(x_coords)], y_coords[i // len(x_coords)]) for i in range(num_markers)]
+    markers = [
+        (x_coords[i % len(x_coords)], y_coords[i // len(x_coords)])
+        for i in range(num_markers)
+    ]
 
     binary_image = np.ones((len(y_coords), len(x_coords)), dtype=int)
 
@@ -75,6 +79,7 @@ def create_damage_mask(section, grid_spacing):
             binary_image[y // yspacing, x // xspacing] = 0
 
     return binary_image
+
 
 def folder_to_atlas_space(
     folder,
@@ -105,9 +110,15 @@ def folder_to_atlas_space(
     slices, gridspacing = load_visualign_json(quint_alignment)
     segmentations = get_segmentations(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
-    points_list, centroids_list, region_areas_list, centroids_labels, points_labels,per_point_undamaged_list,per_centroid_undamaged_list  = (
-        initialize_lists(len(segmentations))
-    )
+    (
+        points_list,
+        centroids_list,
+        region_areas_list,
+        centroids_labels,
+        points_labels,
+        per_point_undamaged_list,
+        per_centroid_undamaged_list,
+    ) = initialize_lists(len(segmentations))
     threads = create_threads(
         segmentations,
         slices,
@@ -126,11 +137,25 @@ def folder_to_atlas_space(
         object_cutoff,
         atlas_volume,
         use_flat,
-        gridspacing
+        gridspacing,
     )
     start_and_join_threads(threads)
-    points, centroids, points_labels, centroids_labels, points_len, centroids_len, per_point_undamaged_list, per_centroid_undamaged_list = (
-        process_results(points_list, centroids_list, points_labels, centroids_labels, per_point_undamaged_list, per_centroid_undamaged_list)
+    (
+        points,
+        centroids,
+        points_labels,
+        centroids_labels,
+        points_len,
+        centroids_len,
+        per_point_undamaged_list,
+        per_centroid_undamaged_list,
+    ) = process_results(
+        points_list,
+        centroids_list,
+        points_labels,
+        centroids_labels,
+        per_point_undamaged_list,
+        per_centroid_undamaged_list,
     )
     return (
         points,
@@ -142,7 +167,7 @@ def folder_to_atlas_space(
         centroids_len,
         segmentations,
         per_point_undamaged_list,
-        per_centroid_undamaged_list
+        per_centroid_undamaged_list,
     )
 
 
@@ -184,7 +209,7 @@ def initialize_lists(length):
         centroids_labels,
         points_labels,
         per_point_undamaged_list,
-        per_centroid_undamaged_list
+        per_centroid_undamaged_list,
     )
 
 
@@ -206,7 +231,7 @@ def create_threads(
     object_cutoff,
     atlas_volume,
     use_flat,
-    gridspacing
+    gridspacing,
 ):
     """
     Creates threads for processing segmentations.
@@ -262,7 +287,7 @@ def create_threads(
                 object_cutoff,
                 atlas_volume,
                 use_flat,
-                gridspacing
+                gridspacing,
             ),
         )
         threads.append(x)
@@ -310,7 +335,7 @@ def get_region_areas(
     slice_dict,
     atlas_volume,
     triangulation,
-    damage_mask
+    damage_mask,
 ):
     """
     Gets the region areas.
@@ -328,11 +353,16 @@ def get_region_areas(
     Returns:
         DataFrame: DataFrame with region areas.
     """
-    atlas_map = load_image(flat_file_atlas,slice_dict["anchoring"], atlas_volume, triangulation, (seg_width, seg_height), atlas_labels)
-
-    region_areas = flat_to_dataframe(
-        atlas_map, damage_mask, (seg_width, seg_height)
+    atlas_map = load_image(
+        flat_file_atlas,
+        slice_dict["anchoring"],
+        atlas_volume,
+        triangulation,
+        (seg_width, seg_height),
+        atlas_labels,
     )
+
+    region_areas = flat_to_dataframe(atlas_map, damage_mask, (seg_width, seg_height))
     return region_areas, atlas_map
 
 
@@ -393,7 +423,7 @@ def segmentation_to_atlas_space(
         slice_dict,
         atlas_volume,
         triangulation,
-        damage_mask
+        damage_mask,
     )
     atlas_map = rescale_image(atlas_map, (reg_width, reg_height))
     y_scale, x_scale = transform_to_registration(
@@ -412,16 +442,21 @@ def segmentation_to_atlas_space(
         np.round(scaled_centroidsX).astype(int), np.round(scaled_centroidsY).astype(int)
     ]
     if damage_mask is not None:
-        damage_mask = cv2.resize(damage_mask.astype(np.uint8), (atlas_map.shape[::-1]), interpolation=cv2.INTER_NEAREST).astype(bool)
+        damage_mask = cv2.resize(
+            damage_mask.astype(np.uint8),
+            (atlas_map.shape[::-1]),
+            interpolation=cv2.INTER_NEAREST,
+        ).astype(bool)
         per_point_undamaged = damage_mask[
-                np.round(scaled_x).astype(int), np.round(scaled_y).astype(int)
-            ]
+            np.round(scaled_x).astype(int), np.round(scaled_y).astype(int)
+        ]
         per_centroid_undamaged = damage_mask[
-            np.round(scaled_centroidsX).astype(int), np.round(scaled_centroidsY).astype(int)
-            ]
+            np.round(scaled_centroidsX).astype(int),
+            np.round(scaled_centroidsY).astype(int),
+        ]
     else:
         per_point_undamaged = np.ones(scaled_x.shape, dtype=bool)
-        per_centroid_undamaged =  np.ones(scaled_centroidsX.shape, dtype=bool)
+        per_centroid_undamaged = np.ones(scaled_centroidsX.shape, dtype=bool)
     per_point_labels = per_point_labels[per_point_undamaged]
     per_centroid_labels = per_centroid_labels[per_centroid_undamaged]
     new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
@@ -452,7 +487,9 @@ def segmentation_to_atlas_space(
         per_centroid_undamaged if centroids is not None else []
     )
     points_labels[index] = np.array(per_point_labels if points is not None else [])
-    per_point_undamaged_list[index] = np.array(per_point_undamaged if points is not None else [])
+    per_point_undamaged_list[index] = np.array(
+        per_point_undamaged if points is not None else []
+    )
 
 
 def get_triangulation(slice_dict, reg_width, reg_height, non_linear):

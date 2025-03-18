@@ -6,51 +6,13 @@ from .generate_target_slice import generate_target_slice
 from .visualign_deformations import transform_vec
 
 
-# related to counting and load
-def label_points(points, label_volume, scale_factor=1):
-    """
-    Assigns points to regions based on the label_volume.
-
-    Args:
-        points (list): List of points.
-        label_volume (ndarray): Volume with region labels.
-        scale_factor (int, optional): Scaling factor for points. Defaults to 1.
-
-    Returns:
-        ndarray: Labels for each point.
-    """
-    # First convert the points to 3 columns
-    points = np.reshape(points, (-1, 3))
-    # Scale the points
-    points = points * scale_factor
-    # Round the points to the nearest whole number
-    points = np.round(points).astype(int)
-    x = points[:, 0]
-    y = points[:, 1]
-    z = points[:, 2]
-
-    # make sure the points are within the volume
-    x[x < 0] = 0
-    y[y < 0] = 0
-    z[z < 0] = 0
-    mask = (
-        (x > label_volume.shape[0] - 1)
-        | (y > label_volume.shape[1] - 1)
-        | (z > label_volume.shape[2] - 1)
-    )
-    x[mask] = 0
-    y[mask] = 0
-    z[mask] = 0
-
-    # Get the label value for each point
-    labels = label_volume[x, y, z]
-
-    return labels
-
-
 # related to counting_and_load
 def pixel_count_per_region(
-    labels_dict_points, labeled_dict_centroids, current_points_undamaged, current_centroids_undamaged, df_label_colours
+    labels_dict_points,
+    labeled_dict_centroids,
+    current_points_undamaged,
+    current_centroids_undamaged,
+    df_label_colours,
 ):
     """
     Counts the number of pixels per region and writes to a DataFrame.
@@ -78,75 +40,59 @@ def pixel_count_per_region(
     # Which regions have pixels, and how many pixels are there per region
     # Create a list of unique regions and pixel counts per region
     counts_per_label = {
-        "idx" : [],
-        "name" : [],
-        "r" : [],
-        "g" : [],
-        "b" : [],
-        "pixel_count" : [],
-        "undamaged_pixel_count" : [],
-        "damaged_pixel_counts" : [],
-        "object_count" : [],
-        "undamaged_object_count" : [],
-        "damaged_object_count" : [],
-        }
+        "idx": [],
+        "name": [],
+        "r": [],
+        "g": [],
+        "b": [],
+        "pixel_count": [],
+        "undamaged_pixel_count": [],
+        "damaged_pixel_counts": [],
+        "object_count": [],
+        "undamaged_object_count": [],
+        "damaged_object_count": [],
+    }
     for index, row in df_label_colours.iterrows():
         if row["idx"] in counted_labels_points_undamaged:
-            clpu = label_counts_points_undamaged[counted_labels_points_undamaged == row["idx"]][0]
+            clpu = label_counts_points_undamaged[
+                counted_labels_points_undamaged == row["idx"]
+            ][0]
         else:
             clpu = 0
         if row["idx"] in counted_labels_points_damaged:
-            clpd = label_counts_points_damaged[counted_labels_points_damaged == row["idx"]][0]
+            clpd = label_counts_points_damaged[
+                counted_labels_points_damaged == row["idx"]
+            ][0]
         else:
             clpd = 0
         if row["idx"] in counted_labels_centroids_undamaged:
-            clcu = counted_labels_centroids_undamaged[counted_labels_centroids_undamaged == row["idx"]][0]
+            clcu = counted_labels_centroids_undamaged[
+                counted_labels_centroids_undamaged == row["idx"]
+            ][0]
         else:
             clcu = 0
         if row["idx"] in counted_labels_centroids_damaged:
-            clcd = counted_labels_centroids_damaged[counted_labels_centroids_damaged == row["idx"]][0]
+            clcd = counted_labels_centroids_damaged[
+                counted_labels_centroids_damaged == row["idx"]
+            ][0]
         else:
             clcd = 0
-        if clcd==clcu==clpd==clpu==0:
+        if clcd == clcu == clpd == clpu == 0:
             continue
 
-        counts_per_label["idx"].append(
-            row["idx"]
-        )
-        counts_per_label["name"].append(
-            row["name"]
-        )
-        counts_per_label["r"].append(
-            int(row["r"])
-        )
-        counts_per_label["g"].append(
-            int(row["g"])
-        )
-        counts_per_label["b"].append(
-            int(row["b"])
-        )
-        counts_per_label["pixel_count"].append(
-            clpu + clpd
-        )
-        counts_per_label["undamaged_pixel_count"].append(
-            clpu
-        )
-        counts_per_label["damaged_pixel_counts"].append(
-            clpd
-        )
-        counts_per_label["object_count"].append(
-            clcu + clcd
-        )
-        counts_per_label["undamaged_object_count"].append(
-            clcu
-        )
-        counts_per_label["damaged_object_count"].append(
-            clcd
-        )
+        counts_per_label["idx"].append(row["idx"])
+        counts_per_label["name"].append(row["name"])
+        counts_per_label["r"].append(int(row["r"]))
+        counts_per_label["g"].append(int(row["g"]))
+        counts_per_label["b"].append(int(row["b"]))
+        counts_per_label["pixel_count"].append(clpu + clpd)
+        counts_per_label["undamaged_pixel_count"].append(clpu)
+        counts_per_label["damaged_pixel_counts"].append(clpd)
+        counts_per_label["object_count"].append(clcu + clcd)
+        counts_per_label["undamaged_object_count"].append(clcu)
+        counts_per_label["damaged_object_count"].append(clcd)
 
-    df_counts_per_label = pd.DataFrame(
-        counts_per_label
-    )
+    df_counts_per_label = pd.DataFrame(counts_per_label)
     return df_counts_per_label
 
 
@@ -312,10 +258,7 @@ def warp_image(image, triangulation, rescaleXY):
     return new_image
 
 
-def flat_to_dataframe(
-    image,
-    damage_mask,
-    rescaleXY=None):
+def flat_to_dataframe(image, damage_mask, rescaleXY=None):
     """
     Converts a flat file to a DataFrame.
 
@@ -333,13 +276,33 @@ def flat_to_dataframe(
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
     if damage_mask is not None:
-        damage_mask = cv2.resize(damage_mask.astype(np.uint8), (image.shape[::-1]), interpolation=cv2.INTER_NEAREST).astype(bool)
-        undamaged_df_area_per_label = count_pixels_per_label(image[damage_mask], scale_factor)
-        damaged_df_area_per_label = count_pixels_per_label(image[~damage_mask], scale_factor)
-        undamaged_df_area_per_label = undamaged_df_area_per_label.rename(columns={"region_area": "undamaged_region_area"})
-        damaged_df_area_per_label = damaged_df_area_per_label.rename(columns={"region_area": "damaged_region_area"})
-        df_area_per_label = pd.merge(undamaged_df_area_per_label, damaged_df_area_per_label, on='idx', how='outer').fillna(0)
-        df_area_per_label["region_area"] = df_area_per_label["undamaged_region_area"] + df_area_per_label["damaged_region_area"]
+        damage_mask = cv2.resize(
+            damage_mask.astype(np.uint8),
+            (image.shape[::-1]),
+            interpolation=cv2.INTER_NEAREST,
+        ).astype(bool)
+        undamaged_df_area_per_label = count_pixels_per_label(
+            image[damage_mask], scale_factor
+        )
+        damaged_df_area_per_label = count_pixels_per_label(
+            image[~damage_mask], scale_factor
+        )
+        undamaged_df_area_per_label = undamaged_df_area_per_label.rename(
+            columns={"region_area": "undamaged_region_area"}
+        )
+        damaged_df_area_per_label = damaged_df_area_per_label.rename(
+            columns={"region_area": "damaged_region_area"}
+        )
+        df_area_per_label = pd.merge(
+            undamaged_df_area_per_label,
+            damaged_df_area_per_label,
+            on="idx",
+            how="outer",
+        ).fillna(0)
+        df_area_per_label["region_area"] = (
+            df_area_per_label["undamaged_region_area"]
+            + df_area_per_label["damaged_region_area"]
+        )
     else:
         df_area_per_label = count_pixels_per_label(image, scale_factor)
         df_area_per_label["undamaged_region_area"] = df_area_per_label["region_area"]
