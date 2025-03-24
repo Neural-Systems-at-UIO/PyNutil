@@ -20,6 +20,8 @@ pip install PyNutil
 ## GUI
 download the executable for windows and macOS via the [github releases tab](https://github.com/Neural-Systems-at-UIO/PyNutil/releases)
 
+![image](https://github.com/user-attachments/assets/c3b3ca11-f0ef-4e2c-96d7-498ecf96514d)
+
 # Usage
 
 PyNutil requires Python 3.8 or above.
