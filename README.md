@@ -18,7 +18,7 @@ Pynutil can also be used with the atlases available in the [BrainGlobe_Atlas API
 pip install PyNutil
 ```
 ## GUI
-download the executable for windows and macOS via the github releases tab
+download the executable for windows and macOS via the [github releases tab](https://github.com/Neural-Systems-at-UIO/PyNutil/releases)
 
 # Usage
 
