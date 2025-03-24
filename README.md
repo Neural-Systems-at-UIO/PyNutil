@@ -67,7 +67,7 @@ The QCAlign tool allows you to mark damaged areas on your section. This means th
 # Meshview json files
 PyNutil will produce meshview json files. This can be opened in [MeshView for the Allen Mouse](https://meshview.apps.ebrains.eu/?atlas=ABA_Mouse_CCFv3_2017_25um) or for [the Waxholm Rat](https://meshview.apps.ebrains.eu/)
 
-https://github.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d
+https://github.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d 
 
 # Interpreting the Results
 Each column name has the following definition
