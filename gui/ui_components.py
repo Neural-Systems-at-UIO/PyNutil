@@ -232,9 +232,8 @@ def populate_dropdown(dropdown, recents, clear_first=True):
         else:
             # Handle string items
             display_text = get_path_display_name(item)
-            dropdown.addItem(display_text)
-            # Store the full path as user data in the item
-            # dropdown.setItemData(dropdown.count() - 1, item)
+            # Store the full path as user data
+            dropdown.addItem(display_text, userData=item)
 
     dropdown.setEditable(False)
     # dropdown.setCurrentIndex(-1)

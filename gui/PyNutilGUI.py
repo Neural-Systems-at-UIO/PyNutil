@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QProgressDialog,
+    QCheckBox,
 )
 from PyQt6.QtGui import QAction, QColor, QIcon, QDesktopServices
 from PyQt6.QtCore import (
@@ -200,7 +201,7 @@ class AnalysisWorker(QThread):
                 print("Analysis cancelled")
                 return
 
-            pnt.get_coordinates(object_cutoff=0)
+            pnt.get_coordinates(object_cutoff=0, apply_damage_mask=self.arguments["apply_damage_mask"])
 
             # Check if cancelled before continuing
             if self.cancelled:
@@ -299,6 +300,7 @@ class PyNutilGUI(QMainWindow):
             "label_path": None,  # Added for custom atlases
             "atlas_path": None,  # Added for custom atlases
             "custom_region_path": None,  # Added for custom region file (optional)
+            "apply_damage_mask": False,  # <-- ADDED default field
         }
         self.recent_files_path = os.path.join(
             os.path.expanduser("~"), ".pynutil_recent_files.json"
@@ -470,6 +472,16 @@ class PyNutilGUI(QMainWindow):
         )
         left_layout.addLayout(output_layout)
 
+        damage_markers_layout = QHBoxLayout()
+        damage_markers_label = QLabel("Include Damage Quantification:")
+        self.include_damage_markers_checkbox = QCheckBox()
+        self.include_damage_markers_checkbox.setChecked(False)
+        self.include_damage_markers_checkbox.stateChanged.connect(self.update_damage_markers_flag)
+
+        damage_markers_layout.addWidget(damage_markers_label)
+        damage_markers_layout.addWidget(self.include_damage_markers_checkbox)
+        left_layout.addLayout(damage_markers_layout)
+
         # Run and cancel buttons
         left_layout.addWidget(QLabel("Start analysis:"))
         run_buttons_layout, self.run_button, self.cancel_button = (
@@ -520,6 +532,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def set_registration_json(self, index):
         if index >= 0:
+            # Retrieve the full path from userData
             value = (
                 self.registration_json_dropdown.itemData(index)
                 or self.registration_json_dropdown.currentText()
@@ -777,6 +790,11 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 index = self.atlas_combo.findText(atlas_name)
                 if index >= 0:
                     self.atlas_combo.setCurrentIndex(index)
+
+            if "include_damage_markers" in settings:
+                dmg_markers = bool(settings["include_damage_markers"])
+                self.arguments["apply_damage_mask"] = dmg_markers
+                self.include_damage_markers_checkbox.setChecked(dmg_markers)
 
             self.output_box.setHtml(f"Settings loaded from: {file_path}")
 
@@ -1062,6 +1080,9 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.save_recent_files()
         self.populate_atlas_dropdown()
         self.append_text_to_output(f"Custom atlas '{atlas_name}' added successfully.")
+
+    def update_damage_markers_flag(self, state):
+        self.arguments["apply_damage_mask"] = bool(state)
 
 
 if __name__ == "__main__":
