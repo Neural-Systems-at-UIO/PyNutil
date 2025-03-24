@@ -13,8 +13,9 @@ setup(
     version=version,
     packages=find_packages(),
     license="MIT",
-    description="a package to translate data between common coordinate templates",
+    description="a package to quantify registered brain data",
     long_description=long_description,
+    url="https://github.com/Neural-Systems-at-UIO/PyNutil",
     long_description_content_type="text/markdown",
     install_requires=[
         "numpy",
