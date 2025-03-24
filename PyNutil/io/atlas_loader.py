@@ -27,7 +27,6 @@ def load_atlas_data(atlas_name):
 
 
 def process_atlas_volume(vol):
-    print("reorienting brainglobe atlas into quicknii space...")
     return np.transpose(vol, [2, 0, 1])[::-1, ::-1, ::-1]
 
 
