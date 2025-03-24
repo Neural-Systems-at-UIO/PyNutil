@@ -1,7 +1,7 @@
 import brainglobe_atlasapi
 import pandas as pd
 import numpy as np
-from .read_and_write import read_atlas_volume
+import nrrd
 
 
 def load_atlas_data(atlas_name):
@@ -20,17 +20,22 @@ def load_atlas_data(atlas_name):
     atlas_structures["b"].insert(0, 0)
 
     atlas_labels = pd.DataFrame(atlas_structures)
-    atlas_volume = process_atlas_volume(atlas)
+    atlas_volume = process_atlas_volume(atlas.annotation)
+    hemi_map = process_atlas_volume(atlas.hemispheres)
     print("atlas labels loaded ✅")
-    return atlas_volume, atlas_labels
+    return atlas_volume,hemi_map, atlas_labels
 
 
-def process_atlas_volume(atlas):
+def process_atlas_volume(vol):
     print("reorienting brainglobe atlas into quicknii space...")
-    return np.transpose(atlas.annotation, [2, 0, 1])[:, ::-1, ::-1]
+    return np.transpose(vol, [2, 0, 1])[::-1, ::-1, ::-1]
 
 
-def load_custom_atlas(atlas_path, label_path):
-    atlas_volume = read_atlas_volume(atlas_path)
+def load_custom_atlas(atlas_path, hemi_path, label_path):
+    atlas_volume, _ = nrrd.read(atlas_path)
+    if hemi_path:
+        hemi_volume, _ = nrrd.read(hemi_path)
+    else:
+        hemi_volume = None
     atlas_labels = pd.read_csv(label_path)
-    return atlas_volume, atlas_labels
+    return atlas_volume, hemi_volume, atlas_labels

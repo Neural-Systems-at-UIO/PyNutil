@@ -1,8 +1,8 @@
 import sys
+import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyNutil import PyNutil
-import os
 
 ###PyNutil is a toolkit for quantifying neuroscientific data using brain atlases
 ###Here we define a quantifier object
@@ -22,7 +22,7 @@ pnt = PyNutil(
         script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
     ),
     alignment_json=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/damage_markers.json"
+        script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
     ),
     colour=[0, 0, 0],
     atlas_path=os.path.join(
@@ -32,11 +32,11 @@ pnt = PyNutil(
     label_path=os.path.join(
         script_dir, "../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
     ),
-    custom_region_path=os.path.join(
-        script_dir,
-        "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
-    ),
+    # custom_region_path=os.path.join(
+    #     script_dir,
+    #     "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
+    # ),
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/damage_regions_test_17_03_2025")
+pnt.save_analysis("../test_result/2custom_atlas_hemi_test_24_03_2025")

@@ -10,11 +10,11 @@ segmentation_folder = os.path.join(
     script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
 )
 alignment_json = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
+    script_dir, "../tests/test_data/nonlinear_allen_mouse/damage_markers.json"
 )
 colour = [0, 0, 0]
 atlas_name = "allen_mouse_25um"
-output_folder = "../test_result/bg_test"
+output_folder = "../test_result/hemi_test_bg6_damage_24_03_2025"
 
 # Initialize PyNutil object
 pnt = PyNutil(
@@ -31,4 +31,8 @@ pnt = PyNutil(
 # Execute workflow
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
+print("total objects: ", pnt.label_df["object_count"].sum())
+print("left hemi objects: ", pnt.label_df["left_hemi_object_count"].sum())
+print("right hemi objects: ", pnt.label_df["right_hemi_object_count"].sum())
+
 pnt.save_analysis(output_folder)

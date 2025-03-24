@@ -9,7 +9,6 @@ from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
 
-
 class PyNutil:
     """
     A class used to perform brain-wide quantification and spatial analysis of features in serial section images.
@@ -34,6 +33,7 @@ class PyNutil:
         atlas_name=None,
         atlas_path=None,
         label_path=None,
+        hemi_path=None,
         custom_region_path=None,
         settings_file=None,
     ):
@@ -79,6 +79,8 @@ class PyNutil:
                     if "atlas_path" in settings and "label_path" in settings:
                         atlas_path = settings["atlas_path"]
                         label_path = settings["label_path"]
+                        if "hemi_path" in settings:
+                            hemi_path = settings["hemisphere_path"]
                     else:
                         atlas_name = settings["atlas_name"]
                 except KeyError as exc:
@@ -108,12 +110,13 @@ class PyNutil:
             if atlas_path and label_path:
                 self.atlas_path = atlas_path
                 self.label_path = label_path
-                self.atlas_volume, self.atlas_labels = load_custom_atlas(
-                    atlas_path, label_path
+                self.hemi_path = hemi_path
+                self.atlas_volume, self.hemi_map, self.atlas_labels = load_custom_atlas(
+                    atlas_path, hemi_path, label_path
                 )
             else:
                 self._check_atlas_name()
-                self.atlas_volume, self.atlas_labels = load_atlas_data(
+                self.atlas_volume, self.hemi_map, self.atlas_labels = load_atlas_data(
                     atlas_name=atlas_name
                 )
         except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -127,7 +130,7 @@ class PyNutil:
                 "When atlas_path and label_path are not specified, atlas_name must be specified."
             )
 
-    def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False):
+    def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False, apply_damage_mask=True):
         """
         Extracts pixel coordinates from the segmentation data.
 
@@ -150,6 +153,8 @@ class PyNutil:
                 self.centroids,
                 self.points_labels,
                 self.centroids_labels,
+                self.points_hemi_labels,
+                self.centroids_hemi_labels,
                 self.region_areas_list,
                 self.points_len,
                 self.centroids_len,
@@ -164,8 +169,11 @@ class PyNutil:
                 non_linear,
                 object_cutoff,
                 self.atlas_volume,
+                self.hemi_map,
                 use_flat,
+                apply_damage_mask
             )
+            self.apply_damage_mask = apply_damage_mask
             if self.custom_regions_dict is not None:
                 self.points_custom_labels = map_to_custom_regions(
                     self.custom_regions_dict, self.points_labels
@@ -205,8 +213,11 @@ class PyNutil:
                 self.points_labels,
                 self.centroids_labels,
                 self.atlas_labels,
+                self.points_hemi_labels,
+                self.centroids_hemi_labels,
                 self.per_point_undamaged,
                 self.per_centroid_undamaged,
+                self.apply_damage_mask
             )
             if self.custom_regions_dict is not None:
                 self.custom_label_df, self.label_df = apply_custom_regions(
@@ -241,6 +252,8 @@ class PyNutil:
                 self.per_section_df,
                 self.points_labels,
                 self.centroids_labels,
+                self.points_hemi_labels,
+                self.centroids_hemi_labels,
                 self.points_len,
                 self.centroids_len,
                 self.segmentation_filenames,
@@ -264,6 +277,8 @@ class PyNutil:
                     self.per_section_df,
                     self.points_custom_labels,
                     self.centroids_custom_labels,
+                    self.points_hemi_labels,
+                    self.centroids_hemi_labels,
                     self.points_len,
                     self.centroids_len,
                     self.segmentation_filenames,

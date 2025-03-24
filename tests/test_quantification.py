@@ -41,9 +41,8 @@ class TestQuantification(unittest.TestCase):
         pnt.save_analysis(save_path)
 
 
-test_case_files = ["brainglobe_atlas.json", "custom_atlas.json"]
+test_case_files = ["brainglobe_atlas.json", "brainglobe_atlas_damage.json", "custom_atlas.json"]
 for test_case_file in test_case_files:
-
     def test_method(self, test_case_file=test_case_file):
         self.run_test_case(test_case_file)
 

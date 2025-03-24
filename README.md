@@ -58,6 +58,29 @@ pnt.save_analysis("PyNutil/test_result/myResults")
 ```
 PyNutil generates a series of reports in the folder which you specify.
 
+## Per-Hemisphere Quantification
+If you use an atlas which has a hemisphere map (All brainglobe atlases have this, it is a volume in the shape of the atlas with 1 in the lft hemisphere and 2 in the right) PyNutil will generate per-hemisphere quantifications in addition to total numbers. In addition, PyNutil will also genearte additional per-hemisphere point cloud files for viewing in meshview.
+## Damage Quantification
+The QCAlign tool allows you to mark damaged areas on your section. This means that these damaged areas are excluded from your point clouds. In addition, PyNutil will seperately quantify damaged and undamaged areas. Note the undamaged, and damaged column names. 
+# Interpreting the Results
+Each column name has the following definition
+| Column        | Definition                                                                          |
+|---------------|--------------------------------------------------------------------------------------|
+| idx           | The atlas ID of the region.                                                         |
+| name          | The name of atlas region.                                                           |
+| r             | The amount of red in the RGB value for for the region colour.                       |
+| g             | The amount of green in the RGB value for for the region colour.                     |
+| b             | The amount of blue in the RGB value for for the region colour.                      |
+| Region area   | Area representing the region on the segmentation in pixel values.                   |
+| Object count  | Number of objects located in the region. An object is a disconnected group of pixels|
+| Object pixels | Number of pixels representing objects in this region.                               |
+| Object area   | Area representing objects in this region (object pixels x pixel scale).             |
+| Area fraction | Ratio of Object pixels to Region pixels (Object pixels / Region pixels).            |
+| Left hemi     | For each of the other columns, what is that value for the left hemisphere alone     |
+| Right hemi    | For each of the other columns, what is that value for the right hemisphere alone    |
+| Damaged       | For each of the other columns, what is that value for the areas marked damaged alone|
+| Undamaged     | For each of the other columns, what is that value for the areas marked undamaged alone|
+
  # Feature Requests
 We are open to feature requests 😊 Simply open an issue in the github describing the feature you would like to see. 
 
