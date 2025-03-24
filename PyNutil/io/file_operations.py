@@ -105,8 +105,8 @@ def save_analysis_output(
         "alignment_json": alignment_json,
         "colour": colour,
         "custom_region_path": custom_region_path,
-    }
 
+    }
     # Add atlas information to settings
     if atlas_name:
         settings_dict["atlas_name"] = atlas_name
@@ -118,6 +118,7 @@ def save_analysis_output(
         settings_dict["settings_file"] = settings_file
     if custom_region_path:
         settings_dict["custom_region_path"] = custom_region_path
+    if
     # Write settings to file
     settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
     with open(settings_file_path, "w") as f:
