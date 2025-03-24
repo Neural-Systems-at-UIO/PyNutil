@@ -9,7 +9,8 @@ __pycache__/
 demo_data/*
 # C extensions
 *.so
-
+# WSL zone identifiers
+*:Zone.Identifier*
 # Distribution / packaging
 .Python
 build/
