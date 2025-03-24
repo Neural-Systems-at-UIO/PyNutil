@@ -55,11 +55,11 @@ def apply_custom_regions(df, custom_regions_dict):
         "region_area", "undamaged_region_area", "damaged_region_area",
         "object_count", "undamaged_object_count", "damaged_object_count",
         "left_hemi_pixel_count", "left_hemi_undamaged_pixel_count",
-        "left_hemi_damaged_pixel_counts", "left_hemi_region_area",
+        "left_hemi_damaged_pixel_count", "left_hemi_region_area",
         "left_hemi_undamaged_region_area", "left_hemi_damaged_region_area",
         "left_hemi_object_count", "left_hemi_undamaged_object_count",
         "left_hemi_damaged_object_count", "right_hemi_pixel_count",
-        "right_hemi_undamaged_pixel_count", "right_hemi_damaged_pixel_counts",
+        "right_hemi_undamaged_pixel_count", "right_hemi_damaged_pixel_count",
         "right_hemi_region_area", "right_hemi_undamaged_region_area",
         "right_hemi_damaged_region_area", "right_hemi_object_count",
         "right_hemi_undamaged_object_count", "right_hemi_damaged_object_count"

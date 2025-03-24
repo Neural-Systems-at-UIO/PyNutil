@@ -227,7 +227,6 @@ class PyNutil:
                 for i in self.per_section_df:
                     c, i = apply_custom_regions(i, self.custom_regions_dict)
                     self.custom_per_section_df.append(c)
-                self.custom_label_df
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")
 

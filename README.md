@@ -62,6 +62,8 @@ PyNutil generates a series of reports in the folder which you specify.
 If you use an atlas which has a hemisphere map (All brainglobe atlases have this, it is a volume in the shape of the atlas with 1 in the lft hemisphere and 2 in the right) PyNutil will generate per-hemisphere quantifications in addition to total numbers. In addition, PyNutil will also genearte additional per-hemisphere point cloud files for viewing in meshview.
 ## Damage Quantification
 The QCAlign tool allows you to mark damaged areas on your section. This means that these damaged areas are excluded from your point clouds. In addition, PyNutil will seperately quantify damaged and undamaged areas. Note the undamaged, and damaged column names. 
+# Meshview json files
+PyNutil will produce meshview json files
 # Interpreting the Results
 Each column name has the following definition
 | Column        | Definition                                                                          |
