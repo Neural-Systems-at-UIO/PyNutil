@@ -64,7 +64,7 @@ If you use an atlas which has a hemisphere map (All brainglobe atlases have this
 The QCAlign tool allows you to mark damaged areas on your section. This means that these damaged areas are excluded from your point clouds. In addition, PyNutil will seperately quantify damaged and undamaged areas. Note the undamaged, and damaged column names. 
 # Meshview json files
 PyNutil will produce meshview json files. This can be opened in [MeshView for the Allen Mouse](https://meshview.apps.ebrains.eu/?atlas=ABA_Mouse_CCFv3_2017_25um) or for [the Waxholm Rat](https://meshview.apps.ebrains.eu/)
-<video src="<video controls src="https://github.com/Neural-Systems-at-UIO/PyNutil/blob/main/docs/assets/MeshView.mp4" title="<video controls src="https://github.com/Neural-Systems-at-UIO/PyNutil/raw/refs/heads/main/docs/assets/MeshView.mp4" title="docs/assets/MeshView.mp4"></video>"></video>" autoplay loop muted controls style="max-width: 100%;">
+<video src="https://github.com/Neural-Systems-at-UIO/PyNutil/raw/refs/heads/main/docs/assets/MeshView.mp4" autoplay loop muted controls style="max-width: 100%;">
   Your browser does not support embedded videos.
 </video>
 # Interpreting the Results
