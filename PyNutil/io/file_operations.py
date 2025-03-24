@@ -10,6 +10,8 @@ def save_analysis_output(
     per_section_df,
     labeled_points,
     labeled_points_centroids,
+    points_hemi_labels,
+    centroids_hemi_labels,
     points_len,
     centroids_len,
     segmentation_filenames,
@@ -55,8 +57,8 @@ def save_analysis_output(
     os.makedirs(f"{output_folder}/per_section_reports", exist_ok=True)
     os.makedirs(f"{output_folder}/whole_series_meshview", exist_ok=True)
     # Filter out rows where 'region_area' is 0 in label_df
-    if label_df is not None and "region_area" in label_df.columns:
-        label_df = label_df[label_df["region_area"] != 0]
+    # if label_df is not None and "region_area" in label_df.columns:
+    #     label_df = label_df[label_df["region_area"] != 0]
     if label_df is not None:
         label_df.to_csv(
             f"{output_folder}/whole_series_report/{prepend}counts.csv",
@@ -79,6 +81,8 @@ def save_analysis_output(
         centroids,
         labeled_points,
         labeled_points_centroids,
+        points_hemi_labels,
+        centroids_hemi_labels,
         atlas_labels,
         output_folder,
         prepend,
@@ -88,6 +92,8 @@ def save_analysis_output(
         labeled_points,
         centroids,
         labeled_points_centroids,
+        points_hemi_labels,
+        centroids_hemi_labels,
         atlas_labels,
         output_folder,
         prepend,
@@ -127,6 +133,8 @@ def _save_per_section_reports(
     centroids,
     labeled_points,
     labeled_points_centroids,
+    points_hemi_labels,
+    centroids_hemi_labels,
     atlas_labels,
     output_folder,
     prepend,
@@ -157,6 +165,8 @@ def _save_per_section_reports(
             centroids,
             labeled_points,
             labeled_points_centroids,
+            points_hemi_labels,
+            centroids_hemi_labels,
             atlas_labels,
             output_folder,
             prepend,
@@ -175,6 +185,8 @@ def _save_per_section_meshview(
     centroids,
     labeled_points,
     labeled_points_centroids,
+    points_hemi_labels,
+    centroids_hemi_labels,
     atlas_labels,
     output_folder,
     prepend,
@@ -182,12 +194,14 @@ def _save_per_section_meshview(
     write_points_to_meshview(
         pixel_points[prev_pl : pl + prev_pl],
         labeled_points[prev_pl : pl + prev_pl],
+        points_hemi_labels[prev_pl : pl + prev_pl],
         f"{output_folder}/per_section_meshview/{prepend}{split_fn}_pixels.json",
         atlas_labels,
     )
     write_points_to_meshview(
         centroids[prev_cl : cl + prev_cl],
         labeled_points_centroids[prev_cl : cl + prev_cl],
+        centroids_hemi_labels[prev_cl : cl + prev_cl],
         f"{output_folder}/per_section_meshview/{prepend}{split_fn}_centroids.json",
         atlas_labels,
     )
@@ -198,6 +212,8 @@ def _save_whole_series_meshview(
     labeled_points,
     centroids,
     labeled_points_centroids,
+    points_hemi_labels,
+    centroids_hemi_labels,
     atlas_labels,
     output_folder,
     prepend,
@@ -205,12 +221,14 @@ def _save_whole_series_meshview(
     write_points_to_meshview(
         pixel_points,
         labeled_points,
+        points_hemi_labels,
         f"{output_folder}/whole_series_meshview/{prepend}pixels_meshview.json",
         atlas_labels,
     )
     write_points_to_meshview(
         centroids,
         labeled_points_centroids,
+        centroids_hemi_labels,
         f"{output_folder}/whole_series_meshview/{prepend}objects_meshview.json",
         atlas_labels,
     )

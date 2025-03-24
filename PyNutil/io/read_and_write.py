@@ -3,7 +3,6 @@ import numpy as np
 import struct
 import pandas as pd
 import os
-import nrrd
 import re
 from .propagation import propagate
 import numpy as np
@@ -152,7 +151,7 @@ def load_segmentation(segmentation_path: str):
 
 # related to read and write
 # this function reads a VisuAlign JSON and returns the slices
-def load_visualign_json(filename):
+def load_visualign_json(filename, apply_damage_mask):
     with open(filename) as f:
         vafile = json.load(f)
     if filename.endswith(".waln") or filename.endswith("wwrp"):
@@ -162,10 +161,15 @@ def load_visualign_json(filename):
             slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
             if "ouv" in slice:
                 slice["anchoring"] = slice["ouv"]
+
     else:
         slices = vafile["slices"]
     if len(slices) > 1:
         slices = propagate(slices)
+    for slice in slices:
+        if not apply_damage_mask:
+            if "grid" in slice:
+                slice.pop("grid")
     gridspacing = vafile["gridspacing"] if "gridspacing" in vafile else None
     return slices, gridspacing
 
@@ -203,12 +207,19 @@ def write_points(points_dict, filename, info_file):
 
 # related to read and write: write_points_to_meshview
 # this function combines create_region_dict and write_points functions
-def write_points_to_meshview(points, point_names, filename, info_file):
+def write_points_to_meshview(points, point_names, hemi_label, filename, info_file):
+    if not (hemi_label == None).all():
+        split_fn_left = filename.split('/')
+        split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
+        outname_left = os.sep.join(split_fn_left)
+        left_region_dict = create_region_dict(points[hemi_label==1], point_names[hemi_label==1])
+        write_points(left_region_dict, outname_left, info_file)
+        split_fn_right = filename.split('/')
+        split_fn_right[-1] = "right_hemisphere_" + split_fn_right[-1]
+        outname_right = os.sep.join(split_fn_right)
+        right_region_dict = create_region_dict(points[hemi_label==2], point_names[hemi_label==2])
+        write_points(right_region_dict, outname_right, info_file)
     region_dict = create_region_dict(points, point_names)
     write_points(region_dict, filename, info_file)
 
 
-def read_atlas_volume(atlas_volume_path):
-    """return data from atlas volume"""
-    data, header = nrrd.read(atlas_volume_path)
-    return data

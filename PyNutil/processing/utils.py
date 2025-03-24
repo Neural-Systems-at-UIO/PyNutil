@@ -202,6 +202,8 @@ def process_results(
     centroids_list,
     points_labels,
     centroids_labels,
+    points_hemi_labels,
+    centroids_hemi_labels,
     points_undamaged_list,
     centroids_undamaged_list,
 ):
@@ -219,39 +221,46 @@ def process_results(
     centroids_len = [
         len(centroids) if None not in centroids else 0 for centroids in centroids_list
     ]
-    points_list = [points for points in points_list if None not in points]
+    points_list = [points for points in points_list if (None not in points) and (len(points)!=0)]
     centroids_list = [
-        centroids for centroids in centroids_list if None not in centroids
+        centroids for centroids in centroids_list if (None not in centroids)and (len(centroids!=0))
     ]
-    points_labels = [pl for pl in points_labels if None not in pl]
-    centroids_labels = [cl for cl in centroids_labels if None not in cl]
-    points_undamaged_list = [pul for pul in points_undamaged_list if None not in pul]
+    points_labels = [pl for pl in points_labels if (None not in pl) and len(pl)!=0]
+    centroids_labels = [cl for cl in centroids_labels if (None not in cl) and len(cl)!=0]
+    points_undamaged_list = [pul for pul in points_undamaged_list if (None not in pul) and len(pul)!=0]
     centroids_undamaged_list = [
-        cul for cul in centroids_undamaged_list if None not in cul
+        cul for cul in centroids_undamaged_list if (None not in cul) and len(cul)!=0
     ]
+
     if len(points_list) == 0:
         points = np.array([])
         points_labels = np.array([])
         points_undamaged = np.array([])
+        points_hemi_labels = np.array([])
     else:
         points = np.concatenate(points_list)
         points_labels = np.concatenate(points_labels)
         points_undamaged = np.concatenate(points_undamaged_list)
+        points_hemi_labels = np.concatenate(points_hemi_labels)
 
     if len(centroids_list) == 0:
         centroids = np.array([])
         centroids_labels = np.array([])
         centroids_undamaged = np.array([])
+        centroids_hemi_labels = np.array([])
     else:
         centroids = np.concatenate(centroids_list)
         centroids_labels = np.concatenate(centroids_labels)
         centroids_undamaged = np.concatenate(centroids_undamaged_list)
+        centroids_hemi_labels = np.concatenate(centroids_hemi_labels)
 
     return (
         points,
         centroids,
         points_labels,
         centroids_labels,
+        points_hemi_labels,
+        centroids_hemi_labels,
         points_len,
         centroids_len,
         points_undamaged,

@@ -1,11 +1,12 @@
 {
-    "segmentation_folder": "/home/harryc/github/PyNutil/demos/../tests/test_data/nonlinear_allen_mouse/",
+    "segmentation_folder": "/home/harryc/github/PyNutil/demos/../tests/test_data/nonlinear_allen_mouse/segmentations/",
     "alignment_json": "/home/harryc/github/PyNutil/demos/../tests/test_data/nonlinear_allen_mouse/alignment.json",
     "colour": [
         0,
         0,
         0
     ],
+    "custom_region_path": null,
     "atlas_path": "/home/harryc/github/PyNutil/demos/../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
     "label_path": "/home/harryc/github/PyNutil/demos/../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
 }
