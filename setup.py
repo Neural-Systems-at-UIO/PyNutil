@@ -13,7 +13,7 @@ setup(
     version=version,
     packages=find_packages(),
     license="MIT",
-    description="a package to quantify registered brain data",
+    description="a package to quantify atlas registered brain data",
     long_description=long_description,
     url="https://github.com/Neural-Systems-at-UIO/PyNutil",
     long_description_content_type="text/markdown",
