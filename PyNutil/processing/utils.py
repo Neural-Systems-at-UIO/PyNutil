@@ -6,14 +6,14 @@ from glob import glob
 
 def number_sections(filenames, legacy=False):
     """
-    Returns the section numbers of filenames.
+    Extract section numbers from a list of filenames.
 
     Args:
-        filenames (list): List of filenames.
-        legacy (bool, optional): Whether to use legacy mode. Defaults to False.
+        filenames (list): List of file paths.
+        legacy (bool, optional): Use a legacy extraction mode if True. Defaults to False.
 
     Returns:
-        list: List of section numbers.
+        list: List of section numbers as integers.
     """
     filenames = [filename.split("\\")[-1] for filename in filenames]
     section_numbers = []
@@ -92,13 +92,13 @@ def calculate_scale_factor(image, rescaleXY):
 
 def get_segmentations(folder):
     """
-    Gets the list of segmentation files in the folder.
+    Collects segmentation file paths from the specified folder.
 
     Args:
-        folder (str): Path to the folder.
+        folder (str): Path to the folder containing segmentations.
 
     Returns:
-        list: List of segmentation files.
+        list: List of segmentation file paths.
     """
     segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg", ".dzip"]
     segmentations = [
@@ -114,16 +114,16 @@ def get_segmentations(folder):
     return segmentations
 
 
-def get_flat_files(folder, use_flat):
+def get_flat_files(folder, use_flat=False):
     """
-    Gets the list of flat files in the folder.
+    Retrieves flat file paths from the given folder.
 
     Args:
-        folder (str): Path to the folder.
-        use_flat (bool): Whether to use flat files.
+        folder (str): Path to the folder containing flat files.
+        use_flat (bool, optional): If True, filter only flat files.
 
     Returns:
-        tuple: List of flat files and their section numbers.
+        tuple: A list of flat file paths and their numeric indices.
     """
     if use_flat:
         flat_files = [
@@ -169,16 +169,16 @@ def initialize_lists(length):
 
 def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
     """
-    Gets the current flat file for the given section number.
+    Determines the correct flat file for a given section number.
 
     Args:
-        seg_nr (int): Section number.
-        flat_files (list): List of flat files.
-        flat_file_nrs (list): List of flat file section numbers.
-        use_flat (bool): Whether to use flat files.
+        seg_nr (int): Numeric index of the segmentation.
+        flat_files (list): List of flat file paths.
+        flat_file_nrs (list): Numeric indices for each flat file.
+        use_flat (bool): If True, attempts to match flat files to segments.
 
     Returns:
-        str: Path to the current flat file.
+        str or None: The matched flat file path, or None if not found or unused.
     """
     if use_flat:
         current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
@@ -188,10 +188,13 @@ def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
 
 def start_and_join_threads(threads):
     """
-    Starts and joins the threads.
+    Starts a list of threads and joins them to ensure completion.
 
     Args:
-        threads (list): List of threads.
+        threads (list): A list of threading.Thread objects.
+
+    Returns:
+        None
     """
     [t.start() for t in threads]
     [t.join() for t in threads]
@@ -208,14 +211,29 @@ def process_results(
     centroids_undamaged_list,
 ):
     """
-    Processes the results from the threads.
+    Consolidates and organizes results from multiple segmentations.
 
     Args:
-        points_list (list): List of points.
-        centroids_list (list): List of centroids.
+        points_list (list): A list of arrays containing point coordinates.
+        centroids_list (list): A list of arrays containing centroid coordinates.
+        points_labels (list): A list of arrays with labels for each point.
+        centroids_labels (list): A list of arrays with labels for each centroid.
+        points_hemi_labels (list): A list of arrays storing hemisphere info per point.
+        centroids_hemi_labels (list): A list of arrays storing hemisphere info per centroid.
+        points_undamaged_list (list): Tracks undamaged status of each point.
+        centroids_undamaged_list (list): Tracks undamaged status of each centroid.
 
     Returns:
-        tuple: Processed points, centroids, points length, and centroids length.
+        points (ndarray): Consolidated point coordinates.
+        centroids (ndarray): Consolidated centroid coordinates.
+        points_labels (ndarray): Combined labels for points.
+        centroids_labels (ndarray): Combined labels for centroids.
+        points_hemi_labels (ndarray): Combined hemisphere info for points.
+        centroids_hemi_labels (ndarray): Combined hemisphere info for centroids.
+        points_len (int): Total number of points.
+        centroids_len (int): Total number of centroids.
+        points_undamaged (ndarray): Updated track of undamaged status for points.
+        centroids_undamaged (ndarray): Updated track of undamaged status for centroids.
     """
     points_len = [len(points) if None not in points else 0 for points in points_list]
     centroids_len = [

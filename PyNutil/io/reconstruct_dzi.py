@@ -8,8 +8,17 @@ import xmltodict
 def reconstruct_dzi(zip_file_path):
     """
     Reconstructs a Deep Zoom Image (DZI) from a zip file containing the tiles.
-    :param zip_file_path: Path to the zip file containing the tiles.
-    :return: The reconstructed DZI.
+    Parameters
+    ----------
+    zip_file_path : str
+        Path to the zip file containing the tiles.
+    apply_damage_mask : bool
+        Whether to apply the damage mask.
+
+    Returns
+    -------
+    ndarray
+       The reconstructed DZI.
     """
     with zipfile.ZipFile(zip_file_path, "r") as zip_file:
         # Get the highest level of the pyramid

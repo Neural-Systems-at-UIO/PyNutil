@@ -7,13 +7,14 @@ from .visualign_deformations import transform_vec
 
 def create_base_counts_dict(with_hemisphere=False, with_damage=False):
     """
-    Creates the base dictionary structure for counts.
+    Creates and returns a base dictionary structure for tracking counts.
 
     Args:
-        with_hemisphere (bool): Whether to include hemisphere-specific fields
+        with_hemisphere (bool): If True, include hemisphere fields.
+        with_damage (bool): If True, include damage fields.
 
     Returns:
-        dict: Base dictionary with count fields
+        dict: Structure containing count lists for pixels/objects.
     """
     counts = {
         "idx": [],
@@ -66,15 +67,20 @@ def pixel_count_per_region(
     with_damage=False
 ):
     """
-    Counts the number of pixels per region and writes to a DataFrame.
+    Tally object counts by region, optionally tracking damage and hemispheres.
 
     Args:
-        labels_dict_points (dict): Dictionary with region as key and points as value.
-        labeled_dict_centroids (dict): Dictionary with region as key and centroids as value.
-        df_label_colours (DataFrame): DataFrame with label colours.
+        labels_dict_points (dict): Maps points to region labels.
+        labeled_dict_centroids (dict): Maps centroids to region labels.
+        current_points_undamaged (ndarray): Undamaged-state flags for points.
+        current_centroids_undamaged (ndarray): Undamaged-state flags for centroids.
+        current_points_hemi (ndarray): Hemisphere tags for points.
+        current_centroids_hemi (ndarray): Hemisphere tags for centroids.
+        df_label_colours (DataFrame): Region label colors.
+        with_damage (bool, optional): Track damage counts if True.
 
     Returns:
-        DataFrame: DataFrame with counts and colours per region.
+        DataFrame: Summed counts per region.
     """
     with_hemi = None not in current_points_hemi
     counts_per_label = create_base_counts_dict(with_hemisphere=with_hemi, with_damage=with_damage)
@@ -336,19 +342,16 @@ def pixel_count_per_region(
     return df_counts_per_label
 
 
-"""Read flat file and write into an np array"""
-"""Read flat file, write into an np array, assign label file values, return array"""
-
 
 def read_flat_file(file):
     """
-    Reads a flat file and returns an image array.
+    Reads a flat file and produces an image array.
 
     Args:
         file (str): Path to the flat file.
 
     Returns:
-        ndarray: Image array.
+        ndarray: Image array extracted from the file.
     """
     with open(file, "rb") as f:
         b, w, h = struct.unpack(">BII", f.read(9))
@@ -363,13 +366,13 @@ def read_flat_file(file):
 
 def read_seg_file(file):
     """
-    Reads a segmentation file and returns an image array.
+    Reads a segmentation file into an image array.
 
     Args:
         file (str): Path to the segmentation file.
 
     Returns:
-        ndarray: Image array.
+        ndarray: The segmentation image.
     """
     with open(file, "rb") as f:
 
@@ -399,14 +402,14 @@ def read_seg_file(file):
 
 def rescale_image(image, rescaleXY):
     """
-    Rescales an image.
+    Rescales an image to the specified dimensions.
 
     Args:
-        image (ndarray): Image array.
-        rescaleXY (tuple): Tuple with new width and height.
+        image (ndarray): Input image array.
+        rescaleXY (tuple): (width, height) as new size.
 
     Returns:
-        ndarray: Rescaled image.
+        ndarray: The rescaled image.
     """
     w, h = rescaleXY
     return cv2.resize(image, (h, w), interpolation=cv2.INTER_NEAREST)
@@ -414,11 +417,11 @@ def rescale_image(image, rescaleXY):
 
 def assign_labels_to_image(image, labelfile):
     """
-    Assigns labels to an image based on a label file.
+    Assigns atlas or region labels to an image array.
 
     Args:
-        image (ndarray): Image array.
-        labelfile (DataFrame): DataFrame with label information.
+        image (ndarray): Image array to label.
+        labelfile (DataFrame): Contains label IDs in the 'idx' column.
 
     Returns:
         ndarray: Image with assigned labels.
@@ -436,14 +439,14 @@ def assign_labels_to_image(image, labelfile):
 
 def count_pixels_per_label(image, scale_factor=False):
     """
-    Counts the number of pixels per label in an image.
+    Counts the pixels associated with each label in an image.
 
     Args:
-        image (ndarray): Image array.
-        scale_factor (bool, optional): Whether to apply a scaling factor. Defaults to False.
+        image (ndarray): Image array containing labels.
+        scale_factor (bool, optional): Apply scaling if True.
 
     Returns:
-        DataFrame: DataFrame with pixel counts per label.
+        DataFrame: Table of label IDs and pixel counts.
     """
     unique_ids, counts = np.unique(image, return_counts=True)
     if scale_factor:
@@ -455,15 +458,15 @@ def count_pixels_per_label(image, scale_factor=False):
 
 def warp_image(image, triangulation, rescaleXY):
     """
-    Warps an image based on triangulation.
+    Warps an image using triangulation, applying optional resizing.
 
     Args:
-        image (ndarray): Image array.
-        triangulation (ndarray): Triangulation data.
-        rescaleXY (tuple, optional): Tuple with new dimensions. Defaults to None.
+        image (ndarray): Image array to be warped.
+        triangulation (ndarray): Triangulation data for remapping.
+        rescaleXY (tuple, optional): (width, height) for resizing.
 
     Returns:
-        ndarray: Warped image.
+        ndarray: The warped image array.
     """
     if rescaleXY is not None:
         w, h = rescaleXY
@@ -500,19 +503,17 @@ def warp_image(image, triangulation, rescaleXY):
 
 def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """
-    Converts a flat file to a DataFrame.
+    Builds a DataFrame from an image, incorporating optional damage/hemisphere masks.
 
     Args:
-        labelfile (DataFrame): DataFrame with label information.
-        file (str, optional): Path to the flat file. Defaults to None.
-        rescaleXY (tuple, optional): Tuple with new dimensions. Defaults to None.
-        image_vector (ndarray, optional): Image vector. Defaults to None.
-        volume (ndarray, optional): Volume data. Defaults to None.
-        triangulation (ndarray, optional): Triangulation data. Defaults to None.
+        image (ndarray): Source image with label IDs.
+        damage_mask (ndarray): Binary mask indicating damaged areas.
+        hemi_mask (ndarray): Binary mask for hemisphere assignment.
+        rescaleXY (tuple, optional): (width, height) for resizing.
 
     Returns:
-        DataFrame: DataFrame with area per label.
-        np.array: array in shape of alignment XY scaled by rescaleXY with allen ID for each point
+        DataFrame: Pixel counts grouped by label.
+        ndarray: Scaled label map of the image.
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
     df_area_per_label = pd.DataFrame(columns=["idx"])
@@ -599,17 +600,18 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
 
 def load_image(file, image_vector, volume, triangulation, rescaleXY, labelfile=None):
     """
-    Loads an image from a file or generates it from a vector and volume.
+    Loads an image from file or transforms a preloaded array, optionally applying warping.
 
     Args:
-        file (str): Path to the file.
-        image_vector (ndarray): Image vector.
-        volume (ndarray): Volume data.
-        triangulation (ndarray): Triangulation data.
-        rescaleXY (tuple): Tuple with new dimensions.
+        file (str): File path for the source image.
+        image_vector (ndarray): Preloaded image data array.
+        volume (ndarray): Atlas volume or similar data.
+        triangulation (ndarray): Triangulation data for warping.
+        rescaleXY (tuple): (width, height) for resizing.
+        labelfile (DataFrame, optional): Label definitions.
 
     Returns:
-        ndarray: Loaded or generated image.
+        ndarray: The loaded or transformed image.
     """
     if image_vector is not None and volume is not None:
         image = generate_target_slice(image_vector, volume)
@@ -628,14 +630,14 @@ def load_image(file, image_vector, volume, triangulation, rescaleXY, labelfile=N
 
 def calculate_scale_factor(image, rescaleXY):
     """
-    Calculates the scale factor for an image.
+    Computes a factor for resizing if needed.
 
     Args:
-        image (ndarray): Image array.
-        rescaleXY (tuple): Tuple with new dimensions.
+        image (ndarray): Original image array.
+        rescaleXY (tuple): (width, height) for potential resizing.
 
     Returns:
-        float: Scale factor.
+        float or bool: Scale factor or False if not applicable.
     """
     if rescaleXY:
         image_shapeY, image_shapeX = image.shape[0], image.shape[1]

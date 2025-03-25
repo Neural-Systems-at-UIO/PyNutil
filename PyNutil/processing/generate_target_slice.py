@@ -4,14 +4,14 @@ import math
 
 def generate_target_slice(ouv, atlas):
     """
-    Generates a target slice from the atlas using the given orientation and vectors.
+    Generate a 2D slice from a 3D atlas based on orientation vectors.
 
     Args:
-        ouv (list): List containing origin and vectors [ox, oy, oz, ux, uy, uz, vx, vy, vz].
-        atlas (ndarray): 3D atlas array.
+        ouv (list): Orientation vector [ox, oy, oz, ux, uy, uz, vx, vy, vz].
+        atlas (ndarray): 3D atlas volume.
 
     Returns:
-        ndarray: 2D slice generated from the atlas.
+        ndarray: 2D slice extracted from the atlas.
     """
     ox, oy, oz, ux, uy, uz, vx, vy, vz = ouv
     width = np.floor(math.hypot(ux, uy, uz)).astype(int) + 1

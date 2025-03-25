@@ -57,18 +57,18 @@ def get_transformed_coordinates(
     triangulation,
 ):
     """
-    Gets the transformed coordinates.
+    Compute transformed coordinates for both points and centroids.
 
     Args:
-        non_linear (bool): Whether to use non-linear transformation.
-        slice_dict (dict): Dictionary with slice information.
-        scaled_x (ndarray): Scaled X coordinates.
-        scaled_y (ndarray): Scaled Y coordinates.
-        centroids (ndarray): Centroids.
-        scaled_centroidsX (ndarray): Scaled X coordinates of centroids.
-        scaled_centroidsY (ndarray): Scaled Y coordinates of centroids.
-        triangulation (ndarray): Triangulation data.
+        non_linear (bool): Flag to indicate if non-linear transformation is applied.
+        slice_dict (dict): Slice metadata including markers.
+        scaled_x (ndarray): Scaled x coordinates for points.
+        scaled_y (ndarray): Scaled y coordinates for points.
+        scaled_centroidsX (ndarray): Scaled x coordinates for centroids.
+        scaled_centroidsY (ndarray): Scaled y coordinates for centroids.
+        triangulation (list): Triangulation structure to be used if non_linear is True.
 
+    Returns:
     Returns:
         tuple: Transformed coordinates.
     """

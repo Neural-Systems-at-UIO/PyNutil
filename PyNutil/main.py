@@ -11,18 +11,18 @@ from .processing.coordinate_extraction import folder_to_atlas_space
 
 class PyNutil:
     """
-    A class used to perform brain-wide quantification and spatial analysis of features in serial section images.
+    A class to perform brain-wide quantification and spatial analysis of serial section images.
 
     Methods
     -------
-    __init__(self, segmentation_folder=None, alignment_json=None, colour=None, atlas_name=None, atlas_path=None, label_path=None, settings_file=None)
-        Initializes the PyNutil class with the given parameters.
-    get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False)
-        Extracts pixel coordinates from the segmentation data.
-    quantify_coordinates(self)
-        Quantifies the pixel coordinates by region.
-    save_analysis(self, output_folder)
-        Saves the pixel coordinates and pixel counts to different files in the specified output folder.
+    __init__(...)
+        Initialize the PyNutil class with segmentation, alignment, atlas and region settings.
+    get_coordinates(...)
+        Extract and transform pixel coordinates from segmentation files.
+    quantify_coordinates()
+        Quantify pixel and centroid counts by atlas regions.
+    save_analysis(output_folder)
+        Save the analysis output to the specified directory.
     """
 
     def __init__(
@@ -132,20 +132,18 @@ class PyNutil:
 
     def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False, apply_damage_mask=True):
         """
-        Extracts pixel coordinates from the segmentation data.
+        Retrieves pixel and centroid coordinates from segmentation data,
+        applies atlas-space transformations, and optionally uses a damage
+        mask if specified.
 
-        Parameters
-        ----------
-        non_linear : bool, optional
-            Whether to use non-linear transformation from the VisuAlign markers (default is True).
-        object_cutoff : int, optional
-            The minimum size of objects to be considered (default is 0).
-        use_flat : bool, optional
-            Whether to use flat file atlas maps exported from QuickNII or VisuAlign. This is usually not needed since we can calculate them automatically. This setting is for testing and compatibility purposes (default is False).
+        Args:
+            non_linear (bool, optional): Enable non-linear transformation.
+            object_cutoff (int, optional): Minimum object size.
+            use_flat (bool, optional): Use flat maps if True.
+            apply_damage_mask (bool, optional): Apply damage mask if True.
 
-        Returns
-        -------
-        None
+        Returns:
+            None: Results are stored in class attributes.
         """
         try:
             (
@@ -190,16 +188,20 @@ class PyNutil:
 
     def quantify_coordinates(self):
         """
-        Quantifies the pixel coordinates by region.
+        Quantifies and summarizes pixel and centroid coordinates by atlas region,
+        storing the aggregated results in class attributes.
 
-        Returns
-        -------
-        None
+        Attributes:
+            label_df (pd.DataFrame): Contains aggregated label information.
+            per_section_df (list of pd.DataFrame): DataFrames with section-wise statistics.
+            custom_label_df (pd.DataFrame): Label data enriched with custom regions if custom regions is set.
+            custom_per_section_df (list of pd.DataFrame): Section-wise stats for custom regions if custom regions is set.
 
-        Raises
-        ------
-        ValueError
-            If get_coordinates has not been run before running quantify_coordinates.
+        Raises:
+            ValueError: If required attributes are missing or computation fails.
+
+        Returns:
+            None
         """
         if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
             raise ValueError(

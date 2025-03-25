@@ -4,6 +4,16 @@ import numpy as np
 
 
 def map_to_custom_regions(custom_regions_dict, points_labels):
+    """
+    Reassigns atlas-region labels into user-defined custom regions.
+
+    Args:
+        atlas_labeled_points (DataFrame): DataFrame of points, each with atlas labels.
+        custom_region_map (dict): Mapping of atlas region IDs to custom IDs.
+
+    Returns:
+        DataFrame: Points with updated region assignments.
+    """
     custom_points_labels = np.zeros_like(points_labels)
     for i in np.unique(points_labels):
         new_id = np.where([i in r for r in custom_regions_dict["subregion_ids"]])[0]
@@ -18,6 +28,16 @@ def map_to_custom_regions(custom_regions_dict, points_labels):
 
 
 def apply_custom_regions(df, custom_regions_dict):
+    """
+    Applies a custom region definition to the image's region labels.
+
+    Args:
+        image (ndarray): The image array whose regions are being remapped.
+        custom_region_file (str): File path or identifier for custom region definitions.
+
+    Returns:
+        ndarray: The image with modified region labels.
+    """
     # Create mappings
     id_mapping = {}
     name_mapping = {}
@@ -129,21 +149,15 @@ def quantify_labeled_points(
     apply_damage_mask
 ):
     """
-    Quantifies labeled points and returns various DataFrames.
+    Aggregates labeled points into a summary table.
 
     Args:
-        pixel_points (ndarray): Array of pixel points.
-        centroids (ndarray): Array of centroids.
-        points_len (list): List of lengths of points per section.
-        centroids_len (list): List of lengths of centroids per section.
-        region_areas_list (list): List of region areas per section.
-        atlas_labels (DataFrame): DataFrame with atlas labels.
-        atlas_volume (ndarray): Volume with atlas labels.
+        points (ndarray): Array of point coordinates and labels.
+        atlas_labels (DataFrame): DataFrame containing atlas region labels.
 
     Returns:
-        tuple: Labeled points, labeled centroids, label DataFrame, per section DataFrame.
+        DataFrame: Summarized point counts per region.
     """
-
     per_section_df = _quantify_per_section(
         labeled_points,
         labeled_points_centroids,

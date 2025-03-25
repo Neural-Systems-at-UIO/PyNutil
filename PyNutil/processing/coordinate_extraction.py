@@ -27,14 +27,14 @@ from .utils import (
 
 def get_centroids_and_area(segmentation, pixel_cut_off=0):
     """
-    Returns the center coordinate of each object in the segmentation.
+    Retrieves centroids, areas, and pixel coordinates of labeled regions.
 
     Args:
-        segmentation (ndarray): Segmentation array.
-        pixel_cut_off (int, optional): Pixel cutoff to remove small objects. Defaults to 0.
+        segmentation (ndarray): Binary segmentation array.
+        pixel_cut_off (int, optional): Minimum object size threshold.
 
     Returns:
-        tuple: Centroids, area, and coordinates of objects.
+        tuple: (centroids, area, coords) of retained objects.
     """
     labels = measure.label(segmentation)
     labels_info = measure.regionprops(labels)
@@ -46,6 +46,18 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
 
 
 def update_spacing(anchoring, width, height, grid_spacing):
+    """
+    Calculates spacing along width and height from slice anchoring.
+
+    Args:
+        anchoring (list): Anchoring transformation parameters.
+        width (int): Image width.
+        height (int): Image height.
+        grid_spacing (int): Grid spacing in image units.
+
+    Returns:
+        tuple: (xspacing, yspacing)
+    """
     if len(anchoring) != 9:
         print("Anchoring does not have 9 elements.")
     ow = np.sqrt(sum([anchoring[i + 3] ** 2 for i in range(3)]))
@@ -56,6 +68,16 @@ def update_spacing(anchoring, width, height, grid_spacing):
 
 
 def create_damage_mask(section, grid_spacing):
+    """
+    Creates a binary damage mask from grid information in the given section.
+
+    Args:
+        section (dict): Dictionary with slice and grid data.
+        grid_spacing (int): Space between grid marks.
+
+    Returns:
+        ndarray: Binary mask with damaged areas marked as 0.
+    """
     width = section["width"]
     height = section["height"]
     anchoring = section["anchoring"]
@@ -95,20 +117,22 @@ def folder_to_atlas_space(
     apply_damage_mask=True
 ):
     """
-    Applies segmentation to atlas space for all segmentations in a folder.
+    Processes all segmentation files in a folder, mapping each one to atlas space.
 
     Args:
-        folder (str): Path to the folder.
-        quint_alignment (str): Path to the QuickNII alignment file.
+        folder (str): Path to segmentation files.
+        quint_alignment (str): Path to alignment JSON.
         atlas_labels (DataFrame): DataFrame with atlas labels.
-        pixel_id (list, optional): Pixel ID to match. Defaults to [0, 0, 0].
-        non_linear (bool, optional): Whether to use non-linear transformation. Defaults to True.
-        object_cutoff (int, optional): Pixel cutoff to remove small objects. Defaults to 0.
-        atlas_volume (ndarray, optional): Volume with atlas labels. Defaults to None.
-        use_flat (bool, optional): Whether to use flat files. Defaults to False.
+        pixel_id (list, optional): Pixel color to match.
+        non_linear (bool, optional): Apply non-linear transform.
+        object_cutoff (int, optional): Minimum object size.
+        atlas_volume (ndarray, optional): Atlas volume data.
+        hemi_map (ndarray, optional): Hemisphere mask data.
+        use_flat (bool, optional): If True, load flat files.
+        apply_damage_mask (bool, optional): If True, apply damage mask.
 
     Returns:
-        tuple: Points, centroids, region areas list, points length, centroids length, segmentations.
+        tuple: Various arrays and lists containing transformed coordinates and labels.
     """
     slices, gridspacing = load_visualign_json(quint_alignment, apply_damage_mask)
     segmentations = get_segmentations(folder)
@@ -222,27 +246,33 @@ def create_threads(
     gridspacing,
 ):
     """
-    Creates threads for processing segmentations.
+    Creates threads to transform each segmentation into atlas space.
 
     Args:
-        segmentations (list): List of segmentation files.
-        slices (list): List of slices.
-        flat_files (list): List of flat files.
-        flat_file_nrs (list): List of flat file section numbers.
-        atlas_labels (DataFrame): DataFrame with atlas labels.
-        pixel_id (list): Pixel ID to match.
-        non_linear (bool): Whether to use non-linear transformation.
-        points_list (list): List to store points.
-        centroids_list (list): List to store centroids.
-        centroids_labels(list): List to store centroids labels.
-        points_labels(list): List to store points labels.
-        region_areas_list (list): List to store region areas.
-        object_cutoff (int): Pixel cutoff to remove small objects.
-        atlas_volume (ndarray): Volume with atlas labels.
-        use_flat (bool): Whether to use flat files.
+        segmentations (list): Paths to segmentation files.
+        slices (list): Slice metadata from alignment JSON.
+        flat_files (list): Flat file paths for optional flat maps.
+        flat_file_nrs (list): Numeric indices for flat files.
+        atlas_labels (DataFrame): Atlas labels.
+        pixel_id (list): Pixel color defined as [R, G, B].
+        non_linear (bool): Enable non-linear transformation if True.
+        points_list (list): Stores point coordinates per segmentation.
+        centroids_list (list): Stores centroid coordinates per segmentation.
+        centroids_labels (list): Stores labels for each centroid array.
+        points_labels (list): Stores labels for each point array.
+        region_areas_list (list): Stores region area data per segmentation.
+        per_point_undamaged_list (list): Track undamaged points per segmentation.
+        per_centroid_undamaged_list (list): Track undamaged centroids per segmentation.
+        point_hemi_labels (list): Hemisphere labels for points.
+        centroid_hemi_labels (list): Hemisphere labels for centroids.
+        object_cutoff (int): Minimum object size threshold.
+        atlas_volume (ndarray): 3D atlas volume (optional).
+        hemi_map (ndarray): Hemisphere mask (optional).
+        use_flat (bool): Use flat files if True.
+        gridspacing (int): Spacing value from alignment data.
 
     Returns:
-        list: List of threads.
+        list: A list of threads for parallel execution.
     """
     threads = []
     for segmentation_path, index in zip(segmentations, range(len(segmentations))):
@@ -291,13 +321,13 @@ def create_threads(
 
 def load_segmentation(segmentation_path: str):
     """
-    Loads a segmentation from a file.
+    Loads segmentation data, handling .dzip files if necessary.
 
     Args:
-        segmentation_path (str): Path to the segmentation file.
+        segmentation_path (str): File path.
 
     Returns:
-        ndarray: Segmentation array.
+        ndarray: Image array of the segmentation.
     """
     if segmentation_path.endswith(".dzip"):
         return reconstruct_dzi(segmentation_path)
@@ -307,13 +337,13 @@ def load_segmentation(segmentation_path: str):
 
 def detect_pixel_id(segmentation: np.array):
     """
-    Removes the background from the segmentation and returns the pixel ID.
+    Infers pixel color from the first non-background region.
 
     Args:
         segmentation (ndarray): Segmentation array.
 
     Returns:
-        ndarray: Pixel ID.
+        ndarray: Identified pixel color (RGB).
     """
     segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
     pixel_id = segmentation_no_background[0]
@@ -334,20 +364,22 @@ def get_region_areas(
     damage_mask,
 ):
     """
-    Gets the region areas.
+    Builds the atlas map for a slice and calculates the region areas.
 
     Args:
-        use_flat (bool): Whether to use flat files.
-        atlas_labels (DataFrame): DataFrame with atlas labels.
-        flat_file_atlas (str): Path to the flat file atlas.
-        seg_width (int): Segmentation width.
-        seg_height (int): Segmentation height.
-        slice_dict (dict): Dictionary with slice information.
-        atlas_volume (ndarray): Volume with atlas labels.
-        triangulation (ndarray): Triangulation data.
+        use_flat (bool): If True, uses flat files.
+        atlas_labels (DataFrame): DataFrame containing atlas labels.
+        flat_file_atlas (str): Path to the flat atlas file.
+        seg_width (int): Segmentation image width.
+        seg_height (int): Segmentation image height.
+        slice_dict (dict): Dictionary with slice metadata (anchoring, etc.).
+        atlas_volume (ndarray): 3D atlas volume.
+        hemi_mask (ndarray): Hemisphere mask.
+        triangulation (ndarray): Triangulation data for non-linear transforms.
+        damage_mask (ndarray): Binary damage mask.
 
     Returns:
-        DataFrame: DataFrame with region areas.
+        tuple: (DataFrame of region areas, atlas map array).
     """
     atlas_map = load_image(
         flat_file_atlas,
@@ -385,22 +417,33 @@ def segmentation_to_atlas_space(
     grid_spacing=None,
 ):
     """
-    Converts a segmentation to atlas space.
+    Transforms a single segmentation file into atlas space.
 
     Args:
-        slice_dict (dict): Dictionary with slice information.
+        slice_dict (dict): Slice information from alignment JSON.
         segmentation_path (str): Path to the segmentation file.
-        atlas_labels (DataFrame): DataFrame with atlas labels.
-        flat_file_atlas (str, optional): Path to the flat file atlas. Defaults to None.
-        pixel_id (str, optional): Pixel ID to match. Defaults to "auto".
-        non_linear (bool, optional): Whether to use non-linear transformation. Defaults to True.
-        points_list (list, optional): List to store points. Defaults to None.
-        centroids_list (list, optional): List to store centroids. Defaults to None.
-        region_areas_list (list, optional): List to store region areas. Defaults to None.
-        index (int, optional): Index of the current segmentation. Defaults to None.
-        object_cutoff (int, optional): Pixel cutoff to remove small objects. Defaults to 0.
-        atlas_volume (ndarray, optional): Volume with atlas labels. Defaults to None.
-        use_flat (bool, optional): Whether to use flat files. Defaults to False.
+        atlas_labels (DataFrame): Atlas labels.
+        flat_file_atlas (str, optional): Path to flat atlas, if using flat files.
+        pixel_id (str or list, optional): Pixel color or 'auto'.
+        non_linear (bool, optional): Use non-linear transforms if True.
+        points_list (list, optional): Storage for transformed point coordinates.
+        centroids_list (list, optional): Storage for transformed centroid coordinates.
+        points_labels (list, optional): Storage for assigned point labels.
+        centroids_labels (list, optional): Storage for assigned centroid labels.
+        region_areas_list (list, optional): Storage for region area data.
+        per_point_undamaged_list (list, optional): Track undamaged points.
+        per_centroid_undamaged_list (list, optional): Track undamaged centroids.
+        points_hemi_labels (list, optional): Hemisphere labels for points.
+        centroids_hemi_labels (list, optional): Hemisphere labels for centroids.
+        index (int, optional): Index in the lists.
+        object_cutoff (int, optional): Minimum object size.
+        atlas_volume (ndarray, optional): 3D atlas volume.
+        hemi_map (ndarray, optional): Hemisphere mask.
+        use_flat (bool, optional): Indicates use of flat files.
+        grid_spacing (int, optional): Spacing value for damage mask.
+
+    Returns:
+        None
     """
     segmentation = load_segmentation(segmentation_path)
     if pixel_id == "auto":
@@ -521,16 +564,16 @@ def segmentation_to_atlas_space(
 
 def get_triangulation(slice_dict, reg_width, reg_height, non_linear):
     """
-    Gets the triangulation for the slice.
+    Generates triangulation data if non-linear markers exist.
 
     Args:
-        slice_dict (dict): Dictionary with slice information.
+        slice_dict (dict): Slice metadata from alignment JSON.
         reg_width (int): Registration width.
         reg_height (int): Registration height.
-        non_linear (bool): Whether to use non-linear transformation.
+        non_linear (bool): Whether to use non-linear transform.
 
     Returns:
-        list: Triangulation data.
+        list or None: Triangulation info or None if not applicable.
     """
     if non_linear and "markers" in slice_dict:
         return triangulate(reg_width, reg_height, slice_dict["markers"])
@@ -539,17 +582,17 @@ def get_triangulation(slice_dict, reg_width, reg_height, non_linear):
 
 def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
     """
-    Gets the centroids of objects in the segmentation.
+    Finds object centroids for a given pixel color and applies scaling.
 
     Args:
         segmentation (ndarray): Segmentation array.
-        pixel_id (int): Pixel ID to match.
-        y_scale (float): Y scaling factor.
-        x_scale (float): X scaling factor.
-        object_cutoff (int, optional): Pixel cutoff to remove small objects. Defaults to 0.
+        pixel_id (int): Pixel color to match.
+        y_scale (float): Vertical scaling factor.
+        x_scale (float): Horizontal scaling factor.
+        object_cutoff (int, optional): Minimum object size.
 
     Returns:
-        tuple: Centroids, scaled X coordinates, and scaled Y coordinates.
+        tuple: (centroids, scaled_centroidsX, scaled_centroidsY)
     """
     binary_seg = segmentation == pixel_id
     binary_seg = np.all(binary_seg, axis=2)
@@ -568,16 +611,16 @@ def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
 
 def get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale):
     """
-    Gets the scaled pixel coordinates.
+    Retrieves pixel coordinates for a specified color and scales them.
 
     Args:
         segmentation (ndarray): Segmentation array.
-        pixel_id (int): Pixel ID to match.
-        y_scale (float): Y scaling factor.
-        x_scale (float): X scaling factor.
+        pixel_id (int): Pixel color to match.
+        y_scale (float): Vertical scaling factor.
+        x_scale (float): Horizontal scaling factor.
 
     Returns:
-        tuple: Scaled Y and X coordinates.
+        tuple: (scaled_y, scaled_x)
     """
     id_pixels = find_matching_pixels(segmentation, pixel_id)
     if len(id_pixels[0]) == 0:

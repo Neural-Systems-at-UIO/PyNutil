@@ -13,20 +13,31 @@ from .reconstruct_dzi import reconstruct_dzi
 
 def open_custom_region_file(path):
     """
-    Opens a custom region file created by QCAlign or manually by the user.
+    Opens a custom region file (TSV or XLSX) and returns both a dictionary
+    of region information and a corresponding pandas DataFrame.
+
+    The dictionary contains:
+      - 'custom_ids': The unique IDs for each region.
+      - 'custom_names': The region names.
+      - 'rgb_values': The RGB values for each region.
+      - 'subregion_ids': Lists of underlying atlas IDs for each region.
+
+    The returned DataFrame has columns:
+      - idx: The unique IDs for each region.
+      - name: The region names.
+      - r, g, b: The RGB values for each region.
 
     Parameters
     ----------
     path : str
-        the path to the TSV or XLSX file containing the custom region mappings.
-        If the file extension is not XLSX we will assume it is TSV. By default
-        QCAlign exports TSV files with a TXT extension.
+        Path to the TSV or XLSX file containing region information.
 
     Returns
-    ----------
-    custom_region_to_dict : dict
-
-
+    -------
+    dict
+        A dictionary with region data fields ('custom_ids', 'custom_names', 'rgb_values', and 'subregion_ids').
+    pandas.DataFrame
+        A DataFrame summarizing the region IDs, names, and RGB information.
     """
     if path.lower().endswith(".xlsx"):
         df = pd.read_excel(path)
@@ -78,13 +89,20 @@ def open_custom_region_file(path):
 
 def read_flat_file(file):
     """
-    Reads a flat file and returns an image array.
+    Reads a custom 'flat' file format and returns its contents as a 2D NumPy array.
 
-    Args:
-        file (str): Path to the flat file.
+    This format includes a header encoding bit-depth (B), width (W), and height (H).
+    Pixel data follows in a sequence that is unpacked into a 2D array.
 
-    Returns:
-        ndarray: Image array.
+    Parameters
+    ----------
+    file : str
+        Path to the flat file to read.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2D NumPy array containing image data.
     """
     with open(file, "rb") as f:
         b, w, h = struct.unpack(">BII", f.read(9))
@@ -99,13 +117,21 @@ def read_flat_file(file):
 
 def read_seg_file(file):
     """
-    Reads a segmentation file and returns an image array.
+    Reads a segmentation file encoded with a specialized format (SegRLEv1),
+    decodes it, and returns a 2D NumPy array representing segment labels.
 
-    Args:
-        file (str): Path to the segmentation file.
+    The file contains a header with atlas information and compression codes
+    that are used to rebuild the segmentation data.
 
-    Returns:
-        ndarray: Image array.
+    Parameters
+    ----------
+    file : str
+        Path to the segmentation file.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2D NumPy array with segmentation labels.
     """
     with open(file, "rb") as f:
 
@@ -135,13 +161,18 @@ def read_seg_file(file):
 
 def load_segmentation(segmentation_path: str):
     """
-    Loads a segmentation from a file.
+    Loads segmentation data either from a '.dzip' file or a standard image file.
+    If the file ends with '.dzip', it will be processed as a DZI using 'reconstruct_dzi'.
 
-    Args:
-        segmentation_path (str): Path to the segmentation file.
+    Parameters
+    ----------
+    segmentation_path : str
+        Path to the segmentation file (supports '.dzip' or common image formats).
 
-    Returns:
-        ndarray: Segmentation array.
+    Returns
+    -------
+    numpy.ndarray
+        A 2D or 3D segmentation array, depending on the file contents.
     """
     if segmentation_path.endswith(".dzip"):
         return reconstruct_dzi(segmentation_path)
@@ -152,6 +183,24 @@ def load_segmentation(segmentation_path: str):
 # related to read and write
 # this function reads a VisuAlign JSON and returns the slices
 def load_visualign_json(filename, apply_damage_mask):
+    """
+    Reads a VisuAlign JSON file (.waln or .wwrp) and extracts slice information.
+    Slices may include anchoring, grid spacing, and other image metadata.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the VisuAlign JSON file.
+    apply_damage_mask : bool
+        If True, retains 'grid' data in slices; if False, removes it.
+
+    Returns
+    -------
+    list
+        A list of slice dictionaries containing anchoring and other metadata.
+    float or None
+        Grid spacing if found, otherwise None.
+    """
     with open(filename) as f:
         vafile = json.load(f)
     if filename.endswith(".waln") or filename.endswith("wwrp"):
@@ -177,7 +226,22 @@ def load_visualign_json(filename, apply_damage_mask):
 # related to read_and_write, used in write_points_to_meshview
 # this function returns a dictionary of region names
 def create_region_dict(points, regions):
-    """points is a list of points and regions is an id for each point"""
+    """
+    Groups point coordinates by their region labels and
+    returns a dictionary mapping each region to its 3D point list.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        A (N, 3) array of 3D coordinates for all points.
+    regions : numpy.ndarray
+        A 1D array of integer region labels for each point.
+
+    Returns
+    -------
+    dict
+        Keys are unique region labels, and values are the flattened [x, y, z, ...] coordinates.
+    """
     region_dict = {
         region: points[regions == region].flatten().tolist()
         for region in np.unique(regions)
@@ -188,6 +252,21 @@ def create_region_dict(points, regions):
 # related to read and write: write_points
 # this function writes the region dictionary to a meshview json
 def write_points(points_dict, filename, info_file):
+    """
+    Saves a region-based point dictionary to a MeshView-compatible JSON layout.
+
+    Each region is recorded with: index (idx), name, color components (r, g, b),
+    and a count of how many points belong to that region.
+
+    Parameters
+    ----------
+    points_dict : dict
+        Keys are region IDs, values are flattened 3D coordinates.
+    filename : str
+        Destination JSON file to be written.
+    info_file : pandas.DataFrame
+        A table with region IDs, names, and color data (r, g, b) for each region.
+    """
     meshview = [
         {
             "idx": idx,
@@ -208,6 +287,25 @@ def write_points(points_dict, filename, info_file):
 # related to read and write: write_points_to_meshview
 # this function combines create_region_dict and write_points functions
 def write_points_to_meshview(points, point_names, hemi_label, filename, info_file):
+    """
+    Combines point data and region information into MeshView JSON files.
+
+    If hemisphere labels are provided (1, 2), separate outputs are saved for
+    left and right hemispheres, as well as one file containing all points.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        2D array containing [N, 3] point coordinates.
+    point_names : numpy.ndarray
+        1D array of region labels corresponding to each point.
+    hemi_label : numpy.ndarray
+        1D array with hemisphere labels (1 for left, 2 for right), or None.
+    filename : str
+        Base path for output JSON. Separate hemispheres use prefixed filenames.
+    info_file : pandas.DataFrame
+        A table with region IDs, names, and color data (r, g, b) for each region.
+    """
     if not (hemi_label == None).all():
         split_fn_left = filename.split('/')
         split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
