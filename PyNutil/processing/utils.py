@@ -137,36 +137,6 @@ def get_flat_files(folder, use_flat=False):
     return [], []
 
 
-def initialize_lists(length):
-    """
-    Initializes lists for storing points, centroids, and region areas.
-
-    Args:
-        length (int): Length of the lists.
-
-    Returns:
-        tuple: Initialized lists.
-    """
-    points_list = [np.array([])] * length
-    centroids_list = [np.array([])] * length
-    region_areas_list = [
-        pd.DataFrame(
-            {
-                "idx": [],
-                "name": [],
-                "r": [],
-                "g": [],
-                "b": [],
-                "region_area": [],
-                "pixel_count": [],
-                "object_count": [],
-                "area_fraction": [],
-            }
-        )
-    ] * length
-    return points_list, centroids_list, region_areas_list
-
-
 def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
     """
     Determines the correct flat file for a given section number.
