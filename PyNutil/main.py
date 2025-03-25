@@ -9,6 +9,7 @@ from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
 
+
 class PyNutil:
     """
     A class to perform brain-wide quantification and spatial analysis of serial section images.
@@ -130,7 +131,9 @@ class PyNutil:
                 "When atlas_path and label_path are not specified, atlas_name must be specified."
             )
 
-    def get_coordinates(self, non_linear=True, object_cutoff=0, use_flat=False, apply_damage_mask=True):
+    def get_coordinates(
+        self, non_linear=True, object_cutoff=0, use_flat=False, apply_damage_mask=True
+    ):
         """
         Retrieves pixel and centroid coordinates from segmentation data,
         applies atlas-space transformations, and optionally uses a damage
@@ -169,7 +172,7 @@ class PyNutil:
                 self.atlas_volume,
                 self.hemi_map,
                 use_flat,
-                apply_damage_mask
+                apply_damage_mask,
             )
             self.apply_damage_mask = apply_damage_mask
             if self.custom_regions_dict is not None:
@@ -219,7 +222,7 @@ class PyNutil:
                 self.centroids_hemi_labels,
                 self.per_point_undamaged,
                 self.per_centroid_undamaged,
-                self.apply_damage_mask
+                self.apply_damage_mask,
             )
             if self.custom_regions_dict is not None:
                 self.custom_label_df, self.label_df = apply_custom_regions(

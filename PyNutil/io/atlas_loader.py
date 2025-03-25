@@ -40,7 +40,7 @@ def load_atlas_data(atlas_name):
     atlas_volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
     print("atlas labels loaded ✅")
-    return atlas_volume,hemi_map, atlas_labels
+    return atlas_volume, hemi_map, atlas_labels
 
 
 def process_atlas_volume(vol):

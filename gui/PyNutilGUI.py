@@ -201,7 +201,9 @@ class AnalysisWorker(QThread):
                 print("Analysis cancelled")
                 return
 
-            pnt.get_coordinates(object_cutoff=0, apply_damage_mask=self.arguments["apply_damage_mask"])
+            pnt.get_coordinates(
+                object_cutoff=0, apply_damage_mask=self.arguments["apply_damage_mask"]
+            )
 
             # Check if cancelled before continuing
             if self.cancelled:
@@ -476,7 +478,9 @@ class PyNutilGUI(QMainWindow):
         damage_markers_label = QLabel("Include Damage Quantification:")
         self.include_damage_markers_checkbox = QCheckBox()
         self.include_damage_markers_checkbox.setChecked(False)
-        self.include_damage_markers_checkbox.stateChanged.connect(self.update_damage_markers_flag)
+        self.include_damage_markers_checkbox.stateChanged.connect(
+            self.update_damage_markers_flag
+        )
 
         damage_markers_layout.addWidget(damage_markers_label)
         damage_markers_layout.addWidget(self.include_damage_markers_checkbox)

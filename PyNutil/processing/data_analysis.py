@@ -71,18 +71,33 @@ def apply_custom_regions(df, custom_regions_dict):
 
     # Define all possible columns to aggregate
     possible_columns = [
-        "pixel_count", "undamaged_pixel_count", "damaged_pixel_counts",
-        "region_area", "undamaged_region_area", "damaged_region_area",
-        "object_count", "undamaged_object_count", "damaged_object_count",
-        "left_hemi_pixel_count", "left_hemi_undamaged_pixel_count",
-        "left_hemi_damaged_pixel_count", "left_hemi_region_area",
-        "left_hemi_undamaged_region_area", "left_hemi_damaged_region_area",
-        "left_hemi_object_count", "left_hemi_undamaged_object_count",
-        "left_hemi_damaged_object_count", "right_hemi_pixel_count",
-        "right_hemi_undamaged_pixel_count", "right_hemi_damaged_pixel_count",
-        "right_hemi_region_area", "right_hemi_undamaged_region_area",
-        "right_hemi_damaged_region_area", "right_hemi_object_count",
-        "right_hemi_undamaged_object_count", "right_hemi_damaged_object_count"
+        "pixel_count",
+        "undamaged_pixel_count",
+        "damaged_pixel_counts",
+        "region_area",
+        "undamaged_region_area",
+        "damaged_region_area",
+        "object_count",
+        "undamaged_object_count",
+        "damaged_object_count",
+        "left_hemi_pixel_count",
+        "left_hemi_undamaged_pixel_count",
+        "left_hemi_damaged_pixel_count",
+        "left_hemi_region_area",
+        "left_hemi_undamaged_region_area",
+        "left_hemi_damaged_region_area",
+        "left_hemi_object_count",
+        "left_hemi_undamaged_object_count",
+        "left_hemi_damaged_object_count",
+        "right_hemi_pixel_count",
+        "right_hemi_undamaged_pixel_count",
+        "right_hemi_damaged_pixel_count",
+        "right_hemi_region_area",
+        "right_hemi_undamaged_region_area",
+        "right_hemi_damaged_region_area",
+        "right_hemi_object_count",
+        "right_hemi_undamaged_object_count",
+        "right_hemi_damaged_object_count",
     ]
 
     # Only include columns that actually exist in the DataFrame
@@ -102,7 +117,9 @@ def apply_custom_regions(df, custom_regions_dict):
 
     # Calculate area fractions only if required columns exist
     if "pixel_count" in grouped_df and "region_area" in grouped_df:
-        grouped_df["area_fraction"] = grouped_df["pixel_count"] / grouped_df["region_area"]
+        grouped_df["area_fraction"] = (
+            grouped_df["pixel_count"] / grouped_df["region_area"]
+        )
 
     if "undamaged_pixel_count" in grouped_df and "undamaged_region_area" in grouped_df:
         grouped_df["undamaged_area_fraction"] = (
@@ -110,21 +127,34 @@ def apply_custom_regions(df, custom_regions_dict):
         )
 
     if "left_hemi_pixel_count" in grouped_df and "left_hemi_region_area" in grouped_df:
-        grouped_df["left_hemi_area_fraction"] = grouped_df["left_hemi_pixel_count"] / grouped_df["left_hemi_region_area"]
-
-    if "right_hemi_pixel_count" in grouped_df and "right_hemi_region_area" in grouped_df:
-        grouped_df["right_hemi_area_fraction"] = grouped_df["right_hemi_pixel_count"] / grouped_df["right_hemi_region_area"]
-
-    if ("left_hemi_undamaged_pixel_count" in grouped_df and
-        "left_hemi_undamaged_region_area" in grouped_df):
-        grouped_df["left_hemi_undamaged_area_fraction"] = (
-            grouped_df["left_hemi_undamaged_pixel_count"] / grouped_df["left_hemi_undamaged_region_area"]
+        grouped_df["left_hemi_area_fraction"] = (
+            grouped_df["left_hemi_pixel_count"] / grouped_df["left_hemi_region_area"]
         )
 
-    if ("right_hemi_undamaged_pixel_count" in grouped_df and
-        "right_hemi_undamaged_region_area" in grouped_df):
+    if (
+        "right_hemi_pixel_count" in grouped_df
+        and "right_hemi_region_area" in grouped_df
+    ):
+        grouped_df["right_hemi_area_fraction"] = (
+            grouped_df["right_hemi_pixel_count"] / grouped_df["right_hemi_region_area"]
+        )
+
+    if (
+        "left_hemi_undamaged_pixel_count" in grouped_df
+        and "left_hemi_undamaged_region_area" in grouped_df
+    ):
+        grouped_df["left_hemi_undamaged_area_fraction"] = (
+            grouped_df["left_hemi_undamaged_pixel_count"]
+            / grouped_df["left_hemi_undamaged_region_area"]
+        )
+
+    if (
+        "right_hemi_undamaged_pixel_count" in grouped_df
+        and "right_hemi_undamaged_region_area" in grouped_df
+    ):
         grouped_df["right_hemi_undamaged_area_fraction"] = (
-            grouped_df["right_hemi_undamaged_pixel_count"] / grouped_df["right_hemi_undamaged_region_area"]
+            grouped_df["right_hemi_undamaged_pixel_count"]
+            / grouped_df["right_hemi_undamaged_region_area"]
         )
 
     common_columns = [col for col in df.columns if col in grouped_df.columns]
@@ -146,7 +176,7 @@ def quantify_labeled_points(
     centroids_hemi_labels,
     per_point_undamaged,
     per_centroid_undamaged,
-    apply_damage_mask
+    apply_damage_mask,
 ):
     """
     Aggregates labeled points into a summary table.
@@ -169,7 +199,7 @@ def quantify_labeled_points(
         per_centroid_undamaged,
         points_hemi_labels,
         centroids_hemi_labels,
-        apply_damage_mask
+        apply_damage_mask,
     )
     label_df = _combine_slice_reports(per_section_df, atlas_labels)
     if not apply_damage_mask:
@@ -190,7 +220,7 @@ def _quantify_per_section(
     per_centroid_undamaged,
     points_hemi_labels,
     centroids_hemi_labels,
-    with_damage=False
+    with_damage=False,
 ):
     """
     Quantifies labeled points per section.
@@ -225,7 +255,7 @@ def _quantify_per_section(
             current_points_hemi,
             current_centroids_hemi,
             atlas_labels,
-            with_damage
+            with_damage,
         )
         current_df_new = _merge_dataframes(current_df, ra, atlas_labels)
         per_section_df.append(current_df_new)
@@ -248,22 +278,33 @@ def _merge_dataframes(current_df, ra, atlas_labels):
         DataFrame: Merged DataFrame.
     """
     cols_to_use = ra.columns.difference(atlas_labels.columns)
-    all_region_df = atlas_labels.merge(ra[["idx",*cols_to_use]], on="idx", how="left")
+    all_region_df = atlas_labels.merge(ra[["idx", *cols_to_use]], on="idx", how="left")
     cols_to_use = current_df.columns.difference(all_region_df.columns)
     current_df_new = all_region_df.merge(
         current_df[["idx", *cols_to_use]], on="idx", how="left"
     )
-    if "pixel_count" in current_df_new.columns and "region_area" in current_df_new.columns:
+    if (
+        "pixel_count" in current_df_new.columns
+        and "region_area" in current_df_new.columns
+    ):
         current_df_new["area_fraction"] = (
             current_df_new["pixel_count"] / current_df_new["region_area"]
         )
-    if "left_hemi_pixel_count" in current_df_new.columns and "left_hemi_region_area" in current_df_new.columns:
+    if (
+        "left_hemi_pixel_count" in current_df_new.columns
+        and "left_hemi_region_area" in current_df_new.columns
+    ):
         current_df_new["left_hemi_area_fraction"] = (
-            current_df_new["left_hemi_pixel_count"] / current_df_new["left_hemi_region_area"]
+            current_df_new["left_hemi_pixel_count"]
+            / current_df_new["left_hemi_region_area"]
         )
-    if "right_hemi_pixel_count" in current_df_new.columns and "right_hemi_region_area" in current_df_new.columns:
+    if (
+        "right_hemi_pixel_count" in current_df_new.columns
+        and "right_hemi_region_area" in current_df_new.columns
+    ):
         current_df_new["right_hemi_area_fraction"] = (
-            current_df_new["right_hemi_pixel_count"] / current_df_new["right_hemi_region_area"]
+            current_df_new["right_hemi_pixel_count"]
+            / current_df_new["right_hemi_region_area"]
         )
     current_df_new.fillna(0, inplace=True)
     return current_df_new
@@ -289,18 +330,24 @@ def _combine_slice_reports(per_section_df, atlas_labels):
     )
     label_df["area_fraction"] = label_df["pixel_count"] / label_df["region_area"]
     if "left_hemi_pixel_count" in label_df:
-        label_df["left_hemi_area_fraction"] = label_df["left_hemi_pixel_count"] / label_df["left_hemi_region_area"]
-        label_df["right_hemi_area_fraction"] = label_df["right_hemi_pixel_count"] / label_df["right_hemi_region_area"]
+        label_df["left_hemi_area_fraction"] = (
+            label_df["left_hemi_pixel_count"] / label_df["left_hemi_region_area"]
+        )
+        label_df["right_hemi_area_fraction"] = (
+            label_df["right_hemi_pixel_count"] / label_df["right_hemi_region_area"]
+        )
     if "undamaged_region_area" in label_df:
         label_df["undamaged_area_fraction"] = (
             label_df["undamaged_pixel_count"] / label_df["undamaged_region_area"]
         )
     if ("left_hemi_pixel_count" in label_df) and ("undamaged_region_area" in label_df):
         label_df["left_hemi_undamaged_area_fraction"] = (
-            label_df["left_hemi_undamaged_pixel_count"] / label_df["left_hemi_undamaged_region_area"]
+            label_df["left_hemi_undamaged_pixel_count"]
+            / label_df["left_hemi_undamaged_region_area"]
         )
         label_df["right_hemi_undamaged_area_fraction"] = (
-            label_df["right_hemi_undamaged_pixel_count"] / label_df["right_hemi_undamaged_region_area"]
+            label_df["right_hemi_undamaged_pixel_count"]
+            / label_df["right_hemi_undamaged_region_area"]
         )
     label_df.fillna(0, inplace=True)
     label_df = label_df.set_index("idx")

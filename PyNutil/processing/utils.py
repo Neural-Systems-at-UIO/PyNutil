@@ -239,15 +239,23 @@ def process_results(
     centroids_len = [
         len(centroids) if None not in centroids else 0 for centroids in centroids_list
     ]
-    points_list = [points for points in points_list if (None not in points) and (len(points)!=0)]
-    centroids_list = [
-        centroids for centroids in centroids_list if (None not in centroids)and (len(centroids!=0))
+    points_list = [
+        points for points in points_list if (None not in points) and (len(points) != 0)
     ]
-    points_labels = [pl for pl in points_labels if (None not in pl) and len(pl)!=0]
-    centroids_labels = [cl for cl in centroids_labels if (None not in cl) and len(cl)!=0]
-    points_undamaged_list = [pul for pul in points_undamaged_list if (None not in pul) and len(pul)!=0]
+    centroids_list = [
+        centroids
+        for centroids in centroids_list
+        if (None not in centroids) and (len(centroids != 0))
+    ]
+    points_labels = [pl for pl in points_labels if (None not in pl) and len(pl) != 0]
+    centroids_labels = [
+        cl for cl in centroids_labels if (None not in cl) and len(cl) != 0
+    ]
+    points_undamaged_list = [
+        pul for pul in points_undamaged_list if (None not in pul) and len(pul) != 0
+    ]
     centroids_undamaged_list = [
-        cul for cul in centroids_undamaged_list if (None not in cul) and len(cul)!=0
+        cul for cul in centroids_undamaged_list if (None not in cul) and len(cul) != 0
     ]
 
     if len(points_list) == 0:

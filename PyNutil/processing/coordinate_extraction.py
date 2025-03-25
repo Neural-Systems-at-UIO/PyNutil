@@ -114,7 +114,7 @@ def folder_to_atlas_space(
     atlas_volume=None,
     hemi_map=None,
     use_flat=False,
-    apply_damage_mask=True
+    apply_damage_mask=True,
 ):
     """
     Processes all segmentation files in a folder, mapping each one to atlas space.
@@ -219,7 +219,6 @@ def folder_to_atlas_space(
         per_point_undamaged_list,
         per_centroid_undamaged_list,
     )
-
 
 
 def create_threads(
@@ -389,7 +388,9 @@ def get_region_areas(
         (seg_width, seg_height),
         atlas_labels,
     )
-    region_areas = flat_to_dataframe(atlas_map, damage_mask, hemi_mask, (seg_width, seg_height))
+    region_areas = flat_to_dataframe(
+        atlas_map, damage_mask, hemi_mask, (seg_width, seg_height)
+    )
     return region_areas, atlas_map
 
 
@@ -473,7 +474,7 @@ def segmentation_to_atlas_space(
     )
     atlas_map = rescale_image(atlas_map, (reg_height, reg_width))
     y_scale, x_scale = transform_to_registration(
-        seg_width, seg_height, reg_width,reg_height
+        seg_width, seg_height, reg_width, reg_height
     )
     centroids, points = None, None
     scaled_centroidsX, scaled_centroidsY, scaled_x, scaled_y = None, None, None, None
@@ -524,7 +525,6 @@ def segmentation_to_atlas_space(
         per_point_hemi = [None] * len(scaled_x)
         per_centroid_hemi = [None] * len(scaled_centroidsX)
 
-
     per_point_labels = per_point_labels[per_point_undamaged]
     per_centroid_labels = per_centroid_labels[per_centroid_undamaged]
 
@@ -560,7 +560,10 @@ def segmentation_to_atlas_space(
         per_point_undamaged if points is not None else []
     )
     points_hemi_labels[index] = np.array(per_point_hemi if points is not None else [])
-    centroids_hemi_labels[index] = np.array(per_centroid_hemi if points is not None else [])
+    centroids_hemi_labels[index] = np.array(
+        per_centroid_hemi if points is not None else []
+    )
+
 
 def get_triangulation(slice_dict, reg_width, reg_height, non_linear):
     """

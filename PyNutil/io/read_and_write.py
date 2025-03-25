@@ -307,17 +307,19 @@ def write_points_to_meshview(points, point_names, hemi_label, filename, info_fil
         A table with region IDs, names, and color data (r, g, b) for each region.
     """
     if not (hemi_label == None).all():
-        split_fn_left = filename.split('/')
+        split_fn_left = filename.split("/")
         split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
         outname_left = os.sep.join(split_fn_left)
-        left_region_dict = create_region_dict(points[hemi_label==1], point_names[hemi_label==1])
+        left_region_dict = create_region_dict(
+            points[hemi_label == 1], point_names[hemi_label == 1]
+        )
         write_points(left_region_dict, outname_left, info_file)
-        split_fn_right = filename.split('/')
+        split_fn_right = filename.split("/")
         split_fn_right[-1] = "right_hemisphere_" + split_fn_right[-1]
         outname_right = os.sep.join(split_fn_right)
-        right_region_dict = create_region_dict(points[hemi_label==2], point_names[hemi_label==2])
+        right_region_dict = create_region_dict(
+            points[hemi_label == 2], point_names[hemi_label == 2]
+        )
         write_points(right_region_dict, outname_right, info_file)
     region_dict = create_region_dict(points, point_names)
     write_points(region_dict, filename, info_file)
-
-

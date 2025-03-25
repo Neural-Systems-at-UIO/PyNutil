@@ -105,7 +105,6 @@ def save_analysis_output(
         "alignment_json": alignment_json,
         "colour": colour,
         "custom_region_path": custom_region_path,
-
     }
     pixel_points,
     centroids,
@@ -120,15 +119,15 @@ def save_analysis_output(
     segmentation_filenames,
     atlas_labels,
     output_folder,
-    segmentation_folder=None,
-    alignment_json=None,
-    colour=None,
-    atlas_name=None,
-    custom_region_path=None,
-    atlas_path=None,
-    label_path=None,
-    settings_file=None,
-    prepend=None,
+    segmentation_folder = (None,)
+    alignment_json = (None,)
+    colour = (None,)
+    atlas_name = (None,)
+    custom_region_path = (None,)
+    atlas_path = (None,)
+    label_path = (None,)
+    settings_file = (None,)
+    prepend = (None,)
     # Add atlas information to settings
     if atlas_name:
         settings_dict["atlas_name"] = atlas_name
