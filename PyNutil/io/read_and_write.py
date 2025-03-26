@@ -182,7 +182,7 @@ def load_segmentation(segmentation_path: str):
 
 # related to read and write
 # this function reads a VisuAlign JSON and returns the slices
-def load_quint_json(filename):
+def load_quint_json(filename, propagate_missing_values=True):
     """
     Reads a VisuAlign JSON file (.waln or .wwrp) and extracts slice information.
     Slices may include anchoring, grid spacing, and other image metadata.
@@ -213,7 +213,7 @@ def load_quint_json(filename):
 
     else:
         slices = vafile["slices"]
-    if len(slices) > 1:
+    if (len(slices) > 1) & propagate_missing_values:
         slices = propagate(slices)
     vafile["slices"] = slices
     return vafile
