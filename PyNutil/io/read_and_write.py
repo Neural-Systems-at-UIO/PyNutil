@@ -182,7 +182,7 @@ def load_segmentation(segmentation_path: str):
 
 # related to read and write
 # this function reads a VisuAlign JSON and returns the slices
-def load_visualign_json(filename, apply_damage_mask):
+def load_quint_json(filename, apply_damage_mask=True):
     """
     Reads a VisuAlign JSON file (.waln or .wwrp) and extracts slice information.
     Slices may include anchoring, grid spacing, and other image metadata.
@@ -215,12 +215,9 @@ def load_visualign_json(filename, apply_damage_mask):
         slices = vafile["slices"]
     if len(slices) > 1:
         slices = propagate(slices)
-    for slice in slices:
-        if not apply_damage_mask:
-            if "grid" in slice:
-                slice.pop("grid")
-    gridspacing = vafile["gridspacing"] if "gridspacing" in vafile else None
-    return slices, gridspacing
+    vafile["slices"] = slices
+    return vafile
+
 
 
 # related to read_and_write, used in write_points_to_meshview

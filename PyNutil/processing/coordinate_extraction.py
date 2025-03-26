@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ..io.read_and_write import load_visualign_json
+from ..io.read_and_write import load_quint_json
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import triangulate
@@ -134,7 +134,16 @@ def folder_to_atlas_space(
     Returns:
         tuple: Various arrays and lists containing transformed coordinates and labels.
     """
-    slices, gridspacing = load_visualign_json(quint_alignment, apply_damage_mask)
+    quint_json = load_quint_json(quint_alignment, apply_damage_mask)
+    slices = quint_json['slices']
+    if apply_damage_mask and "gridspacing" in quint_json:
+        gridspacing = quint_json["gridspacing"]
+    else:
+        gridspacing = None
+    if not apply_damage_mask:
+        for slice in slices:
+            if "grid" in slice:
+                slice.pop("grid")
     segmentations = get_segmentations(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
     region_areas_list = [
