@@ -134,7 +134,7 @@ def folder_to_atlas_space(
     Returns:
         tuple: Various arrays and lists containing transformed coordinates and labels.
     """
-    quint_json = load_quint_json(quint_alignment, apply_damage_mask)
+    quint_json = load_quint_json(quint_alignment)
     slices = quint_json['slices']
     if apply_damage_mask and "gridspacing" in quint_json:
         gridspacing = quint_json["gridspacing"]
