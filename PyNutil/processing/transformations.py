@@ -46,6 +46,25 @@ def transform_to_atlas_space(anchoring, y, x, reg_height, reg_width):
     o = np.reshape(o, (3, 1))
     return (o + xyz_u + xyz_v).T
 
+def image_to_atlas_space(image, anchoring):
+    """
+    Transforms to atlas space an image using the QuickNII anchoring vector.
+
+
+    Args:
+        image (ndarray): An Image which you would like to apply the anchoring vector to
+        anchoring (list): Anchoring vector.
+
+    Returns:
+        ndarray: Transformed coordinates for every pixel in the image.
+    """
+    width = image.shape[1]
+    height = image.shape[0]
+    x = np.arange(width)
+    y = np.arange(height)
+    x_coords, y_coords = np.meshgrid(x, y)
+    coordinates = transform_to_atlas_space(anchoring, y_coords.flatten(), x_coords.flatten(), height, width)
+    return coordinates
 
 def get_transformed_coordinates(
     non_linear,

@@ -9,7 +9,7 @@ import numpy as np
 import struct
 import cv2
 from .reconstruct_dzi import reconstruct_dzi
-
+from .atlas_loader import load_atlas_labels
 
 def open_custom_region_file(path):
     """
@@ -283,7 +283,7 @@ def write_points(points_dict, filename, info_file):
 
 # related to read and write: write_points_to_meshview
 # this function combines create_region_dict and write_points functions
-def write_points_to_meshview(points, point_names, hemi_label, filename, info_file):
+def write_hemi_points_to_meshview(points, point_names, hemi_label, filename, info_file):
     """
     Combines point data and region information into MeshView JSON files.
 
@@ -307,16 +307,32 @@ def write_points_to_meshview(points, point_names, hemi_label, filename, info_fil
         split_fn_left = filename.split("/")
         split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
         outname_left = os.sep.join(split_fn_left)
-        left_region_dict = create_region_dict(
-            points[hemi_label == 1], point_names[hemi_label == 1]
-        )
-        write_points(left_region_dict, outname_left, info_file)
+        write_points_to_meshview(points[hemi_label == 1], point_names[hemi_label == 1], outname_left, info_file)
         split_fn_right = filename.split("/")
         split_fn_right[-1] = "right_hemisphere_" + split_fn_right[-1]
         outname_right = os.sep.join(split_fn_right)
-        right_region_dict = create_region_dict(
-            points[hemi_label == 2], point_names[hemi_label == 2]
-        )
-        write_points(right_region_dict, outname_right, info_file)
-    region_dict = create_region_dict(points, point_names)
+        write_points_to_meshview(points[hemi_label == 2], point_names[hemi_label == 2], outname_right, info_file)
+    write_points_to_meshview(points, point_names, filename, info_file)
+
+# related to read and write: write_points_to_meshview
+# this function combines create_region_dict and write_points functions
+def write_points_to_meshview(points, point_ids, filename, info_file):
+    """
+    Combines point data and region information into MeshView JSON files.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        2D array containing [N, 3] point coordinates.
+    point_ids : numpy.ndarray
+        1D array of region labels corresponding to each point.
+    filename : str
+        Base path for output JSON. Separate hemispheres use prefixed filenames.
+    info_file : pandas.DataFrame or string
+        A table with region IDs, names, and color data (r, g, b) for each region.
+        If string, this should correspond to the relevant brainglobe atlas
+    """
+    if isinstance(info_file, str):
+        info_file = load_atlas_labels(info_file)
+    region_dict = create_region_dict(points, point_ids)
     write_points(region_dict, filename, info_file)

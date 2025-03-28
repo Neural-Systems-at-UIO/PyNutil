@@ -1,6 +1,6 @@
 import os
 import json
-from .read_and_write import write_points_to_meshview
+from .read_and_write import write_hemi_points_to_meshview
 
 
 def save_analysis_output(
@@ -212,14 +212,14 @@ def _save_per_section_meshview(
     output_folder,
     prepend,
 ):
-    write_points_to_meshview(
+    write_hemi_points_to_meshview(
         pixel_points[prev_pl : pl + prev_pl],
         labeled_points[prev_pl : pl + prev_pl],
         points_hemi_labels[prev_pl : pl + prev_pl],
         f"{output_folder}/per_section_meshview/{prepend}{split_fn}_pixels.json",
         atlas_labels,
     )
-    write_points_to_meshview(
+    write_hemi_points_to_meshview(
         centroids[prev_cl : cl + prev_cl],
         labeled_points_centroids[prev_cl : cl + prev_cl],
         centroids_hemi_labels[prev_cl : cl + prev_cl],
@@ -239,14 +239,14 @@ def _save_whole_series_meshview(
     output_folder,
     prepend,
 ):
-    write_points_to_meshview(
+    write_hemi_points_to_meshview(
         pixel_points,
         labeled_points,
         points_hemi_labels,
         f"{output_folder}/whole_series_meshview/{prepend}pixels_meshview.json",
         atlas_labels,
     )
-    write_points_to_meshview(
+    write_hemi_points_to_meshview(
         centroids,
         labeled_points_centroids,
         centroids_hemi_labels,
