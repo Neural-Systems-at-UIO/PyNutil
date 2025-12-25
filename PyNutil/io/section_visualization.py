@@ -1,4 +1,4 @@
-"""Section visualization utilities.
+"""Section visualisation utilities.
 
 Generates colored atlas slice PNGs and optionally overlays segmentation contours.
 """
@@ -158,7 +158,7 @@ def create_colored_atlas_slice(
     pil_image.save(output_path)
 
 
-def create_section_visualizations(
+def create_section_visualisations(
     segmentation_folder: str,
     alignment_json: Dict,
     atlas_volume: np.ndarray,
@@ -167,8 +167,8 @@ def create_section_visualizations(
     objects_per_section: Optional[List[List[Dict]]] = None,
     scale_factor: float = 0.5,
 ):
-    """Create visualization images for all sections in the analysis."""
-    viz_dir = os.path.join(output_folder, "visualizations")
+    """Create visualisation images for all sections in the analysis."""
+    viz_dir = os.path.join(output_folder, "visualisations")
     os.makedirs(viz_dir, exist_ok=True)
 
     slices = alignment_json.get("slices", [])
@@ -211,6 +211,6 @@ def create_section_visualizations(
                 scale_factor=scale_factor,
             )
 
-            print(f"Created visualization: {output_filename}")
+            print(f"Created visualisation: {output_filename}")
         except Exception as e:
-            print(f"Error creating visualization for slice {i}: {e}")
+            print(f"Error creating visualisation for slice {i}: {e}")

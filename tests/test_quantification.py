@@ -41,8 +41,8 @@ class TestQuantification(unittest.TestCase):
             expected_region_area["region_area"].values,
         )
         save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs", os.path.basename(test_case_filename).split('.')[0])
-        # Visualizations are optional and add noise/time in tests
-        pnt.save_analysis(save_path, create_visualizations=True)
+        # visualisations are optional and add noise/time in tests
+        pnt.save_analysis(save_path, create_visualisations=True)
 
 
 test_case_files = [

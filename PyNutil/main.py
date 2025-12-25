@@ -255,7 +255,7 @@ class PyNutil:
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")
 
-    def save_analysis(self, output_folder, create_visualizations=True):
+    def save_analysis(self, output_folder, create_visualisations=True):
         """
         Saves the pixel coordinates and pixel counts to different files in the specified output folder.
 
@@ -345,16 +345,16 @@ class PyNutil:
                             index=False,
                         )
 
-            # VISUALIZATION
-            if create_visualizations and self.alignment_json:
+            # visualisation
+            if create_visualisations and self.alignment_json:
                 try:
-                    from .io.section_visualization import create_section_visualizations
+                    from .io.section_visualisation import create_section_visualisations
                     from .io.read_and_write import load_quint_json
 
                     alignment_data = load_quint_json(self.alignment_json)
 
-                    logger.info("Creating section visualizations...")
-                    create_section_visualizations(
+                    logger.info("Creating section visualisations...")
+                    create_section_visualisations(
                         self.segmentation_folder,
                         alignment_data,
                         self.atlas_volume,
@@ -362,7 +362,7 @@ class PyNutil:
                         output_folder,
                     )
                 except Exception as e:
-                    logger.error(f"Visualization failed: {e}")
+                    logger.error(f"visualisation failed: {e}")
 
             logger.info(f"Saved output to {output_folder}")
         except Exception as e:
