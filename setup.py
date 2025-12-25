@@ -25,7 +25,6 @@ setup(
         "pynrrd",
         "xmltodict",
         "opencv-python",
-        "scikit-image",
         "psutil",
     ],
 )

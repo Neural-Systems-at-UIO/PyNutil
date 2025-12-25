@@ -1,15 +1,11 @@
 import numpy as np
 import pandas as pd
 import gc
-import psutil
-import logging
 from ..io.read_and_write import load_quint_json
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import triangulate
 import cv2
-from skimage import measure
-from skimage.transform import resize
 import threading
 from ..io.reconstruct_dzi import reconstruct_dzi
 from .transformations import (
@@ -27,6 +23,48 @@ from .utils import (
     get_current_flat_file,
     start_and_join_threads,
 )
+
+
+def _connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 4):
+    """Return connected-component properties for a boolean 2D mask.
+
+    Uses OpenCV so we can avoid scikit-image dependency.
+
+    Returns a list of dicts with:
+        - area (int)
+        - centroid (tuple[float, float])  (y, x)
+        - coords (ndarray[int]) of shape (N, 2) in (y, x) order
+    """
+    if binary_mask.size == 0:
+        return []
+
+    binary_u8 = binary_mask.astype(np.uint8, copy=False)
+    num_labels, labels, stats, centroids_xy = cv2.connectedComponentsWithStats(
+        binary_u8, connectivity=connectivity
+    )
+    if num_labels <= 1:
+        return []
+
+    ys, xs = np.nonzero(labels)
+    if ys.size == 0:
+        return []
+    comp_ids = labels[ys, xs]
+    order = np.argsort(comp_ids, kind="stable")
+    ys = ys[order]
+    xs = xs[order]
+    comp_ids = comp_ids[order]
+
+    unique_ids, start_idx = np.unique(comp_ids, return_index=True)
+    end_idx = np.r_[start_idx[1:], comp_ids.size]
+
+    props = []
+    for comp_id, start, end in zip(unique_ids, start_idx, end_idx):
+        # comp_id is >= 1 (0 is background)
+        area = int(stats[comp_id, cv2.CC_STAT_AREA])
+        cx, cy = centroids_xy[comp_id]
+        coords = np.column_stack((ys[start:end], xs[start:end]))
+        props.append({"area": area, "centroid": (float(cy), float(cx)), "coords": coords})
+    return props
 
 
 def get_objects_and_assign_regions_optimized(
@@ -68,9 +106,9 @@ def get_objects_and_assign_regions_optimized(
     scaled_y, scaled_x = scale_positions(pixel_y, pixel_x, y_scale, x_scale)
 
     # Object Detection
-    labels = measure.label(binary_seg, connectivity=1)
-    objects_info = measure.regionprops(labels)
-    objects_info = [obj for obj in objects_info if obj.area > object_cutoff]
+    # connectivity=4 matches skimage.measure.label(..., connectivity=1) for 2D.
+    objects_info = _connected_components_props(binary_seg, connectivity=4)
+    objects_info = [obj for obj in objects_info if obj["area"] > object_cutoff]
 
     if len(objects_info) == 0:
         return None, None, None, scaled_y, scaled_x, None
@@ -79,10 +117,10 @@ def get_objects_and_assign_regions_optimized(
     per_centroid_labels = []
 
     for obj in objects_info:
-        centroids.append(obj.centroid)
+        centroids.append(obj["centroid"])
         # Scale object coords
         scaled_obj_y, scaled_obj_x = scale_positions(
-            obj.coords[:, 0], obj.coords[:, 1], y_scale, x_scale
+            obj["coords"][:, 0], obj["coords"][:, 1], y_scale, x_scale
         )
 
         # Handle resolution scaling strategy
@@ -143,12 +181,11 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     Returns:
         tuple: (centroids, area, coords) of retained objects.
     """
-    labels = measure.label(segmentation)
-    labels_info = measure.regionprops(labels)
-    labels_info = [label for label in labels_info if label.area > pixel_cut_off]
-    centroids = np.array([label.centroid for label in labels_info])
-    area = np.array([label.area for label in labels_info])
-    coords = np.array([label.coords for label in labels_info], dtype=object)
+    labels_info = _connected_components_props(segmentation.astype(bool, copy=False), connectivity=4)
+    labels_info = [label for label in labels_info if label["area"] > pixel_cut_off]
+    centroids = np.array([label["centroid"] for label in labels_info])
+    area = np.array([label["area"] for label in labels_info])
+    coords = np.array([label["coords"] for label in labels_info], dtype=object)
     return centroids, area, coords
 
 
