@@ -15,7 +15,9 @@ class TestVisualisations(TimedTestCase):
         self.expected_dir = os.path.join(
             self.tests_dir, "test_data", "nonlinear_allen_mouse", "visualisations"
         )
-        self.settings_path = os.path.join(self.tests_dir, "test_cases", "brainglobe_atlas.json")
+        self.settings_path = os.path.join(
+            self.tests_dir, "test_cases", "brainglobe_atlas.json"
+        )
 
     def _load_rgb(self, path: str) -> np.ndarray:
         im_bgr = cv2.imread(path, cv2.IMREAD_COLOR)
@@ -25,12 +27,12 @@ class TestVisualisations(TimedTestCase):
 
     def test_generated_visualisations_match_expected(self):
         if not os.path.isdir(self.expected_dir):
-            self.skipTest(f"Expected visualisations folder not found: {self.expected_dir}")
+            self.skipTest(
+                f"Expected visualisations folder not found: {self.expected_dir}"
+            )
 
         expected_files = sorted(
-            f
-            for f in os.listdir(self.expected_dir)
-            if f.endswith("_atlas_colored.png")
+            f for f in os.listdir(self.expected_dir) if f.endswith("_atlas_colored.png")
         )
         if not expected_files:
             self.skipTest("No expected *_atlas_colored.png files found")

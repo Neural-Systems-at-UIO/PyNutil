@@ -329,7 +329,9 @@ class PyNutil:
                     sep=";",
                     index=False,
                 )
-            elif hasattr(self, "atlas_labels") and ("original_idx" in self.atlas_labels.columns):
+            elif hasattr(self, "atlas_labels") and (
+                "original_idx" in self.atlas_labels.columns
+            ):
                 # Back-compat for older remap implementation storing original_idx on atlas_labels
                 mapping = self.atlas_labels[["idx", "original_idx"]].dropna()
                 mapping["idx"] = mapping["idx"].astype(int)
@@ -337,7 +339,11 @@ class PyNutil:
                 if hasattr(self, "label_df") and ("idx" in self.label_df.columns):
                     self.label_df = self.label_df.merge(mapping, on="idx", how="left")
                     if "original_idx" in self.label_df.columns:
-                        self.label_df["idx"] = self.label_df["original_idx"].fillna(self.label_df["idx"]).astype(int)
+                        self.label_df["idx"] = (
+                            self.label_df["original_idx"]
+                            .fillna(self.label_df["idx"])
+                            .astype(int)
+                        )
                         self.label_df = self.label_df.drop(columns=["original_idx"])
                         self.label_df.to_csv(
                             f"{output_folder}/whole_series_report/counts.csv",

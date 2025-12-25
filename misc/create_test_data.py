@@ -59,4 +59,6 @@ if __name__ == "__main__":
         (1000, 700),
     ]
     num_images = 5
-    generate_image_with_squares(width, height, square_diameter, square_locations, num_images)
+    generate_image_with_squares(
+        width, height, square_diameter, square_locations, num_images
+    )

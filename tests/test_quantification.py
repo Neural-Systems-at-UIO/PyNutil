@@ -23,7 +23,13 @@ class TestQuantification(TimedTestCase):
         with open(test_case_filename, "r") as file:
             return test_case_filename, json.load(file)
 
-    def run_test_case(self, test_case_filename, *, create_visualisations: bool = True, save_suffix: str = ""):
+    def run_test_case(
+        self,
+        test_case_filename,
+        *,
+        create_visualisations: bool = True,
+        save_suffix: str = "",
+    ):
         test_case_filename, test_case = self.load_test_case(test_case_filename)
         pnt = PyNutil(settings_file=test_case_filename)
         pnt.get_coordinates(object_cutoff=0)
@@ -36,22 +42,42 @@ class TestQuantification(TimedTestCase):
         )
         expected_output = pd.read_csv(expected_output_path, sep=";")
         columns = [
-             "r", "g", "b", "damaged_region_area",
-            "left_hemi_damaged_region_area", "left_hemi_region_area",
-            "left_hemi_undamaged_region_area", "region_area",
-            "right_hemi_damaged_region_area", "right_hemi_region_area",
-            "right_hemi_undamaged_region_area", "undamaged_region_area",
-            "damaged_object_count", "damaged_pixel_counts",
-            "left_hemi_damaged_object_count", "left_hemi_damaged_pixel_count",
-            "left_hemi_object_count", "left_hemi_pixel_count",
-            "left_hemi_undamaged_object_count", "left_hemi_undamaged_pixel_count",
-            "object_count", "pixel_count", "right_hemi_damaged_object_count",
-            "right_hemi_damaged_pixel_count", "right_hemi_object_count",
-            "right_hemi_pixel_count", "right_hemi_undamaged_object_count",
-            "right_hemi_undamaged_pixel_count", "undamaged_object_count",
-            "undamaged_pixel_count", "area_fraction", "left_hemi_area_fraction",
-            "right_hemi_area_fraction", "undamaged_area_fraction",
-            "left_hemi_undamaged_area_fraction", "right_hemi_undamaged_area_fraction"
+            "r",
+            "g",
+            "b",
+            "damaged_region_area",
+            "left_hemi_damaged_region_area",
+            "left_hemi_region_area",
+            "left_hemi_undamaged_region_area",
+            "region_area",
+            "right_hemi_damaged_region_area",
+            "right_hemi_region_area",
+            "right_hemi_undamaged_region_area",
+            "undamaged_region_area",
+            "damaged_object_count",
+            "damaged_pixel_counts",
+            "left_hemi_damaged_object_count",
+            "left_hemi_damaged_pixel_count",
+            "left_hemi_object_count",
+            "left_hemi_pixel_count",
+            "left_hemi_undamaged_object_count",
+            "left_hemi_undamaged_pixel_count",
+            "object_count",
+            "pixel_count",
+            "right_hemi_damaged_object_count",
+            "right_hemi_damaged_pixel_count",
+            "right_hemi_object_count",
+            "right_hemi_pixel_count",
+            "right_hemi_undamaged_object_count",
+            "right_hemi_undamaged_pixel_count",
+            "undamaged_object_count",
+            "undamaged_pixel_count",
+            "area_fraction",
+            "left_hemi_area_fraction",
+            "right_hemi_area_fraction",
+            "undamaged_area_fraction",
+            "left_hemi_undamaged_area_fraction",
+            "right_hemi_undamaged_area_fraction",
         ]
 
         # Filter columns based on which ones are actually available in the expected output
@@ -59,7 +85,9 @@ class TestQuantification(TimedTestCase):
 
         for column in columns:
             with self.subTest(column=column):
-                self.assertIn(column, pnt.label_df.columns, f"Missing column in output: {column}")
+                self.assertIn(
+                    column, pnt.label_df.columns, f"Missing column in output: {column}"
+                )
                 self.assertIn(
                     column,
                     expected_output.columns,
@@ -72,7 +100,9 @@ class TestQuantification(TimedTestCase):
                 )
 
         save_root = os.path.basename(test_case_filename).split(".")[0] + save_suffix
-        save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs", save_root)
+        save_path = os.path.join(
+            self.test_case_dir, "..", "demo_data", "outputs", save_root
+        )
         # visualisations are optional and can be slow; keep this non-failing and purely informative
         pnt.save_analysis(save_path, create_visualisations=create_visualisations)
 
@@ -81,7 +111,7 @@ test_case_files = [
     "brainglobe_atlas.json",
     "brainglobe_atlas_damage.json",
     "custom_atlas.json",
-    "upsized_allen.json"
+    "upsized_allen.json",
 ]
 
 

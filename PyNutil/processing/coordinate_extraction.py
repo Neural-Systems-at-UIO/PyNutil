@@ -63,7 +63,9 @@ def _connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 
         area = int(stats[comp_id, cv2.CC_STAT_AREA])
         cx, cy = centroids_xy[comp_id]
         coords = np.column_stack((ys[start:end], xs[start:end]))
-        props.append({"area": area, "centroid": (float(cy), float(cx)), "coords": coords})
+        props.append(
+            {"area": area, "centroid": (float(cy), float(cx)), "coords": coords}
+        )
     return props
 
 
@@ -132,7 +134,10 @@ def get_objects_and_assign_regions_optimized(
             atlas_bounds_height, atlas_bounds_width = atlas_height, atlas_width
         else:
             assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
-            atlas_bounds_height, atlas_bounds_width = atlas_map.shape[0], atlas_map.shape[1]
+            atlas_bounds_height, atlas_bounds_width = (
+                atlas_map.shape[0],
+                atlas_map.shape[1],
+            )
 
         # Check bounds
         valid_mask = (
@@ -181,7 +186,9 @@ def get_centroids_and_area(segmentation, pixel_cut_off=0):
     Returns:
         tuple: (centroids, area, coords) of retained objects.
     """
-    labels_info = _connected_components_props(segmentation.astype(bool, copy=False), connectivity=4)
+    labels_info = _connected_components_props(
+        segmentation.astype(bool, copy=False), connectivity=4
+    )
     labels_info = [label for label in labels_info if label["area"] > pixel_cut_off]
     centroids = np.array([label["centroid"] for label in labels_info])
     area = np.array([label["area"] for label in labels_info])
@@ -279,7 +286,7 @@ def folder_to_atlas_space(
         tuple: Various arrays and lists containing transformed coordinates and labels.
     """
     quint_json = load_quint_json(quint_alignment)
-    slices = quint_json['slices']
+    slices = quint_json["slices"]
     if apply_damage_mask and "gridspacing" in quint_json:
         gridspacing = quint_json["gridspacing"]
     else:
@@ -721,7 +728,9 @@ def segmentation_to_atlas_space(
         per_centroid_hemi = per_centroid_hemi[per_centroid_undamaged]
     else:
         per_point_hemi = [None] * len(scaled_x)
-        per_centroid_hemi = [None] * (len(scaled_centroidsX) if scaled_centroidsX is not None else 0)
+        per_centroid_hemi = [None] * (
+            len(scaled_centroidsX) if scaled_centroidsX is not None else 0
+        )
 
     per_point_labels = per_point_labels[per_point_undamaged]
     if per_centroid_labels is None:
@@ -733,8 +742,16 @@ def segmentation_to_atlas_space(
         slice_dict,
         scaled_x[per_point_undamaged],
         scaled_y[per_point_undamaged],
-        scaled_centroidsX[per_centroid_undamaged] if scaled_centroidsX is not None else np.array([]),
-        scaled_centroidsY[per_centroid_undamaged] if scaled_centroidsY is not None else np.array([]),
+        (
+            scaled_centroidsX[per_centroid_undamaged]
+            if scaled_centroidsX is not None
+            else np.array([])
+        ),
+        (
+            scaled_centroidsY[per_centroid_undamaged]
+            if scaled_centroidsY is not None
+            else np.array([])
+        ),
         triangulation,
     )
     points, centroids = transform_points_to_atlas_space(

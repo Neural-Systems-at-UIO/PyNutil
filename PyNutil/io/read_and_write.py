@@ -11,6 +11,7 @@ import cv2
 from .reconstruct_dzi import reconstruct_dzi
 from .atlas_loader import load_atlas_labels
 
+
 def open_custom_region_file(path):
     """
     Opens a custom region file (TSV or XLSX) and returns both a dictionary
@@ -219,7 +220,6 @@ def load_quint_json(filename, propagate_missing_values=True):
     return vafile
 
 
-
 # related to read_and_write, used in write_points_to_meshview
 # this function returns a dictionary of region names
 def create_region_dict(points, regions):
@@ -307,12 +307,23 @@ def write_hemi_points_to_meshview(points, point_names, hemi_label, filename, inf
         split_fn_left = filename.split("/")
         split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
         outname_left = os.sep.join(split_fn_left)
-        write_points_to_meshview(points[hemi_label == 1], point_names[hemi_label == 1], outname_left, info_file)
+        write_points_to_meshview(
+            points[hemi_label == 1],
+            point_names[hemi_label == 1],
+            outname_left,
+            info_file,
+        )
         split_fn_right = filename.split("/")
         split_fn_right[-1] = "right_hemisphere_" + split_fn_right[-1]
         outname_right = os.sep.join(split_fn_right)
-        write_points_to_meshview(points[hemi_label == 2], point_names[hemi_label == 2], outname_right, info_file)
+        write_points_to_meshview(
+            points[hemi_label == 2],
+            point_names[hemi_label == 2],
+            outname_right,
+            info_file,
+        )
     write_points_to_meshview(points, point_names, filename, info_file)
+
 
 # related to read and write: write_points_to_meshview
 # this function combines create_region_dict and write_points functions

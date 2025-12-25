@@ -132,7 +132,6 @@ class TestCoordinateScaling(TimedTestCase):
         finally:
             shutil.rmtree(tmpdir)
 
-
     def test_warping_uses_registration_dims_not_segmentation_dims(self):
         """Regression test: atlas warping (non-linear) must use alignment JSON dims.
 
@@ -148,7 +147,9 @@ class TestCoordinateScaling(TimedTestCase):
             "anchoring": [0, 0, 0, reg_w, 0, 0, 0, reg_h, 0],
         }
 
-        atlas_labels = pd.DataFrame({"idx": [0], "name": ["root"], "r": [0], "g": [0], "b": [0]})
+        atlas_labels = pd.DataFrame(
+            {"idx": [0], "name": ["root"], "r": [0], "g": [0], "b": [0]}
+        )
 
         called = {"warp_rescaleXY": None, "area_rescaleXY": None}
 

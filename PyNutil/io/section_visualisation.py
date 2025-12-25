@@ -132,7 +132,11 @@ def create_colored_atlas_slice(
     segmentation_path: Optional[str] = None,
     objects_data: Optional[List[Dict]] = None,
     scale_factor: float = 0.5,
-    _color_lookup: Optional[Tuple[str, Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], Tuple[int, int, int]]] = None,
+    _color_lookup: Optional[
+        Tuple[
+            str, Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], Tuple[int, int, int]
+        ]
+    ] = None,
 ) -> None:
     """Create a coloured atlas slice and optionally overlay segmentation pixels."""
     atlas_slice = generate_target_slice(slice_dict["anchoring"], atlas_volume)
@@ -168,9 +172,14 @@ def create_colored_atlas_slice(
         except Exception:
             pass
 
-    if (coloured_slice.shape[1], coloured_slice.shape[0]) != (target_width, target_height):
+    if (coloured_slice.shape[1], coloured_slice.shape[0]) != (
+        target_width,
+        target_height,
+    ):
         coloured_slice = cv2.resize(
-            coloured_slice, (target_width, target_height), interpolation=cv2.INTER_NEAREST
+            coloured_slice,
+            (target_width, target_height),
+            interpolation=cv2.INTER_NEAREST,
         )
 
     if scale_factor != 1.0:

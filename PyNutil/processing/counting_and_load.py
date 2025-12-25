@@ -118,25 +118,44 @@ def pixel_count_per_region(
         )
 
         lh_cu, lh_cu_idx = _counts_for(
-            current_centroids_undamaged & (current_centroids_hemi == 1), labeled_dict_centroids
+            current_centroids_undamaged & (current_centroids_hemi == 1),
+            labeled_dict_centroids,
         )
         lh_cd, lh_cd_idx = _counts_for(
-            (~current_centroids_undamaged) & (current_centroids_hemi == 1), labeled_dict_centroids
+            (~current_centroids_undamaged) & (current_centroids_hemi == 1),
+            labeled_dict_centroids,
         )
         rh_cu, rh_cu_idx = _counts_for(
-            current_centroids_undamaged & (current_centroids_hemi == 2), labeled_dict_centroids
+            current_centroids_undamaged & (current_centroids_hemi == 2),
+            labeled_dict_centroids,
         )
         rh_cd, rh_cd_idx = _counts_for(
-            (~current_centroids_undamaged) & (current_centroids_hemi == 2), labeled_dict_centroids
+            (~current_centroids_undamaged) & (current_centroids_hemi == 2),
+            labeled_dict_centroids,
         )
 
         all_idx = np.unique(
             np.concatenate(
-                [lh_pu_idx, lh_pd_idx, rh_pu_idx, rh_pd_idx, lh_cu_idx, lh_cd_idx, rh_cu_idx, rh_cd_idx]
+                [
+                    lh_pu_idx,
+                    lh_pd_idx,
+                    rh_pu_idx,
+                    rh_pd_idx,
+                    lh_cu_idx,
+                    lh_cd_idx,
+                    rh_cu_idx,
+                    rh_cd_idx,
+                ]
             )
         )
         if all_idx.size == 0:
-            return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=True, with_damage=True).keys()))
+            return pd.DataFrame(
+                columns=list(
+                    create_base_counts_dict(
+                        with_hemisphere=True, with_damage=True
+                    ).keys()
+                )
+            )
 
         base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
         idx = base["idx"].to_numpy()
@@ -183,7 +202,13 @@ def pixel_count_per_region(
 
         all_idx = np.unique(np.concatenate([pu_idx, pdmg_idx, cu_idx, cd_idx]))
         if all_idx.size == 0:
-            return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=False, with_damage=True).keys()))
+            return pd.DataFrame(
+                columns=list(
+                    create_base_counts_dict(
+                        with_hemisphere=False, with_damage=True
+                    ).keys()
+                )
+            )
 
         base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
         idx = base["idx"].to_numpy()
@@ -204,12 +229,22 @@ def pixel_count_per_region(
     if with_hemi and (not with_damage):
         lh_p, lh_p_idx = _counts_for(current_points_hemi == 1, labels_dict_points)
         rh_p, rh_p_idx = _counts_for(current_points_hemi == 2, labels_dict_points)
-        lh_c, lh_c_idx = _counts_for(current_centroids_hemi == 1, labeled_dict_centroids)
-        rh_c, rh_c_idx = _counts_for(current_centroids_hemi == 2, labeled_dict_centroids)
+        lh_c, lh_c_idx = _counts_for(
+            current_centroids_hemi == 1, labeled_dict_centroids
+        )
+        rh_c, rh_c_idx = _counts_for(
+            current_centroids_hemi == 2, labeled_dict_centroids
+        )
 
         all_idx = np.unique(np.concatenate([lh_p_idx, rh_p_idx, lh_c_idx, rh_c_idx]))
         if all_idx.size == 0:
-            return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=True, with_damage=False).keys()))
+            return pd.DataFrame(
+                columns=list(
+                    create_base_counts_dict(
+                        with_hemisphere=True, with_damage=False
+                    ).keys()
+                )
+            )
 
         base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
         idx = base["idx"].to_numpy()
@@ -232,7 +267,11 @@ def pixel_count_per_region(
     c, c_idx = _counts_for(None, labeled_dict_centroids)
     all_idx = np.unique(np.concatenate([p_idx, c_idx]))
     if all_idx.size == 0:
-        return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=False, with_damage=False).keys()))
+        return pd.DataFrame(
+            columns=list(
+                create_base_counts_dict(with_hemisphere=False, with_damage=False).keys()
+            )
+        )
 
     base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
     idx = base["idx"].to_numpy()

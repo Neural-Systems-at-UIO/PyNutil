@@ -4,6 +4,7 @@ import numpy as np
 import nrrd
 from functools import lru_cache
 
+
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
         atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
@@ -23,6 +24,7 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     atlas_structures["b"].insert(0, 0)
     atlas_labels = pd.DataFrame(atlas_structures)
     return atlas_labels
+
 
 @lru_cache(maxsize=8)
 def load_atlas_data(atlas_name):

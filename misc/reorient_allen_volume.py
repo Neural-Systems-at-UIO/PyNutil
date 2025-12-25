@@ -1,5 +1,5 @@
 """
-This script was needed to reorient the Allen Volume to match the 
+This script was needed to reorient the Allen Volume to match the
 orientation of meshview coordinates.
 """
 
