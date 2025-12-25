@@ -3,5 +3,5 @@
     "alignment_json":"tests/test_data/nonlinear_allen_mouse/damage_markers.json",
     "colour":[0, 0, 0],
     "atlas_name":"allen_mouse_25um",
-    "expected_output_folder":"expected_outputs/brainglobe_atlas"
+    "expected_output_folder":"expected_outputs/brainglobe_atlas_damage"
 }
