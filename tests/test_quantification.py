@@ -9,22 +9,21 @@ import pandas as pd
 from PyNutil import PyNutil
 import json
 
+from timing_utils import TimedTestCase
 
-class TestQuantification(unittest.TestCase):
+
+class TestQuantification(TimedTestCase):
     def setUp(self):
         self.test_case_dir = os.path.dirname(__file__)
         # Keep test output readable: ignore noisy dependency deprecation warnings
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
     def load_test_case(self, filename):
-        return
-
-    def load_test_case(self, filename):
         test_case_filename = os.path.join(self.test_case_dir, "test_cases", filename)
         with open(test_case_filename, "r") as file:
             return test_case_filename, json.load(file)
 
-    def run_test_case(self, test_case_filename):
+    def run_test_case(self, test_case_filename, *, create_visualisations: bool = True, save_suffix: str = ""):
         test_case_filename, test_case = self.load_test_case(test_case_filename)
         pnt = PyNutil(settings_file=test_case_filename)
         pnt.get_coordinates(object_cutoff=0)
@@ -72,9 +71,10 @@ class TestQuantification(unittest.TestCase):
                     err_msg=f"Mismatch in column: {column}",
                 )
 
-        save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs", os.path.basename(test_case_filename).split('.')[0])
-        # visualisations are optional and add noise/time in tests
-        pnt.save_analysis(save_path, create_visualisations=True)
+        save_root = os.path.basename(test_case_filename).split(".")[0] + save_suffix
+        save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs", save_root)
+        # visualisations are optional and can be slow; keep this non-failing and purely informative
+        pnt.save_analysis(save_path, create_visualisations=create_visualisations)
 
 
 test_case_files = [
@@ -83,12 +83,52 @@ test_case_files = [
     "custom_atlas.json",
     "upsized_allen.json"
 ]
+
+
+def _make_test_method(
+    test_case_file: str,
+    *,
+    create_visualisations: bool = True,
+    save_suffix: str = "",
+):
+    def _test(self):
+        self.run_test_case(
+            test_case_file,
+            create_visualisations=create_visualisations,
+            save_suffix=save_suffix,
+        )
+
+    return _test
+
+
 for test_case_file in test_case_files:
-
-    def test_method(self, test_case_file=test_case_file):
-        self.run_test_case(test_case_file)
-
-    setattr(TestQuantification, f'test_{test_case_file.split(".")[0]}', test_method)
+    stem = test_case_file.split(".")[0]
+    if stem == "upsized_allen":
+        # Run twice to measure the runtime penalty of visualisation generation.
+        setattr(
+            TestQuantification,
+            "test_upsized_allen_without_visualisations",
+            _make_test_method(
+                test_case_file,
+                create_visualisations=False,
+                save_suffix="_novis",
+            ),
+        )
+        setattr(
+            TestQuantification,
+            "test_upsized_allen_with_visualisations",
+            _make_test_method(
+                test_case_file,
+                create_visualisations=True,
+                save_suffix="_vis",
+            ),
+        )
+    else:
+        setattr(
+            TestQuantification,
+            f"test_{stem}",
+            _make_test_method(test_case_file),
+        )
 
 if __name__ == "__main__":
     unittest.main()

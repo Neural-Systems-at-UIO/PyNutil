@@ -6,9 +6,10 @@ import numpy as np
 from PIL import Image
 
 from PyNutil import PyNutil
+from timing_utils import TimedTestCase
 
 
-class TestVisualisations(unittest.TestCase):
+class TestVisualisations(TimedTestCase):
     def setUp(self):
         self.tests_dir = os.path.dirname(__file__)
         self.expected_dir = os.path.join(

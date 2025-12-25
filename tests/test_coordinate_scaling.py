@@ -5,6 +5,8 @@ import shutil
 import unittest
 from unittest.mock import patch
 
+from timing_utils import TimedTestCase
+
 import cv2
 import numpy as np
 import pandas as pd
@@ -15,7 +17,7 @@ from PyNutil.processing.coordinate_extraction import segmentation_to_atlas_space
 from PyNutil.processing.coordinate_extraction import get_region_areas
 
 
-class TestCoordinateScaling(unittest.TestCase):
+class TestCoordinateScaling(TimedTestCase):
     def test_segmentation_size_mismatch_does_not_swap_axes(self):
         """Regression test: segmentation (h,w) may differ from alignment JSON (H,W).
 
