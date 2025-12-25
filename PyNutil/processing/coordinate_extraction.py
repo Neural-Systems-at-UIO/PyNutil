@@ -1,11 +1,15 @@
 import numpy as np
 import pandas as pd
+import gc
+import psutil
+import logging
 from ..io.read_and_write import load_quint_json
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import triangulate
 import cv2
 from skimage import measure
+from skimage.transform import resize
 import threading
 from ..io.reconstruct_dzi import reconstruct_dzi
 from .transformations import (
@@ -23,6 +27,109 @@ from .utils import (
     get_current_flat_file,
     start_and_join_threads,
 )
+
+
+def get_objects_and_assign_regions_optimized(
+    segmentation,
+    pixel_id,
+    atlas_map,
+    y_scale,
+    x_scale,
+    object_cutoff=0,
+    tolerance=10,
+    atlas_at_original_resolution=False,
+    reg_height=None,
+    reg_width=None,
+):
+    """Single-pass object detection, pixel extraction, and region assignment."""
+
+    # Memory-efficient binary segmentation: process channels separately with int16
+    # This prevents int32 conversion of the whole image which triples memory usage
+    binary_seg = (
+        np.abs(segmentation[:, :, 0].astype(np.int16) - pixel_id[0]) <= tolerance
+    )
+    if segmentation.shape[2] > 1:
+        binary_seg &= (
+            np.abs(segmentation[:, :, 1].astype(np.int16) - pixel_id[1]) <= tolerance
+        )
+    if segmentation.shape[2] > 2:
+        binary_seg &= (
+            np.abs(segmentation[:, :, 2].astype(np.int16) - pixel_id[2]) <= tolerance
+        )
+
+    # Get pixel coordinates
+    pixel_y, pixel_x = np.where(binary_seg)
+
+    if len(pixel_y) == 0:
+        del binary_seg
+        return None, None, None, None, None, None
+
+    # Scale pixel coordinates to registration space
+    scaled_y, scaled_x = scale_positions(pixel_y, pixel_x, y_scale, x_scale)
+
+    # Object Detection
+    labels = measure.label(binary_seg, connectivity=1)
+    objects_info = measure.regionprops(labels)
+    objects_info = [obj for obj in objects_info if obj.area > object_cutoff]
+
+    if len(objects_info) == 0:
+        return None, None, None, scaled_y, scaled_x, None
+
+    centroids = []
+    per_centroid_labels = []
+
+    for obj in objects_info:
+        centroids.append(obj.centroid)
+        # Scale object coords
+        scaled_obj_y, scaled_obj_x = scale_positions(
+            obj.coords[:, 0], obj.coords[:, 1], y_scale, x_scale
+        )
+
+        # Handle resolution scaling strategy
+        if atlas_at_original_resolution:
+            # Scale COORDINATES down to atlas size, instead of scaling atlas up
+            atlas_height, atlas_width = atlas_map.shape
+            assignment_y = scaled_obj_y * (atlas_height / reg_height)
+            assignment_x = scaled_obj_x * (atlas_width / reg_width)
+            atlas_bounds_height, atlas_bounds_width = atlas_height, atlas_width
+        else:
+            assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
+            atlas_bounds_height, atlas_bounds_width = atlas_map.shape[0], atlas_map.shape[1]
+
+        # Check bounds
+        valid_mask = (
+            (np.round(assignment_y).astype(int) >= 0)
+            & (np.round(assignment_y).astype(int) < atlas_bounds_height)
+            & (np.round(assignment_x).astype(int) >= 0)
+            & (np.round(assignment_x).astype(int) < atlas_bounds_width)
+        )
+
+        if not np.any(valid_mask):
+            per_centroid_labels.append(0)
+            continue
+
+        # Assign Region based on majority vote of pixels in object
+        pixel_labels = atlas_map[
+            np.round(assignment_y[valid_mask]).astype(int),
+            np.round(assignment_x[valid_mask]).astype(int),
+        ]
+        unique_labels, counts = np.unique(pixel_labels, return_counts=True)
+        per_centroid_labels.append(unique_labels[np.argmax(counts)])
+
+    centroids = np.array(centroids)
+    scaled_centroidsY, scaled_centroidsX = scale_positions(
+        centroids[:, 0], centroids[:, 1], y_scale, x_scale
+    )
+    per_centroid_labels = np.array(per_centroid_labels)
+
+    return (
+        centroids,
+        scaled_centroidsX,
+        scaled_centroidsY,
+        scaled_y,
+        scaled_x,
+        per_centroid_labels,
+    )
 
 
 def get_centroids_and_area(segmentation, pixel_cut_off=0):
@@ -481,60 +588,104 @@ def segmentation_to_atlas_space(
         triangulation,
         damage_mask,
     )
-    atlas_map = rescale_image(atlas_map, (reg_height, reg_width))
     y_scale, x_scale = transform_to_registration(
         seg_width, seg_height, reg_width, reg_height
     )
+
     centroids, points = None, None
     scaled_centroidsX, scaled_centroidsY, scaled_x, scaled_y = None, None, None, None
-    centroids, scaled_centroidsX, scaled_centroidsY = get_centroids(
-        segmentation, pixel_id, y_scale, x_scale, object_cutoff
+
+    (
+        centroids,
+        scaled_centroidsX,
+        scaled_centroidsY,
+        scaled_y,
+        scaled_x,
+        per_centroid_labels,
+    ) = get_objects_and_assign_regions_optimized(
+        segmentation,
+        pixel_id,
+        atlas_map,
+        y_scale,
+        x_scale,
+        object_cutoff=object_cutoff,
+        tolerance=10,
+        atlas_at_original_resolution=True,
+        reg_height=reg_height,
+        reg_width=reg_width,
     )
-    scaled_y, scaled_x = get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale)
-    per_point_labels = atlas_map[
-        np.round(scaled_y).astype(int), np.round(scaled_x).astype(int)
-    ]
-    per_centroid_labels = atlas_map[
-        np.round(scaled_centroidsY).astype(int), np.round(scaled_centroidsX).astype(int)
-    ]
+
+    if scaled_y is None or scaled_x is None:
+        points_list[index] = np.array([])
+        centroids_list[index] = np.array([])
+        region_areas_list[index] = region_areas
+        centroids_labels[index] = np.array([])
+        per_centroid_undamaged_list[index] = np.array([])
+        points_labels[index] = np.array([])
+        per_point_undamaged_list[index] = np.array([])
+        points_hemi_labels[index] = np.array([])
+        centroids_hemi_labels[index] = np.array([])
+        gc.collect()
+        return
+
+    # Assign per-pixel labels using atlas at original resolution (scale coords down)
+    atlas_height, atlas_width = atlas_map.shape
+    assignment_y = scaled_y * (atlas_height / reg_height)
+    assignment_x = scaled_x * (atlas_width / reg_width)
+    ay = np.round(assignment_y).astype(int)
+    ax = np.round(assignment_x).astype(int)
+    valid = (ay >= 0) & (ay < atlas_height) & (ax >= 0) & (ax < atlas_width)
+    per_point_labels = np.zeros_like(ay, dtype=atlas_map.dtype)
+    if np.any(valid):
+        per_point_labels[valid] = atlas_map[ay[valid], ax[valid]]
     if damage_mask is not None:
         damage_mask = cv2.resize(
             damage_mask.astype(np.uint8),
-            (atlas_map.shape[::-1]),
+            (reg_width, reg_height),
             interpolation=cv2.INTER_NEAREST,
         ).astype(bool)
         per_point_undamaged = damage_mask[
             np.round(scaled_y).astype(int), np.round(scaled_x).astype(int)
         ]
-        per_centroid_undamaged = damage_mask[
-            np.round(scaled_centroidsY).astype(int),
-            np.round(scaled_centroidsX).astype(int),
-        ]
+        if scaled_centroidsX is not None and scaled_centroidsY is not None:
+            per_centroid_undamaged = damage_mask[
+                np.round(scaled_centroidsY).astype(int),
+                np.round(scaled_centroidsX).astype(int),
+            ]
+        else:
+            per_centroid_undamaged = np.array([], dtype=bool)
     else:
         per_point_undamaged = np.ones(scaled_x.shape, dtype=bool)
-        per_centroid_undamaged = np.ones(scaled_centroidsX.shape, dtype=bool)
+        if scaled_centroidsX is not None:
+            per_centroid_undamaged = np.ones(scaled_centroidsX.shape, dtype=bool)
+        else:
+            per_centroid_undamaged = np.array([], dtype=bool)
     if hemi_mask is not None:
-        hemi_mask = cv2.resize(
-            hemi_mask.astype(np.uint8),
-            (atlas_map.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
-        )
+        # Assign hemisphere labels in atlas space (no atlas upscaling)
+        per_point_hemi = np.zeros_like(ay, dtype=hemi_mask.dtype)
+        if np.any(valid):
+            per_point_hemi[valid] = hemi_mask[ay[valid], ax[valid]]
 
-        per_point_hemi = hemi_mask[
-            np.round(scaled_y).astype(int),
-            np.round(scaled_x).astype(int),
-        ]
-        per_centroid_hemi = hemi_mask[
-            np.round(scaled_centroidsY).astype(int),
-            np.round(scaled_centroidsX).astype(int),
-        ]
+        if scaled_centroidsX is not None and scaled_centroidsY is not None:
+            c_assignment_y = scaled_centroidsY * (atlas_height / reg_height)
+            c_assignment_x = scaled_centroidsX * (atlas_width / reg_width)
+            cy = np.round(c_assignment_y).astype(int)
+            cx = np.round(c_assignment_x).astype(int)
+            c_valid = (cy >= 0) & (cy < atlas_height) & (cx >= 0) & (cx < atlas_width)
+            per_centroid_hemi = np.zeros_like(cy, dtype=hemi_mask.dtype)
+            if np.any(c_valid):
+                per_centroid_hemi[c_valid] = hemi_mask[cy[c_valid], cx[c_valid]]
+        else:
+            per_centroid_hemi = np.array([], dtype=hemi_mask.dtype)
         per_point_hemi = per_point_hemi[per_point_undamaged]
         per_centroid_hemi = per_centroid_hemi[per_centroid_undamaged]
     else:
         per_point_hemi = [None] * len(scaled_x)
-        per_centroid_hemi = [None] * len(scaled_centroidsX)
+        per_centroid_hemi = [None] * (len(scaled_centroidsX) if scaled_centroidsX is not None else 0)
 
     per_point_labels = per_point_labels[per_point_undamaged]
+    if per_centroid_labels is None:
+        per_centroid_labels = np.array([], dtype=per_point_labels.dtype)
     per_centroid_labels = per_centroid_labels[per_centroid_undamaged]
 
     new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
@@ -542,8 +693,8 @@ def segmentation_to_atlas_space(
         slice_dict,
         scaled_x[per_point_undamaged],
         scaled_y[per_point_undamaged],
-        scaled_centroidsX[per_centroid_undamaged],
-        scaled_centroidsY[per_centroid_undamaged],
+        scaled_centroidsX[per_centroid_undamaged] if scaled_centroidsX is not None else np.array([]),
+        scaled_centroidsY[per_centroid_undamaged] if scaled_centroidsY is not None else np.array([]),
         triangulation,
     )
     points, centroids = transform_points_to_atlas_space(
@@ -572,6 +723,8 @@ def segmentation_to_atlas_space(
     centroids_hemi_labels[index] = np.array(
         per_centroid_hemi if points is not None else []
     )
+
+    gc.collect()
 
 
 def get_triangulation(slice_dict, reg_width, reg_height, non_linear):

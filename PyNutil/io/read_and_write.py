@@ -248,7 +248,7 @@ def create_region_dict(points, regions):
 
 # related to read and write: write_points
 # this function writes the region dictionary to a meshview json
-def write_points(points_dict, filename, info_file):
+def _write_points(points_dict, filename, info_file):
     """
     Saves a region-based point dictionary to a MeshView-compatible JSON layout.
 
@@ -335,4 +335,4 @@ def write_points_to_meshview(points, point_ids, filename, info_file):
     if isinstance(info_file, str):
         info_file = load_atlas_labels(info_file)
     region_dict = create_region_dict(points, point_ids)
-    write_points(region_dict, filename, info_file)
+    _write_points(region_dict, filename, info_file)
