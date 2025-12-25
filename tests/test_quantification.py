@@ -1,6 +1,7 @@
 import unittest
 import os
 import sys
+import warnings
 
 sys.path.append(os.path.abspath("/home/harryc/github/PyNutil/"))
 import numpy as np
@@ -12,6 +13,8 @@ import json
 class TestQuantification(unittest.TestCase):
     def setUp(self):
         self.test_case_dir = os.path.dirname(__file__)
+        # Keep test output readable: ignore noisy dependency deprecation warnings
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
 
     def load_test_case(self, filename):
         return
@@ -37,8 +40,9 @@ class TestQuantification(unittest.TestCase):
             pnt.label_df["region_area"].values,
             expected_region_area["region_area"].values,
         )
-        save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs")
-        pnt.save_analysis(save_path)
+        save_path = os.path.join(self.test_case_dir, "..", "demo_data", "outputs", os.path.basename(test_case_filename).split('.')[0])
+        # Visualizations are optional and add noise/time in tests
+        pnt.save_analysis(save_path, create_visualizations=True)
 
 
 test_case_files = [

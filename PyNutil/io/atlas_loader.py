@@ -69,7 +69,6 @@ def process_atlas_volume(vol):
 def load_custom_atlas(atlas_path, hemi_path, label_path):
     """
     Loads a custom atlas from provided file paths.
-    Includes optimization for large/non-contiguous indices.
     """
     atlas_volume, _ = nrrd.read(atlas_path)
 
@@ -79,43 +78,5 @@ def load_custom_atlas(atlas_path, hemi_path, label_path):
         hemi_volume = None
 
     atlas_labels = pd.read_csv(label_path)
-
-    # OPTIMIZATION: Remap huge indices to compact range to prevent massive memory allocation
-    try:
-        original_indices = atlas_labels["idx"].values
-        max_idx = original_indices.max()
-        unique_indices = np.unique(original_indices)
-
-        # If max index is large (arbitrary threshold 100k), we assume it's sparse/non-contiguous
-        if max_idx > 100000:
-            print(f"Large atlas indices detected (max={max_idx}). Remapping to compact range...")
-
-            # Get indices actually used in the volume
-            volume_indices = np.unique(atlas_volume)
-
-            # Union of labels and volume indices
-            all_indices = np.union1d(original_indices, volume_indices)
-            max_all = all_indices.max()
-
-            # Create efficient lookup using numpy indexing
-            # Default to identity mapping, but size it to the max existing ID
-            lookup = np.arange(max_all + 1, dtype=np.uint32)
-
-            # Create compact mapping {Real_ID: Compact_ID}
-            compact_mapping = {old_idx: new_idx for new_idx, old_idx in enumerate(all_indices)}
-
-            # Update the lookup table
-            for old_idx, new_idx in compact_mapping.items():
-                lookup[old_idx] = new_idx
-
-            # Remap volume efficiently
-            atlas_volume = lookup[atlas_volume]
-
-            # Store original indices in dataframe for reporting later
-            atlas_labels["original_idx"] = atlas_labels["idx"]
-            atlas_labels["idx"] = atlas_labels["idx"].map(compact_mapping)
-
-    except Exception as e:
-        print(f"Warning during index remapping: {e}")
 
     return atlas_volume, hemi_volume, atlas_labels

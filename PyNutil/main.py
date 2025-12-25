@@ -1,4 +1,6 @@
 import json
+import logging
+import sys
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
 from .processing.data_analysis import (
     quantify_labeled_points,
@@ -8,6 +10,10 @@ from .processing.data_analysis import (
 from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class PyNutil:
@@ -67,6 +73,20 @@ class PyNutil:
         ValueError
             If both atlas_path and atlas_name are specified or if neither is specified.
         """
+        if not logger.handlers:
+            file_handler = logging.FileHandler("nutil.log")
+            file_handler.setLevel(logging.DEBUG)
+            stream_handler = logging.StreamHandler(sys.stdout)
+            stream_handler.setLevel(logging.INFO)
+            formatter = logging.Formatter(
+                "%(asctime)s %(levelname)s %(name)s: %(message)s"
+            )
+            file_handler.setFormatter(formatter)
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            logger.addHandler(stream_handler)
+            logger.propagate = False
+
         try:
             if settings_file is not None:
                 with open(settings_file, "r") as f:
@@ -235,7 +255,7 @@ class PyNutil:
         except Exception as e:
             raise ValueError(f"Error quantifying coordinates: {e}")
 
-    def save_analysis(self, output_folder):
+    def save_analysis(self, output_folder, create_visualizations=True):
         """
         Saves the pixel coordinates and pixel counts to different files in the specified output folder.
 
@@ -298,6 +318,52 @@ class PyNutil:
                     settings_file=getattr(self, "settings_file", None),
                     prepend="custom_",
                 )
-            print(f"Saved output to {output_folder}")
+
+            # FIX: Remap IDs back to original if they were compressed
+            if hasattr(self, "label_df") and ("original_idx" in self.label_df.columns):
+                self.label_df["idx"] = self.label_df["original_idx"]
+                self.label_df = self.label_df.drop(columns=["original_idx"])
+                # Save CSV again with correct IDs
+                self.label_df.to_csv(
+                    f"{output_folder}/whole_series_report/counts.csv",
+                    sep=";",
+                    index=False,
+                )
+            elif hasattr(self, "atlas_labels") and ("original_idx" in self.atlas_labels.columns):
+                # Back-compat for older remap implementation storing original_idx on atlas_labels
+                mapping = self.atlas_labels[["idx", "original_idx"]].dropna()
+                mapping["idx"] = mapping["idx"].astype(int)
+                mapping["original_idx"] = mapping["original_idx"].astype(int)
+                if hasattr(self, "label_df") and ("idx" in self.label_df.columns):
+                    self.label_df = self.label_df.merge(mapping, on="idx", how="left")
+                    if "original_idx" in self.label_df.columns:
+                        self.label_df["idx"] = self.label_df["original_idx"].fillna(self.label_df["idx"]).astype(int)
+                        self.label_df = self.label_df.drop(columns=["original_idx"])
+                        self.label_df.to_csv(
+                            f"{output_folder}/whole_series_report/counts.csv",
+                            sep=";",
+                            index=False,
+                        )
+
+            # VISUALIZATION
+            if create_visualizations and self.alignment_json:
+                try:
+                    from .io.section_visualization import create_section_visualizations
+                    from .io.read_and_write import load_quint_json
+
+                    alignment_data = load_quint_json(self.alignment_json)
+
+                    logger.info("Creating section visualizations...")
+                    create_section_visualizations(
+                        self.segmentation_folder,
+                        alignment_data,
+                        self.atlas_volume,
+                        self.atlas_labels,
+                        output_folder,
+                    )
+                except Exception as e:
+                    logger.error(f"Visualization failed: {e}")
+
+            logger.info(f"Saved output to {output_folder}")
         except Exception as e:
             raise ValueError(f"Error saving analysis: {e}")

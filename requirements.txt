@@ -6,4 +6,6 @@ pandas
 opencv-python
 scikit-image
 xmltodict
+psutil
+Pillow
 
