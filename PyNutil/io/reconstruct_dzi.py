@@ -46,8 +46,9 @@ def reconstruct_dzi(zip_file_path):
         xml = dzi_file.read()
         json_data = xmltodict.parse(xml)
         tileSize = json_data["Image"]["@TileSize"]
-        width, height = int(json_data["Image"]["Size"]["@Width"]), int(
-            json_data["Image"]["Size"]["@Height"]
+        width, height = (
+            int(json_data["Image"]["Size"]["@Width"]),
+            int(json_data["Image"]["Size"]["@Height"]),
         )
 
         # Create an empty image

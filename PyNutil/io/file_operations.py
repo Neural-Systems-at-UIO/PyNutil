@@ -106,19 +106,19 @@ def save_analysis_output(
         "colour": colour,
         "custom_region_path": custom_region_path,
     }
-    pixel_points,
-    centroids,
-    label_df,
-    per_section_df,
-    labeled_points,
-    labeled_points_centroids,
-    points_hemi_labels,
-    centroids_hemi_labels,
-    points_len,
-    centroids_len,
-    segmentation_filenames,
-    atlas_labels,
-    output_folder,
+    (pixel_points,)
+    (centroids,)
+    (label_df,)
+    (per_section_df,)
+    (labeled_points,)
+    (labeled_points_centroids,)
+    (points_hemi_labels,)
+    (centroids_hemi_labels,)
+    (points_len,)
+    (centroids_len,)
+    (segmentation_filenames,)
+    (atlas_labels,)
+    (output_folder,)
     segmentation_folder = (None,)
     alignment_json = (None,)
     colour = (None,)

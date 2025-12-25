@@ -94,12 +94,15 @@ class TestCoordinateScaling(TimedTestCase):
                     per_centroid_labels,
                 )
 
-            with patch(
-                "PyNutil.processing.coordinate_extraction.get_region_areas",
-                side_effect=_fake_get_region_areas,
-            ), patch(
-                "PyNutil.processing.coordinate_extraction.get_objects_and_assign_regions_optimized",
-                side_effect=_fake_get_objects,
+            with (
+                patch(
+                    "PyNutil.processing.coordinate_extraction.get_region_areas",
+                    side_effect=_fake_get_region_areas,
+                ),
+                patch(
+                    "PyNutil.processing.coordinate_extraction.get_objects_and_assign_regions_optimized",
+                    side_effect=_fake_get_objects,
+                ),
             ):
                 segmentation_to_atlas_space(
                     slice_dict=slice_dict,
@@ -165,15 +168,19 @@ class TestCoordinateScaling(TimedTestCase):
             called["area_rescaleXY"] = rescaleXY
             return pd.DataFrame({"idx": [0], "region_area": [0]})
 
-        with patch(
-            "PyNutil.processing.counting_and_load.generate_target_slice",
-            side_effect=_fake_generate_target_slice,
-        ), patch(
-            "PyNutil.processing.counting_and_load.warp_image",
-            side_effect=_fake_warp_image,
-        ), patch(
-            "PyNutil.processing.coordinate_extraction.flat_to_dataframe",
-            side_effect=_fake_flat_to_dataframe,
+        with (
+            patch(
+                "PyNutil.processing.counting_and_load.generate_target_slice",
+                side_effect=_fake_generate_target_slice,
+            ),
+            patch(
+                "PyNutil.processing.counting_and_load.warp_image",
+                side_effect=_fake_warp_image,
+            ),
+            patch(
+                "PyNutil.processing.coordinate_extraction.flat_to_dataframe",
+                side_effect=_fake_flat_to_dataframe,
+            ),
         ):
             # Provide a non-None triangulation to force warp path
             get_region_areas(
