@@ -84,340 +84,161 @@ def pixel_count_per_region(
     Returns:
         DataFrame: Summed counts per region.
     """
+    # If hemisphere labels are present, they are integers (1/2). If absent, they are None.
     with_hemi = None not in current_points_hemi
-    counts_per_label = create_base_counts_dict(
-        with_hemisphere=with_hemi, with_damage=with_damage
-    )
 
+    def _series_from_unique(labels: np.ndarray, counts: np.ndarray) -> pd.Series:
+        if labels.size == 0:
+            return pd.Series(dtype=np.int64)
+        return pd.Series(counts.astype(np.int64), index=labels)
+
+    def _counts_for(mask: np.ndarray, arr: np.ndarray) -> tuple[pd.Series, np.ndarray]:
+        if arr.size == 0:
+            return pd.Series(dtype=np.int64), np.array([], dtype=arr.dtype)
+        if mask is None:
+            u, c = np.unique(arr, return_counts=True)
+        else:
+            u, c = np.unique(arr[mask], return_counts=True)
+        return _series_from_unique(u, c), u
+
+    # Compute all the count series we need, then build a sparse dataframe by
+    # selecting only regions with any non-zero count.
     if with_hemi and with_damage:
-        (
-            left_hemi_counted_labels_points_undamaged,
-            left_hemi_label_counts_points_undamaged,
-        ) = np.unique(
-            labels_dict_points[current_points_undamaged & (current_points_hemi == 1)],
-            return_counts=True,
+        lh_pu, lh_pu_idx = _counts_for(
+            current_points_undamaged & (current_points_hemi == 1), labels_dict_points
         )
-        (
-            left_hemi_counted_labels_points_damaged,
-            left_hemi_label_counts_points_damaged,
-        ) = np.unique(
-            labels_dict_points[~current_points_undamaged & (current_points_hemi == 1)],
-            return_counts=True,
+        lh_pd, lh_pd_idx = _counts_for(
+            (~current_points_undamaged) & (current_points_hemi == 1), labels_dict_points
         )
-        (
-            left_hemi_counted_labels_centroids_undamaged,
-            left_hemi_label_counts_centroids_undamaged,
-        ) = np.unique(
-            labeled_dict_centroids[
-                current_centroids_undamaged & (current_centroids_hemi == 1)
-            ],
-            return_counts=True,
+        rh_pu, rh_pu_idx = _counts_for(
+            current_points_undamaged & (current_points_hemi == 2), labels_dict_points
         )
-        (
-            left_hemi_counted_labels_centroids_damaged,
-            left_hemi_label_counts_centroids_damaged,
-        ) = np.unique(
-            labeled_dict_centroids[
-                ~current_centroids_undamaged & (current_centroids_hemi == 1)
-            ],
-            return_counts=True,
+        rh_pd, rh_pd_idx = _counts_for(
+            (~current_points_undamaged) & (current_points_hemi == 2), labels_dict_points
         )
-        (
-            right_hemi_counted_labels_points_undamaged,
-            right_hemi_label_counts_points_undamaged,
-        ) = np.unique(
-            labels_dict_points[current_points_undamaged & (current_points_hemi == 2)],
-            return_counts=True,
+
+        lh_cu, lh_cu_idx = _counts_for(
+            current_centroids_undamaged & (current_centroids_hemi == 1), labeled_dict_centroids
         )
-        (
-            right_hemi_counted_labels_points_damaged,
-            right_hemi_label_counts_points_damaged,
-        ) = np.unique(
-            labels_dict_points[~current_points_undamaged & (current_points_hemi == 2)],
-            return_counts=True,
+        lh_cd, lh_cd_idx = _counts_for(
+            (~current_centroids_undamaged) & (current_centroids_hemi == 1), labeled_dict_centroids
         )
-        (
-            right_hemi_counted_labels_centroids_undamaged,
-            right_hemi_label_counts_centroids_undamaged,
-        ) = np.unique(
-            labeled_dict_centroids[
-                current_centroids_undamaged & (current_centroids_hemi == 2)
-            ],
-            return_counts=True,
+        rh_cu, rh_cu_idx = _counts_for(
+            current_centroids_undamaged & (current_centroids_hemi == 2), labeled_dict_centroids
         )
-        (
-            right_hemi_counted_labels_centroids_damaged,
-            right_hemi_label_counts_centroids_damaged,
-        ) = np.unique(
-            labeled_dict_centroids[
-                ~current_centroids_undamaged & (current_centroids_hemi == 2)
-            ],
-            return_counts=True,
+        rh_cd, rh_cd_idx = _counts_for(
+            (~current_centroids_undamaged) & (current_centroids_hemi == 2), labeled_dict_centroids
         )
-        for index, row in df_label_colours.iterrows():
-            # Left hemisphere pixel counts
-            if row["idx"] in left_hemi_counted_labels_points_undamaged:
-                l_clpu = left_hemi_label_counts_points_undamaged[
-                    left_hemi_counted_labels_points_undamaged == row["idx"]
-                ][0]
-            else:
-                l_clpu = 0
 
-            if row["idx"] in left_hemi_counted_labels_points_damaged:
-                l_clpd = left_hemi_label_counts_points_damaged[
-                    left_hemi_counted_labels_points_damaged == row["idx"]
-                ][0]
-            else:
-                l_clpd = 0
-
-            # Right hemisphere pixel counts
-            if row["idx"] in right_hemi_counted_labels_points_undamaged:
-                r_clpu = right_hemi_label_counts_points_undamaged[
-                    right_hemi_counted_labels_points_undamaged == row["idx"]
-                ][0]
-            else:
-                r_clpu = 0
-
-            if row["idx"] in right_hemi_counted_labels_points_damaged:
-                r_clpd = right_hemi_label_counts_points_damaged[
-                    right_hemi_counted_labels_points_damaged == row["idx"]
-                ][0]
-            else:
-                r_clpd = 0
-
-            # Left hemisphere object counts
-            if row["idx"] in left_hemi_counted_labels_centroids_undamaged:
-                l_clcu = left_hemi_label_counts_centroids_undamaged[
-                    left_hemi_counted_labels_centroids_undamaged == row["idx"]
-                ][0]
-            else:
-                l_clcu = 0
-
-            if row["idx"] in left_hemi_counted_labels_centroids_damaged:
-                l_clcd = left_hemi_label_counts_centroids_damaged[
-                    left_hemi_counted_labels_centroids_damaged == row["idx"]
-                ][0]
-            else:
-                l_clcd = 0
-
-            # Right hemisphere object counts
-            if row["idx"] in right_hemi_counted_labels_centroids_undamaged:
-                r_clcu = right_hemi_label_counts_centroids_undamaged[
-                    right_hemi_counted_labels_centroids_undamaged == row["idx"]
-                ][0]
-            else:
-                r_clcu = 0
-
-            if row["idx"] in right_hemi_counted_labels_centroids_damaged:
-                r_clcd = right_hemi_label_counts_centroids_damaged[
-                    right_hemi_counted_labels_centroids_damaged == row["idx"]
-                ][0]
-            else:
-                r_clcd = 0
-
-            # Skip regions with no counts in any category
-            if (
-                l_clcd
-                == l_clcu
-                == l_clpd
-                == l_clpu
-                == r_clcd
-                == r_clcu
-                == r_clpd
-                == r_clpu
-                == 0
-            ):
-                continue
-
-            # Calculate combined counts
-            clpu = l_clpu + r_clpu  # total undamaged pixel count
-            clpd = l_clpd + r_clpd  # total damaged pixel count
-            clcu = l_clcu + r_clcu  # total undamaged object count
-            clcd = l_clcd + r_clcd  # total damaged object count
-
-            # Add to dictionary
-            counts_per_label["idx"].append(row["idx"])
-            counts_per_label["name"].append(row["name"])
-            counts_per_label["r"].append(int(row["r"]))
-            counts_per_label["g"].append(int(row["g"]))
-            counts_per_label["b"].append(int(row["b"]))
-
-            # Total counts
-            counts_per_label["pixel_count"].append(clpu + clpd)
-            counts_per_label["undamaged_pixel_count"].append(clpu)
-            counts_per_label["damaged_pixel_counts"].append(clpd)
-            counts_per_label["object_count"].append(clcu + clcd)
-            counts_per_label["undamaged_object_count"].append(clcu)
-            counts_per_label["damaged_object_count"].append(clcd)
-
-            # Left hemisphere counts
-            counts_per_label["left_hemi_pixel_count"].append(l_clpu + l_clpd)
-            counts_per_label["left_hemi_undamaged_pixel_count"].append(l_clpu)
-            counts_per_label["left_hemi_damaged_pixel_count"].append(l_clpd)
-            counts_per_label["left_hemi_object_count"].append(l_clcu + l_clcd)
-            counts_per_label["left_hemi_undamaged_object_count"].append(l_clcu)
-            counts_per_label["left_hemi_damaged_object_count"].append(l_clcd)
-
-            # Right hemisphere counts
-            counts_per_label["right_hemi_pixel_count"].append(r_clpu + r_clpd)
-            counts_per_label["right_hemi_undamaged_pixel_count"].append(r_clpu)
-            counts_per_label["right_hemi_damaged_pixel_count"].append(r_clpd)
-            counts_per_label["right_hemi_object_count"].append(r_clcu + r_clcd)
-            counts_per_label["right_hemi_undamaged_object_count"].append(r_clcu)
-            counts_per_label["right_hemi_damaged_object_count"].append(r_clcd)
-
-    elif with_damage and (not with_hemi):
-        counted_labels_points_undamaged, label_counts_points_undamaged = np.unique(
-            labels_dict_points[current_points_undamaged], return_counts=True
-        )
-        counted_labels_points_damaged, label_counts_points_damaged = np.unique(
-            labels_dict_points[~current_points_undamaged], return_counts=True
-        )
-        counted_labels_centroids_undamaged, label_counts_centroids_undamaged = (
-            np.unique(
-                labeled_dict_centroids[current_centroids_undamaged], return_counts=True
+        all_idx = np.unique(
+            np.concatenate(
+                [lh_pu_idx, lh_pd_idx, rh_pu_idx, rh_pd_idx, lh_cu_idx, lh_cd_idx, rh_cu_idx, rh_cd_idx]
             )
         )
-        counted_labels_centroids_damaged, label_counts_centroids_damaged = np.unique(
-            labeled_dict_centroids[~current_centroids_undamaged], return_counts=True
-        )
-        for index, row in df_label_colours.iterrows():
-            if row["idx"] in counted_labels_points_undamaged:
-                clpu = label_counts_points_undamaged[
-                    counted_labels_points_undamaged == row["idx"]
-                ][0]
-            else:
-                clpu = 0
-            if row["idx"] in counted_labels_points_damaged:
-                clpd = label_counts_points_damaged[
-                    counted_labels_points_damaged == row["idx"]
-                ][0]
-            else:
-                clpd = 0
-            if row["idx"] in counted_labels_centroids_undamaged:
-                clcu = label_counts_centroids_undamaged[
-                    counted_labels_centroids_undamaged == row["idx"]
-                ][0]
-            else:
-                clcu = 0
-            if row["idx"] in counted_labels_centroids_damaged:
-                clcd = label_counts_centroids_damaged[
-                    counted_labels_centroids_damaged == row["idx"]
-                ][0]
-            else:
-                clcd = 0
-            if clcd == clcu == clpd == clpu == 0:
-                continue
-            counts_per_label["idx"].append(row["idx"])
-            counts_per_label["name"].append(row["name"])
-            counts_per_label["r"].append(int(row["r"]))
-            counts_per_label["g"].append(int(row["g"]))
-            counts_per_label["b"].append(int(row["b"]))
-            counts_per_label["pixel_count"].append(clpu + clpd)
-            counts_per_label["undamaged_pixel_count"].append(clpu)
-            counts_per_label["damaged_pixel_counts"].append(clpd)
-            counts_per_label["object_count"].append(clcu + clcd)
-            counts_per_label["undamaged_object_count"].append(clcu)
-            counts_per_label["damaged_object_count"].append(clcd)
+        if all_idx.size == 0:
+            return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=True, with_damage=True).keys()))
 
-    elif with_hemi and (not with_damage):
-        left_hemi_counted_labels_points, left_hemi_label_counts_points = np.unique(
-            labels_dict_points[current_points_hemi == 1], return_counts=True
-        )
-        left_hemi_counted_labels_centroids, left_hemi_label_counts_centroids = (
-            np.unique(
-                labeled_dict_centroids[current_centroids_hemi == 1], return_counts=True
-            )
-        )
-        right_hemi_counted_labels_points, right_hemi_label_counts_points = np.unique(
-            labels_dict_points[current_points_hemi == 2], return_counts=True
-        )
-        right_hemi_counted_labels_centroids, right_hemi_label_counts_centroids = (
-            np.unique(
-                labeled_dict_centroids[current_centroids_hemi == 2], return_counts=True
-            )
-        )
+        base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
+        idx = base["idx"].to_numpy()
 
-        for index, row in df_label_colours.iterrows():
-            # Left hemisphere
-            l_clp = (
-                left_hemi_label_counts_points[
-                    left_hemi_counted_labels_points == row["idx"]
-                ][0]
-                if row["idx"] in left_hemi_counted_labels_points
-                else 0
-            )
-            l_clc = (
-                left_hemi_label_counts_centroids[
-                    left_hemi_counted_labels_centroids == row["idx"]
-                ][0]
-                if row["idx"] in left_hemi_counted_labels_centroids
-                else 0
-            )
-            # Right hemisphere
-            r_clp = (
-                right_hemi_label_counts_points[
-                    right_hemi_counted_labels_points == row["idx"]
-                ][0]
-                if row["idx"] in right_hemi_counted_labels_points
-                else 0
-            )
-            r_clc = (
-                right_hemi_label_counts_centroids[
-                    right_hemi_counted_labels_centroids == row["idx"]
-                ][0]
-                if row["idx"] in right_hemi_counted_labels_centroids
-                else 0
-            )
+        l_pu = lh_pu.reindex(idx, fill_value=0).to_numpy()
+        l_pd = lh_pd.reindex(idx, fill_value=0).to_numpy()
+        r_pu = rh_pu.reindex(idx, fill_value=0).to_numpy()
+        r_pd = rh_pd.reindex(idx, fill_value=0).to_numpy()
+        l_cu = lh_cu.reindex(idx, fill_value=0).to_numpy()
+        l_cd = lh_cd.reindex(idx, fill_value=0).to_numpy()
+        r_cu = rh_cu.reindex(idx, fill_value=0).to_numpy()
+        r_cd = rh_cd.reindex(idx, fill_value=0).to_numpy()
 
-            # Skip empty counts
-            if l_clp == r_clp == l_clc == r_clc == 0:
-                continue
+        base["pixel_count"] = l_pu + l_pd + r_pu + r_pd
+        base["undamaged_pixel_count"] = l_pu + r_pu
+        base["damaged_pixel_counts"] = l_pd + r_pd
+        base["object_count"] = l_cu + l_cd + r_cu + r_cd
+        base["undamaged_object_count"] = l_cu + r_cu
+        base["damaged_object_count"] = l_cd + r_cd
 
-            # Add to dictionary
-            counts_per_label["idx"].append(row["idx"])
-            counts_per_label["name"].append(row["name"])
-            counts_per_label["r"].append(int(row["r"]))
-            counts_per_label["g"].append(int(row["g"]))
-            counts_per_label["b"].append(int(row["b"]))
-            counts_per_label["pixel_count"].append(l_clp + r_clp)
-            counts_per_label["object_count"].append(l_clc + r_clc)
-            counts_per_label["left_hemi_pixel_count"].append(l_clp)
-            counts_per_label["right_hemi_pixel_count"].append(r_clp)
-            counts_per_label["left_hemi_object_count"].append(l_clc)
-            counts_per_label["right_hemi_object_count"].append(r_clc)
+        base["left_hemi_pixel_count"] = l_pu + l_pd
+        base["left_hemi_undamaged_pixel_count"] = l_pu
+        base["left_hemi_damaged_pixel_count"] = l_pd
+        base["left_hemi_object_count"] = l_cu + l_cd
+        base["left_hemi_undamaged_object_count"] = l_cu
+        base["left_hemi_damaged_object_count"] = l_cd
 
-    else:
-        counted_labels_points, label_counts_points = np.unique(
-            labels_dict_points, return_counts=True
-        )
-        counted_labels_centroids, label_counts_centroids = np.unique(
-            labeled_dict_centroids, return_counts=True
-        )
+        base["right_hemi_pixel_count"] = r_pu + r_pd
+        base["right_hemi_undamaged_pixel_count"] = r_pu
+        base["right_hemi_damaged_pixel_count"] = r_pd
+        base["right_hemi_object_count"] = r_cu + r_cd
+        base["right_hemi_undamaged_object_count"] = r_cu
+        base["right_hemi_damaged_object_count"] = r_cd
 
-        for index, row in df_label_colours.iterrows():
-            clp = (
-                label_counts_points[counted_labels_points == row["idx"]][0]
-                if row["idx"] in counted_labels_points
-                else 0
-            )
-            clc = (
-                label_counts_centroids[counted_labels_centroids == row["idx"]][0]
-                if row["idx"] in counted_labels_centroids
-                else 0
-            )
-            if clp == 0 and clc == 0:
-                continue
-            counts_per_label["idx"].append(row["idx"])
-            counts_per_label["name"].append(row["name"])
-            counts_per_label["r"].append(int(row["r"]))
-            counts_per_label["g"].append(int(row["g"]))
-            counts_per_label["b"].append(int(row["b"]))
-            counts_per_label["pixel_count"].append(clp)
-            counts_per_label["object_count"].append(clc)
+        # Keep existing naming convention for damaged pixel counts column
+        # (already set as damaged_pixel_counts above).
+        return base
 
-    df_counts_per_label = pd.DataFrame(counts_per_label)
-    return df_counts_per_label
+    if with_damage and (not with_hemi):
+        pu, pu_idx = _counts_for(current_points_undamaged, labels_dict_points)
+        pdmg, pdmg_idx = _counts_for(~current_points_undamaged, labels_dict_points)
+        cu, cu_idx = _counts_for(current_centroids_undamaged, labeled_dict_centroids)
+        cd, cd_idx = _counts_for(~current_centroids_undamaged, labeled_dict_centroids)
+
+        all_idx = np.unique(np.concatenate([pu_idx, pdmg_idx, cu_idx, cd_idx]))
+        if all_idx.size == 0:
+            return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=False, with_damage=True).keys()))
+
+        base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
+        idx = base["idx"].to_numpy()
+
+        p_u = pu.reindex(idx, fill_value=0).to_numpy()
+        p_d = pdmg.reindex(idx, fill_value=0).to_numpy()
+        c_u = cu.reindex(idx, fill_value=0).to_numpy()
+        c_d = cd.reindex(idx, fill_value=0).to_numpy()
+
+        base["pixel_count"] = p_u + p_d
+        base["undamaged_pixel_count"] = p_u
+        base["damaged_pixel_counts"] = p_d
+        base["object_count"] = c_u + c_d
+        base["undamaged_object_count"] = c_u
+        base["damaged_object_count"] = c_d
+        return base
+
+    if with_hemi and (not with_damage):
+        lh_p, lh_p_idx = _counts_for(current_points_hemi == 1, labels_dict_points)
+        rh_p, rh_p_idx = _counts_for(current_points_hemi == 2, labels_dict_points)
+        lh_c, lh_c_idx = _counts_for(current_centroids_hemi == 1, labeled_dict_centroids)
+        rh_c, rh_c_idx = _counts_for(current_centroids_hemi == 2, labeled_dict_centroids)
+
+        all_idx = np.unique(np.concatenate([lh_p_idx, rh_p_idx, lh_c_idx, rh_c_idx]))
+        if all_idx.size == 0:
+            return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=True, with_damage=False).keys()))
+
+        base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
+        idx = base["idx"].to_numpy()
+
+        l_p = lh_p.reindex(idx, fill_value=0).to_numpy()
+        r_p = rh_p.reindex(idx, fill_value=0).to_numpy()
+        l_c = lh_c.reindex(idx, fill_value=0).to_numpy()
+        r_c = rh_c.reindex(idx, fill_value=0).to_numpy()
+
+        base["pixel_count"] = l_p + r_p
+        base["object_count"] = l_c + r_c
+        base["left_hemi_pixel_count"] = l_p
+        base["right_hemi_pixel_count"] = r_p
+        base["left_hemi_object_count"] = l_c
+        base["right_hemi_object_count"] = r_c
+        return base
+
+    # No damage, no hemisphere
+    p, p_idx = _counts_for(None, labels_dict_points)
+    c, c_idx = _counts_for(None, labeled_dict_centroids)
+    all_idx = np.unique(np.concatenate([p_idx, c_idx]))
+    if all_idx.size == 0:
+        return pd.DataFrame(columns=list(create_base_counts_dict(with_hemisphere=False, with_damage=False).keys()))
+
+    base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
+    idx = base["idx"].to_numpy()
+    base["pixel_count"] = p.reindex(idx, fill_value=0).to_numpy()
+    base["object_count"] = c.reindex(idx, fill_value=0).to_numpy()
+    return base
 
 
 def read_flat_file(file):

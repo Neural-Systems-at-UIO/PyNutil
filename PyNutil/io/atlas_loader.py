@@ -2,6 +2,7 @@ import brainglobe_atlasapi
 import pandas as pd
 import numpy as np
 import nrrd
+from functools import lru_cache
 
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
@@ -23,6 +24,7 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     atlas_labels = pd.DataFrame(atlas_structures)
     return atlas_labels
 
+@lru_cache(maxsize=8)
 def load_atlas_data(atlas_name):
     """
     Loads atlas data using the brainglobe_atlasapi.
@@ -66,6 +68,7 @@ def process_atlas_volume(vol):
     return np.transpose(vol, [2, 0, 1])[::-1, ::-1, ::-1]
 
 
+@lru_cache(maxsize=8)
 def load_custom_atlas(atlas_path, hemi_path, label_path):
     """
     Loads a custom atlas from provided file paths.

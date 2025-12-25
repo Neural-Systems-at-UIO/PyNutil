@@ -2,8 +2,8 @@ import os
 import tempfile
 import unittest
 
+import cv2
 import numpy as np
-from PIL import Image
 
 from PyNutil import PyNutil
 from timing_utils import TimedTestCase
@@ -18,8 +18,10 @@ class TestVisualisations(TimedTestCase):
         self.settings_path = os.path.join(self.tests_dir, "test_cases", "brainglobe_atlas.json")
 
     def _load_rgb(self, path: str) -> np.ndarray:
-        with Image.open(path) as im:
-            return np.asarray(im.convert("RGB"))
+        im_bgr = cv2.imread(path, cv2.IMREAD_COLOR)
+        if im_bgr is None:
+            raise FileNotFoundError(f"Failed to read image: {path}")
+        return cv2.cvtColor(im_bgr, cv2.COLOR_BGR2RGB)
 
     def test_generated_visualisations_match_expected(self):
         if not os.path.isdir(self.expected_dir):

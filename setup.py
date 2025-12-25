@@ -27,6 +27,5 @@ setup(
         "opencv-python",
         "scikit-image",
         "psutil",
-        "Pillow"
     ],
 )

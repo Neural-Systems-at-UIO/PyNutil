@@ -1,102 +1,127 @@
 """Section visualisation utilities.
 
-Generates colored atlas slice PNGs and optionally overlays segmentation contours.
+Generates colored atlas slice PNGs and optionally overlays segmentation pixels.
 """
 
 import os
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 
 import cv2
 import numpy as np
 import pandas as pd
-from PIL import Image, ImageDraw
 
 from ..processing.generate_target_slice import generate_target_slice
 from ..io.read_and_write import load_segmentation
 
 
-def create_atlas_color_map(atlas_labels: pd.DataFrame) -> Dict[int, Tuple[int, int, int]]:
-    """Create a color mapping from atlas labels DataFrame."""
-    color_map: Dict[int, Tuple[int, int, int]] = {0: (0, 0, 0)}
-    for _, row in atlas_labels.iterrows():
-        if "idx" in row and "r" in row and "g" in row and "b" in row:
-            region_id = int(row["idx"])
-            color_map[region_id] = (int(row["r"]), int(row["g"]), int(row["b"]))
-    return color_map
+def _build_color_lookup(
+    atlas_labels: pd.DataFrame,
+    *,
+    default_colour: Tuple[int, int, int] = (128, 128, 128),
+    max_direct_lut_id: int = 2_000_000,
+) -> Tuple[str, Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], Tuple[int, int, int]]:
+    """Build a fast color lookup for atlas IDs.
+
+    Returns:
+        (mode, lookup, default_colour)
+
+    mode:
+        - "direct": lookup is a (max_id+1, 3) uint8 LUT; index directly by atlas ID
+        - "sorted": lookup is (ids_sorted, rgb_sorted); use searchsorted
+
+    This keeps behaviour consistent with the previous implementation:
+    - atlas id 0 maps to black
+    - unmapped ids map to grey (default_colour)
+    """
+    if atlas_labels is None or len(atlas_labels) == 0:
+        lut = np.empty((1, 3), dtype=np.uint8)
+        lut[0] = (0, 0, 0)
+        return "direct", lut, default_colour
+
+    ids = atlas_labels["idx"].to_numpy(dtype=np.int64, copy=False)
+    rgb = atlas_labels[["r", "g", "b"]].to_numpy(dtype=np.uint8, copy=False)
+    max_id = int(ids.max(initial=0)) if ids.size else 0
+
+    if 0 <= max_id <= max_direct_lut_id:
+        lut = np.empty((max_id + 1, 3), dtype=np.uint8)
+        lut[:] = default_colour
+        lut[0] = (0, 0, 0)
+        # If duplicate ids exist, later rows overwrite earlier ones (same as dict assignment)
+        lut[ids] = rgb
+        return "direct", lut, default_colour
+
+    order = np.argsort(ids)
+    ids_sorted = ids[order]
+    rgb_sorted = rgb[order]
+    return "sorted", (ids_sorted, rgb_sorted), default_colour
 
 
 def create_colored_image_from_slice(
-    atlas_slice: np.ndarray, color_map: Dict[int, Tuple[int, int, int]]
+    atlas_slice: np.ndarray,
+    lookup_mode: str,
+    lookup: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]],
+    default_colour: Tuple[int, int, int] = (128, 128, 128),
 ) -> np.ndarray:
-    """Create an RGB image from an atlas slice using the color mapping."""
-    height, width = atlas_slice.shape
-    coloured_image = np.zeros((height, width, 3), dtype=np.uint8)
+    """Create an RGB image from an atlas slice using a fast lookup."""
+    atlas_ids = atlas_slice.astype(np.int64, copy=False)
+    height, width = atlas_ids.shape
+    out = np.empty((height, width, 3), dtype=np.uint8)
+    out[:] = default_colour
 
-    for region_id, colour in color_map.items():
-        coloured_image[atlas_slice == region_id] = colour
+    if lookup_mode == "direct":
+        lut = lookup  # type: ignore[assignment]
+        max_id = lut.shape[0] - 1
+        valid = (atlas_ids >= 0) & (atlas_ids <= max_id)
+        if np.any(valid):
+            out[valid] = lut[atlas_ids[valid]]
+        return out
 
-    # For unmapped regions, use a default grey colour
-    unmapped_mask = np.isin(atlas_slice, list(color_map.keys()), invert=True)
-    coloured_image[unmapped_mask] = (128, 128, 128)
-    return coloured_image
+    ids_sorted, rgb_sorted = lookup  # type: ignore[misc]
+    idx = np.searchsorted(ids_sorted, atlas_ids)
+    valid = (idx < ids_sorted.size) & (ids_sorted[idx] == atlas_ids)
+    if np.any(valid):
+        out[valid] = rgb_sorted[idx[valid]]
+    return out
 
 
-def overlay_segmentation(
-    pil_image: Image.Image,
+def overlay_segmentation_on_rgb(
+    rgb_image: np.ndarray,
     segmentation_path: str,
-    alpha: float = 1.0,
-) -> None:
-    """Overlay segmentation pixels on top of an atlas slice image.
+    *,
+    segmentation: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Overlay segmentation on an RGB NumPy image.
 
-    This uses a background-value heuristic (most frequent grayscale intensity) to
-    build a foreground mask, then overlays those pixels.
-
-    With the default `alpha=1.0`, this inverts the underlying atlas RGB values
-    at segmentation pixels for maximum contrast.
+    This inverts the underlying atlas RGB values at segmentation pixels for
+    maximum contrast.
     """
     try:
-        segmentation = load_segmentation(segmentation_path)
+        if segmentation is None:
+            segmentation = load_segmentation(segmentation_path)
 
-        img_width, img_height = pil_image.size
+        height, width = rgb_image.shape[:2]
         segmentation = cv2.resize(
-            segmentation, (img_width, img_height), interpolation=cv2.INTER_NEAREST
+            segmentation, (width, height), interpolation=cv2.INTER_NEAREST
         )
 
-        # Convert to grayscale for background detection
         if segmentation.ndim == 3:
-            # load_segmentation may return RGB; OpenCV expects BGR but for grey conversion it’s fine
             seg_grey = cv2.cvtColor(segmentation, cv2.COLOR_BGR2GRAY)
         else:
             seg_grey = segmentation
 
-        # Determine background value (most frequent intensity).
-        # This makes overlays work for both black-background and white-background segmentations.
         seg_u8 = seg_grey.astype(np.uint8, copy=False)
         hist = np.bincount(seg_u8.reshape(-1), minlength=256)
         background_val = int(hist.argmax())
-
-        # Foreground = anything different from background
         mask = seg_u8 != background_val
         if not np.any(mask):
-            return
+            return rgb_image
 
-        # Solid overlay: invert underlying atlas colours at segmentation pixels.
-        base_arr = np.array(pil_image.convert("RGB"), copy=True)
-        inverted = 255 - base_arr
-
-        if alpha >= 1.0:
-            base_arr[mask] = inverted[mask]
-        else:
-            # Optional blended overlay (kept for flexibility)
-            a = float(alpha)
-            base_arr[mask] = (
-                base_arr[mask].astype(np.float32) * (1.0 - a)
-                + inverted[mask].astype(np.float32) * a
-            ).round().clip(0, 255).astype(np.uint8)
-
-        pil_image.paste(Image.fromarray(base_arr, mode="RGB"))
+        out = rgb_image.copy()
+        out[mask] = 255 - out[mask]
+        return out
     except Exception as e:
         print(f"Warning: Could not overlay segmentation from {segmentation_path}: {e}")
+        return rgb_image
 
 
 def create_colored_atlas_slice(
@@ -107,11 +132,20 @@ def create_colored_atlas_slice(
     segmentation_path: Optional[str] = None,
     objects_data: Optional[List[Dict]] = None,
     scale_factor: float = 0.5,
+    _color_lookup: Optional[Tuple[str, Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], Tuple[int, int, int]]] = None,
 ) -> None:
-    """Create a coloured atlas slice and optionally overlay segmentation contours."""
+    """Create a coloured atlas slice and optionally overlay segmentation pixels."""
     atlas_slice = generate_target_slice(slice_dict["anchoring"], atlas_volume)
-    color_map = create_atlas_color_map(atlas_labels)
-    coloured_slice = create_colored_image_from_slice(atlas_slice, color_map)
+    if _color_lookup is None:
+        lookup_mode, lookup, default_colour = _build_color_lookup(atlas_labels)
+    else:
+        lookup_mode, lookup, default_colour = _color_lookup
+    coloured_slice = create_colored_image_from_slice(
+        atlas_slice,
+        lookup_mode,
+        lookup,
+        default_colour,
+    )
 
     target_width = coloured_slice.shape[1]
     target_height = coloured_slice.shape[0]
@@ -146,16 +180,19 @@ def create_colored_atlas_slice(
             coloured_slice, (new_width, new_height), interpolation=cv2.INTER_NEAREST
         )
 
-    pil_image = Image.fromarray(coloured_slice)
-
     if segmentation_path and os.path.exists(segmentation_path):
-        overlay_segmentation(pil_image, segmentation_path)
+        coloured_slice = overlay_segmentation_on_rgb(
+            coloured_slice, segmentation_path, segmentation=segmentation_img
+        )
 
     # Object overlay intentionally not implemented yet in PyNutil core (requires passing object coords)
     # Kept as a hook for future usage.
     _ = objects_data
 
-    pil_image.save(output_path)
+    # OpenCV expects BGR ordering when saving.
+    bgr = cv2.cvtColor(coloured_slice, cv2.COLOR_RGB2BGR)
+    if not cv2.imwrite(output_path, bgr):
+        raise RuntimeError(f"Failed to write visualisation image: {output_path}")
 
 
 def create_section_visualisations(
@@ -171,6 +208,29 @@ def create_section_visualisations(
     viz_dir = os.path.join(output_folder, "visualisations")
     os.makedirs(viz_dir, exist_ok=True)
 
+    # Pre-index segmentations once to avoid repeated exists checks.
+    seg_index: Dict[str, str] = {}
+    ext_priority = {".png": 0, ".tif": 1, ".tiff": 2, ".jpg": 3, ".jpeg": 4}
+    try:
+        for filename in os.listdir(segmentation_folder):
+            base, ext = os.path.splitext(filename)
+            ext = ext.lower()
+            if ext not in ext_priority:
+                continue
+            path = os.path.join(segmentation_folder, filename)
+            existing = seg_index.get(base)
+            if existing is None:
+                seg_index[base] = path
+                continue
+            _, existing_ext = os.path.splitext(existing)
+            if ext_priority.get(ext, 999) < ext_priority.get(existing_ext.lower(), 999):
+                seg_index[base] = path
+    except Exception:
+        # Fall back to per-slice existence checks if indexing fails.
+        seg_index = {}
+
+    color_lookup = _build_color_lookup(atlas_labels)
+
     slices = alignment_json.get("slices", [])
     for i, slice_dict in enumerate(slices):
         try:
@@ -178,7 +238,9 @@ def create_section_visualisations(
             base_name = os.path.splitext(filename)[0] if filename else f"slice_{i:03d}"
 
             segmentation_path = None
-            if filename:
+            if filename and seg_index:
+                segmentation_path = seg_index.get(base_name)
+            elif filename:
                 candidates = [
                     f"{base_name}.png",
                     f"{base_name}.tif",
@@ -209,6 +271,7 @@ def create_section_visualisations(
                 segmentation_path=segmentation_path,
                 objects_data=section_objects,
                 scale_factor=scale_factor,
+                _color_lookup=color_lookup,
             )
 
             print(f"Created visualisation: {output_filename}")
