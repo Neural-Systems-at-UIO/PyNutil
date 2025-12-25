@@ -26,5 +26,6 @@ setup(
         "xmltodict",
         "opencv-python",
         "scikit-image",
+        "psutil"
     ],
 )
