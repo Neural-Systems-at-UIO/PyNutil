@@ -21,10 +21,8 @@ setup(
         "numpy",
         "brainglobe-atlasapi",
         "pandas",
-        "requests",
         "pynrrd",
         "xmltodict",
         "opencv-python",
-        "psutil",
     ],
 )
