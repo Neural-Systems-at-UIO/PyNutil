@@ -1,0 +1,24 @@
+{
+    "segmentation_folder": "tests/test_data/upsized_allen/segmentations/",
+    "alignment_json": "tests/test_data/upsized_allen/alignment.json",
+    "colour": [
+        0,
+        0,
+        0
+    ],
+    "custom_region_path": [
+        null
+    ],
+    "atlas_name": [
+        null
+    ],
+    "atlas_path": [
+        null
+    ],
+    "label_path": [
+        null
+    ],
+    "settings_file": [
+        null
+    ]
+}

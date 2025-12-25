@@ -1,0 +1,28 @@
+{
+    "slices": [
+        {
+            "anchoring": [
+                -1.2794514438252236,
+                24.56207502768649,
+                362.8196995938298,
+                293.2115635871887,
+                349.2319793701172,
+                0,
+                0,
+                0,
+                -320
+            ],
+            "nr": 1,
+            "width": 1500,
+            "filename": "test_s001.png",
+            "height": 1000
+        }
+    ],
+    "name": "PyNutil_testdataset",
+    "target": "ABA_Mouse_CCFv3_2017_25um.cutlas",
+    "target-resolution": [
+        456,
+        528,
+        320
+    ]
+}

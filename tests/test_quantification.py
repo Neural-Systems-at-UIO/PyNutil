@@ -81,6 +81,7 @@ test_case_files = [
     "brainglobe_atlas.json",
     "brainglobe_atlas_damage.json",
     "custom_atlas.json",
+    "upsized_allen.json"
 ]
 for test_case_file in test_case_files:
 

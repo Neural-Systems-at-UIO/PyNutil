@@ -496,12 +496,15 @@ def get_region_areas(
     Returns:
         tuple: (DataFrame of region areas, atlas map array).
     """
+    # The atlas slice + non-linear warping operate in *registration* (alignment JSON)
+    # coordinate space. This may legitimately differ from the segmentation image size.
+    reg_width, reg_height = slice_dict["width"], slice_dict["height"]
     atlas_map = load_image(
         flat_file_atlas,
         slice_dict["anchoring"],
         atlas_volume,
         triangulation,
-        (seg_width, seg_height),
+        (reg_width, reg_height),
         atlas_labels,
     )
     region_areas = flat_to_dataframe(
@@ -589,7 +592,7 @@ def segmentation_to_atlas_space(
         damage_mask,
     )
     y_scale, x_scale = transform_to_registration(
-        seg_width, seg_height, reg_width, reg_height
+        seg_height, seg_width, reg_height, reg_width
     )
 
     centroids, points = None, None
