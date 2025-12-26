@@ -4,6 +4,7 @@ import struct
 import cv2
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import transform_vec
+from ..io.read_and_write import read_flat_file, read_seg_file
 
 
 def create_base_counts_dict(with_hemisphere=False, with_damage=False):
@@ -87,49 +88,81 @@ def pixel_count_per_region(
     # If hemisphere labels are present, they are integers (1/2). If absent, they are None.
     with_hemi = None not in current_points_hemi
 
-    def _series_from_unique(labels: np.ndarray, counts: np.ndarray) -> pd.Series:
-        if labels.size == 0:
-            return pd.Series(dtype=np.int64)
-        return pd.Series(counts.astype(np.int64), index=labels)
-
-    def _counts_for(mask: np.ndarray, arr: np.ndarray) -> tuple[pd.Series, np.ndarray]:
+    def _counts_for(mask: np.ndarray | None, arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         if arr.size == 0:
-            return pd.Series(dtype=np.int64), np.array([], dtype=arr.dtype)
-        if mask is None:
-            u, c = np.unique(arr, return_counts=True)
-        else:
-            u, c = np.unique(arr[mask], return_counts=True)
-        return _series_from_unique(u, c), u
+            return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+
+        data = arr if mask is None else arr[mask]
+        if data.size == 0:
+            return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+
+        data = np.asarray(data)
+        if data.dtype != np.int64:
+            data = data.astype(np.int64, copy=False)
+
+        # Defensive: ignore any negative/background oddities.
+        if data.size == 0:
+            return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+        if np.any(data < 0):
+            data = data[data >= 0]
+            if data.size == 0:
+                return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+
+        max_id = int(data.max())
+
+        # Fast path when label ids are reasonably bounded.
+        if max_id <= 2_000_000:
+            bc = np.bincount(data, minlength=max_id + 1)
+            labels = np.nonzero(bc)[0].astype(np.int64, copy=False)
+            counts = bc[labels].astype(np.int64, copy=False)
+            return labels, counts
+
+        labels, counts = np.unique(data, return_counts=True)
+        return labels.astype(np.int64, copy=False), counts.astype(np.int64, copy=False)
+
+    def _lookup_counts(idx: np.ndarray, labels: np.ndarray, counts: np.ndarray) -> np.ndarray:
+        if idx.size == 0 or labels.size == 0:
+            return np.zeros(idx.shape, dtype=np.int64)
+        pos = np.searchsorted(labels, idx)
+        out = np.zeros(idx.shape, dtype=np.int64)
+        valid = (pos >= 0) & (pos < labels.size)
+        if np.any(valid):
+            pos_v = pos[valid]
+            found = labels[pos_v] == idx[valid]
+            if np.any(found):
+                out_idx = np.flatnonzero(valid)[found]
+                out[out_idx] = counts[pos_v[found]]
+        return out
 
     # Compute all the count series we need, then build a sparse dataframe by
     # selecting only regions with any non-zero count.
     if with_hemi and with_damage:
-        lh_pu, lh_pu_idx = _counts_for(
+        lh_pu_idx, lh_pu = _counts_for(
             current_points_undamaged & (current_points_hemi == 1), labels_dict_points
         )
-        lh_pd, lh_pd_idx = _counts_for(
+        lh_pd_idx, lh_pd = _counts_for(
             (~current_points_undamaged) & (current_points_hemi == 1), labels_dict_points
         )
-        rh_pu, rh_pu_idx = _counts_for(
+        rh_pu_idx, rh_pu = _counts_for(
             current_points_undamaged & (current_points_hemi == 2), labels_dict_points
         )
-        rh_pd, rh_pd_idx = _counts_for(
+        rh_pd_idx, rh_pd = _counts_for(
             (~current_points_undamaged) & (current_points_hemi == 2), labels_dict_points
         )
 
-        lh_cu, lh_cu_idx = _counts_for(
+        lh_cu_idx, lh_cu = _counts_for(
             current_centroids_undamaged & (current_centroids_hemi == 1),
             labeled_dict_centroids,
         )
-        lh_cd, lh_cd_idx = _counts_for(
+        lh_cd_idx, lh_cd = _counts_for(
             (~current_centroids_undamaged) & (current_centroids_hemi == 1),
             labeled_dict_centroids,
         )
-        rh_cu, rh_cu_idx = _counts_for(
+        rh_cu_idx, rh_cu = _counts_for(
             current_centroids_undamaged & (current_centroids_hemi == 2),
             labeled_dict_centroids,
         )
-        rh_cd, rh_cd_idx = _counts_for(
+        rh_cd_idx, rh_cd = _counts_for(
             (~current_centroids_undamaged) & (current_centroids_hemi == 2),
             labeled_dict_centroids,
         )
@@ -158,16 +191,16 @@ def pixel_count_per_region(
             )
 
         base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-        idx = base["idx"].to_numpy()
+        idx = base["idx"].to_numpy().astype(np.int64, copy=False)
 
-        l_pu = lh_pu.reindex(idx, fill_value=0).to_numpy()
-        l_pd = lh_pd.reindex(idx, fill_value=0).to_numpy()
-        r_pu = rh_pu.reindex(idx, fill_value=0).to_numpy()
-        r_pd = rh_pd.reindex(idx, fill_value=0).to_numpy()
-        l_cu = lh_cu.reindex(idx, fill_value=0).to_numpy()
-        l_cd = lh_cd.reindex(idx, fill_value=0).to_numpy()
-        r_cu = rh_cu.reindex(idx, fill_value=0).to_numpy()
-        r_cd = rh_cd.reindex(idx, fill_value=0).to_numpy()
+        l_pu = _lookup_counts(idx, lh_pu_idx, lh_pu)
+        l_pd = _lookup_counts(idx, lh_pd_idx, lh_pd)
+        r_pu = _lookup_counts(idx, rh_pu_idx, rh_pu)
+        r_pd = _lookup_counts(idx, rh_pd_idx, rh_pd)
+        l_cu = _lookup_counts(idx, lh_cu_idx, lh_cu)
+        l_cd = _lookup_counts(idx, lh_cd_idx, lh_cd)
+        r_cu = _lookup_counts(idx, rh_cu_idx, rh_cu)
+        r_cd = _lookup_counts(idx, rh_cd_idx, rh_cd)
 
         base["pixel_count"] = l_pu + l_pd + r_pu + r_pd
         base["undamaged_pixel_count"] = l_pu + r_pu
@@ -195,10 +228,10 @@ def pixel_count_per_region(
         return base
 
     if with_damage and (not with_hemi):
-        pu, pu_idx = _counts_for(current_points_undamaged, labels_dict_points)
-        pdmg, pdmg_idx = _counts_for(~current_points_undamaged, labels_dict_points)
-        cu, cu_idx = _counts_for(current_centroids_undamaged, labeled_dict_centroids)
-        cd, cd_idx = _counts_for(~current_centroids_undamaged, labeled_dict_centroids)
+        pu_idx, pu = _counts_for(current_points_undamaged, labels_dict_points)
+        pdmg_idx, pdmg = _counts_for(~current_points_undamaged, labels_dict_points)
+        cu_idx, cu = _counts_for(current_centroids_undamaged, labeled_dict_centroids)
+        cd_idx, cd = _counts_for(~current_centroids_undamaged, labeled_dict_centroids)
 
         all_idx = np.unique(np.concatenate([pu_idx, pdmg_idx, cu_idx, cd_idx]))
         if all_idx.size == 0:
@@ -211,12 +244,12 @@ def pixel_count_per_region(
             )
 
         base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-        idx = base["idx"].to_numpy()
+        idx = base["idx"].to_numpy().astype(np.int64, copy=False)
 
-        p_u = pu.reindex(idx, fill_value=0).to_numpy()
-        p_d = pdmg.reindex(idx, fill_value=0).to_numpy()
-        c_u = cu.reindex(idx, fill_value=0).to_numpy()
-        c_d = cd.reindex(idx, fill_value=0).to_numpy()
+        p_u = _lookup_counts(idx, pu_idx, pu)
+        p_d = _lookup_counts(idx, pdmg_idx, pdmg)
+        c_u = _lookup_counts(idx, cu_idx, cu)
+        c_d = _lookup_counts(idx, cd_idx, cd)
 
         base["pixel_count"] = p_u + p_d
         base["undamaged_pixel_count"] = p_u
@@ -227,12 +260,12 @@ def pixel_count_per_region(
         return base
 
     if with_hemi and (not with_damage):
-        lh_p, lh_p_idx = _counts_for(current_points_hemi == 1, labels_dict_points)
-        rh_p, rh_p_idx = _counts_for(current_points_hemi == 2, labels_dict_points)
-        lh_c, lh_c_idx = _counts_for(
+        lh_p_idx, lh_p = _counts_for(current_points_hemi == 1, labels_dict_points)
+        rh_p_idx, rh_p = _counts_for(current_points_hemi == 2, labels_dict_points)
+        lh_c_idx, lh_c = _counts_for(
             current_centroids_hemi == 1, labeled_dict_centroids
         )
-        rh_c, rh_c_idx = _counts_for(
+        rh_c_idx, rh_c = _counts_for(
             current_centroids_hemi == 2, labeled_dict_centroids
         )
 
@@ -247,12 +280,12 @@ def pixel_count_per_region(
             )
 
         base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-        idx = base["idx"].to_numpy()
+        idx = base["idx"].to_numpy().astype(np.int64, copy=False)
 
-        l_p = lh_p.reindex(idx, fill_value=0).to_numpy()
-        r_p = rh_p.reindex(idx, fill_value=0).to_numpy()
-        l_c = lh_c.reindex(idx, fill_value=0).to_numpy()
-        r_c = rh_c.reindex(idx, fill_value=0).to_numpy()
+        l_p = _lookup_counts(idx, lh_p_idx, lh_p)
+        r_p = _lookup_counts(idx, rh_p_idx, rh_p)
+        l_c = _lookup_counts(idx, lh_c_idx, lh_c)
+        r_c = _lookup_counts(idx, rh_c_idx, rh_c)
 
         base["pixel_count"] = l_p + r_p
         base["object_count"] = l_c + r_c
@@ -263,8 +296,8 @@ def pixel_count_per_region(
         return base
 
     # No damage, no hemisphere
-    p, p_idx = _counts_for(None, labels_dict_points)
-    c, c_idx = _counts_for(None, labeled_dict_centroids)
+    p_idx, p = _counts_for(None, labels_dict_points)
+    c_idx, c = _counts_for(None, labeled_dict_centroids)
     all_idx = np.unique(np.concatenate([p_idx, c_idx]))
     if all_idx.size == 0:
         return pd.DataFrame(
@@ -274,67 +307,10 @@ def pixel_count_per_region(
         )
 
     base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-    idx = base["idx"].to_numpy()
-    base["pixel_count"] = p.reindex(idx, fill_value=0).to_numpy()
-    base["object_count"] = c.reindex(idx, fill_value=0).to_numpy()
+    idx = base["idx"].to_numpy().astype(np.int64, copy=False)
+    base["pixel_count"] = _lookup_counts(idx, p_idx, p)
+    base["object_count"] = _lookup_counts(idx, c_idx, c)
     return base
-
-
-def read_flat_file(file):
-    """
-    Reads a flat file and produces an image array.
-
-    Args:
-        file (str): Path to the flat file.
-
-    Returns:
-        ndarray: Image array extracted from the file.
-    """
-    with open(file, "rb") as f:
-        b, w, h = struct.unpack(">BII", f.read(9))
-        data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
-    image_data = np.array(data)
-    image = np.zeros((h, w))
-    for x in range(w):
-        for y in range(h):
-            image[y, x] = image_data[x + y * w]
-    return image
-
-
-def read_seg_file(file):
-    """
-    Reads a segmentation file into an image array.
-
-    Args:
-        file (str): Path to the segmentation file.
-
-    Returns:
-        ndarray: The segmentation image.
-    """
-    with open(file, "rb") as f:
-
-        def byte():
-            return f.read(1)[0]
-
-        def code():
-            c = byte()
-            if c < 0:
-                raise "!"
-            return c if c < 128 else (c & 127) | (code() << 7)
-
-        if "SegRLEv1" != f.read(8).decode():
-            raise "Header mismatch"
-        atlas = f.read(code()).decode()
-        print(f"Target atlas: {atlas}")
-        codes = [code() for x in range(code())]
-        w = code()
-        h = code()
-        data = []
-        while len(data) < w * h:
-            data += [codes[byte() if len(codes) <= 256 else code()]] * (code() + 1)
-    image_data = np.array(data)
-    image = np.reshape(image_data, (h, w))
-    return image
 
 
 def rescale_image(image, rescaleXY):

@@ -113,28 +113,7 @@ def save_analysis_output(
         "colour": colour,
         "custom_region_path": custom_region_path,
     }
-    (pixel_points,)
-    (centroids,)
-    (label_df,)
-    (per_section_df,)
-    (labeled_points,)
-    (labeled_points_centroids,)
-    (points_hemi_labels,)
-    (centroids_hemi_labels,)
-    (points_len,)
-    (centroids_len,)
-    (segmentation_filenames,)
-    (atlas_labels,)
-    (output_folder,)
-    segmentation_folder = (None,)
-    alignment_json = (None,)
-    colour = (None,)
-    atlas_name = (None,)
-    custom_region_path = (None,)
-    atlas_path = (None,)
-    label_path = (None,)
-    settings_file = (None,)
-    prepend = (None,)
+
     # Add atlas information to settings
     if atlas_name:
         settings_dict["atlas_name"] = atlas_name
@@ -144,8 +123,7 @@ def save_analysis_output(
         settings_dict["label_path"] = label_path
     if settings_file:
         settings_dict["settings_file"] = settings_file
-    if custom_region_path:
-        settings_dict["custom_region_path"] = custom_region_path
+
     # Write settings to file
     settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
     with open(settings_file_path, "w") as f:

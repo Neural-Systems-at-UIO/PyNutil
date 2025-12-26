@@ -142,53 +142,19 @@ def forwardtransform_vec(triangulation, x, y):
 
 
 def inv3x3(m):
-    """
-    Inverts a 3x3 matrix.
+    """Invert a 3x3 matrix.
 
-    Args:
-        m (list): 3x3 matrix.
-
-    Returns:
-        list: Inverted 3x3 matrix.
+    Returns None for singular matrices.
     """
-    det = (
-        m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2])
-        - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
-        + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
-    )
-    if det == 0:
+    try:
+        return np.linalg.inv(np.asarray(m, dtype=np.float64)).tolist()
+    except np.linalg.LinAlgError:
         return None
-    return [
-        [
-            (m[1][1] * m[2][2] - m[2][1] * m[1][2]) / det,
-            (m[0][2] * m[2][1] - m[0][1] * m[2][2]) / det,
-            (m[0][1] * m[1][2] - m[0][2] * m[1][1]) / det,
-        ],
-        [
-            (m[1][2] * m[2][0] - m[1][0] * m[2][2]) / det,
-            (m[0][0] * m[2][2] - m[0][2] * m[2][0]) / det,
-            (m[1][0] * m[0][2] - m[0][0] * m[1][2]) / det,
-        ],
-        [
-            (m[1][0] * m[2][1] - m[2][0] * m[1][1]) / det,
-            (m[2][0] * m[0][1] - m[0][0] * m[2][1]) / det,
-            (m[0][0] * m[1][1] - m[1][0] * m[0][1]) / det,
-        ],
-    ]
 
 
 def rowmul3(v, m):
-    """
-    Multiplies a row vector by a 3x3 matrix.
-
-    Args:
-        v (list): Row vector.
-        m (list): 3x3 matrix.
-
-    Returns:
-        list: Resulting row vector.
-    """
-    return [sum(v[j] * m[j][i] for j in range(3)) for i in range(3)]
+    """Multiply a 1x3 row vector by a 3x3 matrix."""
+    return (np.asarray(v, dtype=np.float64) @ np.asarray(m, dtype=np.float64)).tolist()
 
 
 def rowmul3_vec(x, y, m):

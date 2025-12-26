@@ -1,13 +1,15 @@
 import numpy as np
 import pandas as pd
 import gc
+import os
+from concurrent.futures import ThreadPoolExecutor
 from ..io.read_and_write import load_quint_json
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import triangulate
 import cv2
 import threading
-from ..io.reconstruct_dzi import reconstruct_dzi
+from ..io.read_and_write import load_segmentation
 from .transformations import (
     transform_points_to_atlas_space,
     transform_to_registration,
@@ -311,39 +313,67 @@ def folder_to_atlas_space(
                 "area_fraction": [],
             }
         )
-    ] * len(segmentations)
-    points_list = [np.array([])] * len(segmentations)
-    points_labels = [np.array([])] * len(segmentations)
-    centroids_list = [np.array([])] * len(segmentations)
-    centroids_labels = [np.array([])] * len(segmentations)
-    per_point_undamaged_list = [np.array([])] * len(segmentations)
-    per_centroid_undamaged_list = [np.array([])] * len(segmentations)
-    points_hemi_labels = [np.array([])] * len(segmentations)
-    centroids_hemi_labels = [np.array([])] * len(segmentations)
-    threads = create_threads(
-        segmentations,
-        slices,
-        flat_files,
-        flat_file_nrs,
-        atlas_labels,
-        pixel_id,
-        non_linear,
-        points_list,
-        centroids_list,
-        centroids_labels,
-        points_labels,
-        region_areas_list,
-        per_point_undamaged_list,
-        per_centroid_undamaged_list,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        object_cutoff,
-        atlas_volume,
-        hemi_map,
-        use_flat,
-        gridspacing,
-    )
-    start_and_join_threads(threads)
+        for _ in range(len(segmentations))
+    ]
+    points_list = [np.array([]) for _ in range(len(segmentations))]
+    points_labels = [np.array([]) for _ in range(len(segmentations))]
+    centroids_list = [np.array([]) for _ in range(len(segmentations))]
+    centroids_labels = [np.array([]) for _ in range(len(segmentations))]
+    per_point_undamaged_list = [np.array([]) for _ in range(len(segmentations))]
+    per_centroid_undamaged_list = [np.array([]) for _ in range(len(segmentations))]
+    points_hemi_labels = [np.array([]) for _ in range(len(segmentations))]
+    centroids_hemi_labels = [np.array([]) for _ in range(len(segmentations))]
+
+    if len(segmentations) > 0:
+        max_workers = min(32, len(segmentations), (os.cpu_count() or 1) + 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for segmentation_path, index in zip(segmentations, range(len(segmentations))):
+                seg_nr = int(number_sections([segmentation_path])[0])
+                current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
+                if len(current_slice_index[0]) == 0:
+                    print("segmentation file does not exist in alignment json:")
+                    print(segmentation_path)
+                    continue
+
+                current_slice = slices[current_slice_index[0][0]]
+                if current_slice["anchoring"] == []:
+                    continue
+
+                current_flat = get_current_flat_file(
+                    seg_nr, flat_files, flat_file_nrs, use_flat
+                )
+
+                futures.append(
+                    executor.submit(
+                        segmentation_to_atlas_space,
+                        current_slice,
+                        segmentation_path,
+                        atlas_labels,
+                        current_flat,
+                        pixel_id,
+                        non_linear,
+                        points_list,
+                        centroids_list,
+                        points_labels,
+                        centroids_labels,
+                        region_areas_list,
+                        per_point_undamaged_list,
+                        per_centroid_undamaged_list,
+                        points_hemi_labels,
+                        centroids_hemi_labels,
+                        index,
+                        object_cutoff,
+                        atlas_volume,
+                        hemi_map,
+                        use_flat,
+                        gridspacing,
+                    )
+                )
+
+            # Ensure exceptions from worker threads get raised here.
+            for f in futures:
+                f.result()
     (
         points,
         centroids,
@@ -476,22 +506,6 @@ def create_threads(
         )
         threads.append(x)
     return threads
-
-
-def load_segmentation(segmentation_path: str):
-    """
-    Loads segmentation data, handling .dzip files if necessary.
-
-    Args:
-        segmentation_path (str): File path.
-
-    Returns:
-        ndarray: Image array of the segmentation.
-    """
-    if segmentation_path.endswith(".dzip"):
-        return reconstruct_dzi(segmentation_path)
-    else:
-        return cv2.imread(segmentation_path)
 
 
 def detect_pixel_id(segmentation: np.array):

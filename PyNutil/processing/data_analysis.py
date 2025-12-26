@@ -69,40 +69,11 @@ def apply_custom_regions(df, custom_regions_dict):
     )
     temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
-    # Define all possible columns to aggregate
-    possible_columns = [
-        "pixel_count",
-        "undamaged_pixel_count",
-        "damaged_pixel_counts",
-        "region_area",
-        "undamaged_region_area",
-        "damaged_region_area",
-        "object_count",
-        "undamaged_object_count",
-        "damaged_object_count",
-        "left_hemi_pixel_count",
-        "left_hemi_undamaged_pixel_count",
-        "left_hemi_damaged_pixel_count",
-        "left_hemi_region_area",
-        "left_hemi_undamaged_region_area",
-        "left_hemi_damaged_region_area",
-        "left_hemi_object_count",
-        "left_hemi_undamaged_object_count",
-        "left_hemi_damaged_object_count",
-        "right_hemi_pixel_count",
-        "right_hemi_undamaged_pixel_count",
-        "right_hemi_damaged_pixel_count",
-        "right_hemi_region_area",
-        "right_hemi_undamaged_region_area",
-        "right_hemi_damaged_region_area",
-        "right_hemi_object_count",
-        "right_hemi_undamaged_object_count",
-        "right_hemi_damaged_object_count",
-    ]
-
-    # Only include columns that actually exist in the DataFrame
-    agg_dict = {col: "sum" for col in possible_columns if col in temp_df.columns}
-    # Add the color columns
+    # Aggregate all numeric columns dynamically (excluding ids and RGB which are handled separately).
+    # This avoids maintaining a long hardcoded list of possible columns.
+    numeric_cols = temp_df.select_dtypes(include=[np.number]).columns
+    numeric_cols = [c for c in numeric_cols if c not in {"idx", "r", "g", "b"}]
+    agg_dict = {col: "sum" for col in numeric_cols}
     agg_dict.update({"r": "first", "g": "first", "b": "first"})
 
     # Group and aggregate only existing columns
