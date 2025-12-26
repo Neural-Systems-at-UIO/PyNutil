@@ -116,12 +116,15 @@ def project_sections_to_volume(
 
     This constructs two 3D volumes:
         - value volume (gv): depends on `value_mode`
-        - frequency volume (fv): number of contributing pixels per voxel
+        - frequency volume (fv): denominator used by `value_mode` (see below)
 
     Supported `value_mode`:
         - "pixel_count": number of segmented pixels per voxel (default; backwards compatible)
-        - "mean": fraction of segmented pixels per voxel (segmented pixels / contributing pixels)
+        - "mean": mean segmentation value per voxel, averaged over all sampled pixels (including zeros)
         - "object_count": number of 2D connected components contributing to each voxel
+
+    Notes:
+        - `fv` always counts all sampled pixels per voxel.
 
     Interpolation (if enabled) is applied to the value volume; the frequency
     volume is never interpolated.
@@ -174,11 +177,14 @@ def project_sections_to_volume(
         if seg is None:
             continue
         if seg.ndim == 2:
-            mask = (seg != 0).astype(np.float32)
+            seg_values = seg.astype(np.float32, copy=False)
+            mask = (seg_values != 0).astype(np.float32, copy=False)
             seg_height, seg_width = seg.shape
         else:
             seg = seg[:, :, :3]
             mask = np.all(seg == colour_arr[None, None, :], axis=2).astype(np.float32)
+            # For RGB segmentations, we only currently support colour-matched binary masks.
+            seg_values = mask
             seg_height, seg_width = seg.shape[:2]
 
         reg_height, reg_width = int(slice_dict["height"]), int(slice_dict["width"])
@@ -191,8 +197,17 @@ def project_sections_to_volume(
         plane_w = max(1, int(round(float(np.linalg.norm(u)) * float(scale))))
         plane_h = max(1, int(round(float(np.linalg.norm(v)) * float(scale))))
 
-        # Resample the segmentation mask into registration space.
-        mask_reg = cv2.resize(mask, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST)
+        # Resample segmentation into registration space.
+        # For mean mode, we use the raw segmentation values (2D scalar images),
+        # but compute the mean over non-zero values only.
+        if value_mode == "mean":
+            values_reg = cv2.resize(
+                seg_values, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST
+            )
+        else:
+            values_reg = cv2.resize(
+                mask, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST
+            )
 
         yy, xx = np.indices((plane_h, plane_w), dtype=np.float32)
         reg_x = (xx + 0.5) * (float(reg_width) / float(plane_w))
@@ -212,7 +227,7 @@ def project_sections_to_volume(
             new_y = map_y.reshape(-1)
 
         sampled = cv2.remap(
-            mask_reg,
+            values_reg,
             map_x,
             map_y,
             interpolation=cv2.INTER_NEAREST,

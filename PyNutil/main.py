@@ -315,8 +315,8 @@ class PyNutil:
             use_atlas_mask: If True, restrict interpolation to `self.atlas_volume != 0`.
             non_linear: If True and VisuAlign markers exist, apply marker-based deformation.
             value_mode: What each voxel represents:
-                - "pixel_count": number of segmented pixels per voxel (default; backwards compatible)
-                - "mean": fraction of segmented pixels per voxel (segmented pixels / contributing pixels)
+                - "pixel_count": number of segmented pixels per voxel
+                - "mean": mean segmentation value per voxel (averaged over all sampled pixels, including zeros)
                 - "object_count": number of 2D connected components contributing to each voxel
 
         Returns:
