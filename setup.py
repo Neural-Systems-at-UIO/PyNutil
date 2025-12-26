@@ -25,5 +25,6 @@ setup(
         "xmltodict",
         "opencv-python",
         "scipy",
+        "nibabel",
     ],
 )

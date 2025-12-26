@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import sys
 from typing import Optional, Tuple
 
@@ -55,6 +56,7 @@ class PyNutil:
         hemi_path=None,
         custom_region_path=None,
         settings_file=None,
+        voxel_size_um: Optional[float] = None,
     ):
         """
         Initializes the PyNutil class with the given parameters.
@@ -109,6 +111,8 @@ class PyNutil:
                     colour = settings["colour"]
                     if "custom_region_path" in settings:
                         custom_region_path = settings["custom_region_path"]
+                    if "voxel_size_um" in settings:
+                        voxel_size_um = settings["voxel_size_um"]
                     if "atlas_path" in settings and "label_path" in settings:
                         atlas_path = settings["atlas_path"]
                         label_path = settings["label_path"]
@@ -125,6 +129,7 @@ class PyNutil:
             self.alignment_json = alignment_json
             self.colour = colour
             self.atlas_name = atlas_name
+            self.voxel_size_um = float(voxel_size_um) if voxel_size_um is not None else None
             self.custom_region_path = custom_region_path
             if custom_region_path:
                 custom_regions_dict, custom_atlas_labels = open_custom_region_file(
@@ -152,6 +157,16 @@ class PyNutil:
                 self.atlas_volume, self.hemi_map, self.atlas_labels = load_atlas_data(
                     atlas_name=atlas_name
                 )
+
+            # If not provided, try to infer voxel size from brainglobe atlas name
+            # e.g. "allen_mouse_25um" -> 25 microns.
+            if self.voxel_size_um is None and isinstance(self.atlas_name, str):
+                m = re.search(r"(\d+(?:\.\d+)?)um$", self.atlas_name)
+                if m:
+                    try:
+                        self.voxel_size_um = float(m.group(1))
+                    except Exception:
+                        self.voxel_size_um = None
         except (FileNotFoundError, json.JSONDecodeError) as e:
             raise ValueError(f"Error loading settings file: {e}")
         except Exception as e:
@@ -271,8 +286,8 @@ class PyNutil:
         self,
         *,
         source: str = "pixels",
-        shape: Optional[Tuple[int, int, int]] = None,
         scale: float = 1.0,
+        shape: Optional[Tuple[int, int, int]] = None,
         return_frequencies: bool = False,
         missing_fill: float = np.nan,
         do_interpolation: bool = False,
@@ -319,10 +334,22 @@ class PyNutil:
         if points_list is None:
             raise ValueError(f"No point data found for source={source!r}")
 
-        if shape is None:
-            if not hasattr(self, "atlas_volume") or self.atlas_volume is None:
+        if not hasattr(self, "atlas_volume") or self.atlas_volume is None:
+            if shape is None:
                 raise ValueError("shape must be provided when atlas_volume is unavailable")
-            shape = tuple(int(x) for x in self.atlas_volume.shape)
+        else:
+            atlas_shape = tuple(int(x) for x in self.atlas_volume.shape)
+            if shape is None:
+                # Shape is derived from atlas_shape and scale.
+                if scale <= 0:
+                    raise ValueError("scale must be > 0")
+                shape = tuple(max(1, int(round(s * float(scale)))) for s in atlas_shape)
+            else:
+                # Back-compat escape hatch: allow explicit shape, but don't also scale.
+                if scale != 1.0:
+                    raise ValueError(
+                        "Do not pass both shape and scale; shape is derived from scale and atlas shape."
+                    )
 
         # Stack points across sections.
         valid_arrays = [p for p in points_list if isinstance(p, np.ndarray) and p.size]
@@ -337,6 +364,7 @@ class PyNutil:
                 f"Expected Nx3 atlas-space coordinates; got array of shape {pts.shape}"
             )
 
+        # For derived-shape usage, scale also defines coordinate scaling.
         if scale != 1.0:
             pts = pts * float(scale)
 
@@ -391,32 +419,51 @@ class PyNutil:
                 # Interpolate over the entire volume.
                 target_mask = np.ones_like(fv, dtype=bool)
 
-            if np.any(target_mask) and np.any(fit_mask):
-                fit_pts = np.column_stack(np.nonzero(fit_mask)).astype(np.float32, copy=False)
-                fit_vals = gv[fit_mask].astype(np.float32, copy=False)
-                tree = cKDTree(fit_pts)
+            # If we're using the ccfv3augmented reference pipeline, use its interpolation.
+            # This matches the original helper logic (mask built from a resampled atlas).
+            use_reference = isinstance(getattr(self, "atlas_name", None), str) and (
+                "ccfv3augmented" in str(getattr(self, "atlas_name", "")).lower()
+            )
+            if use_reference:
+                from .processing.reference_volume_port import interpolate as _ref_interpolate
 
-                # IMPORTANT: also recompute values at fitted voxels so every voxel becomes
-                # an average of k-nearest observed voxels.
-                query_pts = np.column_stack(np.nonzero(target_mask)).astype(np.float32, copy=False)
-                out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
-                eps = 1e-12
+                base_voxel_um = (
+                    float(self.voxel_size_um)
+                    if getattr(self, "voxel_size_um", None) is not None
+                    else 25.0
+                )
+                # If we scaled coordinates/shape by `scale`, the effective voxel size increases.
+                resolution_um = float(base_voxel_um / float(scale)) if float(scale) != 0 else base_voxel_um
+                gv = _ref_interpolate(gv, fv, k=k, resolution=resolution_um)
+            else:
+                if np.any(target_mask) and np.any(fit_mask):
+                    fit_pts = np.column_stack(np.nonzero(fit_mask)).astype(np.float32, copy=False)
+                    fit_vals = gv[fit_mask].astype(np.float32, copy=False)
+                    tree = cKDTree(fit_pts)
 
-                for start in range(0, query_pts.shape[0], batch_size):
-                    end = min(start + batch_size, query_pts.shape[0])
-                    q = query_pts[start:end]
-                    dist, ind = tree.query(q, k=k)
-                    if k == 1:
-                        out_vals[start:end] = fit_vals[ind]
-                    else:
-                        neigh_vals = fit_vals[ind]
-                        if weights == "uniform":
-                            out_vals[start:end] = neigh_vals.mean(axis=1)
+                    # IMPORTANT: also recompute values at fitted voxels so every voxel becomes
+                    # an average of k-nearest observed voxels.
+                    query_pts = np.column_stack(np.nonzero(target_mask)).astype(
+                        np.float32, copy=False
+                    )
+                    out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
+                    eps = 1e-12
+
+                    for start in range(0, query_pts.shape[0], batch_size):
+                        end = min(start + batch_size, query_pts.shape[0])
+                        q = query_pts[start:end]
+                        dist, ind = tree.query(q, k=k)
+                        if k == 1:
+                            out_vals[start:end] = fit_vals[ind]
                         else:
-                            w = 1.0 / (dist * dist + eps)
-                            out_vals[start:end] = (neigh_vals * w).sum(axis=1) / w.sum(axis=1)
+                            neigh_vals = fit_vals[ind]
+                            if weights == "uniform":
+                                out_vals[start:end] = neigh_vals.mean(axis=1)
+                            else:
+                                w = 1.0 / (dist * dist + eps)
+                                out_vals[start:end] = (neigh_vals * w).sum(axis=1) / w.sum(axis=1)
 
-                gv[target_mask] = out_vals
+                    gv[target_mask] = out_vals
 
             # If we restricted interpolation to atlas_mask, fill outside with missing_fill.
             if atlas_mask is not None and missing_fill is not None and not (missing_fill == 0):
@@ -439,7 +486,7 @@ class PyNutil:
     def build_volume_from_sections(
         self,
         *,
-        resolution_scale: float = 1.0,
+        scale: float = 1.0,
         shape: Optional[Tuple[int, int, int]] = None,
         missing_fill: float = np.nan,
         do_interpolation: bool = True,
@@ -464,8 +511,9 @@ class PyNutil:
             - self.frequency_volume (uint32)
 
         Args:
-            resolution_scale: Multiply atlas-space coordinates by this factor before binning.
-            shape: Output volume shape (x, y, z). Defaults to `self.atlas_volume.shape`.
+            scale: Multiply atlas-space coordinates by this factor before binning. The output
+                shape is derived from `self.atlas_volume.shape` and this scale.
+            shape: Deprecated escape hatch. Do not pass together with scale.
             missing_fill: Value for voxels with frequency 0 (after interpolation if enabled).
             do_interpolation: If True, fill/smooth within atlas mask using kNN over observed voxels.
             k: Number of nearest neighbors (default 5).
@@ -482,10 +530,20 @@ class PyNutil:
             raise ValueError("segmentation_folder and alignment_json are required")
         if self.colour is None:
             raise ValueError("colour must be set to build_volume_from_sections")
-        if shape is None:
-            if not hasattr(self, "atlas_volume") or self.atlas_volume is None:
+        if not hasattr(self, "atlas_volume") or self.atlas_volume is None:
+            if shape is None:
                 raise ValueError("shape must be provided when atlas_volume is unavailable")
-            shape = tuple(int(x) for x in self.atlas_volume.shape)
+        else:
+            atlas_shape = tuple(int(x) for x in self.atlas_volume.shape)
+            if shape is None:
+                if scale <= 0:
+                    raise ValueError("scale must be > 0")
+                shape = tuple(max(1, int(round(s * float(scale)))) for s in atlas_shape)
+            else:
+                if scale != 1.0:
+                    raise ValueError(
+                        "Do not pass both shape and scale; shape is derived from scale and atlas shape."
+                    )
 
         quint_json = load_quint_json(self.alignment_json)
         slices = quint_json["slices"]
@@ -555,8 +613,8 @@ class PyNutil:
             coords = transform_to_atlas_space(
                 slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
             )
-            if resolution_scale != 1.0:
-                coords = coords * float(resolution_scale)
+            if scale != 1.0:
+                coords = coords * float(scale)
 
             idx = np.rint(coords).astype(np.int64, copy=False)
             x = idx[:, 0]
@@ -606,38 +664,52 @@ class PyNutil:
             else:
                 target_mask = np.ones_like(fv, dtype=bool)
 
-            if np.any(target_mask) and np.any(fit_mask):
-                fit_pts = np.column_stack(np.nonzero(fit_mask)).astype(np.float32, copy=False)
-                fit_vals = gv[fit_mask].astype(np.float32, copy=False)
-                tree = cKDTree(fit_pts)
+            use_reference = isinstance(getattr(self, "atlas_name", None), str) and (
+                "ccfv3augmented" in str(getattr(self, "atlas_name", "")).lower()
+            )
+            if use_reference:
+                from .processing.reference_volume_port import interpolate as _ref_interpolate
 
-                query_pts = np.column_stack(np.nonzero(target_mask)).astype(
-                    np.float32, copy=False
+                base_voxel_um = (
+                    float(self.voxel_size_um)
+                    if getattr(self, "voxel_size_um", None) is not None
+                    else 25.0
                 )
-                out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
-                eps = 1e-12
-                for start in range(0, query_pts.shape[0], batch_size):
-                    end = min(start + batch_size, query_pts.shape[0])
-                    q = query_pts[start:end]
-                    dist, ind = tree.query(q, k=k)
-                    if k == 1:
-                        out_vals[start:end] = fit_vals[ind]
-                    else:
-                        neigh_vals = fit_vals[ind]
-                        if weights == "uniform":
-                            out_vals[start:end] = neigh_vals.mean(axis=1)
-                        else:
-                            w = 1.0 / (dist * dist + eps)
-                            out_vals[start:end] = (neigh_vals * w).sum(axis=1) / w.sum(axis=1)
+                resolution_um = float(base_voxel_um / float(scale)) if float(scale) != 0 else base_voxel_um
+                gv = _ref_interpolate(gv, fv, k=k, resolution=resolution_um)
+            else:
+                if np.any(target_mask) and np.any(fit_mask):
+                    fit_pts = np.column_stack(np.nonzero(fit_mask)).astype(np.float32, copy=False)
+                    fit_vals = gv[fit_mask].astype(np.float32, copy=False)
+                    tree = cKDTree(fit_pts)
 
-                # Reference behavior: only mask voxels are defined after interpolation;
-                # outside-mask is 0.
-                if atlas_mask is not None:
-                    out = np.zeros_like(gv)
-                    out[target_mask] = out_vals
-                    gv = out
-                else:
-                    gv[target_mask] = out_vals
+                    query_pts = np.column_stack(np.nonzero(target_mask)).astype(
+                        np.float32, copy=False
+                    )
+                    out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
+                    eps = 1e-12
+                    for start in range(0, query_pts.shape[0], batch_size):
+                        end = min(start + batch_size, query_pts.shape[0])
+                        q = query_pts[start:end]
+                        dist, ind = tree.query(q, k=k)
+                        if k == 1:
+                            out_vals[start:end] = fit_vals[ind]
+                        else:
+                            neigh_vals = fit_vals[ind]
+                            if weights == "uniform":
+                                out_vals[start:end] = neigh_vals.mean(axis=1)
+                            else:
+                                w = 1.0 / (dist * dist + eps)
+                                out_vals[start:end] = (neigh_vals * w).sum(axis=1) / w.sum(axis=1)
+
+                    # Reference behavior: only mask voxels are defined after interpolation;
+                    # outside-mask is 0.
+                    if atlas_mask is not None:
+                        out = np.zeros_like(gv)
+                        out[target_mask] = out_vals
+                        gv = out
+                    else:
+                        gv[target_mask] = out_vals
         else:
             if missing_fill is not None and not (missing_fill == 0):
                 gv[fv == 0] = float(missing_fill)
@@ -686,25 +758,93 @@ class PyNutil:
             )
 
             # Save interpolated/frequency volumes if they exist.
+            # We write NIfTI via nibabel to avoid relying on NRRD output tooling.
             try:
-                import nrrd  # type: ignore
+                import nibabel as nib  # type: ignore
 
                 vol = getattr(self, "interpolated_volume", None)
                 freq = getattr(self, "frequency_volume", None)
+
+                if vol is not None or freq is not None:
+                    out_dir = f"{output_folder}/interpolated_volume"
+                    os.makedirs(out_dir, exist_ok=True)
+
+                from .processing.reference_volume_port import write_nifti as _write_nifti
+
+                def _scale_to_uint8(data: np.ndarray) -> np.ndarray:
+                    arr = np.asarray(data, dtype=np.float32)
+                    finite = np.isfinite(arr)
+                    if not np.any(finite):
+                        return np.zeros(arr.shape, dtype=np.uint8)
+
+                    vmin = float(np.min(arr[finite]))
+                    vmax = float(np.max(arr[finite]))
+
+                    if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+                        out = np.zeros(arr.shape, dtype=np.uint8)
+                        return out
+
+                    scaled = (arr - vmin) * (255.0 / (vmax - vmin))
+                    scaled = np.clip(scaled, 0.0, 255.0)
+
+                    out = np.zeros(arr.shape, dtype=np.uint8)
+                    out[finite] = scaled[finite].round().astype(np.uint8)
+                    return out
+
+                atlas_shape = (
+                    np.array(self.atlas_volume.shape, dtype=np.float32)
+                    if getattr(self, "atlas_volume", None) is not None
+                    else None
+                )
+
+                base_voxel_um = (
+                    float(self.voxel_size_um)
+                    if getattr(self, "voxel_size_um", None) is not None
+                    else 1.0
+                )
+
+                def _resolution_um_for_volume(volume: np.ndarray) -> float:
+                    # Always write isotropic spacing (single scalar), even when the volume
+                    # shape differs from the atlas shape.
+                    if atlas_shape is None:
+                        return float(base_voxel_um)
+
+                    vol_shape = np.array(volume.shape, dtype=np.float32)
+                    if vol_shape.shape != (3,) or np.any(vol_shape <= 0):
+                        return float(base_voxel_um)
+
+                    implied = atlas_shape / vol_shape  # per-axis scale factors
+                    iso_scale = float(np.median(implied))
+
+                    # If the implied scale differs across axes, the world-FOV cannot be
+                    # preserved in all axes with isotropic voxels. We still write isotropic
+                    # spacing, but log a warning for visibility.
+                    if np.max(implied) - np.min(implied) > 1e-3:
+                        logger.warning(
+                            "Non-uniform volume scaling detected (atlas_shape=%s, volume_shape=%s). "
+                            "Writing isotropic voxel spacing using median scale %.6f.",
+                            tuple(int(x) for x in atlas_shape),
+                            tuple(int(x) for x in vol_shape),
+                            iso_scale,
+                        )
+
+                    return float(base_voxel_um * iso_scale)
+
                 if vol is not None:
-                    os.makedirs(f"{output_folder}/interpolated_volume", exist_ok=True)
-                    nrrd.write(
-                        f"{output_folder}/interpolated_volume/interpolated_volume.nrrd",
-                        np.asarray(vol, dtype=np.float32),
+                    _write_nifti(
+                        _scale_to_uint8(np.asarray(vol)),
+                        _resolution_um_for_volume(np.asarray(vol)),
+                        f"{output_folder}/interpolated_volume/interpolated_volume",
                     )
+
                 if freq is not None:
-                    os.makedirs(f"{output_folder}/interpolated_volume", exist_ok=True)
-                    nrrd.write(
-                        f"{output_folder}/interpolated_volume/frequency_volume.nrrd",
-                        np.asarray(freq, dtype=np.uint32),
+                    _write_nifti(
+                        _scale_to_uint8(np.asarray(freq)),
+                        _resolution_um_for_volume(np.asarray(freq)),
+                        f"{output_folder}/interpolated_volume/frequency_volume",
                     )
             except Exception as e:
-                logger.error(f"Saving NRRD volumes failed: {e}")
+                logger.error(f"Saving NIfTI volumes failed: {e}")
 
             if self.custom_regions_dict is not None:
                 save_analysis_output(
