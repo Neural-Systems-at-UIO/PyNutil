@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import numpy as np
 
 from ..io.read_and_write import load_quint_json
-from .transformations import transform_to_atlas_space, transform_to_registration
+from .transformations import transform_to_atlas_space
 from .utils import number_sections
 from .visualign_deformations import triangulate, transform_vec
 
@@ -110,14 +110,20 @@ def project_sections_to_volume(
     batch_size: int = 200_000,
     use_atlas_mask: bool = True,
     non_linear: bool = True,
+    value_mode: str = "pixel_count",
 ):
     """Project section segmentations into a 3D atlas-space volume.
 
     This constructs two 3D volumes:
-        - signal volume (gv): sum of per-pixel mask values (0/1)
+        - value volume (gv): depends on `value_mode`
         - frequency volume (fv): number of contributing pixels per voxel
 
-    Interpolation (if enabled) is applied to the signal volume; the frequency
+    Supported `value_mode`:
+        - "pixel_count": number of segmented pixels per voxel (default; backwards compatible)
+        - "mean": fraction of segmented pixels per voxel (segmented pixels / contributing pixels)
+        - "object_count": number of 2D connected components contributing to each voxel
+
+    Interpolation (if enabled) is applied to the value volume; the frequency
     volume is never interpolated.
     """
 
@@ -145,6 +151,16 @@ def project_sections_to_volume(
     gv = np.zeros(out_shape, dtype=np.float32)
     fv = np.zeros(out_shape, dtype=np.uint32)
 
+    if value_mode not in {"pixel_count", "mean", "object_count"}:
+        raise ValueError(
+            "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
+        )
+    ov_flat: Optional[np.ndarray]
+    if value_mode == "object_count":
+        ov_flat = np.zeros((gv.size,), dtype=np.uint32)
+    else:
+        ov_flat = None
+
     sx, sy, sz = out_shape
     colour_arr = np.array(colour, dtype=np.uint8)
 
@@ -166,22 +182,50 @@ def project_sections_to_volume(
             seg_height, seg_width = seg.shape[:2]
 
         reg_height, reg_width = int(slice_dict["height"]), int(slice_dict["width"])
-        y_scale, x_scale = transform_to_registration(
-            seg_height, seg_width, reg_height, reg_width
-        )
+        # Plane sampling: evaluate on a regular grid sized to the slice plane
+        # extent in atlas voxels (||u|| and ||v||), similar to the reference
+        # "perfect_image" approach but without atlas-specific assumptions.
+        anch = slice_dict["anchoring"]
+        u = np.asarray(anch[3:6], dtype=np.float32)
+        v = np.asarray(anch[6:9], dtype=np.float32)
+        plane_w = max(1, int(round(float(np.linalg.norm(u)) * float(scale))))
+        plane_h = max(1, int(round(float(np.linalg.norm(v)) * float(scale))))
 
-        yy, xx = np.indices((seg_height, seg_width), dtype=np.float32)
-        scaled_y = yy * float(y_scale)
-        scaled_x = xx * float(x_scale)
+        # Resample the segmentation mask into registration space.
+        mask_reg = cv2.resize(mask, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST)
+
+        yy, xx = np.indices((plane_h, plane_w), dtype=np.float32)
+        reg_x = (xx + 0.5) * (float(reg_width) / float(plane_w))
+        reg_y = (yy + 0.5) * (float(reg_height) / float(plane_h))
 
         if non_linear and "markers" in slice_dict:
             tri = triangulate(reg_width, reg_height, slice_dict["markers"])
-            flat_x = scaled_x.reshape(-1)
-            flat_y = scaled_y.reshape(-1)
+            flat_x = reg_x.reshape(-1)
+            flat_y = reg_y.reshape(-1)
             new_x, new_y = transform_vec(tri, flat_x, flat_y)
+            map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
+            map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         else:
-            new_x = scaled_x.reshape(-1)
-            new_y = scaled_y.reshape(-1)
+            map_x = reg_x.astype(np.float32, copy=False)
+            map_y = reg_y.astype(np.float32, copy=False)
+            new_x = map_x.reshape(-1)
+            new_y = map_y.reshape(-1)
+
+        sampled = cv2.remap(
+            mask_reg,
+            map_x,
+            map_y,
+            interpolation=cv2.INTER_NEAREST,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=0,
+        )
+        vals = sampled.reshape(-1).astype(np.float32, copy=False)
+
+        flat_labels: Optional[np.ndarray] = None
+        if ov_flat is not None:
+            sampled_u8 = (sampled != 0).astype(np.uint8)
+            _n_labels, labels = cv2.connectedComponents(sampled_u8, connectivity=8)
+            flat_labels = labels.reshape(-1)
 
         coords = transform_to_atlas_space(
             slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
@@ -200,10 +244,49 @@ def project_sections_to_volume(
         x = x[inb]
         y = y[inb]
         z = z[inb]
-        vals = mask.reshape(-1)[inb]
+        vals_in = vals[inb]
 
         np.add.at(fv, (x, y, z), 1)
-        np.add.at(gv, (x, y, z), vals)
+        np.add.at(gv, (x, y, z), vals_in)
+
+        if ov_flat is not None:
+            if flat_labels is None:  # pragma: no cover
+                continue
+            obj = flat_labels[inb]
+            pos = obj != 0
+            if np.any(pos):
+                x_pos = x[pos].astype(np.int64, copy=False)
+                y_pos = y[pos].astype(np.int64, copy=False)
+                z_pos = z[pos].astype(np.int64, copy=False)
+                voxel_lin = np.ravel_multi_index(
+                    (x_pos, y_pos, z_pos), dims=out_shape, mode="raise", order="C"
+                ).astype(np.int64, copy=False)
+
+                obj_u32 = obj[pos].astype(np.uint64, copy=False)
+                sec_u64 = np.uint64(seg_nr)
+                obj_key = (sec_u64 << np.uint64(32)) | obj_u32
+
+                pairs = np.empty(
+                    (voxel_lin.shape[0],), dtype=[("v", "u8"), ("o", "u8")]
+                )
+                pairs["v"] = voxel_lin.astype(np.uint64, copy=False)
+                pairs["o"] = obj_key
+
+                uniq_pairs = np.unique(pairs)
+                vox_u = uniq_pairs["v"].astype(np.int64, copy=False)
+                vox_ids, per_vox = np.unique(vox_u, return_counts=True)
+                np.add.at(ov_flat, vox_ids, per_vox.astype(np.uint32, copy=False))
+
+    # Convert accumulated sums into the requested value volume.
+    if value_mode == "mean":
+        out = np.zeros_like(gv, dtype=np.float32)
+        covered = fv != 0
+        out[covered] = gv[covered] / fv[covered].astype(np.float32)
+        if missing_fill is not None and np.any(~covered):
+            out[~covered] = float(missing_fill)
+        gv = out
+    elif value_mode == "object_count":
+        gv = ov_flat.reshape(out_shape).astype(np.float32, copy=False)
 
     if do_interpolation:
         atlas_mask = None
@@ -230,5 +313,3 @@ def project_sections_to_volume(
     return gv.astype(np.float32, copy=False), fv.astype(np.uint32, copy=False)
 
 
-# Backwards-compatible name used by the public PyNutil API wrapper.
-interpolate_volume = project_sections_to_volume

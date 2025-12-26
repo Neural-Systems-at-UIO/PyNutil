@@ -7,6 +7,7 @@ import numpy as np
 import nibabel as nib
 
 from PyNutil import PyNutil
+from tests.test_helpers import copy_tree_to_demo, small_volume_scale
 try:
     # When run via `python -m unittest discover` from repo root
     from tests.timing_utils import TimedTestCase
@@ -41,10 +42,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
         pnt.quantify_coordinates()
 
         # Downscale to keep runtime/memory small and stable.
-        sx, sy, sz = (int(x) for x in pnt.atlas_volume.shape)
-        max_dim = max(sx, sy, sz)
-        # Target max dimension ~80 voxels.
-        scale = min(80.0 / max_dim, 1.0)
+        scale = small_volume_scale(pnt.atlas_volume.shape)
 
         # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
@@ -82,9 +80,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
 
             if not (os.path.exists(exp_interp_path) and os.path.exists(exp_freq_path)):
                 # Copy outputs for human inspection (never used for assertions).
-                os.makedirs(os.path.dirname(self.demo_report_dir), exist_ok=True)
-                shutil.rmtree(self.demo_output_dir, ignore_errors=True)
-                shutil.copytree(output_dir, self.demo_output_dir)
+                copy_tree_to_demo(output_dir, self.demo_output_dir)
 
                 self.fail(
                     "Expected volume NIfTI outputs were missing. "
@@ -92,11 +88,9 @@ class TestBuildVolumeFromSections(TimedTestCase):
                     f"Please verify and copy that folder to: {self.expected_report_dir}, then re-run the tests."
                 )
 
-            # Optional: also persist outputs to demo_data for inspection.
-            if os.environ.get("PYNUTIL_SAVE_TEST_OUTPUTS", "").strip() in {"1", "true", "True"}:
-                os.makedirs(os.path.dirname(self.demo_report_dir), exist_ok=True)
-                shutil.rmtree(self.demo_output_dir, ignore_errors=True)
-                shutil.copytree(output_dir, self.demo_output_dir)
+            # Always persist outputs to demo_data for human inspection.
+            # Tests must never read from demo_data.
+            copy_tree_to_demo(output_dir, self.demo_output_dir)
 
             # Use np.asarray (not np.asanyarray) to avoid NumPy's copy=False pathway,
             # which can produce empty arrays for nibabel's ArrayProxy on newer NumPy.
@@ -108,8 +102,8 @@ class TestBuildVolumeFromSections(TimedTestCase):
             self.assertEqual(exp_interp.shape, got_interp.shape)
             self.assertEqual(exp_freq.shape, got_freq.shape)
             # Volumes are saved as uint8; compare exactly.
-            np.testing.assert_array_equal(exp_interp, got_interp)
-            np.testing.assert_array_equal(exp_freq, got_freq)
+            self.assertTrue(np.array_equal(exp_interp, got_interp))
+            self.assertTrue(np.array_equal(exp_freq, got_freq))
 
 
 if __name__ == "__main__":

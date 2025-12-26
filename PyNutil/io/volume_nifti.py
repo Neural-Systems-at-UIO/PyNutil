@@ -15,7 +15,6 @@ def scale_to_uint8(data: np.ndarray) -> np.ndarray:
 
     vmin = float(np.min(arr[finite]))
     vmax = float(np.max(arr[finite]))
-
     if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
         return np.zeros(arr.shape, dtype=np.uint8)
 
@@ -71,33 +70,21 @@ def save_volume_niftis(
 
     base_voxel_um = float(voxel_size_um) if voxel_size_um is not None else 1.0
 
-    if interpolated_volume is not None:
-        vol_u8 = scale_to_uint8(interpolated_volume)
+    def _save_one(volume: np.ndarray, *, name: str) -> None:
+        vol_u8 = scale_to_uint8(volume)
         res = isotropic_resolution_um_for_volume(
             atlas_volume=atlas_volume,
             volume=vol_u8,
             base_voxel_um=base_voxel_um,
             logger=logger,
         )
-        write_nifti(
-            vol_u8,
-            res,
-            f"{output_folder}/interpolated_volume/interpolated_volume",
-        )
+        write_nifti(vol_u8, res, f"{output_folder}/interpolated_volume/{name}")
+
+    if interpolated_volume is not None:
+        _save_one(interpolated_volume, name="interpolated_volume")
 
     if frequency_volume is not None:
-        freq_u8 = scale_to_uint8(frequency_volume)
-        res = isotropic_resolution_um_for_volume(
-            atlas_volume=atlas_volume,
-            volume=freq_u8,
-            base_voxel_um=base_voxel_um,
-            logger=logger,
-        )
-        write_nifti(
-            freq_u8,
-            res,
-            f"{output_folder}/interpolated_volume/frequency_volume",
-        )
+        _save_one(frequency_volume, name="frequency_volume")
 
 
 # Backwards-compatible alias (internal name used by earlier refactor iterations).

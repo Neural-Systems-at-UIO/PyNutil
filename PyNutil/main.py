@@ -17,7 +17,7 @@ from .io.read_and_write import open_custom_region_file
 from .processing.coordinate_extraction import folder_to_atlas_space
 from .io.volume_nifti import save_volume_niftis
 from .processing.section_volume import (
-    interpolate_volume as _interpolate_volume,
+    project_sections_to_volume as _project_sections_to_volume,
 )
 
 
@@ -229,9 +229,6 @@ class PyNutil:
         except Exception as e:
             raise ValueError(f"Error extracting coordinates: {e}")
 
-        except Exception as e:
-            raise ValueError(f"Error extracting coordinates: {e}")
-
     def quantify_coordinates(self):
         """
         Quantifies and summarizes pixel and centroid coordinates by atlas region,
@@ -290,6 +287,7 @@ class PyNutil:
         batch_size: int = 200_000,
         use_atlas_mask: bool = True,
         non_linear: bool = True,
+        value_mode: str = "pixel_count",
     ):
         """Build a 3D volume by projecting full section planes into atlas space.
 
@@ -316,6 +314,10 @@ class PyNutil:
             batch_size: KDTree query batch size.
             use_atlas_mask: If True, restrict interpolation to `self.atlas_volume != 0`.
             non_linear: If True and VisuAlign markers exist, apply marker-based deformation.
+            value_mode: What each voxel represents:
+                - "pixel_count": number of segmented pixels per voxel (default; backwards compatible)
+                - "mean": fraction of segmented pixels per voxel (segmented pixels / contributing pixels)
+                - "object_count": number of 2D connected components contributing to each voxel
 
         Returns:
             (volume, frequency_volume)
@@ -336,7 +338,7 @@ class PyNutil:
                 raise ValueError("shape must be provided when atlas_volume is unavailable")
             atlas_shape = tuple(int(x) for x in shape)
 
-        gv, fv = _interpolate_volume(
+        gv, fv = _project_sections_to_volume(
             segmentation_folder=self.segmentation_folder,
             alignment_json=self.alignment_json,
             colour=self.colour,
@@ -351,6 +353,7 @@ class PyNutil:
             batch_size=batch_size,
             use_atlas_mask=use_atlas_mask,
             non_linear=non_linear,
+            value_mode=value_mode,
         )
 
         self.interpolated_volume = gv
@@ -401,10 +404,6 @@ class PyNutil:
             try:
                 vol = getattr(self, "interpolated_volume", None)
                 freq = getattr(self, "frequency_volume", None)
-
-                if vol is not None or freq is not None:
-                    out_dir = f"{output_folder}/interpolated_volume"
-                    os.makedirs(out_dir, exist_ok=True)
 
                 save_volume_niftis(
                     output_folder=output_folder,

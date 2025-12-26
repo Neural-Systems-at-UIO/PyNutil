@@ -3,6 +3,17 @@ import json
 from .read_and_write import write_hemi_points_to_meshview
 
 
+def _ensure_analysis_output_dirs(output_folder: str) -> None:
+    os.makedirs(output_folder, exist_ok=True)
+    for subdir in (
+        "whole_series_report",
+        "per_section_meshview",
+        "per_section_reports",
+        "whole_series_meshview",
+    ):
+        os.makedirs(f"{output_folder}/{subdir}", exist_ok=True)
+
+
 def save_analysis_output(
     pixel_points,
     centroids,
@@ -51,11 +62,7 @@ def save_analysis_output(
         The path to the settings file that was used (default is None).
     """
     # Create the output folder if it doesn't exist
-    os.makedirs(output_folder, exist_ok=True)
-    os.makedirs(f"{output_folder}/whole_series_report", exist_ok=True)
-    os.makedirs(f"{output_folder}/per_section_meshview", exist_ok=True)
-    os.makedirs(f"{output_folder}/per_section_reports", exist_ok=True)
-    os.makedirs(f"{output_folder}/whole_series_meshview", exist_ok=True)
+    _ensure_analysis_output_dirs(output_folder)
     # Filter out rows where 'region_area' is 0 in label_df
     # if label_df is not None and "region_area" in label_df.columns:
     #     label_df = label_df[label_df["region_area"] != 0]
