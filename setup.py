@@ -24,5 +24,6 @@ setup(
         "pynrrd",
         "xmltodict",
         "opencv-python",
+        "scipy",
     ],
 )
