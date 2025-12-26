@@ -15,13 +15,15 @@ except ModuleNotFoundError:  # pragma: no cover
     from timing_utils import TimedTestCase
 
 
-class TestInterpolateVolume(TimedTestCase):
+class TestBuildVolumeFromSections(TimedTestCase):
     def setUp(self):
         self.tests_dir = os.path.dirname(__file__)
         self.settings_path = os.path.join(self.tests_dir, "test_cases", "brainglobe_atlas.json")
         self.expected_dir = os.path.join(
             self.tests_dir, "expected_outputs"
         )
+        # Keep the expected-output directory name stable to avoid re-generating
+        # large binary fixtures.
         self.save_root = os.path.basename(self.settings_path).split(".")[0] + "_interp_k5"
         # Note: demo_data outputs are for optional human inspection only.
         # Tests must never read from demo_data.
@@ -44,9 +46,9 @@ class TestInterpolateVolume(TimedTestCase):
         # Target max dimension ~80 voxels.
         scale = min(80.0 / max_dim, 1.0)
 
-        # Faithful plane-based volume: every pixel in each section plane contributes
+        # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
-        pnt.build_volume_from_sections(
+        pnt.interpolate_volume(
             scale=scale,
             missing_fill=np.nan,
             do_interpolation=True,
@@ -60,7 +62,7 @@ class TestInterpolateVolume(TimedTestCase):
         pnt.save_analysis(output_dir, create_visualisations=True)
 
     def test_interpolate_volume_k5_matches_expected(self):
-        with tempfile.TemporaryDirectory(prefix="pynutil_interp_k5_") as tmpdir:
+        with tempfile.TemporaryDirectory(prefix="pynutil_build_from_sections_k5_") as tmpdir:
             output_dir = os.path.join(tmpdir, self.save_root)
             output_report_dir = os.path.join(output_dir, "interpolated_volume")
 
@@ -85,7 +87,7 @@ class TestInterpolateVolume(TimedTestCase):
                 shutil.copytree(output_dir, self.demo_output_dir)
 
                 self.fail(
-                    "Expected interpolate_volume NIfTI outputs were missing. "
+                    "Expected volume NIfTI outputs were missing. "
                     f"Generated candidate outputs have been copied to: {self.demo_report_dir}. "
                     f"Please verify and copy that folder to: {self.expected_report_dir}, then re-run the tests."
                 )
