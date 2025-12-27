@@ -14,19 +14,8 @@ def derive_shape_from_atlas(
     *,
     atlas_shape: Tuple[int, int, int],
     scale: float,
-    shape: Optional[Tuple[int, int, int]] = None,
 ) -> Tuple[int, int, int]:
-    """Derive an output shape from atlas shape + scale.
-
-    `shape` is a deprecated escape hatch. If provided, `scale` must be 1.
-    """
-
-    if shape is not None:
-        if scale != 1.0:
-            raise ValueError(
-                "Do not pass both shape and scale; shape is derived from scale and atlas shape."
-            )
-        return tuple(int(x) for x in shape)
+    """Derive an output shape from atlas shape + scale."""
 
     if scale <= 0:
         raise ValueError("scale must be > 0")
@@ -40,7 +29,6 @@ def _knn_interpolate_generic(
     fv: np.ndarray,
     atlas_mask: Optional[np.ndarray],
     k: int,
-    weights: str,
     batch_size: int,
 ) -> np.ndarray:
     try:
@@ -50,8 +38,6 @@ def _knn_interpolate_generic(
 
     if k < 1:
         raise ValueError("k must be >= 1")
-    if k > 1 and weights not in {"uniform", "distance"}:
-        raise ValueError("weights must be 'uniform' or 'distance'")
 
     fit_mask = fv != 0
     if atlas_mask is not None:
@@ -69,7 +55,6 @@ def _knn_interpolate_generic(
 
     query_pts = np.column_stack(np.nonzero(target_mask)).astype(np.float32, copy=False)
     out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
-    eps = 1e-12
 
     for start in range(0, query_pts.shape[0], batch_size):
         end = min(start + batch_size, query_pts.shape[0])
@@ -79,11 +64,7 @@ def _knn_interpolate_generic(
             out_vals[start:end] = fit_vals[ind]
         else:
             neigh_vals = fit_vals[ind]
-            if weights == "uniform":
-                out_vals[start:end] = neigh_vals.mean(axis=1)
-            else:
-                w = 1.0 / (dist * dist + eps)
-                out_vals[start:end] = (neigh_vals * w).sum(axis=1) / w.sum(axis=1)
+            out_vals[start:end] = neigh_vals.mean(axis=1)
 
     if atlas_mask is not None:
         out = np.zeros_like(gv)
@@ -102,11 +83,9 @@ def project_sections_to_volume(
     atlas_shape: Tuple[int, int, int],
     atlas_volume: Optional[np.ndarray],
     scale: float = 1.0,
-    shape: Optional[Tuple[int, int, int]] = None,
     missing_fill: float = np.nan,
     do_interpolation: bool = True,
     k: int = 5,
-    weights: str = "uniform",
     batch_size: int = 200_000,
     use_atlas_mask: bool = True,
     non_linear: bool = True,
@@ -133,7 +112,7 @@ def project_sections_to_volume(
     import cv2
     import os
 
-    out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale, shape=shape)
+    out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
 
     quint_json = load_quint_json(alignment_json)
     slices = quint_json["slices"]
@@ -314,7 +293,6 @@ def project_sections_to_volume(
             fv=fv,
             atlas_mask=atlas_mask,
             k=k,
-            weights=weights,
             batch_size=batch_size,
         )
 

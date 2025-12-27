@@ -52,7 +52,6 @@ class TestBuildVolumeFromSections(TimedTestCase):
             missing_fill=np.nan,
             do_interpolation=True,
             k=5,
-            weights="uniform",
             use_atlas_mask=True,
             non_linear=True,
         )

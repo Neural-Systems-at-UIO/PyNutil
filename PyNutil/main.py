@@ -279,11 +279,9 @@ class PyNutil:
         self,
         *,
         scale: float = 1.0,
-        shape: Optional[Tuple[int, int, int]] = None,
         missing_fill: float = np.nan,
         do_interpolation: bool = True,
         k: int = 5,
-        weights: str = "uniform",
         batch_size: int = 200_000,
         use_atlas_mask: bool = True,
         non_linear: bool = True,
@@ -306,11 +304,9 @@ class PyNutil:
         Args:
             scale: Multiply atlas-space coordinates by this factor before binning. The output
                 shape is derived from `self.atlas_volume.shape` and this scale.
-            shape: Deprecated escape hatch. Do not pass together with scale.
             missing_fill: Value for voxels with frequency 0 (after interpolation if enabled).
             do_interpolation: If True, fill/smooth within atlas mask using kNN over observed voxels.
             k: Number of nearest neighbors (default 5).
-            weights: "uniform" or "distance" (used when k>1).
             batch_size: KDTree query batch size.
             use_atlas_mask: If True, restrict interpolation to `self.atlas_volume != 0`.
             non_linear: If True and VisuAlign markers exist, apply marker-based deformation.
@@ -334,9 +330,7 @@ class PyNutil:
             else None
         )
         if atlas_shape is None:
-            if shape is None:
-                raise ValueError("shape must be provided when atlas_volume is unavailable")
-            atlas_shape = tuple(int(x) for x in shape)
+            raise ValueError("atlas_volume is unavailable")
 
         gv, fv = _project_sections_to_volume(
             segmentation_folder=self.segmentation_folder,
@@ -345,11 +339,9 @@ class PyNutil:
             atlas_shape=atlas_shape,
             atlas_volume=getattr(self, "atlas_volume", None),
             scale=scale,
-            shape=shape,
             missing_fill=missing_fill,
             do_interpolation=do_interpolation,
             k=k,
-            weights=weights,
             batch_size=batch_size,
             use_atlas_mask=use_atlas_mask,
             non_linear=non_linear,
