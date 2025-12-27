@@ -358,7 +358,6 @@ class PyNutil:
 
         self.interpolated_volume = gv
         self.frequency_volume = fv
-        return gv, fv
 
     def save_analysis(self, output_folder, create_visualisations=True):
         """

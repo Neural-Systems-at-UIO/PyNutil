@@ -7,7 +7,7 @@ import numpy as np
 from ..io.read_and_write import load_quint_json
 from .transformations import transform_to_atlas_space
 from .utils import number_sections
-from .visualign_deformations import triangulate, transform_vec
+from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
 
 
 def derive_shape_from_atlas(
@@ -213,18 +213,19 @@ def project_sections_to_volume(
         reg_x = (xx + 0.5) * (float(reg_width) / float(plane_w))
         reg_y = (yy + 0.5) * (float(reg_height) / float(plane_h))
 
+        flat_x = reg_x.reshape(-1)
+        flat_y = reg_y.reshape(-1)
+
         if non_linear and "markers" in slice_dict:
             tri = triangulate(reg_width, reg_height, slice_dict["markers"])
-            flat_x = reg_x.reshape(-1)
-            flat_y = reg_y.reshape(-1)
-            new_x, new_y = transform_vec(tri, flat_x, flat_y)
+            new_x, new_y = forwardtransform_vec(tri, flat_x, flat_y)
             map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
             map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         else:
             map_x = reg_x.astype(np.float32, copy=False)
             map_y = reg_y.astype(np.float32, copy=False)
-            new_x = map_x.reshape(-1)
-            new_y = map_y.reshape(-1)
+            new_x = flat_x
+            new_y = flat_y
 
         sampled = cv2.remap(
             values_reg,
@@ -243,7 +244,7 @@ def project_sections_to_volume(
             flat_labels = labels.reshape(-1)
 
         coords = transform_to_atlas_space(
-            slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
+            slice_dict["anchoring"], flat_y, flat_x, reg_height, reg_width
         )
         if scale != 1.0:
             coords = coords * float(scale)

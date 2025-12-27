@@ -10,7 +10,7 @@ segmentation_folder = os.path.join(
     script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
 )
 alignment_json = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/damage_markers.json"
+    script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
 )
 colour = [0, 0, 0]
 atlas_name = "allen_mouse_25um"
@@ -34,5 +34,5 @@ pnt.quantify_coordinates()
 print("total objects: ", pnt.label_df["object_count"].sum())
 print("left hemi objects: ", pnt.label_df["left_hemi_object_count"].sum())
 print("right hemi objects: ", pnt.label_df["right_hemi_object_count"].sum())
-
+pnt.interpolate_volume()
 pnt.save_analysis(output_folder)
