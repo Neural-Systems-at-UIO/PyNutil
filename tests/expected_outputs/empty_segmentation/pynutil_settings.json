@@ -1,0 +1,11 @@
+{
+    "segmentation_folder": "tests/test_data/nonlinear_allen_mouse/segmentations/",
+    "alignment_json": "tests/test_data/nonlinear_allen_mouse/alignment.json",
+    "colour": [
+        123,
+        123,
+        123
+    ],
+    "custom_region_path": null,
+    "atlas_name": "allen_mouse_25um"
+}

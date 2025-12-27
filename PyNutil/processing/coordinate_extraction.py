@@ -310,14 +310,18 @@ def folder_to_atlas_space(
         )
         for _ in range(len(segmentations))
     ]
-    points_list = [np.array([]) for _ in range(len(segmentations))]
-    points_labels = [np.array([]) for _ in range(len(segmentations))]
-    centroids_list = [np.array([]) for _ in range(len(segmentations))]
-    centroids_labels = [np.array([]) for _ in range(len(segmentations))]
-    per_point_undamaged_list = [np.array([]) for _ in range(len(segmentations))]
-    per_centroid_undamaged_list = [np.array([]) for _ in range(len(segmentations))]
-    points_hemi_labels = [np.array([]) for _ in range(len(segmentations))]
-    centroids_hemi_labels = [np.array([]) for _ in range(len(segmentations))]
+    points_list = [np.array([], dtype=np.float64) for _ in range(len(segmentations))]
+    points_labels = [np.array([], dtype=np.int64) for _ in range(len(segmentations))]
+    centroids_list = [np.array([], dtype=np.float64) for _ in range(len(segmentations))]
+    centroids_labels = [np.array([], dtype=np.int64) for _ in range(len(segmentations))]
+    per_point_undamaged_list = [np.array([], dtype=bool) for _ in range(len(segmentations))]
+    per_centroid_undamaged_list = [
+        np.array([], dtype=bool) for _ in range(len(segmentations))
+    ]
+    points_hemi_labels = [np.array([], dtype=np.int64) for _ in range(len(segmentations))]
+    centroids_hemi_labels = [
+        np.array([], dtype=np.int64) for _ in range(len(segmentations))
+    ]
 
     if len(segmentations) > 0:
         max_workers = min(32, len(segmentations), (os.cpu_count() or 1) + 4)
@@ -682,15 +686,15 @@ def segmentation_to_atlas_space(
     )
 
     if scaled_y is None or scaled_x is None:
-        points_list[index] = np.array([])
-        centroids_list[index] = np.array([])
+        points_list[index] = np.array([], dtype=np.float64)
+        centroids_list[index] = np.array([], dtype=np.float64)
         region_areas_list[index] = region_areas
-        centroids_labels[index] = np.array([])
-        per_centroid_undamaged_list[index] = np.array([])
-        points_labels[index] = np.array([])
-        per_point_undamaged_list[index] = np.array([])
-        points_hemi_labels[index] = np.array([])
-        centroids_hemi_labels[index] = np.array([])
+        centroids_labels[index] = np.array([], dtype=np.int64)
+        per_centroid_undamaged_list[index] = np.array([], dtype=bool)
+        points_labels[index] = np.array([], dtype=np.int64)
+        per_point_undamaged_list[index] = np.array([], dtype=bool)
+        points_hemi_labels[index] = np.array([], dtype=np.int64)
+        centroids_hemi_labels[index] = np.array([], dtype=np.int64)
         gc.collect()
         return
 

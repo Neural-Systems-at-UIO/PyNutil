@@ -113,6 +113,7 @@ test_case_files = [
     "custom_atlas.json",
     "upsized_allen.json",
     "qupath_test.json",
+    "empty_segmentation.json",
 ]
 
 

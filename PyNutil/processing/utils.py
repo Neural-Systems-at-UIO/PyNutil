@@ -229,10 +229,10 @@ def process_results(
     ]
 
     if len(points_list) == 0:
-        points = np.array([])
-        points_labels = np.array([])
-        points_undamaged = np.array([])
-        points_hemi_labels = np.array([])
+        points = np.array([], dtype=np.float64)
+        points_labels = np.array([], dtype=np.int64)
+        points_undamaged = np.array([], dtype=bool)
+        points_hemi_labels = np.array([], dtype=np.int64)
     else:
         points = np.concatenate(points_list)
         points_labels = np.concatenate(points_labels)
@@ -240,10 +240,10 @@ def process_results(
         points_hemi_labels = np.concatenate(points_hemi_labels)
 
     if len(centroids_list) == 0:
-        centroids = np.array([])
-        centroids_labels = np.array([])
-        centroids_undamaged = np.array([])
-        centroids_hemi_labels = np.array([])
+        centroids = np.array([], dtype=np.float64)
+        centroids_labels = np.array([], dtype=np.int64)
+        centroids_undamaged = np.array([], dtype=bool)
+        centroids_hemi_labels = np.array([], dtype=np.int64)
     else:
         centroids = np.concatenate(centroids_list)
         centroids_labels = np.concatenate(centroids_labels)

@@ -254,30 +254,48 @@ def _merge_dataframes(current_df, ra, atlas_labels):
     current_df_new = all_region_df.merge(
         current_df[["idx", *cols_to_use]], on="idx", how="left"
     )
+    # Ensure numeric columns are filled with 0 and have correct dtype to avoid warnings
+    for col in [
+        "pixel_count",
+        "region_area",
+        "left_hemi_pixel_count",
+        "left_hemi_region_area",
+        "right_hemi_pixel_count",
+        "right_hemi_region_area",
+    ]:
+        if col in current_df_new.columns:
+            current_df_new[col] = pd.to_numeric(current_df_new[col]).fillna(0)
+
     if (
         "pixel_count" in current_df_new.columns
         and "region_area" in current_df_new.columns
     ):
-        current_df_new["area_fraction"] = (
-            current_df_new["pixel_count"] / current_df_new["region_area"]
+        mask = current_df_new["region_area"] != 0
+        current_df_new["area_fraction"] = 0.0
+        current_df_new.loc[mask, "area_fraction"] = (
+            current_df_new.loc[mask, "pixel_count"]
+            / current_df_new.loc[mask, "region_area"]
         )
     if (
         "left_hemi_pixel_count" in current_df_new.columns
         and "left_hemi_region_area" in current_df_new.columns
     ):
-        current_df_new["left_hemi_area_fraction"] = (
-            current_df_new["left_hemi_pixel_count"]
-            / current_df_new["left_hemi_region_area"]
+        mask = current_df_new["left_hemi_region_area"] != 0
+        current_df_new["left_hemi_area_fraction"] = 0.0
+        current_df_new.loc[mask, "left_hemi_area_fraction"] = (
+            current_df_new.loc[mask, "left_hemi_pixel_count"]
+            / current_df_new.loc[mask, "left_hemi_region_area"]
         )
     if (
         "right_hemi_pixel_count" in current_df_new.columns
         and "right_hemi_region_area" in current_df_new.columns
     ):
-        current_df_new["right_hemi_area_fraction"] = (
-            current_df_new["right_hemi_pixel_count"]
-            / current_df_new["right_hemi_region_area"]
+        mask = current_df_new["right_hemi_region_area"] != 0
+        current_df_new["right_hemi_area_fraction"] = 0.0
+        current_df_new.loc[mask, "right_hemi_area_fraction"] = (
+            current_df_new.loc[mask, "right_hemi_pixel_count"]
+            / current_df_new.loc[mask, "right_hemi_region_area"]
         )
-    current_df_new.fillna(0, inplace=True)
     return current_df_new
 
 
