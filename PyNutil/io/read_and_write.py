@@ -178,7 +178,7 @@ def load_segmentation(segmentation_path: str):
     if segmentation_path.endswith(".dzip"):
         return reconstruct_dzi(segmentation_path)
     else:
-        return cv2.imread(segmentation_path)
+        return cv2.imread(segmentation_path, cv2.IMREAD_UNCHANGED)
 
 
 # related to read and write

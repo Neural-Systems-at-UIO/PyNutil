@@ -54,6 +54,9 @@ pnt = PyNutil(
     atlas_name='allen_mouse_25um'
 )
 
+#optionally if you want to generate a 3D heatmap
+pnt.interpolate_volume()
+
 pnt.get_coordinates(object_cutoff=0)
 
 pnt.quantify_coordinates()

@@ -112,6 +112,7 @@ test_case_files = [
     "brainglobe_atlas_damage.json",
     "custom_atlas.json",
     "upsized_allen.json",
+    "qupath_test.json",
 ]
 
 

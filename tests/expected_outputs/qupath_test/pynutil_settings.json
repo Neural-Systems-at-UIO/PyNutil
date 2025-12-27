@@ -1,0 +1,7 @@
+{
+    "segmentation_folder": "tests/test_data/qupath/segmentation/",
+    "alignment_json": "tests/test_data/qupath/mouse6_nonlinear_lz.json",
+    "colour": "auto",
+    "custom_region_path": null,
+    "atlas_name": "allen_mouse_25um"
+}

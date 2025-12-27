@@ -175,7 +175,11 @@ class PyNutil:
             )
 
     def get_coordinates(
-        self, non_linear=True, object_cutoff=0, use_flat=False, apply_damage_mask=True
+        self,
+        non_linear=True,
+        object_cutoff=0,
+        use_flat=False,
+        apply_damage_mask=True,
     ):
         """
         Retrieves pixel and centroid coordinates from segmentation data,

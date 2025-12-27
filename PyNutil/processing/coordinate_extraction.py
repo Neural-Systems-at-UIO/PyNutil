@@ -78,26 +78,21 @@ def get_objects_and_assign_regions_optimized(
     y_scale,
     x_scale,
     object_cutoff=0,
-    tolerance=10,
     atlas_at_original_resolution=False,
     reg_height=None,
     reg_width=None,
 ):
     """Single-pass object detection, pixel extraction, and region assignment."""
 
-    # Memory-efficient binary segmentation: process channels separately with int16
-    # This prevents int32 conversion of the whole image which triples memory usage
-    binary_seg = (
-        np.abs(segmentation[:, :, 0].astype(np.int16) - pixel_id[0]) <= tolerance
-    )
-    if segmentation.shape[2] > 1:
-        binary_seg &= (
-            np.abs(segmentation[:, :, 1].astype(np.int16) - pixel_id[1]) <= tolerance
-        )
-    if segmentation.shape[2] > 2:
-        binary_seg &= (
-            np.abs(segmentation[:, :, 2].astype(np.int16) - pixel_id[2]) <= tolerance
-        )
+    # Memory-efficient binary segmentation: process channels separately
+    if segmentation.ndim == 2:
+        binary_seg = segmentation == pixel_id[0]
+    else:
+        binary_seg = segmentation[:, :, 0] == pixel_id[0]
+        if segmentation.shape[2] > 1:
+            binary_seg &= segmentation[:, :, 1] == pixel_id[1]
+        if segmentation.shape[2] > 2:
+            binary_seg &= segmentation[:, :, 2] == pixel_id[2]
 
     # Get pixel coordinates
     pixel_y, pixel_x = np.where(binary_seg)
@@ -508,7 +503,7 @@ def create_threads(
     return threads
 
 
-def detect_pixel_id(segmentation: np.array):
+def detect_pixel_id(segmentation: np.ndarray):
     """
     Infers pixel color from the first non-background region.
 
@@ -516,10 +511,21 @@ def detect_pixel_id(segmentation: np.array):
         segmentation (ndarray): Segmentation array.
 
     Returns:
-        ndarray: Identified pixel color (RGB).
+        ndarray: Identified pixel color (RGB or scalar).
     """
-    segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
-    pixel_id = segmentation_no_background[0]
+    if segmentation.ndim == 2:
+        # For 2D images, find the first non-zero value
+        non_zero = segmentation[segmentation != 0]
+        if non_zero.size > 0:
+            pixel_id = [int(non_zero[0])]
+        else:
+            pixel_id = [255]
+    else:
+        segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
+        if segmentation_no_background.size > 0:
+            pixel_id = segmentation_no_background[0]
+        else:
+            pixel_id = [255, 255, 255]
     print("detected pixel_id: ", pixel_id)
     return pixel_id
 
@@ -670,7 +676,6 @@ def segmentation_to_atlas_space(
         y_scale,
         x_scale,
         object_cutoff=object_cutoff,
-        tolerance=10,
         atlas_at_original_resolution=True,
         reg_height=reg_height,
         reg_width=reg_width,
