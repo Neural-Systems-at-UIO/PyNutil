@@ -73,38 +73,40 @@ def save_analysis_output(
             na_rep="",
             index=False,
         )
-    else:
+    elif not prepend:
         print("No quantification found, so only coordinates will be saved.")
         print(
             "If you want to save the quantification, please run quantify_coordinates."
         )
 
-    _save_per_section_reports(
-        per_section_df,
-        segmentation_filenames,
-        points_len,
-        centroids_len,
-        pixel_points,
-        centroids,
-        labeled_points,
-        labeled_points_centroids,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        atlas_labels,
-        output_folder,
-        prepend,
-    )
-    _save_whole_series_meshview(
-        pixel_points,
-        labeled_points,
-        centroids,
-        labeled_points_centroids,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        atlas_labels,
-        output_folder,
-        prepend,
-    )
+    if per_section_df is not None and segmentation_filenames is not None:
+        _save_per_section_reports(
+            per_section_df,
+            segmentation_filenames,
+            points_len,
+            centroids_len,
+            pixel_points,
+            centroids,
+            labeled_points,
+            labeled_points_centroids,
+            points_hemi_labels,
+            centroids_hemi_labels,
+            atlas_labels,
+            output_folder,
+            prepend,
+        )
+    if pixel_points is not None:
+        _save_whole_series_meshview(
+            pixel_points,
+            labeled_points,
+            centroids,
+            labeled_points_centroids,
+            points_hemi_labels,
+            centroids_hemi_labels,
+            atlas_labels,
+            output_folder,
+            prepend,
+        )
 
     # Save settings to JSON file for reference
     settings_dict = {

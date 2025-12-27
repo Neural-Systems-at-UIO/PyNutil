@@ -7,6 +7,7 @@ import numpy as np
 import nibabel as nib
 
 from PyNutil import PyNutil
+from PyNutil.io.volume_nifti import scale_to_uint8
 from tests.test_helpers import copy_tree_to_demo, small_volume_scale
 try:
     # When run via `python -m unittest discover` from repo root
@@ -36,7 +37,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
         self.expected_case_dir = os.path.join(self.expected_dir, self.save_root)
         self.expected_report_dir = os.path.join(self.expected_case_dir, "interpolated_volume")
 
-    def _generate_outputs(self, output_dir: str):
+    def _generate_pnt(self):
         pnt = PyNutil(settings_file=self.settings_path)
         pnt.get_coordinates(object_cutoff=0)
         pnt.quantify_coordinates()
@@ -55,28 +56,25 @@ class TestBuildVolumeFromSections(TimedTestCase):
             use_atlas_mask=True,
             non_linear=True,
         )
-
-        # Volumes should be written as NII during save_analysis.
-        pnt.save_analysis(output_dir, create_visualisations=True)
+        return pnt
 
     def test_interpolate_volume_k5_matches_expected(self):
+        pnt = self._generate_pnt()
+
+        # Volumes are saved as uint8 in NIfTI; we scale them here to match
+        # the expected disk fixtures without having to read back what we just wrote.
+        got_interp = scale_to_uint8(pnt.interpolated_volume)
+        got_freq = scale_to_uint8(pnt.frequency_volume)
+
+        exp_interp_path = os.path.join(
+            self.expected_report_dir, "interpolated_volume.nii.gz"
+        )
+        exp_freq_path = os.path.join(self.expected_report_dir, "frequency_volume.nii.gz")
+
         with tempfile.TemporaryDirectory(prefix="pynutil_build_from_sections_k5_") as tmpdir:
             output_dir = os.path.join(tmpdir, self.save_root)
-            output_report_dir = os.path.join(output_dir, "interpolated_volume")
-
-            self._generate_outputs(output_dir)
-
-            got_interp_path = os.path.join(
-                output_report_dir, "interpolated_volume.nii.gz"
-            )
-            got_freq_path = os.path.join(output_report_dir, "frequency_volume.nii.gz")
-            self.assertTrue(os.path.exists(got_interp_path), f"Missing output: {got_interp_path}")
-            self.assertTrue(os.path.exists(got_freq_path), f"Missing output: {got_freq_path}")
-
-            exp_interp_path = os.path.join(
-                self.expected_report_dir, "interpolated_volume.nii.gz"
-            )
-            exp_freq_path = os.path.join(self.expected_report_dir, "frequency_volume.nii.gz")
+            # Volumes should be written as NII during save_analysis for human inspection.
+            pnt.save_analysis(output_dir, create_visualisations=True)
 
             if not (os.path.exists(exp_interp_path) and os.path.exists(exp_freq_path)):
                 # Copy outputs for human inspection (never used for assertions).
@@ -92,18 +90,16 @@ class TestBuildVolumeFromSections(TimedTestCase):
             # Tests must never read from demo_data.
             copy_tree_to_demo(output_dir, self.demo_output_dir)
 
-            # Use np.asarray (not np.asanyarray) to avoid NumPy's copy=False pathway,
-            # which can produce empty arrays for nibabel's ArrayProxy on newer NumPy.
-            got_interp = np.asarray(nib.load(got_interp_path).dataobj)
-            got_freq = np.asarray(nib.load(got_freq_path).dataobj)
-            exp_interp = np.asarray(nib.load(exp_interp_path).dataobj)
-            exp_freq = np.asarray(nib.load(exp_freq_path).dataobj)
+        # Use np.asarray (not np.asanyarray) to avoid NumPy's copy=False pathway,
+        # which can produce empty arrays for nibabel's ArrayProxy on newer NumPy.
+        exp_interp = np.asarray(nib.load(exp_interp_path).dataobj)
+        exp_freq = np.asarray(nib.load(exp_freq_path).dataobj)
 
-            self.assertEqual(exp_interp.shape, got_interp.shape)
-            self.assertEqual(exp_freq.shape, got_freq.shape)
-            # Volumes are saved as uint8; compare exactly.
-            self.assertTrue(np.array_equal(exp_interp, got_interp))
-            self.assertTrue(np.array_equal(exp_freq, got_freq))
+        self.assertEqual(exp_interp.shape, got_interp.shape)
+        self.assertEqual(exp_freq.shape, got_freq.shape)
+        # Compare exactly against the expected uint8 volumes.
+        self.assertTrue(np.array_equal(exp_interp, got_interp))
+        self.assertTrue(np.array_equal(exp_freq, got_freq))
 
 
 if __name__ == "__main__":

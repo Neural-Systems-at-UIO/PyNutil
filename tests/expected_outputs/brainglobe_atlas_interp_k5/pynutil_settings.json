@@ -6,19 +6,6 @@
         0,
         0
     ],
-    "custom_region_path": [
-        null
-    ],
-    "atlas_name": [
-        null
-    ],
-    "atlas_path": [
-        null
-    ],
-    "label_path": [
-        null
-    ],
-    "settings_file": [
-        null
-    ]
+    "custom_region_path": null,
+    "atlas_name": "allen_mouse_25um"
 }

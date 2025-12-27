@@ -35,22 +35,23 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
 
         scale = self._scale_for_small_volume(pnt.atlas_volume.shape)
 
-        gv_pc, fv = pnt.interpolate_volume(
+        pnt.interpolate_volume(
             scale=scale,
             missing_fill=0.0,
             do_interpolation=False,
             non_linear=False,
             value_mode="pixel_count",
         )
+        gv_pc, fv = pnt.interpolated_volume, pnt.frequency_volume
 
-        gv_mean, fv2 = pnt.interpolate_volume(
+        pnt.interpolate_volume(
             scale=scale,
             missing_fill=-1.0,
             do_interpolation=False,
             non_linear=False,
             value_mode="mean",
         )
-
+        gv_mean, fv2 = pnt.interpolated_volume, pnt.frequency_volume
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_mean_") as tmpdir:
             out_root = os.path.join(tmpdir, "mean_vs_pixel_count")
 
@@ -99,21 +100,23 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
 
         scale = self._scale_for_small_volume(pnt.atlas_volume.shape)
 
-        gv_pc, fv = pnt.interpolate_volume(
+        pnt.interpolate_volume(
             scale=scale,
             missing_fill=0.0,
             do_interpolation=False,
             non_linear=False,
             value_mode="pixel_count",
         )
+        gv_pc, fv = pnt.interpolated_volume, pnt.frequency_volume
 
-        gv_obj, fv2 = pnt.interpolate_volume(
+        pnt.interpolate_volume(
             scale=scale,
             missing_fill=0.0,
             do_interpolation=False,
             non_linear=False,
             value_mode="object_count",
         )
+        gv_obj, fv2 = pnt.interpolated_volume, pnt.frequency_volume
 
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_object_") as tmpdir:
             out_root = os.path.join(tmpdir, "object_count")
