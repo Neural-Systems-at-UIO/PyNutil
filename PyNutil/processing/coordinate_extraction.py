@@ -615,8 +615,6 @@ def segmentation_to_atlas_space_intensity(
     df = pd.DataFrame(
         {"idx": unique_labels, "sum_intensity": sums, "pixel_count": counts}
     )
-    df = df[df["pixel_count"] > 0]
-    df = df[df["idx"] != 0]  # Remove background
 
     # If hemi_mask exists, we need to do this per hemisphere too
     if hemi_mask is not None:
