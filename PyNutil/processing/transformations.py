@@ -34,17 +34,20 @@ def transform_to_atlas_space(anchoring, y, x, reg_height, reg_width):
     Returns:
         ndarray: Transformed coordinates.
     """
-    o = anchoring[0:3]
-    u = anchoring[3:6]
-    u = np.array([u[0], u[1], u[2]])
-    v = anchoring[6:9]
-    v = np.array([v[0], v[1], v[2]])
-    y_scale = y / reg_height
-    x_scale = x / reg_width
-    xyz_v = np.array([y_scale * v[0], y_scale * v[1], y_scale * v[2]])
-    xyz_u = np.array([x_scale * u[0], x_scale * u[1], x_scale * u[2]])
-    o = np.reshape(o, (3, 1))
-    return (o + xyz_u + xyz_v).T
+    # NOTE: This implementation intentionally avoids building intermediate arrays via
+    # np.array([row0, row1, row2]).T, which has been observed to miscompute under
+    # some Python/numpy builds for large inputs.
+    o = np.asarray(anchoring[0:3], dtype=np.float64)
+    u = np.asarray(anchoring[3:6], dtype=np.float64)
+    v = np.asarray(anchoring[6:9], dtype=np.float64)
+
+    y_arr = np.asarray(y, dtype=np.float64).ravel()
+    x_arr = np.asarray(x, dtype=np.float64).ravel()
+    y_scale = y_arr / float(reg_height)
+    x_scale = x_arr / float(reg_width)
+
+    # Shape: (N, 3)
+    return o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])
 
 
 def image_to_atlas_space(image, anchoring):
