@@ -59,6 +59,8 @@ class PyNutil:
         custom_region_path=None,
         settings_file=None,
         voxel_size_um: Optional[float] = None,
+        min_intensity: Optional[int] = None,
+        max_intensity: Optional[int] = None,
     ):
         """
         Initializes the PyNutil class with the given parameters.
@@ -85,6 +87,12 @@ class PyNutil:
             The path to a custom region id file. This can be found
         settings_file : str, optional
             The path to the settings JSON file. This file contains the above parameters and is used for automation (default is None).
+        voxel_size_um : float, optional
+            Only relevant when using a custom atlas. The voxel size of the atlas in micrometers (default is None).
+        min_intensity : int, optional
+            Only when specifying images with intensity to quantify. The minimum intensity value to include in quantification and MeshView (default is None).
+        max_intensity : int, optional
+            Only when specifying images with intensity to quantify. The maximum intensity value to include in quantification and MeshView (default is None).
 
         Raises
         ------
@@ -121,11 +129,15 @@ class PyNutil:
                         custom_region_path = settings["custom_region_path"]
                     if "voxel_size_um" in settings:
                         voxel_size_um = settings["voxel_size_um"]
+                    if "min_intensity" in settings:
+                        min_intensity = settings["min_intensity"]
+                    if "max_intensity" in settings:
+                        max_intensity = settings["max_intensity"]
                     if "atlas_path" in settings and "label_path" in settings:
                         atlas_path = settings["atlas_path"]
                         label_path = settings["label_path"]
                         if "hemi_path" in settings:
-                            hemi_path = settings["hemisphere_path"]
+                            hemi_path = settings["hemi_path"]
                     else:
                         atlas_name = settings["atlas_name"]
                 except KeyError as exc:
@@ -138,6 +150,17 @@ class PyNutil:
                     "Please specify either segmentation_folder or image_folder, not both."
                 )
 
+            if segmentation_folder and (min_intensity is not None or max_intensity is not None):
+                raise ValueError(
+                    "min_intensity and max_intensity are only supported when using image_folder, not segmentation_folder."
+                )
+
+            if atlas_name is not None and voxel_size_um is not None:
+                logger.warning(
+                    f"Voxel size ({voxel_size_um} um) was specified but will be ignored because atlas_name ({atlas_name}) is provided. Voxel size will be inferred from the atlas name."
+                )
+                voxel_size_um = None
+
             self.segmentation_folder = segmentation_folder
             self.image_folder = image_folder
             self.alignment_json = alignment_json
@@ -145,6 +168,8 @@ class PyNutil:
             self.intensity_channel = intensity_channel
             self.atlas_name = atlas_name
             self.voxel_size_um = float(voxel_size_um) if voxel_size_um is not None else None
+            self.min_intensity = min_intensity
+            self.max_intensity = max_intensity
             self.custom_region_path = custom_region_path
             if custom_region_path:
                 custom_regions_dict, custom_atlas_labels = open_custom_region_file(
@@ -200,6 +225,8 @@ class PyNutil:
         object_cutoff=0,
         use_flat=False,
         apply_damage_mask=True,
+        min_intensity=None,
+        max_intensity=None,
     ):
         """
         Retrieves pixel and centroid coordinates from segmentation data,
@@ -212,10 +239,16 @@ class PyNutil:
             object_cutoff (int, optional): Minimum object size.
             use_flat (bool, optional): Use flat maps if True.
             apply_damage_mask (bool, optional): Apply damage mask if True.
+            min_intensity (int, optional): Minimum intensity value to include.
+            max_intensity (int, optional): Maximum intensity value to include.
 
         Returns:
             None: Results are stored in class attributes.
         """
+        # Use provided values or fall back to class defaults
+        min_intensity = min_intensity if min_intensity is not None else self.min_intensity
+        max_intensity = max_intensity if max_intensity is not None else self.max_intensity
+
         try:
             if self.image_folder:
                 (
@@ -236,6 +269,8 @@ class PyNutil:
                     self.hemi_map,
                     use_flat,
                     apply_damage_mask,
+                    min_intensity=min_intensity,
+                    max_intensity=max_intensity,
                 )
                 # In intensity mode, we don't have separate centroids
                 self.centroids = None

@@ -422,6 +422,8 @@ def folder_to_atlas_space_intensity(
     hemi_map=None,
     use_flat=False,
     apply_damage_mask=True,
+    min_intensity=None,
+    max_intensity=None,
 ):
     """
     Processes all images in a folder, mapping each one to atlas space and extracting intensity.
@@ -436,6 +438,8 @@ def folder_to_atlas_space_intensity(
         hemi_map (ndarray, optional): Hemisphere mask data.
         use_flat (bool, optional): If True, load flat files.
         apply_damage_mask (bool, optional): If True, apply damage mask.
+        min_intensity (int, optional): Minimum intensity value to include.
+        max_intensity (int, optional): Maximum intensity value to include.
 
     Returns:
         tuple: (region_intensities_list, images, centroids, centroids_labels, centroids_hemi_labels, centroids_len, centroids_intensities)
@@ -499,6 +503,8 @@ def folder_to_atlas_space_intensity(
                         centroids_hemi_labels_list,
                         centroids_intensities_list,
                         centroids_len,
+                        min_intensity=min_intensity,
+                        max_intensity=max_intensity,
                     )
                 )
 
@@ -541,12 +547,20 @@ def segmentation_to_atlas_space_intensity(
     centroids_hemi_labels_list=None,
     centroids_intensities_list=None,
     centroids_len=None,
+    min_intensity=None,
+    max_intensity=None,
 ):
     """
     Transforms a single image file into atlas space and extracts intensity.
     """
     image = load_segmentation(image_path)
     intensity = convert_to_intensity(image, intensity_channel)
+
+    # Apply intensity filters if specified
+    if min_intensity is not None:
+        intensity[intensity < min_intensity] = 0
+    if max_intensity is not None:
+        intensity[intensity > max_intensity] = 0
 
     reg_height, reg_width = slice_dict["height"], slice_dict["width"]
     triangulation = get_triangulation(slice_dict, reg_width, reg_height, non_linear)
@@ -591,6 +605,12 @@ def segmentation_to_atlas_space_intensity(
     intensity_resized = cv2.resize(
         intensity, (reg_width, reg_height), interpolation=cv2.INTER_AREA
     )
+
+    # Re-apply intensity filters after resizing to handle interpolation artifacts
+    if min_intensity is not None:
+        intensity_resized[intensity_resized < min_intensity] = 0
+    if max_intensity is not None:
+        intensity_resized[intensity_resized > max_intensity] = 0
 
     # Apply damage mask if it exists
     if damage_mask is not None:
@@ -650,9 +670,14 @@ def segmentation_to_atlas_space_intensity(
 
     region_intensities_list[index] = df
 
-    # Extract pixels with signal for MeshView
-    # We use a threshold to avoid background noise
-    signal_mask = intensity_resized > 10
+    # Extract pixels for MeshView
+    # We respect the intensity filters if specified
+    signal_mask = np.ones_like(intensity_resized, dtype=bool)
+    if min_intensity is not None:
+        signal_mask &= (intensity_resized >= min_intensity)
+    if max_intensity is not None:
+        signal_mask &= (intensity_resized <= max_intensity)
+
     if damage_mask is not None:
         signal_mask &= damage_mask_resized
 
@@ -663,13 +688,23 @@ def segmentation_to_atlas_space_intensity(
         image_resized = cv2.resize(image, (reg_width, reg_height), interpolation=cv2.INTER_AREA)
         # Convert BGR to RGB for MeshView
         image_resized = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)
+
+        # Apply intensity filters to RGB data as well to ensure consistency
+        if min_intensity is not None or max_intensity is not None:
+            # Calculate grayscale for filtering
+            temp_gray = (0.2989 * image_resized[:, :, 0] + 0.5870 * image_resized[:, :, 1] + 0.1140 * image_resized[:, :, 2])
+            if min_intensity is not None:
+                image_resized[temp_gray < min_intensity] = 0
+            if max_intensity is not None:
+                image_resized[temp_gray > max_intensity] = 0
+
         sig_intensities = image_resized[sig_y, sig_x]
     else:
         sig_intensities = intensity_resized[sig_y, sig_x]
 
     # Sample pixels to keep MeshView responsive
-    # 20,000 points per section is a good balance
-    max_points = 20000
+    # 100,000 points per section is a good balance
+    max_points = 100000
     if len(sig_y) > max_points:
         # Use linspace for reproducible sampling
         indices = np.linspace(0, len(sig_y) - 1, max_points).astype(int)

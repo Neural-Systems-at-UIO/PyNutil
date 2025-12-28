@@ -387,14 +387,44 @@ def write_points_to_meshview(
         # Intensity mode: group by intensity bins instead of atlas regions
         # This creates a point cloud that looks like the original image
 
-        # If intensities is RGB (N, 3), convert to grayscale for binning
+        if colormap == "original_colours" and intensities.ndim == 2 and intensities.shape[1] == 3:
+            # RGB mode: group by unique RGB values for maximum fidelity
+            rgb_data = intensities.astype(np.uint8)
+            unique_colors, inverse_indices = np.unique(rgb_data, axis=0, return_inverse=True)
+
+            # If there are too many unique colors, MeshView UI becomes slow.
+            # Rounding to nearest 8 (32 levels per channel) keeps it responsive.
+            if len(unique_colors) > 1024:
+                rgb_data = (np.round(rgb_data / 8) * 8)
+                rgb_data = np.clip(rgb_data, 0, 255).astype(np.uint8)
+                unique_colors, inverse_indices = np.unique(rgb_data, axis=0, return_inverse=True)
+
+            meshview = []
+            for i, color in enumerate(unique_colors):
+                mask = inverse_indices == i
+                bin_points = points[mask]
+                if len(bin_points) > 0:
+                    r, g, b = color
+                    meshview.append({
+                        "idx": i,
+                        "count": len(bin_points),
+                        "name": f"Color {r},{g},{b}",
+                        "triplets": bin_points.flatten().tolist(),
+                        "r": int(r),
+                        "g": int(g),
+                        "b": int(b),
+                    })
+            with open(filename, "w") as f:
+                json.dump(meshview, f)
+            return
+
+        # Grayscale or Colormap mode
         if intensities.ndim == 2 and intensities.shape[1] == 3:
-            rgb_data = intensities
+            # Convert RGB to grayscale for binning
             intensities = (
-                0.2989 * rgb_data[:, 0] + 0.5870 * rgb_data[:, 1] + 0.1140 * rgb_data[:, 2]
+                0.2989 * intensities[:, 0] + 0.5870 * intensities[:, 1] + 0.1140 * intensities[:, 2]
             ).astype(int)
         else:
-            rgb_data = None
             intensities = intensities.astype(int)
 
         unique_intensities = np.unique(intensities)
@@ -405,14 +435,9 @@ def write_points_to_meshview(
             bin_points = points[mask]
 
             if len(bin_points) > 0:
-                if colormap == "original_colours" and rgb_data is not None:
-                    r, g, b = np.mean(rgb_data[mask], axis=0).astype(int)
-                    name = f"Intensity {val} (Original Color)"
-                else:
-                    # Map intensity to color based on colormap
-                    r, g, b = _get_colormap_color(val, colormap)
-                    # Use a name that describes the intensity
-                    name = f"Intensity {val}"
+                # Map intensity to color based on colormap
+                r, g, b = _get_colormap_color(val, colormap)
+                name = f"Intensity {val}"
 
                 meshview.append(
                     {
