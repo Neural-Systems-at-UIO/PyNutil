@@ -272,6 +272,9 @@ def create_section_visualisations(
             )
             output_path = os.path.join(viz_dir, output_filename)
 
+            # Ensure the directory for the output file exists (in case base_name has slashes)
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
             create_colored_atlas_slice(
                 slice_dict=slice_dict,
                 atlas_volume=atlas_volume,

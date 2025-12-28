@@ -1,7 +1,36 @@
 import numpy as np
 import pandas as pd
 import re
+import os
 from glob import glob
+import cv2
+
+
+def convert_to_intensity(image, channel):
+    """
+    Converts an image to an intensity map based on the specified channel.
+
+    Args:
+        image (ndarray): Input image (BGR or grayscale).
+        channel (str): Channel to extract ('R', 'G', 'B', 'grayscale', 'auto').
+
+    Returns:
+        ndarray: Intensity map as float32.
+    """
+    if image.ndim == 2:
+        return image.astype(np.float32)
+
+    if channel == "R":
+        return image[:, :, 2].astype(np.float32)
+    elif channel == "G":
+        return image[:, :, 1].astype(np.float32)
+    elif channel == "B":
+        return image[:, :, 0].astype(np.float32)
+    elif channel == "grayscale" or channel == "auto":
+        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    else:
+        # Default to grayscale if channel is unknown
+        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
 
 def number_sections(filenames, legacy=False):
@@ -15,21 +44,25 @@ def number_sections(filenames, legacy=False):
     Returns:
         list: List of section numbers as integers.
     """
-    filenames = [filename.split("\\")[-1] for filename in filenames]
+    filenames = [os.path.basename(filename) for filename in filenames]
     section_numbers = []
     for filename in filenames:
         if not legacy:
-            match = re.findall(r"\_s\d+", filename)
+            # Try _s### first (standard PyNutil/QUINT format)
+            match = re.findall(r"\_s(\d+)", filename)
             if len(match) == 0:
-                raise ValueError(f"No section number found in filename: {filename}")
-            if len(match) > 1:
+                # Try _### (common alternative)
+                match = re.findall(r"\_(\d+)", filename)
+
+            if len(match) == 0:
                 raise ValueError(
-                    "Multiple section numbers found in filename, ensure only one instance of _s### is present, where ### is the section number"
+                    f"No section number found in filename: {filename}. Expected format like '_s001' or '_001'."
                 )
-            section_numbers.append(int(match[-1][2:]))
+
+            section_numbers.append(int(match[-1]))
         else:
             match = re.sub("[^0-9]", "", filename)
-            section_numbers.append(match[-3:])
+            section_numbers.append(int(match[-3:]))
     if len(section_numbers) == 0:
         raise ValueError("No section numbers found in filenames")
     return section_numbers

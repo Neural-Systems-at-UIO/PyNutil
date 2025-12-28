@@ -248,7 +248,7 @@ def create_region_dict(points, regions):
 
 # related to read and write: write_points
 # this function writes the region dictionary to a meshview json
-def _write_points(points_dict, filename, info_file):
+def _write_points(points_dict, filename, info_file, colors_dict=None):
     """
     Saves a region-based point dictionary to a MeshView-compatible JSON layout.
 
@@ -263,19 +263,32 @@ def _write_points(points_dict, filename, info_file):
         Destination JSON file to be written.
     info_file : pandas.DataFrame
         A table with region IDs, names, and color data (r, g, b) for each region.
+    colors_dict : dict, optional
+        Keys are region IDs, values are (r, g, b) tuples to override atlas colors.
     """
-    meshview = [
-        {
+    meshview = []
+    for name, idx in zip(points_dict.keys(), range(len(points_dict.keys()))):
+        # Find region info
+        region_info = info_file[info_file["idx"] == name]
+        if len(region_info) == 0:
+            # Skip regions not in atlas labels
+            continue
+
+        r, g, b = int(region_info["r"].values[0]), int(region_info["g"].values[0]), int(region_info["b"].values[0])
+        if colors_dict is not None:
+            if name in colors_dict:
+                r, g, b = colors_dict[name]
+
+        meshview.append({
             "idx": idx,
             "count": len(points_dict[name]) // 3,
-            "name": str(info_file["name"].values[info_file["idx"] == name][0]),
+            "name": str(region_info["name"].values[0]),
             "triplets": points_dict[name],
-            "r": int(info_file["r"].values[info_file["idx"] == name][0]),
-            "g": int(info_file["g"].values[info_file["idx"] == name][0]),
-            "b": int(info_file["b"].values[info_file["idx"] == name][0]),
-        }
-        for name, idx in zip(points_dict.keys(), range(len(points_dict.keys())))
-    ]
+            "r": r,
+            "g": g,
+            "b": b,
+        })
+
     # write meshview json
     with open(filename, "w") as f:
         json.dump(meshview, f)
@@ -283,7 +296,15 @@ def _write_points(points_dict, filename, info_file):
 
 # related to read and write: write_points_to_meshview
 # this function combines create_region_dict and write_points functions
-def write_hemi_points_to_meshview(points, point_names, hemi_label, filename, info_file):
+def write_hemi_points_to_meshview(
+    points,
+    point_names,
+    hemi_label,
+    filename,
+    info_file,
+    intensities=None,
+    colormap="gray",
+):
     """
     Combines point data and region information into MeshView JSON files.
 
@@ -302,8 +323,12 @@ def write_hemi_points_to_meshview(points, point_names, hemi_label, filename, inf
         Base path for output JSON. Separate hemispheres use prefixed filenames.
     info_file : pandas.DataFrame
         A table with region IDs, names, and color data (r, g, b) for each region.
+    intensities : numpy.ndarray, optional
+        1D array of intensity values for each point.
+    colormap : str, optional
+        Colormap to use for intensity mode (default is "gray").
     """
-    if not (hemi_label == None).all():
+    if hemi_label is not None and not (hemi_label == None).all():
         split_fn_left = filename.split("/")
         split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
         outname_left = os.sep.join(split_fn_left)
@@ -312,6 +337,8 @@ def write_hemi_points_to_meshview(points, point_names, hemi_label, filename, inf
             point_names[hemi_label == 1],
             outname_left,
             info_file,
+            intensities[hemi_label == 1] if intensities is not None else None,
+            colormap,
         )
         split_fn_right = filename.split("/")
         split_fn_right[-1] = "right_hemisphere_" + split_fn_right[-1]
@@ -321,13 +348,19 @@ def write_hemi_points_to_meshview(points, point_names, hemi_label, filename, inf
             point_names[hemi_label == 2],
             outname_right,
             info_file,
+            intensities[hemi_label == 2] if intensities is not None else None,
+            colormap,
         )
-    write_points_to_meshview(points, point_names, filename, info_file)
+    write_points_to_meshview(
+        points, point_names, filename, info_file, intensities, colormap
+    )
 
 
 # related to read and write: write_points_to_meshview
 # this function combines create_region_dict and write_points functions
-def write_points_to_meshview(points, point_ids, filename, info_file):
+def write_points_to_meshview(
+    points, point_ids, filename, info_file, intensities=None, colormap="gray"
+):
     """
     Combines point data and region information into MeshView JSON files.
 
@@ -342,8 +375,97 @@ def write_points_to_meshview(points, point_ids, filename, info_file):
     info_file : pandas.DataFrame or string
         A table with region IDs, names, and color data (r, g, b) for each region.
         If string, this should correspond to the relevant brainglobe atlas
+    intensities : numpy.ndarray, optional
+        1D array of intensity values for each point.
+    colormap : str, optional
+        Colormap to use for intensity mode (default is "gray").
     """
     if isinstance(info_file, str):
         info_file = load_atlas_labels(info_file)
+
+    if intensities is not None:
+        # Intensity mode: group by intensity bins instead of atlas regions
+        # This creates a point cloud that looks like the original image
+
+        # If intensities is RGB (N, 3), convert to grayscale for binning
+        if intensities.ndim == 2 and intensities.shape[1] == 3:
+            rgb_data = intensities
+            intensities = (
+                0.2989 * rgb_data[:, 0] + 0.5870 * rgb_data[:, 1] + 0.1140 * rgb_data[:, 2]
+            ).astype(int)
+        else:
+            rgb_data = None
+            intensities = intensities.astype(int)
+
+        unique_intensities = np.unique(intensities)
+
+        meshview = []
+        for val in unique_intensities:
+            mask = intensities == val
+            bin_points = points[mask]
+
+            if len(bin_points) > 0:
+                if colormap == "original_colours" and rgb_data is not None:
+                    r, g, b = np.mean(rgb_data[mask], axis=0).astype(int)
+                    name = f"Intensity {val} (Original Color)"
+                else:
+                    # Map intensity to color based on colormap
+                    r, g, b = _get_colormap_color(val, colormap)
+                    # Use a name that describes the intensity
+                    name = f"Intensity {val}"
+
+                meshview.append(
+                    {
+                        "idx": int(val),
+                        "count": len(bin_points),
+                        "name": name,
+                        "triplets": bin_points.flatten().tolist(),
+                        "r": int(r),
+                        "g": int(g),
+                        "b": int(b),
+                    }
+                )
+
+        with open(filename, "w") as f:
+            json.dump(meshview, f)
+        return
+
     region_dict = create_region_dict(points, point_ids)
     _write_points(region_dict, filename, info_file)
+
+
+def _get_colormap_color(value, name="gray"):
+    """
+    Returns (r, g, b) for a given intensity value (0-255) and colormap name.
+    """
+    value = np.clip(value, 0, 255) / 255.0
+
+    if name == "gray":
+        v = int(value * 255)
+        return v, v, v
+
+    # Simple implementations of some common colormaps
+    # If matplotlib is available, we could use it, but this avoids the dependency
+    if name == "viridis":
+        # Simplified viridis approximation
+        r = 1.0 - value
+        g = value
+        b = 0.5 + 0.5 * value
+    elif name == "plasma":
+        r = value
+        g = 1.0 - value
+        b = 1.0 - 0.5 * value
+    elif name == "magma":
+        r = value
+        g = value**2
+        b = 1.0 - value
+    elif name == "hot":
+        r = min(1.0, value * 3)
+        g = min(1.0, max(0.0, value * 3 - 1))
+        b = min(1.0, max(0.0, value * 3 - 2))
+    else:
+        # Default to gray
+        v = int(value * 255)
+        return v, v, v
+
+    return int(r * 255), int(g * 255), int(b * 255)

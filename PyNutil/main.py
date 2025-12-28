@@ -9,12 +9,16 @@ import numpy as np
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
 from .processing.data_analysis import (
     quantify_labeled_points,
+    quantify_intensity,
     map_to_custom_regions,
     apply_custom_regions,
 )
 from .io.file_operations import save_analysis_output
 from .io.read_and_write import open_custom_region_file
-from .processing.coordinate_extraction import folder_to_atlas_space
+from .processing.coordinate_extraction import (
+    folder_to_atlas_space,
+    folder_to_atlas_space_intensity,
+)
 from .io.volume_nifti import save_volume_niftis
 from .processing.section_volume import (
     project_sections_to_volume as _project_sections_to_volume,
@@ -44,8 +48,10 @@ class PyNutil:
     def __init__(
         self,
         segmentation_folder=None,
+        image_folder=None,
         alignment_json=None,
         colour=None,
+        intensity_channel=None,
         atlas_name=None,
         atlas_path=None,
         label_path=None,
@@ -61,10 +67,14 @@ class PyNutil:
         ----------
         segmentation_folder : str, optional
             The folder containing the segmentation files (default is None).
+        image_folder : str, optional
+            The folder containing the original images for intensity quantification (default is None).
         alignment_json : str, optional
             The path to the alignment JSON file (default is None).
         colour : list, optional
             The RGB colour of the object to be quantified in the segmentation (default is None).
+        intensity_channel : str, optional
+            The channel to use for intensity quantification ('R', 'G', 'B', 'grayscale', 'auto').
         atlas_name : str, optional
             The name of the atlas in the brainglobe api to be used for quantification (default is None).
         atlas_path : str, optional
@@ -102,9 +112,11 @@ class PyNutil:
                 with open(settings_file, "r") as f:
                     settings = json.load(f)
                 try:
-                    segmentation_folder = settings["segmentation_folder"]
+                    segmentation_folder = settings.get("segmentation_folder")
+                    image_folder = settings.get("image_folder")
                     alignment_json = settings["alignment_json"]
-                    colour = settings["colour"]
+                    colour = settings.get("colour")
+                    intensity_channel = settings.get("intensity_channel")
                     if "custom_region_path" in settings:
                         custom_region_path = settings["custom_region_path"]
                     if "voxel_size_um" in settings:
@@ -118,12 +130,19 @@ class PyNutil:
                         atlas_name = settings["atlas_name"]
                 except KeyError as exc:
                     raise KeyError(
-                        "Settings file must contain segmentation_folder, alignment_json, colour, and either atlas_path and label_path or atlas_name"
+                        "Settings file must contain alignment_json, and either atlas_path and label_path or atlas_name. It should also contain either segmentation_folder or image_folder."
                     ) from exc
 
+            if segmentation_folder and image_folder:
+                raise ValueError(
+                    "Please specify either segmentation_folder or image_folder, not both."
+                )
+
             self.segmentation_folder = segmentation_folder
+            self.image_folder = image_folder
             self.alignment_json = alignment_json
             self.colour = colour
+            self.intensity_channel = intensity_channel
             self.atlas_name = atlas_name
             self.voxel_size_um = float(voxel_size_um) if voxel_size_um is not None else None
             self.custom_region_path = custom_region_path
@@ -163,6 +182,7 @@ class PyNutil:
                         self.voxel_size_um = float(m.group(1))
                     except Exception:
                         self.voxel_size_um = None
+            self.point_intensities = None
         except (FileNotFoundError, json.JSONDecodeError) as e:
             raise ValueError(f"Error loading settings file: {e}")
         except Exception as e:
@@ -183,6 +203,7 @@ class PyNutil:
     ):
         """
         Retrieves pixel and centroid coordinates from segmentation data,
+        or extracts intensity from original images,
         applies atlas-space transformations, and optionally uses a damage
         mask if specified.
 
@@ -196,6 +217,34 @@ class PyNutil:
             None: Results are stored in class attributes.
         """
         try:
+            if self.image_folder:
+                (
+                    self.region_intensities_list,
+                    self.segmentation_filenames,
+                    self.pixel_points,
+                    self.points_labels,
+                    self.points_hemi_labels,
+                    self.points_len,
+                    self.point_intensities,
+                ) = folder_to_atlas_space_intensity(
+                    self.image_folder,
+                    self.alignment_json,
+                    self.atlas_labels,
+                    self.intensity_channel,
+                    non_linear,
+                    self.atlas_volume,
+                    self.hemi_map,
+                    use_flat,
+                    apply_damage_mask,
+                )
+                # In intensity mode, we don't have separate centroids
+                self.centroids = None
+                self.labeled_points_centroids = None
+                self.centroids_hemi_labels = None
+                self.centroids_len = None
+                self.apply_damage_mask = apply_damage_mask
+                return
+
             (
                 self.pixel_points,
                 self.centroids,
@@ -236,6 +285,7 @@ class PyNutil:
     def quantify_coordinates(self):
         """
         Quantifies and summarizes pixel and centroid coordinates by atlas region,
+        or summarizes intensity by atlas region,
         storing the aggregated results in class attributes.
 
         Attributes:
@@ -250,6 +300,27 @@ class PyNutil:
         Returns:
             None
         """
+        if self.image_folder:
+            if not hasattr(self, "region_intensities_list"):
+                raise ValueError(
+                    "Please run get_coordinates before running quantify_coordinates."
+                )
+            try:
+                (self.label_df, self.per_section_df) = quantify_intensity(
+                    self.region_intensities_list, self.atlas_labels
+                )
+                if self.custom_regions_dict is not None:
+                    self.custom_label_df, self.label_df = apply_custom_regions(
+                        self.label_df, self.custom_regions_dict
+                    )
+                    self.custom_per_section_df = []
+                    for i in self.per_section_df:
+                        c, i = apply_custom_regions(i, self.custom_regions_dict)
+                        self.custom_per_section_df.append(c)
+                return
+            except Exception as e:
+                raise ValueError(f"Error quantifying intensity: {e}")
+
         if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
             raise ValueError(
                 "Please run get_coordinates before running quantify_coordinates."
@@ -355,7 +426,7 @@ class PyNutil:
         self.interpolated_volume = gv
         self.frequency_volume = fv
 
-    def save_analysis(self, output_folder, create_visualisations=True):
+    def save_analysis(self, output_folder, create_visualisations=True, colormap="gray"):
         """
         Saves the pixel coordinates and pixel counts to different files in the specified output folder.
 
@@ -363,6 +434,11 @@ class PyNutil:
         ----------
         output_folder : str
             The folder where the analysis output will be saved.
+        create_visualisations : bool, optional
+            If True, create section visualisations (default is True).
+        colormap : str, optional
+            Colormap to use for intensity mode MeshView (default is "gray").
+            Options: "gray", "viridis", "plasma", "hot".
 
         Returns
         -------
@@ -384,14 +460,18 @@ class PyNutil:
                 self.atlas_labels,
                 output_folder,
                 segmentation_folder=self.segmentation_folder,
+                image_folder=getattr(self, "image_folder", None),
                 alignment_json=self.alignment_json,
                 colour=self.colour,
+                intensity_channel=getattr(self, "intensity_channel", None),
+                point_intensities=getattr(self, "point_intensities", None),
                 atlas_name=getattr(self, "atlas_name", None),
                 custom_region_path=getattr(self, "custom_region_path", None),
                 atlas_path=getattr(self, "atlas_path", None),
                 label_path=getattr(self, "label_path", None),
                 settings_file=getattr(self, "settings_file", None),
                 prepend="",
+                colormap=colormap,
             )
 
             # Save interpolated/frequency volumes if they exist.
@@ -427,8 +507,10 @@ class PyNutil:
                     self.custom_atlas_labels,
                     output_folder,
                     segmentation_folder=self.segmentation_folder,
+                    image_folder=getattr(self, "image_folder", None),
                     alignment_json=self.alignment_json,
                     colour=self.colour,
+                    intensity_channel=getattr(self, "intensity_channel", None),
                     atlas_name=getattr(self, "atlas_name", None),
                     custom_region_path=getattr(self, "custom_region_path", None),
                     atlas_path=getattr(self, "atlas_path", None),
@@ -479,7 +561,7 @@ class PyNutil:
 
                     logger.info("Creating section visualisations...")
                     create_section_visualisations(
-                        self.segmentation_folder,
+                        self.segmentation_folder or self.image_folder,
                         alignment_data,
                         self.atlas_volume,
                         self.atlas_labels,

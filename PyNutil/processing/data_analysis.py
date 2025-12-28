@@ -343,3 +343,84 @@ def _combine_slice_reports(per_section_df, atlas_labels):
     label_df = label_df.reindex(index=atlas_labels["idx"])
     label_df = label_df.reset_index()
     return label_df
+
+
+def quantify_intensity(region_intensities_list, atlas_labels):
+    """
+    Aggregates intensity data into a summary table.
+    """
+    # Filter out None values (sections that were skipped)
+    region_intensities_list = [df for df in region_intensities_list if df is not None]
+
+    if not region_intensities_list:
+        return pd.DataFrame(), []
+
+    label_df = _combine_intensity_reports(region_intensities_list, atlas_labels)
+    return label_df, region_intensities_list
+
+
+def _combine_intensity_reports(per_section_df, atlas_labels):
+    """
+    Combines intensity reports into a single DataFrame.
+    """
+    # Group by region and sum
+    cols_to_sum = [
+        "sum_intensity",
+        "pixel_count",
+        "left_hemi_sum_intensity",
+        "left_hemi_pixel_count",
+        "right_hemi_sum_intensity",
+        "right_hemi_pixel_count",
+        "region_area",
+        "left_hemi_region_area",
+        "right_hemi_region_area",
+    ]
+
+    available_cols = [col for col in cols_to_sum if col in per_section_df[0].columns]
+
+    label_df = (
+        pd.concat(per_section_df)
+        .groupby(["idx", "name", "r", "g", "b"])[available_cols]
+        .sum()
+        .reset_index()
+    )
+
+    # Calculate mean intensity
+    if "sum_intensity" in label_df and "pixel_count" in label_df:
+        mask = label_df["pixel_count"] > 0
+        label_df["mean_intensity"] = 0.0
+        label_df.loc[mask, "mean_intensity"] = (
+            label_df.loc[mask, "sum_intensity"] / label_df.loc[mask, "pixel_count"]
+        )
+
+    if "left_hemi_sum_intensity" in label_df and "left_hemi_pixel_count" in label_df:
+        mask = label_df["left_hemi_pixel_count"] > 0
+        label_df["left_hemi_mean_intensity"] = 0.0
+        label_df.loc[mask, "left_hemi_mean_intensity"] = (
+            label_df.loc[mask, "left_hemi_sum_intensity"]
+            / label_df.loc[mask, "left_hemi_pixel_count"]
+        )
+
+    if "right_hemi_sum_intensity" in label_df and "right_hemi_pixel_count" in label_df:
+        mask = label_df["right_hemi_pixel_count"] > 0
+        label_df["right_hemi_mean_intensity"] = 0.0
+        label_df.loc[mask, "right_hemi_mean_intensity"] = (
+            label_df.loc[mask, "right_hemi_sum_intensity"]
+            / label_df.loc[mask, "right_hemi_pixel_count"]
+        )
+
+    label_df.fillna(0, inplace=True)
+
+    # Reindex to include all atlas regions
+    label_df = label_df.set_index("idx")
+    label_df = label_df.reindex(index=atlas_labels["idx"])
+    label_df = label_df.reset_index()
+
+    # Merge back names and colors for all regions
+    label_df.drop(columns=["name", "r", "g", "b"], inplace=True, errors="ignore")
+    label_df = label_df.merge(
+        atlas_labels[["idx", "name", "r", "g", "b"]], on="idx", how="left"
+    )
+
+    label_df.fillna(0, inplace=True)
+    return label_df

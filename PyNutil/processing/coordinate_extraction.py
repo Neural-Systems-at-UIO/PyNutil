@@ -14,6 +14,7 @@ from .transformations import (
     transform_points_to_atlas_space,
     transform_to_registration,
     get_transformed_coordinates,
+    transform_to_atlas_space,
 )
 from .utils import (
     get_flat_files,
@@ -24,6 +25,7 @@ from .utils import (
     process_results,
     get_current_flat_file,
     start_and_join_threads,
+    convert_to_intensity,
 )
 
 
@@ -410,6 +412,303 @@ def folder_to_atlas_space(
     )
 
 
+def folder_to_atlas_space_intensity(
+    folder,
+    quint_alignment,
+    atlas_labels,
+    intensity_channel="grayscale",
+    non_linear=True,
+    atlas_volume=None,
+    hemi_map=None,
+    use_flat=False,
+    apply_damage_mask=True,
+):
+    """
+    Processes all images in a folder, mapping each one to atlas space and extracting intensity.
+
+    Args:
+        folder (str): Path to image files.
+        quint_alignment (str): Path to alignment JSON.
+        atlas_labels (DataFrame): DataFrame with atlas labels.
+        intensity_channel (str, optional): Channel to use for intensity.
+        non_linear (bool, optional): Apply non-linear transform.
+        atlas_volume (ndarray, optional): Atlas volume data.
+        hemi_map (ndarray, optional): Hemisphere mask data.
+        use_flat (bool, optional): If True, load flat files.
+        apply_damage_mask (bool, optional): If True, apply damage mask.
+
+    Returns:
+        tuple: (region_intensities_list, images, centroids, centroids_labels, centroids_hemi_labels, centroids_len, centroids_intensities)
+    """
+    quint_json = load_quint_json(quint_alignment)
+    slices = quint_json["slices"]
+    if apply_damage_mask and "gridspacing" in quint_json:
+        gridspacing = quint_json["gridspacing"]
+    else:
+        gridspacing = None
+    if not apply_damage_mask:
+        for slice in slices:
+            if "grid" in slice:
+                slice.pop("grid")
+    images = get_segmentations(folder)
+    flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
+
+    region_intensities_list = [None] * len(images)
+    centroids_list = [None] * len(images)
+    centroids_labels_list = [None] * len(images)
+    centroids_hemi_labels_list = [None] * len(images)
+    centroids_intensities_list = [None] * len(images)
+    centroids_len = [0] * len(images)
+
+    if len(images) > 0:
+        max_workers = min(32, len(images), (os.cpu_count() or 1) + 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for image_path, index in zip(images, range(len(images))):
+                seg_nr = int(number_sections([image_path])[0])
+                current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
+                if len(current_slice_index[0]) == 0:
+                    print(f"image file does not exist in alignment json: {image_path}")
+                    continue
+
+                current_slice = slices[current_slice_index[0][0]]
+                if current_slice["anchoring"] == []:
+                    continue
+
+                current_flat = get_current_flat_file(
+                    seg_nr, flat_files, flat_file_nrs, use_flat
+                )
+
+                futures.append(
+                    executor.submit(
+                        segmentation_to_atlas_space_intensity,
+                        current_slice,
+                        image_path,
+                        atlas_labels,
+                        intensity_channel,
+                        current_flat,
+                        non_linear,
+                        region_intensities_list,
+                        index,
+                        atlas_volume,
+                        hemi_map,
+                        use_flat,
+                        gridspacing,
+                        centroids_list,
+                        centroids_labels_list,
+                        centroids_hemi_labels_list,
+                        centroids_intensities_list,
+                        centroids_len,
+                    )
+                )
+
+            # Ensure exceptions from worker threads get raised here.
+            for f in futures:
+                f.result()
+
+    # Concatenate results
+    all_centroids = np.concatenate([c for c in centroids_list if c is not None]) if any(c is not None for c in centroids_list) else None
+    all_labels = np.concatenate([l for l in centroids_labels_list if l is not None]) if any(l is not None for l in centroids_labels_list) else None
+    all_hemi = np.concatenate([h for h in centroids_hemi_labels_list if h is not None]) if any(h is not None for h in centroids_hemi_labels_list) else None
+    all_intensities = np.concatenate([i for i in centroids_intensities_list if i is not None]) if any(i is not None for i in centroids_intensities_list) else None
+
+    return (
+        region_intensities_list,
+        images,
+        all_centroids,
+        all_labels,
+        all_hemi,
+        centroids_len,
+        all_intensities,
+    )
+
+
+def segmentation_to_atlas_space_intensity(
+    slice_dict,
+    image_path,
+    atlas_labels,
+    intensity_channel,
+    flat_file_atlas=None,
+    non_linear=True,
+    region_intensities_list=None,
+    index=None,
+    atlas_volume=None,
+    hemi_map=None,
+    use_flat=False,
+    grid_spacing=None,
+    centroids_list=None,
+    centroids_labels_list=None,
+    centroids_hemi_labels_list=None,
+    centroids_intensities_list=None,
+    centroids_len=None,
+):
+    """
+    Transforms a single image file into atlas space and extracts intensity.
+    """
+    image = load_segmentation(image_path)
+    intensity = convert_to_intensity(image, intensity_channel)
+
+    reg_height, reg_width = slice_dict["height"], slice_dict["width"]
+    triangulation = get_triangulation(slice_dict, reg_width, reg_height, non_linear)
+
+    if "grid" in slice_dict:
+        damage_mask = create_damage_mask(slice_dict, grid_spacing)
+    else:
+        damage_mask = None
+
+    if hemi_map is not None:
+        hemi_mask = generate_target_slice(slice_dict["anchoring"], hemi_map)
+        if hemi_mask.shape != (reg_height, reg_width):
+            hemi_mask = cv2.resize(
+                hemi_mask.astype(np.uint8),
+                (reg_width, reg_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+    else:
+        hemi_mask = None
+
+    region_areas, atlas_map = get_region_areas(
+        use_flat,
+        atlas_labels,
+        flat_file_atlas,
+        image.shape[1],
+        image.shape[0],
+        slice_dict,
+        atlas_volume,
+        hemi_mask,
+        triangulation,
+        damage_mask,
+    )
+    atlas_map = atlas_map.astype(np.int64)
+    if atlas_map.shape != (reg_height, reg_width):
+        atlas_map = cv2.resize(
+            atlas_map.astype(np.float32),
+            (reg_width, reg_height),
+            interpolation=cv2.INTER_NEAREST,
+        ).astype(np.int64)
+
+    # Resize intensity to registration space to match atlas_map
+    intensity_resized = cv2.resize(
+        intensity, (reg_width, reg_height), interpolation=cv2.INTER_AREA
+    )
+
+    # Apply damage mask if it exists
+    if damage_mask is not None:
+        damage_mask_resized = cv2.resize(
+            damage_mask.astype(np.uint8),
+            (reg_width, reg_height),
+            interpolation=cv2.INTER_NEAREST,
+        ).astype(bool)
+        intensity_resized[~damage_mask_resized] = 0
+        atlas_map[~damage_mask_resized] = 0
+
+    # Calculate sum and count per region
+    flat_labels = atlas_map.ravel()
+    flat_intensity = intensity_resized.ravel()
+
+    # Use np.unique to handle large label IDs without OOM in bincount
+    unique_labels, inverse_indices = np.unique(flat_labels, return_inverse=True)
+    sums = np.bincount(inverse_indices, weights=flat_intensity)
+    counts = np.bincount(inverse_indices)
+
+    # Create DataFrame
+    df = pd.DataFrame(
+        {"idx": unique_labels, "sum_intensity": sums, "pixel_count": counts}
+    )
+    df = df[df["pixel_count"] > 0]
+    df = df[df["idx"] != 0]  # Remove background
+
+    # If hemi_mask exists, we need to do this per hemisphere too
+    if hemi_mask is not None:
+        for hemi_id, hemi_name in [(1, "left_hemi"), (2, "right_hemi")]:
+            mask = hemi_mask == hemi_id
+            if damage_mask is not None:
+                mask &= damage_mask_resized
+
+            h_labels = atlas_map[mask]
+            h_intensity = intensity_resized[mask]
+
+            if h_labels.size > 0:
+                h_unique, h_inverse = np.unique(h_labels, return_inverse=True)
+                h_sums = np.bincount(h_inverse, weights=h_intensity)
+                h_counts = np.bincount(h_inverse)
+
+                h_df = pd.DataFrame(
+                    {
+                        "idx": h_unique,
+                        f"{hemi_name}_sum_intensity": h_sums,
+                        f"{hemi_name}_pixel_count": h_counts,
+                    }
+                )
+                df = df.merge(h_df, on="idx", how="left").fillna(0)
+            else:
+                df[f"{hemi_name}_sum_intensity"] = 0.0
+                df[f"{hemi_name}_pixel_count"] = 0
+
+    # Merge with region_areas to get region areas
+    df = df.merge(region_areas, on="idx", how="left")
+    # Merge with atlas_labels to get region names and colors
+    df = df.merge(atlas_labels[["idx", "name", "r", "g", "b"]], on="idx", how="left")
+
+    region_intensities_list[index] = df
+
+    # Extract pixels with signal for MeshView
+    # We use a threshold to avoid background noise
+    signal_mask = intensity_resized > 10
+    if damage_mask is not None:
+        signal_mask &= damage_mask_resized
+
+    sig_y, sig_x = np.where(signal_mask)
+
+    # If image is RGB, we want to keep the original colors for MeshView
+    if image.ndim == 3:
+        image_resized = cv2.resize(image, (reg_width, reg_height), interpolation=cv2.INTER_AREA)
+        # Convert BGR to RGB for MeshView
+        image_resized = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)
+        sig_intensities = image_resized[sig_y, sig_x]
+    else:
+        sig_intensities = intensity_resized[sig_y, sig_x]
+
+    # Sample pixels to keep MeshView responsive
+    # 20,000 points per section is a good balance
+    max_points = 20000
+    if len(sig_y) > max_points:
+        # Use linspace for reproducible sampling
+        indices = np.linspace(0, len(sig_y) - 1, max_points).astype(int)
+        sig_y = sig_y[indices]
+        sig_x = sig_x[indices]
+        sig_intensities = sig_intensities[indices]
+
+    if len(sig_y) > 0:
+        # Transform to 3D atlas space
+        sig_points_3d = transform_to_atlas_space(
+            slice_dict["anchoring"],
+            sig_y,
+            sig_x,
+            reg_height,
+            reg_width,
+        )
+
+        # Get atlas labels and hemi labels for these points
+        sig_labels = atlas_map[sig_y, sig_x]
+        if hemi_mask is not None:
+            sig_hemi = hemi_mask[sig_y, sig_x]
+        else:
+            sig_hemi = np.zeros(len(sig_y), dtype=int)
+
+        # Store results
+        if centroids_list is not None:
+            centroids_list[index] = sig_points_3d
+            centroids_labels_list[index] = sig_labels
+            centroids_hemi_labels_list[index] = sig_hemi
+            centroids_intensities_list[index] = sig_intensities
+            centroids_len[index] = len(sig_y)
+    else:
+        if centroids_len is not None:
+            centroids_len[index] = 0
+    gc.collect()
+
+
 def create_threads(
     segmentations,
     slices,
@@ -530,7 +829,7 @@ def detect_pixel_id(segmentation: np.ndarray):
             pixel_id = segmentation_no_background[0]
         else:
             pixel_id = [255, 255, 255]
-    print("detected pixel_id: ", pixel_id)
+    # print("detected pixel_id: ", pixel_id)
     return pixel_id
 
 
