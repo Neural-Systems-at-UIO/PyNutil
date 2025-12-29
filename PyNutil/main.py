@@ -61,6 +61,7 @@ class PyNutil:
         voxel_size_um: Optional[float] = None,
         min_intensity: Optional[int] = None,
         max_intensity: Optional[int] = None,
+        cellpose: bool = False,
     ):
         """
         Initializes the PyNutil class with the given parameters.
@@ -93,6 +94,8 @@ class PyNutil:
             Only when specifying images with intensity to quantify. The minimum intensity value to include in quantification and MeshView (default is None).
         max_intensity : int, optional
             Only when specifying images with intensity to quantify. The maximum intensity value to include in quantification and MeshView (default is None).
+        cellpose : bool, optional
+            If True, the segmentation files are assumed to be Cellpose output (default is False).
 
         Raises
         ------
@@ -133,6 +136,8 @@ class PyNutil:
                         min_intensity = settings["min_intensity"]
                     if "max_intensity" in settings:
                         max_intensity = settings["max_intensity"]
+                    if "cellpose" in settings:
+                        cellpose = settings["cellpose"]
                     if "atlas_path" in settings and "label_path" in settings:
                         atlas_path = settings["atlas_path"]
                         label_path = settings["label_path"]
@@ -174,6 +179,7 @@ class PyNutil:
             self.voxel_size_um = float(voxel_size_um) if voxel_size_um is not None else None
             self.min_intensity = min_intensity
             self.max_intensity = max_intensity
+            self.cellpose = cellpose
             self.custom_region_path = custom_region_path
             if custom_region_path:
                 custom_regions_dict, custom_atlas_labels = open_custom_region_file(
@@ -229,8 +235,6 @@ class PyNutil:
         object_cutoff=0,
         use_flat=False,
         apply_damage_mask=True,
-        min_intensity=None,
-        max_intensity=None,
     ):
         """
         Retrieves pixel and centroid coordinates from segmentation data,
@@ -243,15 +247,11 @@ class PyNutil:
             object_cutoff (int, optional): Minimum object size.
             use_flat (bool, optional): Use flat maps if True.
             apply_damage_mask (bool, optional): Apply damage mask if True.
-            min_intensity (int, optional): Minimum intensity value to include.
-            max_intensity (int, optional): Maximum intensity value to include.
 
         Returns:
             None: Results are stored in class attributes.
         """
-        # Use provided values or fall back to class defaults
-        min_intensity = min_intensity if min_intensity is not None else self.min_intensity
-        max_intensity = max_intensity if max_intensity is not None else self.max_intensity
+
 
         try:
             if self.image_folder:
@@ -273,8 +273,8 @@ class PyNutil:
                     self.hemi_map,
                     use_flat,
                     apply_damage_mask,
-                    min_intensity=min_intensity,
-                    max_intensity=max_intensity,
+                    min_intensity=self.min_intensity,
+                    max_intensity=self.max_intensity,
                 )
                 # In intensity mode, we don't have separate centroids
                 self.centroids = None
@@ -308,6 +308,7 @@ class PyNutil:
                 self.hemi_map,
                 use_flat,
                 apply_damage_mask,
+                cellpose=self.cellpose,
             )
             self.apply_damage_mask = apply_damage_mask
             if self.custom_regions_dict is not None:

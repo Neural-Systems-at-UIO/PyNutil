@@ -73,6 +73,49 @@ def _connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 
     return props
 
 
+def _labeled_image_props(label_image: np.ndarray):
+    """Return properties for an already labeled 2D image (e.g. Cellpose).
+
+    Returns a list of dicts with:
+        - area (int)
+        - centroid (tuple[float, float])  (y, x)
+        - coords (ndarray[int]) of shape (N, 2) in (y, x) order
+    """
+    if label_image.size == 0:
+        return []
+
+    # Ensure it's 2D grayscale
+    if label_image.ndim == 3:
+        label_image = label_image[:, :, 0]
+
+    # Find all non-zero pixels
+    ys, xs = np.nonzero(label_image)
+    if ys.size == 0:
+        return []
+
+    labels = label_image[ys, xs]
+
+    # Sort by label ID to group pixels of the same object
+    order = np.argsort(labels, kind="stable")
+    ys = ys[order]
+    xs = xs[order]
+    labels = labels[order]
+
+    # Find boundaries of each label group
+    unique_ids, start_idx = np.unique(labels, return_index=True)
+    end_idx = np.r_[start_idx[1:], labels.size]
+
+    props = []
+    for label_id, start, end in zip(unique_ids, start_idx, end_idx):
+        comp_ys = ys[start:end]
+        comp_xs = xs[start:end]
+        area = len(comp_ys)
+        centroid = (np.mean(comp_ys), np.mean(comp_xs))
+        coords = np.column_stack((comp_ys, comp_xs))
+        props.append({"area": area, "centroid": centroid, "coords": coords})
+    return props
+
+
 def get_objects_and_assign_regions_optimized(
     segmentation,
     pixel_id,
@@ -83,18 +126,25 @@ def get_objects_and_assign_regions_optimized(
     atlas_at_original_resolution=False,
     reg_height=None,
     reg_width=None,
+    cellpose=False,
 ):
     """Single-pass object detection, pixel extraction, and region assignment."""
 
     # Memory-efficient binary segmentation: process channels separately
-    if segmentation.ndim == 2:
-        binary_seg = segmentation == pixel_id[0]
+    if cellpose:
+        if segmentation.ndim == 2:
+            binary_seg = segmentation != 0
+        else:
+            binary_seg = segmentation[:, :, 0] != 0
     else:
-        binary_seg = segmentation[:, :, 0] == pixel_id[0]
-        if segmentation.shape[2] > 1:
-            binary_seg &= segmentation[:, :, 1] == pixel_id[1]
-        if segmentation.shape[2] > 2:
-            binary_seg &= segmentation[:, :, 2] == pixel_id[2]
+        if segmentation.ndim == 2:
+            binary_seg = segmentation == pixel_id[0]
+        else:
+            binary_seg = segmentation[:, :, 0] == pixel_id[0]
+            if segmentation.shape[2] > 1:
+                binary_seg &= segmentation[:, :, 1] == pixel_id[1]
+            if segmentation.shape[2] > 2:
+                binary_seg &= segmentation[:, :, 2] == pixel_id[2]
 
     # Get pixel coordinates
     pixel_y, pixel_x = np.where(binary_seg)
@@ -107,8 +157,11 @@ def get_objects_and_assign_regions_optimized(
     scaled_y, scaled_x = scale_positions(pixel_y, pixel_x, y_scale, x_scale)
 
     # Object Detection
-    # connectivity=4 matches skimage.measure.label(..., connectivity=1) for 2D.
-    objects_info = _connected_components_props(binary_seg, connectivity=4)
+    if cellpose:
+        objects_info = _labeled_image_props(segmentation)
+    else:
+        # connectivity=4 matches skimage.measure.label(..., connectivity=1) for 2D.
+        objects_info = _connected_components_props(binary_seg, connectivity=4)
     objects_info = [obj for obj in objects_info if obj["area"] > object_cutoff]
 
     if len(objects_info) == 0:
@@ -265,6 +318,7 @@ def folder_to_atlas_space(
     hemi_map=None,
     use_flat=False,
     apply_damage_mask=True,
+    cellpose=False,
 ):
     """
     Processes all segmentation files in a folder, mapping each one to atlas space.
@@ -280,6 +334,7 @@ def folder_to_atlas_space(
         hemi_map (ndarray, optional): Hemisphere mask data.
         use_flat (bool, optional): If True, load flat files.
         apply_damage_mask (bool, optional): If True, apply damage mask.
+        cellpose (bool, optional): If True, the segmentation files are assumed to be Cellpose output.
 
     Returns:
         tuple: Various arrays and lists containing transformed coordinates and labels.
@@ -369,6 +424,7 @@ def folder_to_atlas_space(
                         hemi_map,
                         use_flat,
                         gridspacing,
+                        cellpose=cellpose,
                     )
                 )
 
@@ -764,6 +820,7 @@ def create_threads(
     hemi_map,
     use_flat,
     gridspacing,
+    cellpose=False,
 ):
     """
     Creates threads to transform each segmentation into atlas space.
@@ -790,6 +847,7 @@ def create_threads(
         hemi_map (ndarray): Hemisphere mask (optional).
         use_flat (bool): Use flat files if True.
         gridspacing (int): Spacing value from alignment data.
+        cellpose (bool): If True, the segmentation files are assumed to be Cellpose output.
 
     Returns:
         list: A list of threads for parallel execution.
@@ -833,6 +891,7 @@ def create_threads(
                 hemi_map,
                 use_flat,
                 gridspacing,
+                cellpose,
             ),
         )
         threads.append(x)
@@ -935,6 +994,7 @@ def segmentation_to_atlas_space(
     hemi_map=None,
     use_flat=False,
     grid_spacing=None,
+    cellpose=False,
 ):
     """
     Transforms a single segmentation file into atlas space.
@@ -961,12 +1021,13 @@ def segmentation_to_atlas_space(
         hemi_map (ndarray, optional): Hemisphere mask.
         use_flat (bool, optional): Indicates use of flat files.
         grid_spacing (int, optional): Spacing value for damage mask.
+        cellpose (bool, optional): If True, the segmentation files are assumed to be Cellpose output.
 
     Returns:
         None
     """
     segmentation = load_segmentation(segmentation_path)
-    if pixel_id == "auto":
+    if pixel_id == "auto" and not cellpose:
         pixel_id = detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_dict["height"], slice_dict["width"]
@@ -1015,6 +1076,7 @@ def segmentation_to_atlas_space(
         atlas_at_original_resolution=True,
         reg_height=reg_height,
         reg_width=reg_width,
+        cellpose=cellpose,
     )
 
     if scaled_y is None or scaled_x is None:
