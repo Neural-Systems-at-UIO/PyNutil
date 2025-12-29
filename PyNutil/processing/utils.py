@@ -104,6 +104,65 @@ def scale_positions(id_y, id_x, y_scale, x_scale):
     return id_y, id_x
 
 
+def update_spacing(anchoring, width, height, grid_spacing):
+    """
+    Calculates spacing along width and height from slice anchoring.
+
+    Args:
+        anchoring (list): Anchoring transformation parameters.
+        width (int): Image width.
+        height (int): Image height.
+        grid_spacing (int): Grid spacing in image units.
+
+    Returns:
+        tuple: (xspacing, yspacing)
+    """
+    if len(anchoring) != 9:
+        print("Anchoring does not have 9 elements.")
+    ow = np.sqrt(sum([anchoring[i + 3] ** 2 for i in range(3)]))
+    oh = np.sqrt(sum([anchoring[i + 6] ** 2 for i in range(3)]))
+    xspacing = int(width * grid_spacing / ow)
+    yspacing = int(height * grid_spacing / oh)
+    return xspacing, yspacing
+
+
+def create_damage_mask(section, grid_spacing):
+    """
+    Creates a binary damage mask from grid information in the given section.
+
+    Args:
+        section (dict): Dictionary with slice and grid data.
+        grid_spacing (int): Space between grid marks.
+
+    Returns:
+        ndarray: Binary mask with damaged areas marked as 0.
+    """
+    width = section["width"]
+    height = section["height"]
+    anchoring = section["anchoring"]
+    grid_values = section["grid"]
+    gridx = section["gridx"]
+    gridy = section["gridy"]
+
+    xspacing, yspacing = update_spacing(anchoring, width, height, grid_spacing)
+    x_coords = np.arange(gridx, width, xspacing)
+    y_coords = np.arange(gridy, height, yspacing)
+
+    num_markers = len(grid_values)
+    markers = [
+        (x_coords[i % len(x_coords)], y_coords[i // len(x_coords)])
+        for i in range(num_markers)
+    ]
+
+    binary_image = np.ones((len(y_coords), len(x_coords)), dtype=int)
+
+    for i, (x, y) in enumerate(markers):
+        if grid_values[i] == 4:
+            binary_image[y // yspacing, x // xspacing] = 0
+
+    return binary_image
+
+
 def calculate_scale_factor(image, rescaleXY):
     """
     Calculates the scale factor for an image.

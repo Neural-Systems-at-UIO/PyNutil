@@ -6,7 +6,7 @@ import numpy as np
 
 from ..io.read_and_write import load_quint_json
 from .transformations import transform_to_atlas_space
-from .utils import number_sections, convert_to_intensity
+from .utils import number_sections, convert_to_intensity, create_damage_mask
 from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
 
 
@@ -30,6 +30,7 @@ def _knn_interpolate_generic(
     atlas_mask: Optional[np.ndarray],
     k: int,
     batch_size: int,
+    mode: str = "mean",
 ) -> np.ndarray:
     try:
         from scipy.spatial import cKDTree  # type: ignore
@@ -64,7 +65,10 @@ def _knn_interpolate_generic(
             out_vals[start:end] = fit_vals[ind]
         else:
             neigh_vals = fit_vals[ind]
-            out_vals[start:end] = neigh_vals.mean(axis=1)
+            if mode == "mean":
+                out_vals[start:end] = neigh_vals.mean(axis=1)
+            elif mode == "max":
+                out_vals[start:end] = neigh_vals.max(axis=1)
 
     if atlas_mask is not None:
         out = np.zeros_like(gv)
@@ -120,6 +124,7 @@ def project_sections_to_volume(
     quint_json = load_quint_json(alignment_json)
     slices = quint_json["slices"]
     slice_by_nr = {int(s.get("nr")): s for s in slices if s.get("nr") is not None}
+    grid_spacing = quint_json.get("gridspacing")
 
     seg_paths = []
     for name in os.listdir(segmentation_folder):
@@ -135,6 +140,7 @@ def project_sections_to_volume(
 
     gv = np.zeros(out_shape, dtype=np.float32)
     fv = np.zeros(out_shape, dtype=np.uint32)
+    dv = np.zeros(out_shape, dtype=np.uint8)
 
     if value_mode not in {"pixel_count", "mean", "object_count"}:
         raise ValueError(
@@ -185,6 +191,17 @@ def project_sections_to_volume(
                 seg_height, seg_width = seg.shape[:2]
 
         reg_height, reg_width = int(slice_dict["height"]), int(slice_dict["width"])
+
+        # Handle damage mask if present
+        damage_reg = None
+        if grid_spacing is not None and "grid" in slice_dict:
+            damage_mask = create_damage_mask(slice_dict, grid_spacing)
+            damage_reg = cv2.resize(
+                (damage_mask == 0).astype(np.uint8),
+                (reg_width, reg_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+
         # Plane sampling: evaluate on a regular grid sized to the slice plane
         # extent in atlas voxels (||u|| and ||v||), similar to the reference
         # "perfect_image" approach but without atlas-specific assumptions.
@@ -234,6 +251,18 @@ def project_sections_to_volume(
         )
         vals = sampled.reshape(-1).astype(np.float32, copy=False)
 
+        damage_vals = None
+        if damage_reg is not None:
+            sampled_damage = cv2.remap(
+                damage_reg,
+                map_x,
+                map_y,
+                interpolation=cv2.INTER_NEAREST,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=0,
+            )
+            damage_vals = sampled_damage.reshape(-1)
+
         flat_labels: Optional[np.ndarray] = None
         if ov_flat is not None:
             sampled_u8 = (sampled != 0).astype(np.uint8)
@@ -261,6 +290,11 @@ def project_sections_to_volume(
 
         np.add.at(fv, (x, y, z), 1)
         np.add.at(gv, (x, y, z), vals_in)
+
+        if damage_vals is not None:
+            damage_in = damage_vals[inb]
+            # Mark voxels as damaged if any contributing pixel is damaged
+            dv[x, y, z] |= damage_in.astype(np.uint8)
 
         if ov_flat is not None:
             if flat_labels is None:  # pragma: no cover
@@ -312,16 +346,28 @@ def project_sections_to_volume(
             atlas_mask=atlas_mask,
             k=k,
             batch_size=batch_size,
+            mode="mean",
         )
 
-        if atlas_mask is not None:
-            out = np.zeros_like(gv)
-            out[atlas_mask] = gv[atlas_mask]
-            gv = out
+        if np.any(dv > 0):
+            dv_float = dv.astype(np.float32)
+            dv_interp = _knn_interpolate_generic(
+                gv=dv_float,
+                fv=fv,
+                atlas_mask=atlas_mask,
+                k=k,
+                batch_size=batch_size,
+                mode="max",
+            )
+            dv = (dv_interp > 0).astype(np.uint8)
     else:
         if missing_fill is not None and not (missing_fill == 0):
             gv[fv == 0] = float(missing_fill)
 
-    return gv.astype(np.float32, copy=False), fv.astype(np.uint32, copy=False)
+    return (
+        gv.astype(np.float32, copy=False),
+        fv.astype(np.uint32, copy=False),
+        dv.astype(np.uint8, copy=False),
+    )
 
 

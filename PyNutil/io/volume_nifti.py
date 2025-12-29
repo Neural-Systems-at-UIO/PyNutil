@@ -61,6 +61,7 @@ def save_volume_niftis(
     output_folder: str,
     interpolated_volume: Optional[np.ndarray],
     frequency_volume: Optional[np.ndarray],
+    damage_volume: Optional[np.ndarray] = None,
     atlas_volume: Optional[np.ndarray],
     voxel_size_um: Optional[float],
     logger=None,
@@ -85,6 +86,9 @@ def save_volume_niftis(
 
     if frequency_volume is not None:
         _save_one(frequency_volume, name="frequency_volume")
+
+    if damage_volume is not None:
+        _save_one(damage_volume, name="damage_volume")
 
 
 # Backwards-compatible alias (internal name used by earlier refactor iterations).

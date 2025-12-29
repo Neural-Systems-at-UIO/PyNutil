@@ -457,7 +457,7 @@ class PyNutil:
             self.segmentation_folder if self.segmentation_folder else self.image_folder
         )
 
-        gv, fv = _project_sections_to_volume(
+        gv, fv, dv = _project_sections_to_volume(
             segmentation_folder=folder_to_use,
             alignment_json=self.alignment_json,
             colour=self.colour,
@@ -478,6 +478,7 @@ class PyNutil:
 
         self.interpolated_volume = gv
         self.frequency_volume = fv
+        self.damage_volume = dv
 
     def save_analysis(self, output_folder, create_visualisations=True, colormap="gray"):
         """
@@ -532,11 +533,13 @@ class PyNutil:
             try:
                 vol = getattr(self, "interpolated_volume", None)
                 freq = getattr(self, "frequency_volume", None)
+                damage = getattr(self, "damage_volume", None)
 
                 save_volume_niftis(
                     output_folder=output_folder,
                     interpolated_volume=vol,
                     frequency_volume=freq,
+                    damage_volume=damage,
                     atlas_volume=getattr(self, "atlas_volume", None),
                     voxel_size_um=getattr(self, "voxel_size_um", None),
                     logger=logger,
