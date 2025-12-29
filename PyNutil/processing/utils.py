@@ -141,7 +141,7 @@ def get_segmentations(folder):
     ]
     if len(segmentations) == 0:
         raise ValueError(
-            f"No segmentations found in folder {folder}. Make sure the folder contains a segmentations folder with segmentations."
+            f"No image files found in folder {folder}. Make sure the folder contains images."
         )
     print(f"Found {len(segmentations)} segmentations in folder {folder}")
     return segmentations

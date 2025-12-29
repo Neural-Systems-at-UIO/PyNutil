@@ -6,7 +6,7 @@ import numpy as np
 
 from ..io.read_and_write import load_quint_json
 from .transformations import transform_to_atlas_space
-from .utils import number_sections
+from .utils import number_sections, convert_to_intensity
 from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
 
 
@@ -90,6 +90,9 @@ def project_sections_to_volume(
     use_atlas_mask: bool = True,
     non_linear: bool = True,
     value_mode: str = "pixel_count",
+    intensity_channel: str = "grayscale",
+    min_intensity: Optional[int] = None,
+    max_intensity: Optional[int] = None,
 ):
     """Project section segmentations into a 3D atlas-space volume.
 
@@ -144,7 +147,10 @@ def project_sections_to_volume(
         ov_flat = None
 
     sx, sy, sz = out_shape
-    colour_arr = np.array(colour, dtype=np.uint8)
+    if colour is not None:
+        colour_arr = np.array(colour, dtype=np.uint8)
+    else:
+        colour_arr = None
 
     for seg_path in seg_paths:
         seg_nr = int(number_sections([seg_path])[0])
@@ -155,16 +161,28 @@ def project_sections_to_volume(
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
         if seg is None:
             continue
-        if seg.ndim == 2:
-            seg_values = seg.astype(np.float32, copy=False)
+
+        if colour_arr is None:
+            # Intensity mode
+            seg_values = convert_to_intensity(seg, intensity_channel)
+            if min_intensity is not None:
+                seg_values[seg_values < min_intensity] = 0
+            if max_intensity is not None:
+                seg_values[seg_values > max_intensity] = 0
             mask = (seg_values != 0).astype(np.float32, copy=False)
-            seg_height, seg_width = seg.shape
-        else:
-            seg = seg[:, :, :3]
-            mask = np.all(seg == colour_arr[None, None, :], axis=2).astype(np.float32)
-            # For RGB segmentations, we only currently support colour-matched binary masks.
-            seg_values = mask
             seg_height, seg_width = seg.shape[:2]
+        else:
+            # Segmentation mode
+            if seg.ndim == 2:
+                seg_values = seg.astype(np.float32, copy=False)
+                mask = (seg_values != 0).astype(np.float32, copy=False)
+                seg_height, seg_width = seg.shape
+            else:
+                seg = seg[:, :, :3]
+                mask = np.all(seg == colour_arr[None, None, :], axis=2).astype(np.float32)
+                # For RGB segmentations, we only currently support colour-matched binary masks.
+                seg_values = mask
+                seg_height, seg_width = seg.shape[:2]
 
         reg_height, reg_width = int(slice_dict["height"]), int(slice_dict["width"])
         # Plane sampling: evaluate on a regular grid sized to the slice plane

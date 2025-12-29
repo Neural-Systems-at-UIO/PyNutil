@@ -154,6 +154,10 @@ class PyNutil:
                 raise ValueError(
                     "min_intensity and max_intensity are only supported when using image_folder, not segmentation_folder."
                 )
+            if image_folder and (colour is not None):
+                raise ValueError(
+                    "You can't specify both colour and image_folder since there are no segmentations"
+                )
 
             if atlas_name is not None and voxel_size_um is not None:
                 logger.warning(
@@ -395,7 +399,7 @@ class PyNutil:
         batch_size: int = 200_000,
         use_atlas_mask: bool = True,
         non_linear: bool = True,
-        value_mode: str = "pixel_count",
+        value_mode: str = "mean",
     ):
         """Build a 3D volume by projecting full section planes into atlas space.
 
@@ -429,10 +433,16 @@ class PyNutil:
             (volume, frequency_volume)
         """
 
-        if not self.segmentation_folder or not self.alignment_json:
-            raise ValueError("segmentation_folder and alignment_json are required")
-        if self.colour is None:
-            raise ValueError("colour must be set to interpolate_volume")
+        if not self.segmentation_folder and not self.image_folder:
+            raise ValueError(
+                "Either segmentation_folder or image_folder must be specified"
+            )
+        if not self.alignment_json:
+            raise ValueError("alignment_json is required")
+        if self.segmentation_folder and self.colour is None:
+            raise ValueError(
+                "colour must be set to interpolate_volume when using segmentation_folder"
+            )
 
         atlas_shape = (
             tuple(int(x) for x in self.atlas_volume.shape)
@@ -442,8 +452,12 @@ class PyNutil:
         if atlas_shape is None:
             raise ValueError("atlas_volume is unavailable")
 
+        folder_to_use = (
+            self.segmentation_folder if self.segmentation_folder else self.image_folder
+        )
+
         gv, fv = _project_sections_to_volume(
-            segmentation_folder=self.segmentation_folder,
+            segmentation_folder=folder_to_use,
             alignment_json=self.alignment_json,
             colour=self.colour,
             atlas_shape=atlas_shape,
@@ -456,6 +470,9 @@ class PyNutil:
             use_atlas_mask=use_atlas_mask,
             non_linear=non_linear,
             value_mode=value_mode,
+            intensity_channel=self.intensity_channel,
+            min_intensity=self.min_intensity,
+            max_intensity=self.max_intensity,
         )
 
         self.interpolated_volume = gv

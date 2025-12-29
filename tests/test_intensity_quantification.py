@@ -16,7 +16,7 @@ class TestIntensityQuantification(TimedTestCase):
         self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "image_intensity"))
         self.image_folder = os.path.join(self.base_dir, "images")
         self.rgb_image_folder = os.path.join(self.base_dir, "rgb_images")
-        self.alignment_json = os.path.join(self.base_dir, "registration_data_combined_registration_jsons_05-2788.json")
+        self.alignment_json = os.path.join(self.base_dir, "alignment.json")
         self.output_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "demo_data", "outputs"))
         self.atlas_name = "allen_mouse_25um"
 

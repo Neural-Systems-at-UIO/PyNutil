@@ -1,3 +1,6 @@
+"""Sometimes you may want to measure the intensity of input images.
+To do this we specify image_folder instead of segmentation folder
+"""
 import sys
 import os
 
@@ -6,21 +9,19 @@ from PyNutil import PyNutil
 
 # Configuration
 script_dir = os.path.dirname(os.path.abspath(__file__))
-segmentation_folder = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
+image_folder = os.path.join(
+    script_dir, "../tests/test_data/image_intensity/images/"
 )
 alignment_json = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
+    script_dir, "../tests/test_data/image_intensity/alignment.json"
 )
-colour = [0, 0, 0]
 atlas_name = "allen_mouse_25um"
-output_folder = "../test_result/hemi_test_bg6_damage_24_03_2025"
+output_folder = "../test_result/intensity_measurement"
 
 # Initialize PyNutil object
 pnt = PyNutil(
-    segmentation_folder=segmentation_folder,
+    image_folder=image_folder,
     alignment_json=alignment_json,
-    colour=colour,
     atlas_name=atlas_name,
     custom_region_path=os.path.join(
         script_dir,
@@ -29,7 +30,7 @@ pnt = PyNutil(
 )
 
 # Execute workflow
-pnt.get_coordinates(object_cutoff=0, use_flat=False)
+pnt.get_coordinates()
 pnt.quantify_coordinates()
-pnt.interpolate_volume()
+# pnt.interpolate_volume()
 pnt.save_analysis(output_folder)

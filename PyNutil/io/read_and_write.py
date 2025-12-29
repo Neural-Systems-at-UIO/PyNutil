@@ -328,6 +328,8 @@ def write_hemi_points_to_meshview(
     colormap : str, optional
         Colormap to use for intensity mode (default is "gray").
     """
+    if points is None or point_names is None:
+        return
     if hemi_label is not None and not (hemi_label == None).all():
         split_fn_left = filename.split("/")
         split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
