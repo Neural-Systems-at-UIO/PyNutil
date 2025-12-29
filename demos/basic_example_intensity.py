@@ -32,5 +32,5 @@ pnt = PyNutil(
 # Execute workflow
 pnt.get_coordinates()
 pnt.quantify_coordinates()
-# pnt.interpolate_volume()
+pnt.interpolate_volume()
 pnt.save_analysis(output_folder)
