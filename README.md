@@ -55,6 +55,8 @@ pnt = PyNutil(
     alignment_json='../tests/test_data/non_linear_allen_mouse/alignment.json',
     colour=[0, 0, 0],
     atlas_name='allen_mouse_25um'
+    #If you would like to use cellpose segmentations add:
+    #cellpose = True
 )
 
 #optionally, if you want to generate a 3D heatmap
