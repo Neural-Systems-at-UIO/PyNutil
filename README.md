@@ -104,7 +104,11 @@ Each column name has the following definition
 | Right hemi    | For each of the other columns, what is that value for the right hemisphere alone    |
 | Damaged       | For each of the other columns, what is that value for the areas marked damaged alone|
 | Undamaged     | For each of the other columns, what is that value for the areas marked undamaged alone|
-
+If you choose to measure the intensity of images rather than segmentations you will not get object counts. Instead you will get
+| Column        | Definition                                                                          |
+|---------------|--------------------------------------------------------------------------------------|
+| Sum intensity | The sum of all image pixels in a region.                                                         |
+| Mean inensity | The mean of all image pixels in a region.                                                           |
  # Feature Requests
 We are open to feature requests 😊 Simply open an issue in the GitHub describing the feature you would like to see. 
 
