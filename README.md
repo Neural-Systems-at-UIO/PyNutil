@@ -34,7 +34,7 @@ pip install -e .
 ## GUI
 download the executable for Windows and macOS via the [GitHub releases tab](https://GitHub.com/Neural-Systems-at-UIO/PyNutil/releases)
 
-![image](https://GitHub.com/user-attachments/assets/c3b3ca11-f0ef-4e2c-96d7-498ecf96514d)
+<img width="1004" height="728" alt="image" src="https://github.com/user-attachments/assets/7038a5d1-5a1e-4afc-904b-9c2bf3ea81a1" />
 
 # Usage
 
