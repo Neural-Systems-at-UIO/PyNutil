@@ -89,12 +89,12 @@ https://github.com/user-attachments/assets/30ca7f7f-92f5-4d83-a92a-b29603181b8f
 # Interpreting the Results
 Each column name has the following definition
 | Column        | Definition                                                                          |
-|---------------|--------------------------------------------------------------------------------------|
+|---------------|-------------------------------------------------------------------------------------|
 | idx           | The atlas ID of the region.                                                         |
 | name          | The name of atlas region.                                                           |
-| r             | The amount of red in the RGB value for the region colour.                       |
-| g             | The amount of green in the RGB value for the region colour.                     |
-| b             | The amount of blue in the RGB value for the region colour.                      |
+| r             | The amount of red in the RGB value for the region colour.                           |
+| g             | The amount of green in the RGB value for the region colour.                         |
+| b             | The amount of blue in the RGB value for the region colour.                          |
 | Region area   | Area representing the region on the segmentation in pixel values.                   |
 | Object count  | Number of objects located in the region. An object is a disconnected group of pixels|
 | Object pixels | Number of pixels representing objects in this region.                               |
@@ -106,9 +106,9 @@ Each column name has the following definition
 | Undamaged     | For each of the other columns, what is that value for the areas marked undamaged alone|
 If you choose to measure the intensity of images rather than segmentations you will not get object counts. Instead you will get
 | Column        | Definition                                                                          |
-|---------------|--------------------------------------------------------------------------------------|
-| Sum intensity | The sum of all image pixels in a region.                                                         |
-| Mean inensity | The mean of all image pixels in a region.                                                           |
+|---------------|-------------------------------------------------------------------------------------|
+| Sum intensity | The sum of all image pixels in a region.                                            |
+| Mean inensity | The mean of all image pixels in a region.                                           |
  # Feature Requests
 We are open to feature requests 😊 Simply open an issue in the GitHub describing the feature you would like to see. 
 
