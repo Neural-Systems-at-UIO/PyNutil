@@ -78,8 +78,8 @@ PyNutil will produce meshview json files. These can be opened in [MeshView for t
 https://github.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d 
 
 
-# Siibra compatible NifTI  files
-If you have interpolated your volume you will find an interpolated NifTI volume in your output directory. This can be dragged and dropped directly into Siibra. If you share your data you can also include a shareable link to your data in the Siibra viewer. 
+# Siibra explorer compatible NifTI  files
+If you have interpolated your volume you will find an interpolated NifTI volume in your output directory. This can be dragged and dropped directly into [siibra explorer](https://atlases.ebrains.eu/viewer/#/). If you share your data you can also include a shareable link to your data in the Siibra viewer. These files are also viewable in [ITK-SNAP](https://github.com/pyushkevich/itksnap). 
 
 
 
