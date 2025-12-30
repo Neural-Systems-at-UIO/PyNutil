@@ -1,8 +1,8 @@
-import json
 import logging
 import os
 import re
 import sys
+from json import JSONDecodeError
 from typing import Optional, Tuple
 
 import numpy as np
@@ -23,6 +23,8 @@ from .io.volume_nifti import save_volume_niftis
 from .processing.section_volume import (
     project_sections_to_volume as _project_sections_to_volume,
 )
+
+from .config import PyNutilConfig
 
 
 logger = logging.getLogger(__name__)
@@ -120,92 +122,61 @@ class PyNutil:
 
         try:
             if settings_file is not None:
-                with open(settings_file, "r") as f:
-                    settings = json.load(f)
-                try:
-                    segmentation_folder = settings.get("segmentation_folder")
-                    image_folder = settings.get("image_folder")
-                    alignment_json = settings["alignment_json"]
-                    colour = settings.get("colour")
-                    intensity_channel = settings.get("intensity_channel")
-                    if "custom_region_path" in settings:
-                        custom_region_path = settings["custom_region_path"]
-                    if "voxel_size_um" in settings:
-                        voxel_size_um = settings["voxel_size_um"]
-                    if "min_intensity" in settings:
-                        min_intensity = settings["min_intensity"]
-                    if "max_intensity" in settings:
-                        max_intensity = settings["max_intensity"]
-                    if "cellpose" in settings:
-                        cellpose = settings["cellpose"]
-                    if "atlas_path" in settings and "label_path" in settings:
-                        atlas_path = settings["atlas_path"]
-                        label_path = settings["label_path"]
-                        if "hemi_path" in settings:
-                            hemi_path = settings["hemi_path"]
-                    else:
-                        atlas_name = settings["atlas_name"]
-                except KeyError as exc:
-                    raise KeyError(
-                        "Settings file must contain alignment_json, and either atlas_path and label_path or atlas_name. It should also contain either segmentation_folder or image_folder."
-                    ) from exc
-
-            if segmentation_folder and image_folder:
-                raise ValueError(
-                    "Please specify either segmentation_folder or image_folder, not both."
+                cfg = PyNutilConfig.from_settings_file(settings_file)
+            else:
+                cfg = PyNutilConfig(
+                    segmentation_folder=segmentation_folder,
+                    image_folder=image_folder,
+                    alignment_json=alignment_json,
+                    colour=colour,
+                    intensity_channel=intensity_channel,
+                    atlas_name=atlas_name,
+                    atlas_path=atlas_path,
+                    label_path=label_path,
+                    hemi_path=hemi_path,
+                    custom_region_path=custom_region_path,
+                    voxel_size_um=voxel_size_um,
+                    min_intensity=min_intensity,
+                    max_intensity=max_intensity,
+                    cellpose=cellpose,
                 )
 
-            if segmentation_folder and (min_intensity is not None or max_intensity is not None):
-                raise ValueError(
-                    "min_intensity and max_intensity are only supported when using image_folder, not segmentation_folder."
-                )
-            if image_folder and (colour is not None):
-                raise ValueError(
-                    "You can't specify both colour and image_folder since there are no segmentations"
-                )
+            cfg.normalize(logger=logger)
+            cfg.validate()
 
-            if atlas_name is not None and voxel_size_um is not None:
-                logger.warning(
-                    f"Voxel size ({voxel_size_um} um) was specified but will be ignored because atlas_name ({atlas_name}) is provided. Voxel size will be inferred from the atlas name."
-                )
-                voxel_size_um = None
+            self.segmentation_folder = cfg.segmentation_folder
+            self.image_folder = cfg.image_folder
+            self.alignment_json = cfg.alignment_json
+            self.colour = cfg.colour
+            self.intensity_channel = cfg.intensity_channel
+            self.atlas_name = cfg.atlas_name
+            self.voxel_size_um = float(cfg.voxel_size_um) if cfg.voxel_size_um is not None else None
+            self.min_intensity = cfg.min_intensity
+            self.max_intensity = cfg.max_intensity
+            self.cellpose = cfg.cellpose
+            self.custom_region_path = cfg.custom_region_path
 
-            self.segmentation_folder = segmentation_folder
-            self.image_folder = image_folder
-            self.alignment_json = alignment_json
-            self.colour = colour
-            self.intensity_channel = intensity_channel
-            self.atlas_name = atlas_name
-            self.voxel_size_um = float(voxel_size_um) if voxel_size_um is not None else None
-            self.min_intensity = min_intensity
-            self.max_intensity = max_intensity
-            self.cellpose = cellpose
-            self.custom_region_path = custom_region_path
-            if custom_region_path:
+            if cfg.custom_region_path:
                 custom_regions_dict, custom_atlas_labels = open_custom_region_file(
-                    custom_region_path
+                    cfg.custom_region_path
                 )
             else:
                 custom_regions_dict = None
                 custom_atlas_labels = None
             self.custom_regions_dict = custom_regions_dict
             self.custom_atlas_labels = custom_atlas_labels
-            if (atlas_path or label_path) and atlas_name:
-                raise ValueError(
-                    "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."
-                )
 
-            if atlas_path and label_path:
-                self.atlas_path = atlas_path
-                self.label_path = label_path
-                self.hemi_path = hemi_path
+            if cfg.atlas_path and cfg.label_path:
+                self.atlas_path = cfg.atlas_path
+                self.label_path = cfg.label_path
+                self.hemi_path = cfg.hemi_path
                 self.atlas_volume, self.hemi_map, self.atlas_labels = load_custom_atlas(
-                    atlas_path, hemi_path, label_path
+                    cfg.atlas_path, cfg.hemi_path, cfg.label_path
                 )
             else:
                 self._check_atlas_name()
                 self.atlas_volume, self.hemi_map, self.atlas_labels = load_atlas_data(
-                    atlas_name=atlas_name
+                    atlas_name=cfg.atlas_name
                 )
 
             # If not provided, try to infer voxel size from brainglobe atlas name
@@ -217,8 +188,9 @@ class PyNutil:
                         self.voxel_size_um = float(m.group(1))
                     except Exception:
                         self.voxel_size_um = None
+
             self.point_intensities = None
-        except (FileNotFoundError, json.JSONDecodeError) as e:
+        except (FileNotFoundError, JSONDecodeError) as e:
             raise ValueError(f"Error loading settings file: {e}")
         except Exception as e:
             raise ValueError(f"Initialization error: {e}")

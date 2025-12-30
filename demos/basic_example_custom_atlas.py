@@ -1,7 +1,7 @@
-import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# This demo assumes PyNutil is installed (recommended for development):
+#   pip install -e .
 from PyNutil import PyNutil
 
 ###PyNutil is a toolkit for quantifying neuroscientific data using brain atlases
@@ -14,23 +14,23 @@ from PyNutil import PyNutil
 ###The object_cutoff is a cut-off for min object size
 ### get_coordinates, if use_flat=True, place flat files in folder titled "flat_files" at same level as "segmentations" folder
 # This does not use BrainGlobe API.
-# Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, ".."))
 
 pnt = PyNutil(
     segmentation_folder=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
+        repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"
     ),
     alignment_json=os.path.join(
-        script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
+        repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"
     ),
     colour=[0, 0, 0],
     atlas_path=os.path.join(
-        script_dir,
-        "../tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
+        repo_root,
+        "tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
     ),
     label_path=os.path.join(
-        script_dir, "../tests/test_data/allen_mouse_2017_atlas//allen2017_colours.csv"
+        repo_root, "tests/test_data/allen_mouse_2017_atlas/allen2017_colours.csv"
     ),
     # custom_region_path=os.path.join(
     #     script_dir,
@@ -39,4 +39,4 @@ pnt = PyNutil(
 )
 pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
-pnt.save_analysis("../test_result/2custom_atlas_hemi_test_24_03_2025")
+pnt.save_analysis(os.path.join(repo_root, "test_result/2custom_atlas_hemi_test_24_03_2025"))

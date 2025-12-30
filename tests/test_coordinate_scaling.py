@@ -14,7 +14,7 @@ import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from PyNutil.processing.coordinate_extraction import segmentation_to_atlas_space
-from PyNutil.processing.coordinate_extraction import get_region_areas
+from PyNutil.processing.transform import get_region_areas
 
 
 class TestCoordinateScaling(TimedTestCase):
@@ -178,7 +178,7 @@ class TestCoordinateScaling(TimedTestCase):
                 side_effect=_fake_warp_image,
             ),
             patch(
-                "PyNutil.processing.coordinate_extraction.flat_to_dataframe",
+                "PyNutil.processing.counting_and_load.flat_to_dataframe",
                 side_effect=_fake_flat_to_dataframe,
             ),
         ):

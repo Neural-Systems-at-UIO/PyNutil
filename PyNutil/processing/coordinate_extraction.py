@@ -3,19 +3,20 @@ import pandas as pd
 import gc
 import os
 from concurrent.futures import ThreadPoolExecutor
-from ..io.read_and_write import load_quint_json
+from ..io.read_and_write import load_quint_json, load_segmentation
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .generate_target_slice import generate_target_slice
-from .visualign_deformations import triangulate
 import cv2
 import threading
-from ..io.read_and_write import load_segmentation
 from .transformations import (
     transform_points_to_atlas_space,
     transform_to_registration,
     get_transformed_coordinates,
     transform_to_atlas_space,
 )
+from .image_loaders import detect_pixel_id
+from .transform import get_region_areas, get_triangulation
+from .aggregator import build_region_intensity_dataframe
 from .utils import (
     get_flat_files,
     get_segmentations,
@@ -76,21 +77,8 @@ def _connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 
 
 
 def _labeled_image_props(label_image: np.ndarray):
-    """Return properties for an already labeled 2D image (e.g. Cellpose).
 
-    Returns a list of dicts with:
-        - area (int)
-        - centroid (tuple[float, float])  (y, x)
-        - coords (ndarray[int]) of shape (N, 2) in (y, x) order
-    """
-    if label_image.size == 0:
-        return []
 
-    # Ensure it's 2D grayscale
-    if label_image.ndim == 3:
-        label_image = label_image[:, :, 0]
-
-    # Find all non-zero pixels
     ys, xs = np.nonzero(label_image)
     if ys.size == 0:
         return []
@@ -621,51 +609,14 @@ def segmentation_to_atlas_space_intensity(
         intensity_resized[~damage_mask_resized] = 0
         atlas_map[~damage_mask_resized] = 0
 
-    # Calculate sum and count per region
-    flat_labels = atlas_map.ravel()
-    flat_intensity = intensity_resized.ravel()
-
-    # Use np.unique to handle large label IDs without OOM in bincount
-    unique_labels, inverse_indices = np.unique(flat_labels, return_inverse=True)
-    sums = np.bincount(inverse_indices, weights=flat_intensity)
-    counts = np.bincount(inverse_indices)
-
-    # Create DataFrame
-    df = pd.DataFrame(
-        {"idx": unique_labels, "sum_intensity": sums, "pixel_count": counts}
+    df = build_region_intensity_dataframe(
+        atlas_map=atlas_map,
+        intensity_resized=intensity_resized,
+        atlas_labels=atlas_labels,
+        region_areas=region_areas,
+        hemi_mask=hemi_mask,
+        damage_mask_resized=damage_mask_resized if damage_mask is not None else None,
     )
-
-    # If hemi_mask exists, we need to do this per hemisphere too
-    if hemi_mask is not None:
-        for hemi_id, hemi_name in [(1, "left_hemi"), (2, "right_hemi")]:
-            mask = hemi_mask == hemi_id
-            if damage_mask is not None:
-                mask &= damage_mask_resized
-
-            h_labels = atlas_map[mask]
-            h_intensity = intensity_resized[mask]
-
-            if h_labels.size > 0:
-                h_unique, h_inverse = np.unique(h_labels, return_inverse=True)
-                h_sums = np.bincount(h_inverse, weights=h_intensity)
-                h_counts = np.bincount(h_inverse)
-
-                h_df = pd.DataFrame(
-                    {
-                        "idx": h_unique,
-                        f"{hemi_name}_sum_intensity": h_sums,
-                        f"{hemi_name}_pixel_count": h_counts,
-                    }
-                )
-                df = df.merge(h_df, on="idx", how="left").fillna(0)
-            else:
-                df[f"{hemi_name}_sum_intensity"] = 0.0
-                df[f"{hemi_name}_pixel_count"] = 0
-
-    # Merge with region_areas to get region areas
-    df = df.merge(region_areas, on="idx", how="left")
-    # Merge with atlas_labels to get region names and colors
-    df = df.merge(atlas_labels[["idx", "name", "r", "g", "b"]], on="idx", how="left")
 
     region_intensities_list[index] = df
 
@@ -866,53 +817,6 @@ def detect_pixel_id(segmentation: np.ndarray):
             pixel_id = [255, 255, 255]
     # print("detected pixel_id: ", pixel_id)
     return pixel_id
-
-
-def get_region_areas(
-    use_flat,
-    atlas_labels,
-    flat_file_atlas,
-    seg_width,
-    seg_height,
-    slice_dict,
-    atlas_volume,
-    hemi_mask,
-    triangulation,
-    damage_mask,
-):
-    """
-    Builds the atlas map for a slice and calculates the region areas.
-
-    Args:
-        use_flat (bool): If True, uses flat files.
-        atlas_labels (DataFrame): DataFrame containing atlas labels.
-        flat_file_atlas (str): Path to the flat atlas file.
-        seg_width (int): Segmentation image width.
-        seg_height (int): Segmentation image height.
-        slice_dict (dict): Dictionary with slice metadata (anchoring, etc.).
-        atlas_volume (ndarray): 3D atlas volume.
-        hemi_mask (ndarray): Hemisphere mask.
-        triangulation (ndarray): Triangulation data for non-linear transforms.
-        damage_mask (ndarray): Binary damage mask.
-
-    Returns:
-        tuple: (DataFrame of region areas, atlas map array).
-    """
-    # The atlas slice + non-linear warping operate in *registration* (alignment JSON)
-    # coordinate space. This may legitimately differ from the segmentation image size.
-    reg_width, reg_height = slice_dict["width"], slice_dict["height"]
-    atlas_map = load_image(
-        flat_file_atlas,
-        slice_dict["anchoring"],
-        atlas_volume,
-        triangulation,
-        (reg_width, reg_height),
-        atlas_labels,
-    )
-    region_areas = flat_to_dataframe(
-        atlas_map, damage_mask, hemi_mask, (seg_width, seg_height)
-    )
-    return region_areas, atlas_map
 
 
 def segmentation_to_atlas_space(
@@ -1142,24 +1046,6 @@ def segmentation_to_atlas_space(
     )
 
     gc.collect()
-
-
-def get_triangulation(slice_dict, reg_width, reg_height, non_linear):
-    """
-    Generates triangulation data if non-linear markers exist.
-
-    Args:
-        slice_dict (dict): Slice metadata from alignment JSON.
-        reg_width (int): Registration width.
-        reg_height (int): Registration height.
-        non_linear (bool): Whether to use non-linear transform.
-
-    Returns:
-        list or None: Triangulation info or None if not applicable.
-    """
-    if non_linear and "markers" in slice_dict:
-        return triangulate(reg_width, reg_height, slice_dict["markers"])
-    return None
 
 
 def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):

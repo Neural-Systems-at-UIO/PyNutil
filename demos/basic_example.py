@@ -1,20 +1,21 @@
-import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# This demo assumes PyNutil is installed (recommended for development):
+#   pip install -e .
 from PyNutil import PyNutil
 
 # Configuration
 script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(script_dir, ".."))
 segmentation_folder = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/segmentations/"
+    repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"
 )
 alignment_json = os.path.join(
-    script_dir, "../tests/test_data/nonlinear_allen_mouse/alignment.json"
+    repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"
 )
 colour = [0, 0, 0]
 atlas_name = "allen_mouse_25um"
-output_folder = "../test_result/hemi_test_bg6_damage_24_03_2025"
+output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_24_03_2025")
 
 # Initialize PyNutil object
 pnt = PyNutil(
@@ -23,8 +24,8 @@ pnt = PyNutil(
     colour=colour,
     atlas_name=atlas_name,
     custom_region_path=os.path.join(
-        script_dir,
-        "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
+        repo_root,
+        "tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
     ),
 )
 
