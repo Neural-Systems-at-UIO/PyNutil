@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QGroupBox,
+    QSizePolicy,
 )
 from PyQt6.QtGui import QAction,  QIcon
 
@@ -67,7 +68,7 @@ class PyNutilGUI(QMainWindow):
         self.arguments = {
             "reference_atlas": None,
             "registration_json": None,
-            "object_colour": None,
+            "object_colour": "auto",
             "segmentation_dir": None,
             "image_dir": None,
             "output_dir": None,
@@ -93,8 +94,9 @@ class PyNutilGUI(QMainWindow):
         # Create left panel
         left_layout = QVBoxLayout()
         left_widget = QWidget()
-        left_widget.setMinimumWidth(350)
         left_widget.setLayout(left_layout)
+        # Prefer flexible sizing over large fixed minimums to avoid overlapping on small windows
+        left_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         # Create menu bar
         menubar = QMenuBar(self)
@@ -205,9 +207,15 @@ class PyNutilGUI(QMainWindow):
                 parent=self,
             )
         )
+        # Allow manual entry (e.g. "auto", "0", "1", or "[r,g,b]")
+        self.colour_dropdown.setEditable(True)
         populate_dropdown(
             self.colour_dropdown, self.recent_files.get("object_colour", [])
         )
+        # Add an explicit "auto" option at the top (populate clears, so insert after)
+        self.colour_dropdown.insertItem(0, "auto", userData="auto")
+        # Default to auto
+        self.colour_dropdown.setCurrentIndex(0)
         self.colour_dropdown.currentIndexChanged.connect(self.set_colour)
         left_layout.addLayout(color_layout)
 
@@ -288,8 +296,10 @@ class PyNutilGUI(QMainWindow):
         # Output text browser
         self.output_box = QTextBrowser()
         self.output_box.setOpenExternalLinks(True)
-        self.output_box.setMinimumWidth(600)
-        self.output_box.setMinimumHeight(400)
+        # Allow the output box to shrink reasonably on small windows
+        self.output_box.setMinimumWidth(300)
+        self.output_box.setMinimumHeight(300)
+        self.output_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         right_layout.addWidget(self.output_box)
 
         # Add panels to main layout
@@ -299,7 +309,8 @@ class PyNutilGUI(QMainWindow):
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
-        self.setMinimumSize(1000, 600)
+        # Reduce strict minimum size to allow resizing on Windows without overlap
+        self.setMinimumSize(800, 500)
 
         # Initialize log storage variables
         self.log_collection = ""
@@ -392,12 +403,44 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
     def set_colour(self, index):
         if index >= 0:
-            value = self.colour_dropdown.itemData(index) or self.colour_dropdown.currentText()
-            if value:
-                try:
-                    self.arguments["object_colour"] = [int(x.strip()) for x in value.strip("[]").split(",")]
-                except Exception:
-                    self.arguments["object_colour"] = [0, 0, 0]
+            raw = self.colour_dropdown.itemData(index)
+            if raw is None:
+                raw = self.colour_dropdown.currentText()
+            value = raw
+            if value is None:
+                return
+            # Accept explicit 'auto'
+            if isinstance(value, str) and value.strip().lower() == "auto":
+                self.arguments["object_colour"] = "auto"
+                return
+            # If it's a stored string representation like '[r, g, b]'
+            if isinstance(value, str):
+                s = value.strip()
+                # single integer like '0' or '1'
+                if s.isdigit():
+                    try:
+                        self.arguments["object_colour"] = [int(s)]
+                        return
+                    except Exception:
+                        pass
+                # comma separated numbers (either 'r,g,b' or 'r, g, b')
+                if ("," in s) or (s.startswith("[") and s.endswith("]")):
+                    try:
+                        nums = [int(x.strip()) for x in s.strip("[]").split(",") if x.strip()]
+                        self.arguments["object_colour"] = nums
+                        return
+                    except Exception:
+                        pass
+            # If it's already a list/iterable
+            try:
+                # convert to list of ints
+                lst = list(value)
+                lst = [int(x) for x in lst]
+                self.arguments["object_colour"] = lst
+                return
+            except Exception:
+                # fallback
+                self.arguments["object_colour"] = "auto"
 
     def choose_colour(self):
         color = QColorDialog.getColor()
@@ -407,7 +450,15 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             rgb_str = str(rgb_list)
             self.update_recent("object_colour", rgb_str)
             populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
-            self.colour_dropdown.setCurrentIndex(1)
+            # re-insert auto at position 0 after populate
+            try:
+                self.colour_dropdown.insertItem(0, "auto", userData="auto")
+            except Exception:
+                pass
+            # set to the newly added colour (search for its text)
+            idx = self.colour_dropdown.findText(rgb_str)
+            if idx >= 0:
+                self.colour_dropdown.setCurrentIndex(idx)
 
     def start_analysis(self):
         # Clear logs
@@ -537,12 +588,22 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
                 self.registration_json_dropdown.setCurrentIndex(0)
 
-            if settings.get("colour"):
+            if settings.get("colour") is not None:
                 self.arguments["object_colour"] = settings["colour"]
                 rgb_str = str(settings["colour"])
                 self.update_recent("object_colour", rgb_str)
                 populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
-                self.colour_dropdown.setCurrentIndex(1)
+                try:
+                    # ensure auto option present
+                    self.colour_dropdown.insertItem(0, "auto", userData="auto")
+                except Exception:
+                    pass
+                # Try to select the loaded colour, otherwise leave as auto
+                idx = self.colour_dropdown.findText(rgb_str)
+                if idx >= 0:
+                    self.colour_dropdown.setCurrentIndex(idx)
+                else:
+                    self.colour_dropdown.setCurrentIndex(0)
 
             if settings.get("custom_region"):
                 self.arguments["custom_region_path"] = settings["custom_region"]
