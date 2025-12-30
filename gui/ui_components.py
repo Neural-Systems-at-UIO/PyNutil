@@ -50,6 +50,15 @@ class CappedPopupComboBox(QComboBox):
         self.setView(view)
         self.setMaxVisibleItems(int(max_visible_items))
 
+        # Ensure the popup closes when an item is selected.
+        # On some platforms (WSL/Wayland), the popup can stay open.
+        self.activated.connect(self._force_hide_popup)
+        view.clicked.connect(self._force_hide_popup)
+
+    def _force_hide_popup(self):
+        # Use a tiny delay to ensure the selection is processed before hiding
+        QTimer.singleShot(20, self.hidePopup)
+
     def showPopup(self):
         super().showPopup()
         # Some styles resize/reposition the popup *after* showPopup returns,
@@ -173,8 +182,7 @@ def create_labeled_combo_with_button(
         layout.addWidget(QLabel(label_text))
 
         # Create combo box
-        combo_box = QComboBox(parent)
-        combo_box.setStyleSheet("QComboBox { combobox-popup: 0; }")
+        combo_box = CappedPopupComboBox(parent)
         if combo_callback:
             combo_box.currentIndexChanged.connect(combo_callback)
         layout.addWidget(combo_box, 1)  # Give combo box stretch factor
@@ -206,8 +214,7 @@ def create_labeled_combo_with_button(
         h_layout.setSpacing(spacing)
 
         # Create combo box
-        combo_box = QComboBox(parent)
-        combo_box.setStyleSheet("QComboBox { combobox-popup: 0; }")
+        combo_box = CappedPopupComboBox(parent)
         if combo_callback:
             combo_box.currentIndexChanged.connect(combo_callback)
         h_layout.addWidget(combo_box, 1)  # Give combo box stretch factor
@@ -250,8 +257,7 @@ def create_labeled_combo_with_button(
         layout.addWidget(button)
 
         # Create combo box
-        combo_box = QComboBox(parent)
-        combo_box.setStyleSheet("QComboBox { combobox-popup: 0; }")
+        combo_box = CappedPopupComboBox(parent)
         if combo_callback:
             combo_box.currentIndexChanged.connect(combo_callback)
 
@@ -287,8 +293,7 @@ def create_horizontal_combo_with_button(
         layout.setContentsMargins(*margins)
 
     # Create combo box
-    combo_box = QComboBox(parent)
-    combo_box.setStyleSheet("QComboBox { combobox-popup: 0; }")
+    combo_box = CappedPopupComboBox(parent)
     if combo_callback:
         combo_box.currentIndexChanged.connect(combo_callback)
 

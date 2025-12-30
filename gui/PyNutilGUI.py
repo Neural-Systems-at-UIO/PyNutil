@@ -46,6 +46,7 @@ from validation import validate_analysis_inputs
 
 # Import UI component utilities
 from ui_components import (
+    CappedPopupComboBox,
     create_labeled_combo_with_button,
     create_horizontal_combo_with_button,
     get_path_display_name,
@@ -252,8 +253,7 @@ class PyNutilGUI(QMainWindow):
 
         # Create horizontal layout for atlas dropdown and install button
         atlas_h_layout = QHBoxLayout()
-        self.atlas_combo = QComboBox()
-        self.atlas_combo.setStyleSheet("QComboBox { combobox-popup: 0; }")
+        self.atlas_combo = CappedPopupComboBox()
         self.populate_atlas_dropdown()
         self.atlas_combo.setCurrentIndex(-1)
 
