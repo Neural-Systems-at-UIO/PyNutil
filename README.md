@@ -78,7 +78,10 @@ PyNutil will produce meshview json files. These can be opened in [MeshView for t
 https://github.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d 
 
 # Siibra compatible NifTI  files
-If you have interpolated your volume you will find an interpolated NifTI volume in your output directory. This can be dragged and dropped directly into Siibra. If you share your data you can also include a shareable link to your data in the Siibra viewer. <video controls src="docs/assets/Siibra.mp4" title="Title"></video>
+If you have interpolated your volume you will find an interpolated NifTI volume in your output directory. This can be dragged and dropped directly into Siibra. If you share your data you can also include a shareable link to your data in the Siibra viewer. 
+
+https://raw.githubusercontent.com/Neural-Systems-at-UIO/PyNutil/refs/heads/main/docs/assets/Siibra.mp4
+
 # Interpreting the Results
 Each column name has the following definition
 | Column        | Definition                                                                          |
