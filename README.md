@@ -74,7 +74,9 @@ If you use an atlas which has a hemisphere map (All brainglobe atlases have this
 [The QCAlign tool](https://www.nitrc.org/projects/qcalign) allows you to mark damaged areas on your section. This means that these damaged areas are excluded from your point clouds. In addition, PyNutil will separately quantify damaged and undamaged areas. Note the undamaged and damaged column names. 
 # Meshview json files
 PyNutil will produce meshview json files. These can be opened in [MeshView for the Allen Mouse](https://meshview.apps.ebrains.eu/?atlas=ABA_Mouse_CCFv3_2017_25um) or for [the Waxholm Rat](https://meshview.apps.ebrains.eu/)
+
 https://GitHub.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d 
+
 # Siibra compatible NifTI  files
 If you have interpolated your volume you will find an interpolated NifTI volume in your output directory. This can be dragged and dropped directly into Siibra. If you share your data you can also include a shareable link to your data in the Siibra viewer. <video controls src="docs/assets/Siibra.mp4" title="Title"></video>
 # Interpreting the Results
