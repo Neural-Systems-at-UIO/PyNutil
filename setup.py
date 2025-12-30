@@ -18,7 +18,7 @@ setup(
     url="https://github.com/Neural-Systems-at-UIO/PyNutil",
     long_description_content_type="text/markdown",
     install_requires=[
-        "numpy==2.4",
+        "numpy",
         "brainglobe-atlasapi",
         "pandas",
         "pynrrd",
