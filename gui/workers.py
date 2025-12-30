@@ -1,22 +1,10 @@
-import io
 import sys
 from typing import Any, Dict
 
 import brainglobe_atlasapi
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
-
+from PyQt6.QtCore import QThread, pyqtSignal
+from log_manager import TextRedirector
 import PyNutil
-
-
-class TextRedirector(QObject):
-    text_written = pyqtSignal(str)
-
-    def write(self, text: str):
-        if text.strip():
-            self.text_written.emit(text)
-
-    def flush(self):
-        pass
 
 
 class AnalysisWorker(QThread):
@@ -28,7 +16,6 @@ class AnalysisWorker(QThread):
         self.cancelled = False
 
     def run(self):
-        buffer = io.StringIO()
         sys.stdout = TextRedirector()
         sys.stdout.text_written.connect(self.log_signal.emit)
         try:
@@ -38,12 +25,17 @@ class AnalysisWorker(QThread):
                 print("Analysis cancelled")
                 return
 
+            # Only pass one of segmentation_folder or image_folder to PyNutil
             pnt_args = {
-                "segmentation_folder": self.arguments["segmentation_dir"],
                 "alignment_json": self.arguments["registration_json"],
                 "colour": self.arguments["object_colour"],
                 "custom_region_path": self.arguments.get("custom_region_path"),
+                "cellpose": self.arguments.get("cellpose", False),
             }
+            if self.arguments.get("segmentation_dir") and not self.arguments.get("image_dir"):
+                pnt_args["segmentation_folder"] = self.arguments.get("segmentation_dir")
+            elif self.arguments.get("image_dir") and not self.arguments.get("segmentation_dir"):
+                pnt_args["image_folder"] = self.arguments.get("image_dir")
 
             if self.arguments.get("use_custom_atlas", False):
                 pnt_args["atlas_path"] = self.arguments["atlas_path"]
@@ -70,6 +62,14 @@ class AnalysisWorker(QThread):
                 return
 
             pnt.quantify_coordinates()
+
+            if self.cancelled:
+                print("Analysis cancelled")
+                return
+
+            if self.arguments.get("interpolate_volume"):
+                print(f"Creating interpolated volume (mode: {self.arguments.get('value_mode')})...")
+                pnt.interpolate_volume(value_mode=self.arguments.get("value_mode", "pixel_count"))
 
             if self.cancelled:
                 print("Analysis cancelled")

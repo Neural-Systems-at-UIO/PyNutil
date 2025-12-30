@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 
 class SettingsManager:
@@ -23,7 +23,7 @@ class SettingsManager:
                 with open(self.settings_path, "r") as file:
                     data = json.load(file)
                     # Ensure all required keys exist
-                    for key in ["registration_json", "segmentation_dir", "output_dir"]:
+                    for key in ["registration_json", "segmentation_dir", "image_dir", "output_dir", "custom_region"]:
                         if not isinstance(data.get(key, []), list):
                             data[key] = [data.get(key)] if data.get(key) else []
                     if "object_colour" not in data:
@@ -38,7 +38,9 @@ class SettingsManager:
         return {
             "registration_json": [],
             "segmentation_dir": [],
+            "image_dir": [],
             "output_dir": [],
+            "custom_region": [],
             "object_colour": [],
             "custom_atlases": [],
         }
@@ -59,7 +61,14 @@ class SettingsManager:
             key: Setting key
             value: New value to add to recent list
         """
+        if not value or not value.strip():
+            return
+
         recents = self.settings.get(key, [])
+        # Ensure all entries are strings and stripped
+        recents = [str(entry).strip() for entry in recents if entry and str(entry).strip()]
+
+        value = value.strip()
         if value in recents:
             recents.remove(value)
         recents.insert(0, value)

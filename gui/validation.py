@@ -36,12 +36,20 @@ def validate_analysis_inputs(
     if not arguments.get("registration_json"):
         missing.append("Registration JSON")
 
-    if not arguments.get("segmentation_dir"):
-        missing.append("Segmentation Folder")
+    seg = bool(arguments.get("segmentation_dir"))
+    img = bool(arguments.get("image_dir"))
+    if not seg and not img:
+        missing.append("Segmentation Folder or Image Folder")
+    if seg and img:
+        missing.append("Specify only one of Segmentation Folder or Image Folder (not both)")
 
     colour = arguments.get("object_colour")
-    if not colour:
-        missing.append("Object Color")
+    # If using cellpose, object colour must not be set
+    if arguments.get("cellpose") and colour:
+        missing.append("Cellpose and Object Color cannot both be selected")
+    elif not arguments.get("cellpose"):
+        if not colour:
+            missing.append("Object Color")
 
     if not arguments.get("output_dir"):
         missing.append("Output Directory")
