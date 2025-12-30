@@ -1,8 +1,5 @@
 # Import restructuring
 import sys
-import threading
-import io
-import contextlib
 import json
 import os
 from typing import Dict, List, Optional, Union, Any
@@ -36,9 +33,6 @@ from PyQt6.QtCore import (
     QMetaObject,
     Qt,
     Q_ARG,
-    QThread,
-    pyqtSignal,
-    QObject,
     QUrl,
     pyqtSlot,
 )
@@ -46,6 +40,9 @@ from PyQt6.QtCore import (
 import brainglobe_atlasapi
 import brainglobe_atlasapi.utils as bg_utils
 import PyNutil
+
+from workers import AnalysisWorker, AtlasInstallWorker
+from validation import validate_analysis_inputs
 
 # Import UI component utilities
 from ui_components import (
@@ -142,133 +139,6 @@ def patched_retrieve_over_http(url, output_file_path, fn_update=None):
 
 
 bg_utils.retrieve_over_http = patched_retrieve_over_http
-
-
-class TextRedirector(QObject):
-    text_written = pyqtSignal(str)
-
-    def write(self, text):
-        if text.strip():  # Only emit non-empty texts
-            self.text_written.emit(text)
-
-    def flush(self):
-        pass
-
-
-class AnalysisWorker(QThread):
-    log_signal = pyqtSignal(str)
-
-    def __init__(self, arguments):
-        super().__init__()
-        self.arguments = arguments
-        self.cancelled = False
-
-    def run(self):
-        buffer = io.StringIO()
-        sys.stdout = TextRedirector()
-        sys.stdout.text_written.connect(self.log_signal.emit)
-        try:
-            print("Starting analysis... This may take a moment")
-
-            # Check if cancelled before starting heavy work
-            if self.cancelled:
-                print("Analysis cancelled")
-                return
-
-            # Create the PyNutil instance with the appropriate arguments
-            pnt_args = {
-                "segmentation_folder": self.arguments["segmentation_dir"],
-                "alignment_json": self.arguments["registration_json"],
-                "colour": self.arguments["object_colour"],
-                "custom_region_path": self.arguments.get("custom_region_path"),
-            }
-
-            # Handle atlas options - either use atlas_name or custom atlas paths
-            if self.arguments.get("use_custom_atlas", False):
-                pnt_args["atlas_path"] = self.arguments["atlas_path"]
-                pnt_args["label_path"] = self.arguments["label_path"]
-                print(
-                    f"Using custom atlas: {self.arguments.get('custom_atlas_name', 'Custom')}"
-                )
-            else:
-                pnt_args["atlas_name"] = self.arguments["atlas_name"]
-                print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-
-            pnt = PyNutil.PyNutil(**pnt_args)
-
-            # Check if cancelled before continuing
-            if self.cancelled:
-                print("Analysis cancelled")
-                return
-
-            pnt.get_coordinates(
-                object_cutoff=0, apply_damage_mask=self.arguments["apply_damage_mask"]
-            )
-
-            # Check if cancelled before continuing
-            if self.cancelled:
-                print("Analysis cancelled")
-                return
-
-            pnt.quantify_coordinates()
-
-            # Check if cancelled before continuing
-            if self.cancelled:
-                print("Analysis cancelled")
-                return
-
-            pnt.save_analysis(self.arguments["output_dir"])
-        except Exception as e:
-            print(f"Error: {e}")
-        finally:
-            sys.stdout = sys.__stdout__
-
-    def cancel(self):
-        self.cancelled = True
-        print("Cancellation requested, please wait...")
-
-
-class AtlasInstallWorker(QThread):
-    """Worker thread for installing BrainGlobe atlases"""
-
-    progress_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal(bool, str)  # Success flag and message
-
-    def __init__(self, atlas_name):
-        super().__init__()
-        self.atlas_name = atlas_name
-        self.cancelled = False
-
-    def run(self):
-        sys.stdout = TextRedirector()
-        sys.stdout.text_written.connect(self.progress_signal.emit)
-
-        try:
-            self.progress_signal.emit(f"Starting installation of {self.atlas_name}...")
-            brainglobe_atlasapi.bg_atlas.BrainGlobeAtlas(self.atlas_name)
-
-            if self.cancelled:
-                self.finished_signal.emit(
-                    False, f"Installation of {self.atlas_name} was cancelled."
-                )
-            else:
-                self.finished_signal.emit(
-                    True,
-                    f"BrainGlobe atlas '{self.atlas_name}' installed successfully.",
-                )
-
-        except Exception as e:
-            error_msg = f"Error installing BrainGlobe atlas: {str(e)}"
-            self.progress_signal.emit(error_msg)
-            self.finished_signal.emit(False, error_msg)
-        finally:
-            sys.stdout = sys.__stdout__
-
-    def cancel(self):
-        self.cancelled = True
-        PyNutilGUI.instance.download_cancelled = (
-            True  # Use the existing cancellation mechanism
-        )
 
 
 class PyNutilGUI(QMainWindow):
@@ -614,37 +484,18 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.log_collection = ""
         self.current_progress = ""
 
-        # Validate all required settings are provided
-        missing_settings = []
-
-        if not self.atlas_combo.currentText():
-            missing_settings.append("Reference Atlas")
-
-        if not self.arguments.get("registration_json"):
-            missing_settings.append("Registration JSON")
-
-        if not self.arguments.get("segmentation_dir"):
-            missing_settings.append("Segmentation Folder")
-
-        if not self.arguments.get("object_colour"):
-            missing_settings.append("Object Color")
-
-        if not self.arguments.get("output_dir"):
-            missing_settings.append("Output Directory")
-
-        if missing_settings:
-            error_message = "Error: The following required settings are missing:<br>"
-            for setting in missing_settings:
-                error_message += f"- {setting}<br>"
-            error_message += (
-                "<br>Please provide all required settings before running the analysis."
-            )
-            self.output_box.setHtml(error_message)
-            return
-
         # Get atlas information - check if it's a custom atlas (stored as userData)
         atlas_name = self.atlas_combo.currentText()
         custom_atlas_data = self.atlas_combo.currentData()
+
+        validation = validate_analysis_inputs(
+            atlas_text=atlas_name,
+            arguments=self.arguments,
+            custom_atlas_data=custom_atlas_data,
+        )
+        if not validation.ok:
+            self.output_box.setHtml(validation.to_html())
+            return
 
         # Prepare arguments for the worker
         if custom_atlas_data:
@@ -671,7 +522,6 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             "colour": self.arguments["object_colour"],
             "custom_region_path": self.arguments.get("custom_region_path"),
         }
-
         # If all validations pass, start the worker
         self.worker = AnalysisWorker(self.arguments)
         # Disable the run button until analysis finishes

@@ -15,9 +15,119 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QLineEdit,
     QGridLayout,
+    QListView,
+    QApplication,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QPoint, QTimer
 import os
+
+
+class CappedPopupComboBox(QComboBox):
+    """A QComboBox with a popup that won't extend off-screen.
+
+    Some platform/style combos (notably under WSL/Wayland) can ignore
+    max-visible-items and create a popup larger than the available screen.
+    This subclass clamps and repositions the popup window after showing it.
+    """
+
+    def __init__(
+        self,
+        *args,
+        max_popup_height: int = 320,
+        max_visible_items: int = 25,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self._max_popup_height = int(max_popup_height)
+
+        # Force a non-native list-view popup so we can control sizing.
+        self.setStyleSheet("QComboBox { combobox-popup: 1; }")
+
+        view = QListView()
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        view.setUniformItemSizes(True)
+        self.setView(view)
+        self.setMaxVisibleItems(int(max_visible_items))
+
+    def showPopup(self):
+        super().showPopup()
+        # Some styles resize/reposition the popup *after* showPopup returns,
+        # so clamp on the next event-loop tick.
+        QTimer.singleShot(0, self._clamp_popup)
+        # And again shortly after to catch late geometry adjustments
+        # (seen on first-open under some WSL/Wayland setups).
+        QTimer.singleShot(50, self._clamp_popup)
+        QTimer.singleShot(150, self._clamp_popup)
+
+    def _clamp_popup(self):
+        view = self.view()
+        if view is None:
+            return
+
+        # Walk up to the top-level popup container window.
+        popup = view.window()
+        if popup is None:
+            return
+
+        # Prefer the screen that contains the combobox.
+        screen = QApplication.screenAt(self.mapToGlobal(QPoint(0, 0)))
+        if screen is None:
+            screen = self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        avail = screen.availableGeometry()
+        geo = popup.frameGeometry()
+
+        # Clamp height to both requested cap and available screen height.
+        max_h = max(140, min(self._max_popup_height, avail.height() - 20))
+
+        # Prefer computing a sane desired height from item row heights.
+        model = self.model()
+        row_count = model.rowCount() if model is not None else 0
+        max_rows = max(1, int(self.maxVisibleItems() or 1))
+        visible_rows = min(row_count, max_rows) if row_count else max_rows
+
+        row_h = view.sizeHintForRow(0)
+        if row_h is None or row_h <= 0:
+            row_h = int(self.fontMetrics().height() * 1.4)
+
+        frame_h = popup.frameGeometry().height() - popup.geometry().height()
+        if frame_h < 0:
+            frame_h = 0
+
+        computed_h = int(visible_rows * row_h + frame_h + 8)
+        desired_h = min(max_h, max(140, computed_h))
+
+        # Enforce height caps on both the popup container and the view.
+        try:
+            view.setMaximumHeight(max_h)
+        except Exception:
+            pass
+        try:
+            popup.setMaximumHeight(max_h)
+        except Exception:
+            pass
+
+        new_w = geo.width()
+        new_h = desired_h
+
+        # Reposition so the popup fits fully within the available screen.
+        new_x = geo.x()
+        new_y = geo.y()
+
+        if new_x < avail.left() + 10:
+            new_x = avail.left() + 10
+        if new_x + new_w > avail.right() - 10:
+            new_x = max(avail.left() + 10, avail.right() - new_w - 10)
+
+        if new_y < avail.top() + 10:
+            new_y = avail.top() + 10
+        if new_y + new_h > avail.bottom() - 10:
+            new_y = max(avail.top() + 10, avail.bottom() - new_h - 10)
+
+        popup.setGeometry(new_x, new_y, new_w, new_h)
 
 
 def create_labeled_combo_with_button(
@@ -261,7 +371,7 @@ def create_atlas_installation_dialog(parent=None):
     brain_globe_layout = QVBoxLayout()
     brain_globe_group.setLayout(brain_globe_layout)
 
-    brain_globe_combo = QComboBox()
+    brain_globe_combo = CappedPopupComboBox(max_popup_height=320, max_visible_items=25)
     brain_globe_layout.addWidget(brain_globe_combo)
 
     install_brain_globe_button = QPushButton("Install")
