@@ -80,7 +80,10 @@ https://github.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d
 # Siibra compatible NifTI  files
 If you have interpolated your volume you will find an interpolated NifTI volume in your output directory. This can be dragged and dropped directly into Siibra. If you share your data you can also include a shareable link to your data in the Siibra viewer. 
 
-https://raw.githubusercontent.com/Neural-Systems-at-UIO/PyNutil/refs/heads/main/docs/assets/Siibra.mp4
+
+
+https://github.com/user-attachments/assets/30ca7f7f-92f5-4d83-a92a-b29603181b8f
+
 
 # Interpreting the Results
 Each column name has the following definition
