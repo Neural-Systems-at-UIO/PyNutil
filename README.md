@@ -3,7 +3,10 @@ PyNutil is under development.
 
 **Warning:** There are known errors in the PyNutil reports (incorrect results). Please use Nutil until these are fixed. 
 
-PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from mouse and rat brain. It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183). It builds on registration to a standardised reference atlas with the QuickNII (RRID:SCR_016854) and VisuAlign software (RRID:SCR_017978) and feature extraction by segmentation with an image analysis software such as ilastik (RRID:SCR_015246). 
+PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from the brain. It aims to replicate the Quantifier feature of the Nutil software (RRID: SCR_017183). 
+
+PyNutil is able to integrate outputs from atlas registration software and image segmentation software in order to produce atlas based quantifications, 3D point clouds, and 3D heatmaps of brain derived data. 
+![alt text](docs/assets/PyNutil_fig1.png)
 
 For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
@@ -17,7 +20,7 @@ Pynutil can also be used with the atlases available in the [BrainGlobe_Atlas API
 # Installation
 ## Python package
 ```
-pip install PyNutil
+pip install PyNutil 
 ```
 ## GUI
 download the executable for windows and macOS via the [github releases tab](https://github.com/Neural-Systems-at-UIO/PyNutil/releases)
@@ -71,9 +74,9 @@ If you use an atlas which has a hemisphere map (All brainglobe atlases have this
 [The QCAlign tool](https://www.nitrc.org/projects/qcalign) allows you to mark damaged areas on your section. This means that these damaged areas are excluded from your point clouds. In addition, PyNutil will seperately quantify damaged and undamaged areas. Note the undamaged, and damaged column names. 
 # Meshview json files
 PyNutil will produce meshview json files. This can be opened in [MeshView for the Allen Mouse](https://meshview.apps.ebrains.eu/?atlas=ABA_Mouse_CCFv3_2017_25um) or for [the Waxholm Rat](https://meshview.apps.ebrains.eu/)
-
 https://github.com/user-attachments/assets/d3a43ca9-133e-40d1-a1b9-9a359deabf2d 
-
+# Siibra compatible Nifti  files
+If you have interpolated your volume you will find an interpolated Nifti volume in your output directory. This can be dragged and dropped directly into Siibra. If you share your data you can also include a shareable link to your data in the Siibra viewer. 
 # Interpreting the Results
 Each column name has the following definition
 | Column        | Definition                                                                          |
