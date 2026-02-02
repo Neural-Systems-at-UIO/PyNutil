@@ -115,6 +115,7 @@ Each column name has the following definition
 | Right hemi    | For each of the other columns, what is that value for the right hemisphere alone    |
 | Damaged       | For each of the other columns, what is that value for the areas marked damaged alone|
 | Undamaged     | For each of the other columns, what is that value for the areas marked undamaged alone|
+
 If you choose to measure the intensity of images rather than segmentations you will not get object counts. Instead you will get
 | Column        | Definition                                                                          |
 |---------------|-------------------------------------------------------------------------------------|
