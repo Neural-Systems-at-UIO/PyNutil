@@ -4,8 +4,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from ..io.read_and_write import load_quint_json
-from .transformations import transform_to_atlas_space
+from ..io.loaders import load_quint_json
+from .transforms import transform_to_atlas_space
 from .utils import number_sections, convert_to_intensity, create_damage_mask
 from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
 

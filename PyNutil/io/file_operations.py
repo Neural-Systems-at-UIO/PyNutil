@@ -1,6 +1,6 @@
 import os
 import json
-from .read_and_write import write_hemi_points_to_meshview
+from .meshview_writer import write_hemi_points_to_meshview
 
 
 def _ensure_analysis_output_dirs(output_folder: str) -> None:

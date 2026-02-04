@@ -14,7 +14,7 @@ from .processing.data_analysis import (
     apply_custom_regions,
 )
 from .io.file_operations import save_analysis_output
-from .io.read_and_write import open_custom_region_file
+from .io.loaders import open_custom_region_file
 from .processing.coordinate_extraction import (
     folder_to_atlas_space,
     folder_to_atlas_space_intensity,
@@ -25,6 +25,7 @@ from .processing.section_volume import (
 )
 
 from .config import PyNutilConfig
+from .logging_utils import get_logger, configure_logging
 
 
 logger = logging.getLogger(__name__)
@@ -106,19 +107,8 @@ class PyNutil:
         ValueError
             If both atlas_path and atlas_name are specified or if neither is specified.
         """
-        if not logger.handlers:
-            file_handler = logging.FileHandler("nutil.log")
-            file_handler.setLevel(logging.DEBUG)
-            stream_handler = logging.StreamHandler(sys.stdout)
-            stream_handler.setLevel(logging.INFO)
-            formatter = logging.Formatter(
-                "%(asctime)s %(levelname)s %(name)s: %(message)s"
-            )
-            file_handler.setFormatter(formatter)
-            stream_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-            logger.addHandler(stream_handler)
-            logger.propagate = False
+        # Configure logging using centralized utility (only configures if not already done)
+        configure_logging()
 
         try:
             if settings_file is not None:

@@ -1,146 +1,32 @@
-import numpy as np
-from .visualign_deformations import transform_vec
+"""DEPRECATED: This module has been merged into transforms.py.
 
+All functions have been moved to PyNutil.processing.transforms.
+This module is kept for backwards compatibility and will be removed in a future version.
+"""
 
-def transform_to_registration(seg_height, seg_width, reg_height, reg_width):
-    """
-    Returns the scaling factors to transform the segmentation to the registration space.
+from __future__ import annotations
 
-    Args:
-        seg_height (int): Segmentation height.
-        seg_width (int): Segmentation width.
-        reg_height (int): Registration height.
-        reg_width (int): Registration width.
+import warnings
 
-    Returns:
-        tuple: Y and X scaling factors.
-    """
-    y_scale = reg_height / seg_height
-    x_scale = reg_width / seg_width
-    return y_scale, x_scale
+from .transforms import (
+    transform_to_registration,
+    transform_to_atlas_space,
+    image_to_atlas_space,
+    get_transformed_coordinates,
+    transform_points_to_atlas_space,
+)
 
+warnings.warn(
+    "PyNutil.processing.transformations is deprecated. "
+    "Use PyNutil.processing.transforms instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-def transform_to_atlas_space(anchoring, y, x, reg_height, reg_width):
-    """
-    Transforms to atlas space using the QuickNII anchoring vector.
-
-    Args:
-        anchoring (list): Anchoring vector.
-        y (ndarray): Y coordinates.
-        x (ndarray): X coordinates.
-        reg_height (int): Registration height.
-        reg_width (int): Registration width.
-
-    Returns:
-        ndarray: Transformed coordinates.
-    """
-    # NOTE: This implementation intentionally avoids building intermediate arrays via
-    # np.array([row0, row1, row2]).T, which has been observed to miscompute under
-    # some Python/numpy builds for large inputs.
-    o = np.asarray(anchoring[0:3], dtype=np.float64)
-    u = np.asarray(anchoring[3:6], dtype=np.float64)
-    v = np.asarray(anchoring[6:9], dtype=np.float64)
-
-    y_arr = np.asarray(y, dtype=np.float64).ravel()
-    x_arr = np.asarray(x, dtype=np.float64).ravel()
-    y_scale = y_arr / float(reg_height)
-    x_scale = x_arr / float(reg_width)
-
-    # Shape: (N, 3)
-    return o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])
-
-
-def image_to_atlas_space(image, anchoring):
-    """
-    Transforms to atlas space an image using the QuickNII anchoring vector.
-
-
-    Args:
-        image (ndarray): An Image which you would like to apply the anchoring vector to
-        anchoring (list): Anchoring vector.
-
-    Returns:
-        ndarray: Transformed coordinates for every pixel in the image.
-    """
-    width = image.shape[1]
-    height = image.shape[0]
-    x = np.arange(width)
-    y = np.arange(height)
-    x_coords, y_coords = np.meshgrid(x, y)
-    coordinates = transform_to_atlas_space(
-        anchoring, y_coords.flatten(), x_coords.flatten(), height, width
-    )
-    return coordinates
-
-
-def get_transformed_coordinates(
-    non_linear,
-    slice_dict,
-    scaled_x,
-    scaled_y,
-    scaled_centroidsX,
-    scaled_centroidsY,
-    triangulation,
-):
-    """
-    Compute transformed coordinates for both points and centroids.
-
-    Args:
-        non_linear (bool): Flag to indicate if non-linear transformation is applied.
-        slice_dict (dict): Slice metadata including markers.
-        scaled_x (ndarray): Scaled x coordinates for points.
-        scaled_y (ndarray): Scaled y coordinates for points.
-        scaled_centroidsX (ndarray): Scaled x coordinates for centroids.
-        scaled_centroidsY (ndarray): Scaled y coordinates for centroids.
-        triangulation (list): Triangulation structure to be used if non_linear is True.
-
-    Returns:
-    Returns:
-        tuple: Transformed coordinates.
-    """
-    new_x, new_y, centroids_new_x, centroids_new_y = None, None, None, None
-    if non_linear and "markers" in slice_dict:
-        if scaled_x is not None:
-            new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
-        if scaled_centroidsX is not None:
-            centroids_new_x, centroids_new_y = transform_vec(
-                triangulation, scaled_centroidsX, scaled_centroidsY
-            )
-    else:
-        new_x, new_y = scaled_x, scaled_y
-        centroids_new_x, centroids_new_y = scaled_centroidsX, scaled_centroidsY
-    return new_x, new_y, centroids_new_x, centroids_new_y
-
-
-def transform_points_to_atlas_space(
-    slice_dict, new_x, new_y, centroids_new_x, centroids_new_y, reg_height, reg_width
-):
-    """
-    Transforms points and centroids to atlas space.
-
-    Args:
-        slice_dict (dict): Dictionary with slice information.
-        new_x (ndarray): Transformed X coordinates.
-        new_y (ndarray): Transformed Y coordinates.
-        centroids_new_x (ndarray): Transformed X coordinates of centroids.
-        centroids_new_y (ndarray): Transformed Y coordinates of centroids.
-        reg_height (int): Registration height.
-        reg_width (int): Registration width.
-
-    Returns:
-        tuple: Transformed points and centroids.
-    """
-    points, centroids = None, None
-    if new_x is not None:
-        points = transform_to_atlas_space(
-            slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
-        )
-    if centroids_new_x is not None:
-        centroids = transform_to_atlas_space(
-            slice_dict["anchoring"],
-            centroids_new_y,
-            centroids_new_x,
-            reg_height,
-            reg_width,
-        )
-    return points, centroids
+__all__ = [
+    "transform_to_registration",
+    "transform_to_atlas_space",
+    "image_to_atlas_space",
+    "get_transformed_coordinates",
+    "transform_points_to_atlas_space",
+]

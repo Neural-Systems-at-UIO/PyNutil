@@ -4,7 +4,7 @@ import struct
 import cv2
 from .generate_target_slice import generate_target_slice
 from .visualign_deformations import transform_vec
-from ..io.read_and_write import read_flat_file, read_seg_file
+from ..io.loaders import read_flat_file, read_seg_file
 
 
 def create_base_counts_dict(with_hemisphere=False, with_damage=False):

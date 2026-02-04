@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from ..processing.generate_target_slice import generate_target_slice
-from ..io.read_and_write import load_segmentation
+from ..io.loaders import load_segmentation
 
 
 def _build_color_lookup(

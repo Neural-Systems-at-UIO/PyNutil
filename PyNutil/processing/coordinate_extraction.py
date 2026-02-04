@@ -3,19 +3,20 @@ import pandas as pd
 import gc
 import os
 from concurrent.futures import ThreadPoolExecutor
-from ..io.read_and_write import load_quint_json, load_segmentation
+from ..io.loaders import load_quint_json, load_segmentation
 from .counting_and_load import flat_to_dataframe, rescale_image, load_image
 from .generate_target_slice import generate_target_slice
 import cv2
 import threading
-from .transformations import (
+from .transforms import (
     transform_points_to_atlas_space,
     transform_to_registration,
     get_transformed_coordinates,
     transform_to_atlas_space,
+    get_region_areas,
+    get_triangulation,
 )
 from .image_loaders import detect_pixel_id
-from .transform import get_region_areas, get_triangulation
 from .aggregator import build_region_intensity_dataframe
 from .utils import (
     get_flat_files,
@@ -792,31 +793,8 @@ def create_threads(
     return threads
 
 
-def detect_pixel_id(segmentation: np.ndarray):
-    """
-    Infers pixel color from the first non-background region.
-
-    Args:
-        segmentation (ndarray): Segmentation array.
-
-    Returns:
-        ndarray: Identified pixel color (RGB or scalar).
-    """
-    if segmentation.ndim == 2:
-        # For 2D images, find the first non-zero value
-        non_zero = segmentation[segmentation != 0]
-        if non_zero.size > 0:
-            pixel_id = [int(non_zero[0])]
-        else:
-            pixel_id = [255]
-    else:
-        segmentation_no_background = segmentation[~np.all(segmentation == 0, axis=2)]
-        if segmentation_no_background.size > 0:
-            pixel_id = segmentation_no_background[0]
-        else:
-            pixel_id = [255, 255, 255]
-    # print("detected pixel_id: ", pixel_id)
-    return pixel_id
+# Note: detect_pixel_id function was moved to image_loaders.py
+# It is imported at the top of this file from there.
 
 
 def segmentation_to_atlas_space(
