@@ -3,7 +3,6 @@ import pandas as pd
 import struct
 import cv2
 from .generate_target_slice import generate_target_slice
-from .visualign_deformations import transform_vec
 from ..io.loaders import read_flat_file, read_seg_file
 
 
@@ -369,13 +368,14 @@ def count_pixels_per_label(image, scale_factor=False):
     return df_area_per_label
 
 
-def warp_image(image, triangulation, rescaleXY):
+def warp_image(image, deformation, rescaleXY):
     """
-    Warps an image using triangulation, applying optional resizing.
+    Warps an image using a deformation function, applying optional resizing.
 
     Args:
         image (ndarray): Image array to be warped.
-        triangulation (ndarray): Triangulation data for remapping.
+        deformation (callable): Deformation function that takes (x, y) arrays
+            and returns (new_x, new_y) arrays.
         rescaleXY (tuple, optional): (width, height) for resizing.
 
     Returns:
@@ -393,7 +393,7 @@ def warp_image(image, triangulation, rescaleXY):
     w_scale = w / reg_w
     oldX = oldX * w_scale
     oldY = oldY * h_scale
-    newX, newY = transform_vec(triangulation, oldX, oldY)
+    newX, newY = deformation(oldX, oldY)
     newX = newX / w_scale
     newY = newY / h_scale
     newX = newX.reshape(reg_h, reg_w)
@@ -515,7 +515,7 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     return df_area_per_label
 
 
-def load_image(file, image_vector, volume, triangulation, rescaleXY, labelfile=None):
+def load_image(file, image_vector, volume, deformation, rescaleXY, labelfile=None):
     """
     Loads an image from file or transforms a preloaded array, optionally applying warping.
 
@@ -523,7 +523,7 @@ def load_image(file, image_vector, volume, triangulation, rescaleXY, labelfile=N
         file (str): File path for the source image.
         image_vector (ndarray): Preloaded image data array.
         volume (ndarray): Atlas volume or similar data.
-        triangulation (ndarray): Triangulation data for warping.
+        deformation (callable or None): Deformation function for warping.
         rescaleXY (tuple): (width, height) for resizing.
         labelfile (DataFrame, optional): Label definitions.
 
@@ -533,8 +533,8 @@ def load_image(file, image_vector, volume, triangulation, rescaleXY, labelfile=N
     if image_vector is not None and volume is not None:
         image = generate_target_slice(image_vector, volume)
         image = np.float64(image)
-        if triangulation is not None:
-            image = warp_image(image, triangulation, rescaleXY)
+        if deformation is not None:
+            image = warp_image(image, deformation, rescaleXY)
     else:
         if file.endswith(".flat"):
             image = read_flat_file(file)

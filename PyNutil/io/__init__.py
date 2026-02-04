@@ -10,8 +10,6 @@ This package contains modules for reading and writing data:
 - volume_nifti: NIfTI volume output
 - propagation: Slice anchoring interpolation
 - reconstruct_dzi: DZI image reconstruction
-
-Note: read_and_write is deprecated, use loaders/meshview_writer/colormap instead.
 """
 
 from .atlas_loader import (

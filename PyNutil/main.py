@@ -64,7 +64,7 @@ class PyNutil:
         voxel_size_um: Optional[float] = None,
         min_intensity: Optional[int] = None,
         max_intensity: Optional[int] = None,
-        cellpose: bool = False,
+        segmentation_format: str = "binary",
     ):
         """
         Initializes the PyNutil class with the given parameters.
@@ -97,8 +97,8 @@ class PyNutil:
             Only when specifying images with intensity to quantify. The minimum intensity value to include in quantification and MeshView (default is None).
         max_intensity : int, optional
             Only when specifying images with intensity to quantify. The maximum intensity value to include in quantification and MeshView (default is None).
-        cellpose : bool, optional
-            If True, the segmentation files are assumed to be Cellpose output (default is False).
+        segmentation_format : str, optional
+            The segmentation format: "binary" for ilastik-style masks, "cellpose" for Cellpose output (default is "binary").
 
         Raises
         ------
@@ -128,7 +128,7 @@ class PyNutil:
                     voxel_size_um=voxel_size_um,
                     min_intensity=min_intensity,
                     max_intensity=max_intensity,
-                    cellpose=cellpose,
+                    segmentation_format=segmentation_format,
                 )
 
             cfg.normalize(logger=logger)
@@ -143,7 +143,7 @@ class PyNutil:
             self.voxel_size_um = float(cfg.voxel_size_um) if cfg.voxel_size_um is not None else None
             self.min_intensity = cfg.min_intensity
             self.max_intensity = cfg.max_intensity
-            self.cellpose = cfg.cellpose
+            self.segmentation_format = cfg.segmentation_format
             self.custom_region_path = cfg.custom_region_path
 
             if cfg.custom_region_path:
@@ -270,7 +270,7 @@ class PyNutil:
                 self.hemi_map,
                 use_flat,
                 apply_damage_mask,
-                cellpose=self.cellpose,
+                segmentation_format=self.segmentation_format,
             )
             self.apply_damage_mask = apply_damage_mask
             if self.custom_regions_dict is not None:
@@ -573,7 +573,7 @@ class PyNutil:
             if create_visualisations and self.alignment_json:
                 try:
                     from .io.section_visualisation import create_section_visualisations
-                    from .io.read_and_write import load_quint_json
+                    from .io.loaders import load_quint_json
 
                     alignment_data = load_quint_json(self.alignment_json)
 

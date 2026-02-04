@@ -9,7 +9,7 @@ This module consolidates all coordinate transformation functions:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -62,16 +62,18 @@ def get_region_areas(
     flat_file_atlas: Optional[str],
     seg_width: int,
     seg_height: int,
-    slice_dict: Dict[str, Any],
+    anchoring: List[float],
+    reg_width: int,
+    reg_height: int,
     atlas_volume: np.ndarray,
     hemi_mask: Optional[np.ndarray],
-    triangulation: Optional[Any],
+    deformation: Optional[Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]],
     damage_mask: Optional[np.ndarray],
 ) -> Tuple[Any, np.ndarray]:
     """Build the atlas map for a slice and compute region areas.
 
     This performs the atlas slice extraction (from volume or flat file), applies
-    non-linear warping if requested (via `triangulation`), and converts the
+    non-linear warping if requested (via `deformation`), and converts the
     resulting label map into a region-area dataframe.
 
     Parameters
@@ -86,14 +88,18 @@ def get_region_areas(
         Segmentation image width.
     seg_height : int
         Segmentation image height.
-    slice_dict : dict
-        Slice metadata including 'anchoring' and dimensions.
+    anchoring : list
+        Anchoring vector (12 floats).
+    reg_width : int
+        Registration width.
+    reg_height : int
+        Registration height.
     atlas_volume : np.ndarray
         3D atlas annotation volume.
     hemi_mask : np.ndarray or None
         Hemisphere mask volume.
-    triangulation : optional
-        Triangulation structure for non-linear deformation.
+    deformation : callable or None
+        Deformation function for non-linear transformation.
     damage_mask : np.ndarray or None
         Damage mask for the section.
 
@@ -104,12 +110,11 @@ def get_region_areas(
     atlas_map : np.ndarray
         2D atlas map for the section.
     """
-    reg_width, reg_height = slice_dict["width"], slice_dict["height"]
     atlas_map = counting_and_load.load_image(
         flat_file_atlas,
-        slice_dict["anchoring"],
+        anchoring,
         atlas_volume,
-        triangulation,
+        deformation,
         (reg_width, reg_height),
         atlas_labels,
     )
@@ -245,19 +250,19 @@ def get_transformed_coordinates(
     scaled_y: Optional[np.ndarray],
     scaled_centroidsX: Optional[np.ndarray],
     scaled_centroidsY: Optional[np.ndarray],
-    triangulation: Optional[Any],
+    deformation: Optional[Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]] = None,
 ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
     """Apply non-linear deformation to scaled coordinates.
 
-    If non_linear is True and markers exist in slice_dict, applies the
-    triangulation-based deformation. Otherwise, passes coordinates through unchanged.
+    If non_linear is True and a deformation function is provided, applies the
+    deformation. Otherwise, passes coordinates through unchanged.
 
     Parameters
     ----------
     non_linear : bool
         Whether to apply non-linear transformation.
     slice_dict : dict
-        Slice metadata including 'markers' key.
+        Slice metadata (kept for compatibility, not used for markers).
     scaled_x : ndarray or None
         Scaled x coordinates for points.
     scaled_y : ndarray or None
@@ -266,8 +271,8 @@ def get_transformed_coordinates(
         Scaled x coordinates for centroids.
     scaled_centroidsY : ndarray or None
         Scaled y coordinates for centroids.
-    triangulation : optional
-        Triangulation structure from get_triangulation().
+    deformation : callable or None
+        Deformation function that takes (x, y) and returns (new_x, new_y).
 
     Returns
     -------
@@ -276,12 +281,12 @@ def get_transformed_coordinates(
     """
     new_x, new_y, centroids_new_x, centroids_new_y = None, None, None, None
 
-    if non_linear and "markers" in slice_dict:
+    if non_linear and deformation is not None:
         if scaled_x is not None:
-            new_x, new_y = transform_vec(triangulation, scaled_x, scaled_y)
+            new_x, new_y = deformation(scaled_x, scaled_y)
         if scaled_centroidsX is not None:
-            centroids_new_x, centroids_new_y = transform_vec(
-                triangulation, scaled_centroidsX, scaled_centroidsY
+            centroids_new_x, centroids_new_y = deformation(
+                scaled_centroidsX, scaled_centroidsY
             )
     else:
         new_x, new_y = scaled_x, scaled_y
@@ -291,7 +296,7 @@ def get_transformed_coordinates(
 
 
 def transform_points_to_atlas_space(
-    slice_dict: Dict[str, Any],
+    anchoring: List[float],
     new_x: Optional[np.ndarray],
     new_y: Optional[np.ndarray],
     centroids_new_x: Optional[np.ndarray],
@@ -306,8 +311,8 @@ def transform_points_to_atlas_space(
 
     Parameters
     ----------
-    slice_dict : dict
-        Slice metadata with 'anchoring' vector.
+    anchoring : list
+        Anchoring vector (12 floats).
     new_x : ndarray or None
         Transformed X coordinates.
     new_y : ndarray or None
@@ -330,11 +335,11 @@ def transform_points_to_atlas_space(
 
     if new_x is not None:
         points = transform_to_atlas_space(
-            slice_dict["anchoring"], new_y, new_x, reg_height, reg_width
+            anchoring, new_y, new_x, reg_height, reg_width
         )
     if centroids_new_x is not None:
         centroids = transform_to_atlas_space(
-            slice_dict["anchoring"],
+            anchoring,
             centroids_new_y,
             centroids_new_x,
             reg_height,

@@ -4,10 +4,9 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from ..io.loaders import load_quint_json
+from .registration_adapters import load_registration
 from .transforms import transform_to_atlas_space
-from .utils import number_sections, convert_to_intensity, create_damage_mask
-from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
+from .utils import number_sections, convert_to_intensity
 
 
 def derive_shape_from_atlas(
@@ -121,10 +120,9 @@ def project_sections_to_volume(
 
     out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
 
-    quint_json = load_quint_json(alignment_json)
-    slices = quint_json["slices"]
-    slice_by_nr = {int(s.get("nr")): s for s in slices if s.get("nr") is not None}
-    grid_spacing = quint_json.get("gridspacing")
+    # Load registration data using the adapter
+    registration = load_registration(alignment_json)
+    slice_by_nr = {s.section_number: s for s in registration.slices}
 
     seg_paths = []
     for name in os.listdir(segmentation_folder):
@@ -160,8 +158,8 @@ def project_sections_to_volume(
 
     for seg_path in seg_paths:
         seg_nr = int(number_sections([seg_path])[0])
-        slice_dict = slice_by_nr.get(seg_nr)
-        if not slice_dict or not slice_dict.get("anchoring"):
+        slice_info = slice_by_nr.get(seg_nr)
+        if not slice_info or not slice_info.anchoring:
             continue
 
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
@@ -190,22 +188,25 @@ def project_sections_to_volume(
                 seg_values = mask
                 seg_height, seg_width = seg.shape[:2]
 
-        reg_height, reg_width = int(slice_dict["height"]), int(slice_dict["width"])
+        reg_height, reg_width = slice_info.height, slice_info.width
 
-        # Handle damage mask if present
+        # Handle damage mask from adapter (already computed as 2D boolean array)
         damage_reg = None
-        if grid_spacing is not None and "grid" in slice_dict:
-            damage_mask = create_damage_mask(slice_dict, grid_spacing)
-            damage_reg = cv2.resize(
-                (damage_mask == 0).astype(np.uint8),
-                (reg_width, reg_height),
-                interpolation=cv2.INTER_NEAREST,
-            )
+        if slice_info.damage_mask is not None:
+            # Resize to registration dimensions if needed
+            if slice_info.damage_mask.shape != (reg_height, reg_width):
+                damage_reg = cv2.resize(
+                    slice_info.damage_mask.astype(np.uint8),
+                    (reg_width, reg_height),
+                    interpolation=cv2.INTER_NEAREST,
+                )
+            else:
+                damage_reg = slice_info.damage_mask.astype(np.uint8)
 
         # Plane sampling: evaluate on a regular grid sized to the slice plane
         # extent in atlas voxels (||u|| and ||v||), similar to the reference
         # "perfect_image" approach but without atlas-specific assumptions.
-        anch = slice_dict["anchoring"]
+        anch = slice_info.anchoring
         u = np.asarray(anch[3:6], dtype=np.float32)
         v = np.asarray(anch[6:9], dtype=np.float32)
         plane_w = max(1, int(round(float(np.linalg.norm(u)) * float(scale))))
@@ -230,9 +231,10 @@ def project_sections_to_volume(
         flat_x = reg_x.reshape(-1)
         flat_y = reg_y.reshape(-1)
 
-        if non_linear and "markers" in slice_dict:
-            tri = triangulate(reg_width, reg_height, slice_dict["markers"])
-            new_x, new_y = forwardtransform_vec(tri, flat_x, flat_y)
+        # Apply non-linear deformation if available from the adapter
+        # Use forward_deformation for volume projection (maps original -> deformed)
+        if non_linear and slice_info.forward_deformation is not None:
+            new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
             map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
             map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         else:
@@ -270,7 +272,7 @@ def project_sections_to_volume(
             flat_labels = labels.reshape(-1)
 
         coords = transform_to_atlas_space(
-            slice_dict["anchoring"], flat_y, flat_x, reg_height, reg_width
+            slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
         )
         if scale != 1.0:
             coords = coords * float(scale)

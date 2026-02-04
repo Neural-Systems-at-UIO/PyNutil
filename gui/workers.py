@@ -30,7 +30,7 @@ class AnalysisWorker(QThread):
                 "alignment_json": self.arguments["registration_json"],
                 "colour": self.arguments["object_colour"],
                 "custom_region_path": self.arguments.get("custom_region_path"),
-                "cellpose": self.arguments.get("cellpose", False),
+                "segmentation_format": self.arguments.get("segmentation_format", "binary"),
             }
             if self.arguments.get("segmentation_dir") and not self.arguments.get("image_dir"):
                 pnt_args["segmentation_folder"] = self.arguments.get("segmentation_dir")
