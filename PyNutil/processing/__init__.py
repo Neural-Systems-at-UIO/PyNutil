@@ -1,16 +1,13 @@
 """PyNutil processing subpackage.
 
 This package contains modules for data processing and analysis:
-- coordinate_extraction: Facade for pixel/centroid extraction (re-exports from submodules)
 - batch_processor: Folder-level batch processing with threading
 - section_processor: Single section transformation to atlas space
 - connected_components: Connected component analysis and region assignment
-- segmentation_adapters: Plugin system for segmentation formats (Cellpose, ilastik, etc.)
-- registration_adapters: Plugin system for registration formats (QUINT, ABBA, etc.)
+- adapters: Plugin system for segmentation and registration formats
 - counting_and_load: Region counting and image loading
 - data_analysis: Quantification and aggregation
 - transforms: Coordinate transformation functions
-- visualign_deformations: Non-linear deformation via triangulation
 - utils: Utility functions
 - section_volume: 3D volume projection/interpolation
 - aggregator: Intensity aggregation per region
@@ -18,7 +15,7 @@ This package contains modules for data processing and analysis:
 - image_loaders: Pixel ID detection
 """
 
-from .coordinate_extraction import (
+from .batch_processor import (
     folder_to_atlas_space,
     folder_to_atlas_space_intensity,
 )
@@ -30,25 +27,22 @@ from .data_analysis import (
 )
 from .transforms import (
     get_region_areas,
-    get_triangulation,
     get_transformed_coordinates,
-    image_to_atlas_space,
     transform_points_to_atlas_space,
     transform_to_atlas_space,
     transform_to_registration,
 )
-from .visualign_deformations import (
+from .adapters.visualign_deformations import (
     transform_vec,
     triangulate,
 )
 from .section_volume import project_sections_to_volume
-from .segmentation_adapters import (
+from .adapters import (
+    # Segmentation adapters
     SegmentationAdapter,
     SegmentationAdapterRegistry,
     BinaryAdapter,
     CellposeAdapter,
-)
-from .registration_adapters import (
     # Core data classes
     RegistrationData,
     SliceInfo,
@@ -84,9 +78,7 @@ __all__ = [
     "quantify_labeled_points",
     # transforms
     "get_region_areas",
-    "get_triangulation",
     "get_transformed_coordinates",
-    "image_to_atlas_space",
     "transform_points_to_atlas_space",
     "transform_to_atlas_space",
     "transform_to_registration",
@@ -98,9 +90,8 @@ __all__ = [
     # segmentation_adapters
     "SegmentationAdapter",
     "SegmentationAdapterRegistry",
-    "ColorMaskAdapter",
-    "LabeledImageAdapter",
-    "get_segmentation_adapter",
+    "BinaryAdapter",
+    "CellposeAdapter",
     # registration_adapters
     "RegistrationAdapter",
     "RegistrationAdapterRegistry",

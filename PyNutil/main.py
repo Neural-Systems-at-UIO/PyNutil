@@ -1,9 +1,7 @@
 import logging
-import os
 import re
-import sys
 from json import JSONDecodeError
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
@@ -15,7 +13,7 @@ from .processing.data_analysis import (
 )
 from .io.file_operations import save_analysis_output
 from .io.loaders import open_custom_region_file
-from .processing.coordinate_extraction import (
+from .processing.batch_processor import (
     folder_to_atlas_space,
     folder_to_atlas_space_intensity,
 )
@@ -25,7 +23,7 @@ from .processing.section_volume import (
 )
 
 from .config import PyNutilConfig
-from .logging_utils import get_logger, configure_logging
+from .logging_utils import configure_logging
 
 
 logger = logging.getLogger(__name__)

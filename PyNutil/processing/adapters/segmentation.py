@@ -1,4 +1,4 @@
-"""Abstract base classes for segmentation format adapters.
+"""Segmentation format adapters.
 
 This module defines the interface for supporting different segmentation
 tool outputs (Cellpose, ilastik, StarDist, custom masks, etc.).
@@ -130,7 +130,7 @@ class BinaryAdapter(SegmentationAdapter):
         binary_mask: np.ndarray,
         min_area: int = 0,
     ) -> List[ObjectInfo]:
-        from .connected_components import connected_components_props
+        from ..connected_components import connected_components_props
 
         props = connected_components_props(binary_mask, connectivity=4)
         return [
@@ -141,7 +141,7 @@ class BinaryAdapter(SegmentationAdapter):
 
     def detect_pixel_id(self, segmentation: np.ndarray) -> Optional[List[int]]:
         """Detect the most common non-black pixel color."""
-        from .image_loaders import detect_pixel_id
+        from ..image_loaders import detect_pixel_id
         return detect_pixel_id(segmentation)
 
     def needs_pixel_id(self) -> bool:
@@ -174,7 +174,7 @@ class CellposeAdapter(SegmentationAdapter):
         binary_mask: np.ndarray,
         min_area: int = 0,
     ) -> List[ObjectInfo]:
-        from .connected_components import labeled_image_props
+        from ..connected_components import labeled_image_props
 
         props = labeled_image_props(segmentation)
         return [

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import struct
+
 import cv2
 from .generate_target_slice import generate_target_slice
 from ..io.loaders import read_flat_file, read_seg_file
@@ -310,21 +310,6 @@ def pixel_count_per_region(
     base["pixel_count"] = _lookup_counts(idx, p_idx, p)
     base["object_count"] = _lookup_counts(idx, c_idx, c)
     return base
-
-
-def rescale_image(image, rescaleXY):
-    """
-    Rescales an image to the specified dimensions.
-
-    Args:
-        image (ndarray): Input image array.
-        rescaleXY (tuple): (width, height) as new size.
-
-    Returns:
-        ndarray: The rescaled image.
-    """
-    w, h = rescaleXY
-    return cv2.resize(image, (h, w), interpolation=cv2.INTER_NEAREST)
 
 
 def assign_labels_to_image(image, labelfile):

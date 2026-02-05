@@ -34,7 +34,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from .registration_adapters import SliceInfo
+    from .adapters import SliceInfo
 
 
 def segmentation_to_atlas_space(

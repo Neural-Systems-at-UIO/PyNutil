@@ -13,42 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .visualign_deformations import transform_vec, triangulate
 from . import counting_and_load
-
-
-# -----------------------------------------------------------------------------
-# Triangulation setup
-# -----------------------------------------------------------------------------
-
-
-def get_triangulation(
-    slice_dict: Dict[str, Any],
-    reg_width: int,
-    reg_height: int,
-    non_linear: bool,
-) -> Optional[Any]:
-    """Generate triangulation data if non-linear markers exist.
-
-    Parameters
-    ----------
-    slice_dict : dict
-        Slice metadata containing 'markers' key if non-linear transform is needed.
-    reg_width : int
-        Registration width in pixels.
-    reg_height : int
-        Registration height in pixels.
-    non_linear : bool
-        Whether to apply non-linear transformation.
-
-    Returns
-    -------
-    triangulation or None
-        Triangulation structure for deformation, or None if not applicable.
-    """
-    if non_linear and "markers" in slice_dict:
-        return triangulate(reg_width, reg_height, slice_dict["markers"])
-    return None
 
 
 # -----------------------------------------------------------------------------
@@ -208,34 +173,6 @@ def transform_to_atlas_space(
 
     # Shape: (N, 3)
     return o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])
-
-
-def image_to_atlas_space(image: np.ndarray, anchoring: List[float]) -> np.ndarray:
-    """Transform an entire image to atlas space.
-
-    Creates atlas-space coordinates for every pixel in the image.
-
-    Parameters
-    ----------
-    image : ndarray
-        Input image whose pixels will be transformed.
-    anchoring : list
-        9-element anchoring vector.
-
-    Returns
-    -------
-    ndarray
-        (height*width, 3) array of transformed coordinates.
-    """
-    width = image.shape[1]
-    height = image.shape[0]
-    x = np.arange(width)
-    y = np.arange(height)
-    x_coords, y_coords = np.meshgrid(x, y)
-    coordinates = transform_to_atlas_space(
-        anchoring, y_coords.flatten(), x_coords.flatten(), height, width
-    )
-    return coordinates
 
 
 # -----------------------------------------------------------------------------

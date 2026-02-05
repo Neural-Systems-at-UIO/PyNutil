@@ -11,10 +11,9 @@ This module contains functions for reading various file formats:
 from __future__ import annotations
 
 import json
-import os
 import re
 import struct
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import cv2
 import numpy as np

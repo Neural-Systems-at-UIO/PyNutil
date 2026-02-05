@@ -1,5 +1,5 @@
 import numpy as np
-import pandas as pd
+
 import re
 import os
 from glob import glob
@@ -163,25 +163,6 @@ def create_damage_mask(section, grid_spacing):
     return binary_image
 
 
-def calculate_scale_factor(image, rescaleXY):
-    """
-    Calculates the scale factor for an image.
-
-    Args:
-        image (ndarray): Image array.
-        rescaleXY (tuple): Tuple with new dimensions.
-
-    Returns:
-        float: Scale factor.
-    """
-    if rescaleXY:
-        image_shapeY, image_shapeX = image.shape[0], image.shape[1]
-        image_pixels = image_shapeY * image_shapeX
-        seg_pixels = rescaleXY[0] * rescaleXY[1]
-        return seg_pixels / image_pixels
-    return False
-
-
 def get_segmentations(folder):
     """
     Collects segmentation file paths from the specified folder.
@@ -246,20 +227,6 @@ def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
         current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
         return flat_files[current_flat_file_index[0][0]]
     return None
-
-
-def start_and_join_threads(threads):
-    """
-    Starts a list of threads and joins them to ensure completion.
-
-    Args:
-        threads (list): A list of threading.Thread objects.
-
-    Returns:
-        None
-    """
-    [t.start() for t in threads]
-    [t.join() for t in threads]
 
 
 def process_results(

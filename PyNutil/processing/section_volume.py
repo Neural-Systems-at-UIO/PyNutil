@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from .registration_adapters import load_registration
+from .adapters import load_registration
 from .transforms import transform_to_atlas_space
 from .utils import number_sections, convert_to_intensity
 

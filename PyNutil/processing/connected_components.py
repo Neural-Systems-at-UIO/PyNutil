@@ -146,7 +146,7 @@ def get_objects_and_assign_regions(
         tuple: (centroids, scaled_centroidsX, scaled_centroidsY,
                 scaled_y, scaled_x, per_centroid_labels)
     """
-    from .segmentation_adapters import SegmentationAdapterRegistry
+    from .adapters import SegmentationAdapterRegistry
 
     adapter = SegmentationAdapterRegistry.get(segmentation_format)
 

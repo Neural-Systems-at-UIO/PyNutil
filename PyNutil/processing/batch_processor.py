@@ -5,11 +5,13 @@ in a folder, mapping each one to atlas space using parallel execution.
 """
 
 import os
+import threading
+
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
-from .registration_adapters import load_registration
+from .adapters import load_registration
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
