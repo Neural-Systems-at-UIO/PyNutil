@@ -34,8 +34,9 @@ def _build_color_lookup(
     - unmapped ids map to grey (default_colour)
     """
     if atlas_labels is None or len(atlas_labels) == 0:
-        lut = np.empty((1, 3), dtype=np.uint8)
+        lut = np.empty((2, 3), dtype=np.uint8)
         lut[0] = (0, 0, 0)
+        lut[1] = default_colour  # sentinel for out-of-range
         return "direct", lut, default_colour
 
     ids = atlas_labels["idx"].to_numpy(dtype=np.int64, copy=False)
@@ -43,7 +44,8 @@ def _build_color_lookup(
     max_id = int(ids.max(initial=0)) if ids.size else 0
 
     if 0 <= max_id <= max_direct_lut_id:
-        lut = np.empty((max_id + 1, 3), dtype=np.uint8)
+        # Extra sentinel row at end for out-of-range IDs (clipped to max_id+1)
+        lut = np.empty((max_id + 2, 3), dtype=np.uint8)
         lut[:] = default_colour
         lut[0] = (0, 0, 0)
         # If duplicate ids exist, later rows overwrite earlier ones (same as dict assignment)
@@ -63,21 +65,19 @@ def create_colored_image_from_slice(
     default_colour: Tuple[int, int, int] = (128, 128, 128),
 ) -> np.ndarray:
     """Create an RGB image from an atlas slice using a fast lookup."""
-    atlas_ids = atlas_slice.astype(np.int64, copy=False)
-    height, width = atlas_ids.shape
-    out = np.empty((height, width, 3), dtype=np.uint8)
-    out[:] = default_colour
+    height, width = atlas_slice.shape
 
     if lookup_mode == "direct":
         lut = lookup  # type: ignore[assignment]
-        max_id = lut.shape[0] - 1
-        valid = (atlas_ids >= 0) & (atlas_ids <= max_id)
-        if np.any(valid):
-            out[valid] = lut[atlas_ids[valid]]
-        return out
+        # atlas_slice is uint32; clamp to valid LUT range and index directly.
+        # Ids beyond max_id map to the sentinel default_colour row.
+        ids = np.clip(atlas_slice, 0, lut.shape[0] - 1).astype(np.intp)
+        return lut[ids.ravel()].reshape(height, width, 3)
 
     ids_sorted, rgb_sorted = lookup  # type: ignore[misc]
+    atlas_ids = atlas_slice.astype(np.int32, copy=False)
     idx = np.searchsorted(ids_sorted, atlas_ids)
+    out = np.full((height, width, 3), default_colour, dtype=np.uint8)
     valid = (idx < ids_sorted.size) & (ids_sorted[idx] == atlas_ids)
     if np.any(valid):
         out[valid] = rgb_sorted[idx[valid]]

@@ -45,24 +45,25 @@ def generate_target_slice(ouv, atlas):
         ndarray: 2D slice extracted from the atlas.
     """
     ox, oy, oz, ux, uy, uz, vx, vy, vz = ouv
-    width = np.floor(math.hypot(ux, uy, uz)).astype(int) + 1
-    height = np.floor(math.hypot(vx, vy, vz)).astype(int) + 1
+    width = int(np.floor(math.hypot(ux, uy, uz))) + 1
+    height = int(np.floor(math.hypot(vx, vy, vz))) + 1
     xdim, ydim, zdim = atlas.shape
 
-    y_values = np.arange(height)
-    x_values = np.arange(width)
+    # Row/col normalised fractions (float32 saves bandwidth)
+    yf = np.arange(height, dtype=np.float32) / height
+    xf = np.arange(width, dtype=np.float32) / width
 
-    lx = np.floor(
-        (ox + vx * (y_values / height))[:, None] + ux * (x_values / width)
-    ).astype(int)
-    ly = np.floor(
-        (oy + vy * (y_values / height))[:, None] + uy * (x_values / width)
-    ).astype(int)
-    lz = np.floor(
-        (oz + vz * (y_values / height))[:, None] + uz * (x_values / width)
-    ).astype(int)
+    lx = np.floor(ox + (vx * yf)[:, None] + ux * xf).astype(np.int32)
+    ly = np.floor(oy + (vy * yf)[:, None] + uy * xf).astype(np.int32)
+    lz = np.floor(oz + (vz * yf)[:, None] + uz * xf).astype(np.int32)
 
-    valid = (0 <= lx) & (lx < xdim) & (0 <= ly) & (ly < ydim) & (0 <= lz) & (lz < zdim)
+    # Clip to atlas bounds; out-of-bounds pixels will index corner voxels
+    # but are zeroed out below via the valid mask.
+    valid = (
+        (lx >= 0) & (lx < xdim)
+        & (ly >= 0) & (ly < ydim)
+        & (lz >= 0) & (lz < zdim)
+    )
 
     data_im = np.zeros((height, width), dtype=np.uint32)
     data_im[valid] = atlas[lx[valid], ly[valid], lz[valid]]

@@ -28,11 +28,12 @@ def _group_pixels_by_label(ys, xs, labels, *, compute_centroid=True):
             the ``centroid`` key in each dict will be ``None``.
 
     Returns:
-        list[dict]: One dict per unique label with keys ``area``, ``centroid``
-        (y, x) and ``coords`` (N × 2 ndarray).
+        tuple: (props, unique_ids) where *props* is a list[dict] with keys
+        ``area``, ``centroid`` (y, x) and ``coords`` (N × 2 ndarray), and
+        *unique_ids* is the sorted array of label IDs.
     """
     if ys.size == 0:
-        return []
+        return [], np.array([], dtype=labels.dtype)
 
     order = np.argsort(labels, kind="stable")
     ys = ys[order]
@@ -54,7 +55,7 @@ def _group_pixels_by_label(ys, xs, labels, *, compute_centroid=True):
         )
         coords = np.column_stack((comp_ys, comp_xs))
         props.append({"area": area, "centroid": centroid, "coords": coords})
-    return props
+    return props, unique_ids
 
 
 def connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 4):
@@ -88,11 +89,9 @@ def connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 4
     comp_ids = labels[ys, xs]
 
     # Use shared grouping; override centroids with OpenCV's sub-pixel values
-    props = _group_pixels_by_label(ys, xs, comp_ids, compute_centroid=False)
+    props, unique_ids = _group_pixels_by_label(ys, xs, comp_ids, compute_centroid=False)
 
     # Map grouped label IDs back to OpenCV stats/centroids
-    order = np.argsort(comp_ids, kind="stable")
-    unique_ids = np.unique(comp_ids[order])
     for prop, comp_id in zip(props, unique_ids):
         cx, cy = centroids_xy[comp_id]
         prop["centroid"] = (float(cy), float(cx))
@@ -113,7 +112,8 @@ def labeled_image_props(label_image: np.ndarray):
     if ys.size == 0:
         return []
     labels = label_image[ys, xs]
-    return _group_pixels_by_label(ys, xs, labels)
+    props, _ = _group_pixels_by_label(ys, xs, labels)
+    return props
 
 
 def get_objects_and_assign_regions(
