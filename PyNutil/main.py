@@ -31,16 +31,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-# ── Pipeline strategies (OCP + DIP) ─────────────────────────────────────
-#
-# Each mode (binary segmentation vs. intensity) implements two operations:
-#   get_coordinates(ctx, ...)  — extract points from images
-#   quantify(ctx)              — aggregate into per-region tables
-#
-# PyNutil picks the right strategy at init time and delegates to it,
-# eliminating the repeated ``if self.image_folder`` branches.
-
-
 class _BinaryMode:
     """Binary / Cellpose segmentation pipeline."""
 
