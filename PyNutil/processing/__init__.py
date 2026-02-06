@@ -13,7 +13,7 @@ Top-level modules
 - transforms: Coordinate transformation functions
 - utils: Shared utility functions
 - section_volume: 3D volume projection/interpolation
-- generate_target_slice: Atlas slice extraction
+- atlas_map: Atlas slice extraction and region-area computation
 """
 
 from .pipeline import (

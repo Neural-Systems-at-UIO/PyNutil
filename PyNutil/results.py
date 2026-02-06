@@ -90,6 +90,44 @@ class PerEntityArrays:
             offset += n
 
 
+# ── Single-section intensity result (returned by intensity section processor) ──
+
+
+@dataclass
+class IntensitySectionResult:
+    """Result from processing a single section in intensity mode.
+
+    Replaces the mutable-list-slot pattern where
+    ``segmentation_to_atlas_space_intensity`` wrote into six pre-allocated
+    shared lists by index.
+    """
+
+    region_intensities: Optional[pd.DataFrame]
+    """Per-region intensity DataFrame for this section."""
+    points: Optional[np.ndarray]
+    """3-D atlas-space coordinates of signal pixels (N×3)."""
+    points_labels: Optional[np.ndarray]
+    """Atlas-region label for each signal pixel."""
+    points_hemi_labels: Optional[np.ndarray]
+    """Hemisphere label for each signal pixel."""
+    point_intensities: Optional[np.ndarray]
+    """Intensity (or RGB) value for each signal pixel."""
+    num_points: int = 0
+    """Number of signal pixels in this section."""
+
+    @classmethod
+    def empty(cls) -> IntensitySectionResult:
+        """Create an empty result for skipped or empty sections."""
+        return cls(
+            region_intensities=None,
+            points=None,
+            points_labels=None,
+            points_hemi_labels=None,
+            point_intensities=None,
+            num_points=0,
+        )
+
+
 # Backward-compatible aliases
 PerPointArrays = PerEntityArrays
 PerCentroidArrays = PerEntityArrays

@@ -13,24 +13,20 @@ import numpy as np
 import cv2
 
 from ...io.loaders import load_segmentation
-from ...results import SectionResult
+from ...results import SectionResult, IntensitySectionResult
 from .connected_components import (
-    get_centroids_and_area,
     get_objects_and_assign_regions,
 )
-from ..generate_target_slice import generate_target_slice
+from ..atlas_map import generate_target_slice, get_region_areas
 from ..transforms import (
     transform_points_to_atlas_space,
     transform_to_registration,
     get_transformed_coordinates,
     transform_to_atlas_space,
-    get_region_areas,
 )
-from .image_loaders import detect_pixel_id
+from ..adapters.segmentation import detect_pixel_id
 from ..analysis.aggregator import build_region_intensity_dataframe
 from ..utils import (
-    find_matching_pixels,
-    scale_positions,
     convert_to_intensity,
     assign_labels_at_coordinates,
     resize_mask_nearest,
@@ -188,18 +184,14 @@ def segmentation_to_atlas_space(
             )
         else:
             per_centroid_hemi = np.array([], dtype=hemi_mask.dtype)
-        per_point_hemi = per_point_hemi[per_point_undamaged]
-        per_centroid_hemi = per_centroid_hemi[per_centroid_undamaged]
     else:
         per_point_hemi = [None] * len(scaled_x)
         per_centroid_hemi = [None] * (
             len(scaled_centroidsX) if scaled_centroidsX is not None else 0
         )
 
-    per_point_labels = per_point_labels[per_point_undamaged]
     if per_centroid_labels is None:
         per_centroid_labels = np.array([], dtype=per_point_labels.dtype)
-    per_centroid_labels = per_centroid_labels[per_centroid_undamaged]
 
     new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
         non_linear,
@@ -258,16 +250,9 @@ def segmentation_to_atlas_space_intensity(
     intensity_channel,
     flat_file_atlas=None,
     non_linear=True,
-    region_intensities_list=None,
-    index=None,
     atlas_volume=None,
     hemi_map=None,
     use_flat=False,
-    centroids_list=None,
-    centroids_labels_list=None,
-    centroids_hemi_labels_list=None,
-    centroids_intensities_list=None,
-    centroids_len=None,
     min_intensity=None,
     max_intensity=None,
 ):
@@ -280,21 +265,14 @@ def segmentation_to_atlas_space_intensity(
         intensity_channel: Channel to use for intensity.
         flat_file_atlas: Path to flat atlas (optional).
         non_linear: Apply non-linear transform.
-        region_intensities_list: Storage for intensity data.
-        index: Index in output lists.
         atlas_volume: 3D atlas volume.
         hemi_map: Hemisphere mask.
         use_flat: Use flat files if True.
-        centroids_list: Storage for pixel coordinates.
-        centroids_labels_list: Storage for pixel labels.
-        centroids_hemi_labels_list: Storage for hemisphere labels.
-        centroids_intensities_list: Storage for intensity values.
-        centroids_len: Storage for point counts.
         min_intensity: Minimum intensity threshold.
         max_intensity: Maximum intensity threshold.
 
     Returns:
-        None (results stored in provided lists)
+        IntensitySectionResult with region intensities and MeshView point data.
     """
     image = load_segmentation(image_path)
     intensity = convert_to_intensity(image, intensity_channel)
@@ -353,8 +331,6 @@ def segmentation_to_atlas_space_intensity(
         hemi_mask=hemi_mask,
         damage_mask_resized=damage_mask_resized,
     )
-
-    region_intensities_list[index] = df
 
     # Extract pixels for MeshView
     # We respect the intensity filters if specified
@@ -415,61 +391,23 @@ def segmentation_to_atlas_space_intensity(
         else:
             sig_hemi = np.zeros(len(sig_y), dtype=int)
 
-        # Store results
-        if centroids_list is not None:
-            centroids_list[index] = sig_points_3d
-            centroids_labels_list[index] = sig_labels
-            centroids_hemi_labels_list[index] = sig_hemi
-            centroids_intensities_list[index] = sig_intensities
-            centroids_len[index] = len(sig_y)
+        result = IntensitySectionResult(
+            region_intensities=df,
+            points=sig_points_3d,
+            points_labels=sig_labels,
+            points_hemi_labels=sig_hemi,
+            point_intensities=sig_intensities,
+            num_points=len(sig_y),
+        )
     else:
-        if centroids_len is not None:
-            centroids_len[index] = 0
+        result = IntensitySectionResult(
+            region_intensities=df,
+            points=None,
+            points_labels=None,
+            points_hemi_labels=None,
+            point_intensities=None,
+            num_points=0,
+        )
+
     gc.collect()
-
-
-def get_centroids(segmentation, pixel_id, y_scale, x_scale, object_cutoff=0):
-    """Find object centroids for a given pixel color and apply scaling.
-
-    Args:
-        segmentation: Segmentation array.
-        pixel_id: Pixel color to match.
-        y_scale: Vertical scaling factor.
-        x_scale: Horizontal scaling factor.
-        object_cutoff: Minimum object size.
-
-    Returns:
-        tuple: (centroids, scaled_centroidsX, scaled_centroidsY)
-    """
-    binary_seg = segmentation == pixel_id
-    binary_seg = np.all(binary_seg, axis=2)
-    centroids, area, coords = get_centroids_and_area(
-        binary_seg, pixel_cut_off=object_cutoff
-    )
-    if len(centroids) == 0:
-        return None, None, None
-    centroidsX = centroids[:, 1]
-    centroidsY = centroids[:, 0]
-    scaled_centroidsY, scaled_centroidsX = scale_positions(
-        centroidsY, centroidsX, y_scale, x_scale
-    )
-    return centroids, scaled_centroidsX, scaled_centroidsY
-
-
-def get_scaled_pixels(segmentation, pixel_id, y_scale, x_scale):
-    """Retrieve pixel coordinates for a specified color and scale them.
-
-    Args:
-        segmentation: Segmentation array.
-        pixel_id: Pixel color to match.
-        y_scale: Vertical scaling factor.
-        x_scale: Horizontal scaling factor.
-
-    Returns:
-        tuple: (scaled_y, scaled_x)
-    """
-    id_pixels = find_matching_pixels(segmentation, pixel_id)
-    if len(id_pixels[0]) == 0:
-        return None, None
-    scaled_y, scaled_x = scale_positions(id_pixels[0], id_pixels[1], y_scale, x_scale)
-    return scaled_y, scaled_x
+    return result

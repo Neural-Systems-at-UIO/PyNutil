@@ -1,6 +1,6 @@
 import os
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, List
 
 import numpy as np
@@ -88,37 +88,9 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
         )
 
     if ctx.per_section_df is not None and ctx.segmentation_filenames is not None:
-        _save_per_section_reports(
-            ctx.per_section_df,
-            ctx.segmentation_filenames,
-            ctx.points_len,
-            ctx.centroids_len,
-            ctx.pixel_points,
-            ctx.centroids,
-            ctx.labeled_points,
-            ctx.labeled_points_centroids,
-            ctx.points_hemi_labels,
-            ctx.centroids_hemi_labels,
-            ctx.atlas_labels,
-            output_folder,
-            ctx.prepend,
-            ctx.point_intensities,
-            colormap=ctx.colormap,
-        )
+        _save_per_section_reports(ctx, output_folder)
     if ctx.pixel_points is not None:
-        _save_whole_series_meshview(
-            ctx.pixel_points,
-            ctx.labeled_points,
-            ctx.centroids,
-            ctx.labeled_points_centroids,
-            ctx.points_hemi_labels,
-            ctx.centroids_hemi_labels,
-            ctx.atlas_labels,
-            output_folder,
-            ctx.prepend,
-            ctx.point_intensities,
-            colormap=ctx.colormap,
-        )
+        _save_whole_series_meshview(ctx, output_folder)
 
     # Save settings to JSON file for reference
     settings_dict = {
@@ -146,138 +118,92 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
         json.dump(settings_dict, f, indent=4)
 
 
-def _save_per_section_reports(
-    per_section_df,
-    segmentation_filenames,
-    points_len,
-    centroids_len,
-    pixel_points,
-    centroids,
-    labeled_points,
-    labeled_points_centroids,
-    points_hemi_labels,
-    centroids_hemi_labels,
-    atlas_labels,
-    output_folder,
-    prepend,
-    point_intensities=None,
-    colormap="gray",
-):
+def _save_per_section_reports(ctx: SaveContext, output_folder: str):
+    """Write per-section CSVs and MeshView JSONs."""
     prev_pl = 0
     prev_cl = 0
 
     # Handle None for points_len and centroids_len (e.g. in intensity mode)
-    if points_len is None:
-        points_len = [0] * len(segmentation_filenames)
-    if centroids_len is None:
-        centroids_len = [0] * len(segmentation_filenames)
+    points_len = ctx.points_len or [0] * len(ctx.segmentation_filenames)
+    centroids_len = ctx.centroids_len or [0] * len(ctx.segmentation_filenames)
 
     for pl, cl, fn, df in zip(
         points_len,
         centroids_len,
-        segmentation_filenames,
-        per_section_df,
+        ctx.segmentation_filenames,
+        ctx.per_section_df,
     ):
         split_fn = fn.split(os.sep)[-1].split(".")[0]
         df.to_csv(
-            f"{output_folder}/per_section_reports/{prepend}{split_fn}.csv",
+            f"{output_folder}/per_section_reports/{ctx.prepend}{split_fn}.csv",
             sep=";",
             na_rep="",
             index=False,
         )
-        if pixel_points is not None or centroids is not None:
+        if ctx.pixel_points is not None or ctx.centroids is not None:
+            section_intensities = (
+                ctx.point_intensities[prev_pl : pl + prev_pl]
+                if ctx.point_intensities is not None
+                else None
+            )
             _save_per_section_meshview(
-                split_fn,
-                pl,
-                cl,
-                prev_pl,
-                prev_cl,
-                pixel_points,
-                centroids,
-                labeled_points,
-                labeled_points_centroids,
-                points_hemi_labels,
-                centroids_hemi_labels,
-                atlas_labels,
-                output_folder,
-                prepend,
-                point_intensities[prev_pl : pl + prev_pl]
-                if point_intensities is not None
-                else None,
-                colormap=colormap,
+                ctx, output_folder, split_fn, pl, cl, prev_pl, prev_cl,
+                section_intensities,
             )
         prev_cl += cl
         prev_pl += pl
 
 
 def _save_per_section_meshview(
-    split_fn,
-    pl,
-    cl,
-    prev_pl,
-    prev_cl,
-    pixel_points,
-    centroids,
-    labeled_points,
-    labeled_points_centroids,
-    points_hemi_labels,
-    centroids_hemi_labels,
-    atlas_labels,
-    output_folder,
-    prepend,
-    point_intensities=None,
-    colormap="gray",
+    ctx: SaveContext,
+    output_folder: str,
+    split_fn: str,
+    pl: int,
+    cl: int,
+    prev_pl: int,
+    prev_cl: int,
+    section_intensities=None,
 ):
+    """Write per-section MeshView JSONs for pixels and centroids."""
     write_hemi_points_to_meshview(
-        pixel_points[prev_pl : pl + prev_pl] if pixel_points is not None else None,
-        labeled_points[prev_pl : pl + prev_pl] if labeled_points is not None else None,
-        points_hemi_labels[prev_pl : pl + prev_pl]
-        if points_hemi_labels is not None
+        ctx.pixel_points[prev_pl : pl + prev_pl] if ctx.pixel_points is not None else None,
+        ctx.labeled_points[prev_pl : pl + prev_pl] if ctx.labeled_points is not None else None,
+        ctx.points_hemi_labels[prev_pl : pl + prev_pl]
+        if ctx.points_hemi_labels is not None
         else None,
-        f"{output_folder}/per_section_meshview/{prepend}{split_fn}_pixels.json",
-        atlas_labels,
-        point_intensities,
-        colormap=colormap,
+        f"{output_folder}/per_section_meshview/{ctx.prepend}{split_fn}_pixels.json",
+        ctx.atlas_labels,
+        section_intensities,
+        colormap=ctx.colormap,
     )
-    if centroids is not None:
+    if ctx.centroids is not None:
         write_hemi_points_to_meshview(
-            centroids[prev_cl : cl + prev_cl],
-            labeled_points_centroids[prev_cl : cl + prev_cl],
-            centroids_hemi_labels[prev_cl : cl + prev_cl],
-            f"{output_folder}/per_section_meshview/{prepend}{split_fn}_centroids.json",
-            atlas_labels,
-            colormap=colormap,
+            ctx.centroids[prev_cl : cl + prev_cl],
+            ctx.labeled_points_centroids[prev_cl : cl + prev_cl],
+            ctx.centroids_hemi_labels[prev_cl : cl + prev_cl],
+            f"{output_folder}/per_section_meshview/{ctx.prepend}{split_fn}_centroids.json",
+            ctx.atlas_labels,
+            colormap=ctx.colormap,
         )
 
 
-def _save_whole_series_meshview(
-    pixel_points,
-    labeled_points,
-    centroids,
-    labeled_points_centroids,
-    points_hemi_labels,
-    centroids_hemi_labels,
-    atlas_labels,
-    output_folder,
-    prepend,
-    point_intensities=None,
-    colormap="gray",
-):
+def _save_whole_series_meshview(ctx: SaveContext, output_folder: str):
+    """Write whole-series MeshView JSONs for pixels and centroids."""
     write_hemi_points_to_meshview(
-        pixel_points,
-        labeled_points,
-        points_hemi_labels,
-        f"{output_folder}/whole_series_meshview/{prepend}pixels_meshview.json",
-        atlas_labels,
-        point_intensities,
-        colormap=colormap,
+        ctx.pixel_points,
+        ctx.labeled_points,
+        ctx.points_hemi_labels,
+        f"{output_folder}/whole_series_meshview/{ctx.prepend}pixels_meshview.json",
+        ctx.atlas_labels,
+        ctx.point_intensities,
+        colormap=ctx.colormap,
     )
-    if centroids is not None:
+    if ctx.centroids is not None:
         write_hemi_points_to_meshview(
-            centroids,
-            labeled_points_centroids,
-            centroids_hemi_labels,
-            f"{output_folder}/whole_series_meshview/{prepend}objects_meshview.json",
-            atlas_labels,
-            colormap=colormap,
+            ctx.centroids,
+            ctx.labeled_points_centroids,
+            ctx.centroids_hemi_labels,
+            f"{output_folder}/whole_series_meshview/{ctx.prepend}objects_meshview.json",
+            ctx.atlas_labels,
+            colormap=ctx.colormap,
         )

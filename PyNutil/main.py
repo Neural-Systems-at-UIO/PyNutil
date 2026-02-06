@@ -31,6 +31,141 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+# ── Pipeline strategies (OCP + DIP) ─────────────────────────────────────
+#
+# Each mode (binary segmentation vs. intensity) implements two operations:
+#   get_coordinates(ctx, ...)  — extract points from images
+#   quantify(ctx)              — aggregate into per-region tables
+#
+# PyNutil picks the right strategy at init time and delegates to it,
+# eliminating the repeated ``if self.image_folder`` branches.
+
+
+class _BinaryMode:
+    """Binary / Cellpose segmentation pipeline."""
+
+    @staticmethod
+    def get_coordinates(ctx, *, non_linear, object_cutoff, use_flat, apply_damage_mask):
+        (
+            ctx.pixel_points,
+            ctx.centroids,
+            ctx.points_labels,
+            ctx.centroids_labels,
+            ctx.points_hemi_labels,
+            ctx.centroids_hemi_labels,
+            ctx.region_areas_list,
+            ctx.points_len,
+            ctx.centroids_len,
+            ctx.segmentation_filenames,
+            ctx.per_point_undamaged,
+            ctx.per_centroid_undamaged,
+            ctx.total_points_len,
+            ctx.total_centroids_len,
+        ) = folder_to_atlas_space(
+            ctx.segmentation_folder,
+            ctx.alignment_json,
+            ctx.atlas_labels,
+            ctx.colour,
+            non_linear,
+            object_cutoff,
+            ctx.atlas_volume,
+            ctx.hemi_map,
+            use_flat,
+            apply_damage_mask,
+            segmentation_format=ctx.segmentation_format,
+        )
+        ctx.apply_damage_mask = apply_damage_mask
+        if ctx.custom_regions_dict is not None:
+            ctx.points_custom_labels = map_to_custom_regions(
+                ctx.custom_regions_dict, ctx.points_labels
+            )
+            ctx.centroids_custom_labels = map_to_custom_regions(
+                ctx.custom_regions_dict, ctx.centroids_labels
+            )
+
+    @staticmethod
+    def quantify(ctx):
+        if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
+            raise ValueError(
+                "Please run get_coordinates before running quantify_coordinates."
+            )
+        points = PerPointArrays(
+            labels=ctx.points_labels,
+            hemi_labels=ctx.points_hemi_labels,
+            undamaged=ctx.per_point_undamaged,
+            section_lengths=ctx.total_points_len,
+        )
+        centroids = PerCentroidArrays(
+            labels=ctx.centroids_labels,
+            hemi_labels=ctx.centroids_hemi_labels,
+            undamaged=ctx.per_centroid_undamaged,
+            section_lengths=ctx.total_centroids_len,
+        )
+        return quantify_labeled_points(
+            points,
+            centroids,
+            ctx.region_areas_list,
+            ctx.atlas_labels,
+            ctx.apply_damage_mask,
+        )
+
+
+class _IntensityMode:
+    """Image intensity quantification pipeline."""
+
+    @staticmethod
+    def get_coordinates(ctx, *, non_linear, object_cutoff, use_flat, apply_damage_mask):
+        (
+            ctx.region_intensities_list,
+            ctx.segmentation_filenames,
+            ctx.pixel_points,
+            ctx.points_labels,
+            ctx.points_hemi_labels,
+            ctx.points_len,
+            ctx.point_intensities,
+        ) = folder_to_atlas_space_intensity(
+            ctx.image_folder,
+            ctx.alignment_json,
+            ctx.atlas_labels,
+            ctx.intensity_channel,
+            non_linear,
+            ctx.atlas_volume,
+            ctx.hemi_map,
+            use_flat,
+            apply_damage_mask,
+            min_intensity=ctx.min_intensity,
+            max_intensity=ctx.max_intensity,
+        )
+        # In intensity mode, we don't have separate centroids
+        ctx.centroids = None
+        ctx.labeled_points_centroids = None
+        ctx.centroids_hemi_labels = None
+        ctx.centroids_len = None
+        ctx.apply_damage_mask = apply_damage_mask
+
+    @staticmethod
+    def quantify(ctx):
+        if not hasattr(ctx, "region_intensities_list"):
+            raise ValueError(
+                "Please run get_coordinates before running quantify_coordinates."
+            )
+        return quantify_intensity(ctx.region_intensities_list, ctx.atlas_labels)
+
+
+def _apply_custom_regions_to_quantification(ctx):
+    """Shared post-quantification step: remap to custom regions if configured."""
+    if ctx.custom_regions_dict is not None:
+        ctx.custom_label_df, ctx.label_df = apply_custom_regions(
+            ctx.label_df, ctx.custom_regions_dict
+        )
+        ctx.custom_per_section_df = []
+        for section_df in ctx.per_section_df:
+            custom_df, section_df = apply_custom_regions(
+                section_df, ctx.custom_regions_dict
+            )
+            ctx.custom_per_section_df.append(custom_df)
+
+
 class PyNutil:
     """
     A class to perform brain-wide quantification and spatial analysis of serial section images.
@@ -182,6 +317,9 @@ class PyNutil:
 
         self.point_intensities = None
 
+        # Select the quantification strategy based on the input mode (OCP)
+        self._mode = _IntensityMode() if self.image_folder else _BinaryMode()
+
     def _check_atlas_name(self):
         if not self.atlas_name:
             raise ValueError(
@@ -210,71 +348,13 @@ class PyNutil:
         Returns:
             None: Results are stored in class attributes.
         """
-
-        if self.image_folder:
-            (
-                self.region_intensities_list,
-                self.segmentation_filenames,
-                self.pixel_points,
-                self.points_labels,
-                self.points_hemi_labels,
-                self.points_len,
-                self.point_intensities,
-            ) = folder_to_atlas_space_intensity(
-                self.image_folder,
-                self.alignment_json,
-                self.atlas_labels,
-                self.intensity_channel,
-                non_linear,
-                self.atlas_volume,
-                self.hemi_map,
-                use_flat,
-                apply_damage_mask,
-                min_intensity=self.min_intensity,
-                max_intensity=self.max_intensity,
-            )
-            # In intensity mode, we don't have separate centroids
-            self.centroids = None
-            self.labeled_points_centroids = None
-            self.centroids_hemi_labels = None
-            self.centroids_len = None
-            self.apply_damage_mask = apply_damage_mask
-            return
-
-        (
-            self.pixel_points,
-            self.centroids,
-            self.points_labels,
-            self.centroids_labels,
-            self.points_hemi_labels,
-            self.centroids_hemi_labels,
-            self.region_areas_list,
-            self.points_len,
-            self.centroids_len,
-            self.segmentation_filenames,
-            self.per_point_undamaged,
-            self.per_centroid_undamaged,
-        ) = folder_to_atlas_space(
-            self.segmentation_folder,
-            self.alignment_json,
-            self.atlas_labels,
-            self.colour,
-            non_linear,
-            object_cutoff,
-            self.atlas_volume,
-            self.hemi_map,
-            use_flat,
-            apply_damage_mask,
-            segmentation_format=self.segmentation_format,
+        self._mode.get_coordinates(
+            self,
+            non_linear=non_linear,
+            object_cutoff=object_cutoff,
+            use_flat=use_flat,
+            apply_damage_mask=apply_damage_mask,
         )
-        self.apply_damage_mask = apply_damage_mask
-        if self.custom_regions_dict is not None:
-            self.points_custom_labels = map_to_custom_regions(
-                self.custom_regions_dict, self.points_labels
-            )
-            self.centroids_custom_labels = map_to_custom_regions(
-                self.custom_regions_dict, self.centroids_labels
-            )
 
     def quantify_coordinates(self):
         """
@@ -294,55 +374,8 @@ class PyNutil:
         Returns:
             None
         """
-        if self.image_folder:
-            if not hasattr(self, "region_intensities_list"):
-                raise ValueError(
-                    "Please run get_coordinates before running quantify_coordinates."
-                )
-            (self.label_df, self.per_section_df) = quantify_intensity(
-                self.region_intensities_list, self.atlas_labels
-            )
-            if self.custom_regions_dict is not None:
-                self.custom_label_df, self.label_df = apply_custom_regions(
-                    self.label_df, self.custom_regions_dict
-                )
-                self.custom_per_section_df = []
-                for i in self.per_section_df:
-                    c, i = apply_custom_regions(i, self.custom_regions_dict)
-                    self.custom_per_section_df.append(c)
-            return
-
-        if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
-            raise ValueError(
-                "Please run get_coordinates before running quantify_coordinates."
-            )
-        points = PerPointArrays(
-            labels=self.points_labels,
-            hemi_labels=self.points_hemi_labels,
-            undamaged=self.per_point_undamaged,
-            section_lengths=self.points_len,
-        )
-        centroids = PerCentroidArrays(
-            labels=self.centroids_labels,
-            hemi_labels=self.centroids_hemi_labels,
-            undamaged=self.per_centroid_undamaged,
-            section_lengths=self.centroids_len,
-        )
-        (self.label_df, self.per_section_df) = quantify_labeled_points(
-            points,
-            centroids,
-            self.region_areas_list,
-            self.atlas_labels,
-            self.apply_damage_mask,
-        )
-        if self.custom_regions_dict is not None:
-            self.custom_label_df, self.label_df = apply_custom_regions(
-                self.label_df, self.custom_regions_dict
-            )
-            self.custom_per_section_df = []
-            for i in self.per_section_df:
-                c, i = apply_custom_regions(i, self.custom_regions_dict)
-                self.custom_per_section_df.append(c)
+        self.label_df, self.per_section_df = self._mode.quantify(self)
+        _apply_custom_regions_to_quantification(self)
 
     def interpolate_volume(
         self,
@@ -452,12 +485,25 @@ class PyNutil:
         -------
         None
         """
-        # Build a shared context for save_analysis_output calls
+        # Build a shared context for save_analysis_output calls.
+        # Hemi labels are full-length; filter to undamaged-only for MeshView.
+        _und_p = getattr(self, "per_point_undamaged", None)
+        _und_c = getattr(self, "per_centroid_undamaged", None)
+        _phl = getattr(self, "points_hemi_labels", None)
+        _chl = getattr(self, "centroids_hemi_labels", None)
+        if _und_p is not None and _phl is not None and len(_und_p) == len(_phl):
+            viz_phl = _phl[_und_p]
+        else:
+            viz_phl = _phl
+        if _und_c is not None and _chl is not None and len(_und_c) == len(_chl):
+            viz_chl = _chl[_und_c]
+        else:
+            viz_chl = _chl
         base_ctx = SaveContext(
             pixel_points=getattr(self, "pixel_points", None),
             centroids=getattr(self, "centroids", None),
-            points_hemi_labels=getattr(self, "points_hemi_labels", None),
-            centroids_hemi_labels=getattr(self, "centroids_hemi_labels", None),
+            points_hemi_labels=viz_phl,
+            centroids_hemi_labels=viz_chl,
             points_len=getattr(self, "points_len", None),
             centroids_len=getattr(self, "centroids_len", None),
             segmentation_filenames=getattr(self, "segmentation_filenames", None),
@@ -477,8 +523,20 @@ class PyNutil:
         # Primary save
         base_ctx.label_df = getattr(self, "label_df", None)
         base_ctx.per_section_df = getattr(self, "per_section_df", None)
-        base_ctx.labeled_points = getattr(self, "points_labels", None)
-        base_ctx.labeled_points_centroids = getattr(self, "centroids_labels", None)
+        # Labels/hemi are full-length (all points); filter to undamaged-only
+        # to match pixel_points (undamaged 3D coords) for MeshView slicing.
+        _und_p = getattr(self, "per_point_undamaged", None)
+        _und_c = getattr(self, "per_centroid_undamaged", None)
+        _pl = getattr(self, "points_labels", None)
+        _cl = getattr(self, "centroids_labels", None)
+        if _und_p is not None and _pl is not None and len(_und_p) == len(_pl):
+            base_ctx.labeled_points = _pl[_und_p]
+        else:
+            base_ctx.labeled_points = _pl
+        if _und_c is not None and _cl is not None and len(_und_c) == len(_cl):
+            base_ctx.labeled_points_centroids = _cl[_und_c]
+        else:
+            base_ctx.labeled_points_centroids = _cl
         base_ctx.atlas_labels = self.atlas_labels
         base_ctx.prepend = ""
         base_ctx.colormap = colormap
@@ -506,8 +564,17 @@ class PyNutil:
         if self.custom_regions_dict is not None:
             base_ctx.label_df = getattr(self, "custom_label_df", None)
             base_ctx.per_section_df = getattr(self, "custom_per_section_df", None)
-            base_ctx.labeled_points = getattr(self, "points_custom_labels", None)
-            base_ctx.labeled_points_centroids = getattr(self, "centroids_custom_labels", None)
+            # Custom labels are full-length; filter to undamaged-only for MeshView.
+            _pcl = getattr(self, "points_custom_labels", None)
+            _ccl = getattr(self, "centroids_custom_labels", None)
+            if _und_p is not None and _pcl is not None and len(_und_p) == len(_pcl):
+                base_ctx.labeled_points = _pcl[_und_p]
+            else:
+                base_ctx.labeled_points = _pcl
+            if _und_c is not None and _ccl is not None and len(_und_c) == len(_ccl):
+                base_ctx.labeled_points_centroids = _ccl[_und_c]
+            else:
+                base_ctx.labeled_points_centroids = _ccl
             base_ctx.atlas_labels = self.custom_atlas_labels
             base_ctx.prepend = "custom_"
             base_ctx.colormap = "gray"

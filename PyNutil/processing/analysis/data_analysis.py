@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ...results import PerPointArrays, PerCentroidArrays
-from .counting_and_load import pixel_count_per_region
+from .region_counting import pixel_count_per_region
 from ..utils import (
     AREA_FRACTION_PAIRS,
     apply_area_fractions,

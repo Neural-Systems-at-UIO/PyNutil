@@ -157,15 +157,15 @@ class TestCoordinateScaling(TimedTestCase):
 
         with (
             patch(
-                "PyNutil.processing.analysis.counting_and_load.generate_target_slice",
+                "PyNutil.processing.atlas_map.generate_target_slice",
                 side_effect=_fake_generate_target_slice,
             ),
             patch(
-                "PyNutil.processing.analysis.counting_and_load.warp_image",
+                "PyNutil.processing.atlas_map.warp_image",
                 side_effect=_fake_warp_image,
             ),
             patch(
-                "PyNutil.processing.analysis.counting_and_load.flat_to_dataframe",
+                "PyNutil.processing.atlas_map.flat_to_dataframe",
                 side_effect=_fake_flat_to_dataframe,
             ),
         ):

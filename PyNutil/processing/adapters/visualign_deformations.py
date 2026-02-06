@@ -53,31 +53,6 @@ def triangulate(w, h, markers):
     return triangles
 
 
-def transform(triangulation, x, y):
-    """
-    Transforms a point using a triangulation.
-
-    Args:
-        triangulation (list): List of triangles.
-        x (float): X coordinate of the point.
-        y (float): Y coordinate of the point.
-
-    Returns:
-        tuple: Transformed coordinates.
-    """
-    for triangle in triangulation:
-        uv1 = triangle.intriangle(x, y)
-        if uv1:
-            return (
-                triangle.A[0]
-                + (triangle.B[0] - triangle.A[0]) * uv1[0]
-                + (triangle.C[0] - triangle.A[0]) * uv1[1],
-                triangle.A[1]
-                + (triangle.B[1] - triangle.A[1]) * uv1[0]
-                + (triangle.C[1] - triangle.A[1]) * uv1[1],
-            )
-
-
 def transform_vec(triangulation, x, y):
     """
     Transforms a set of points using a triangulation.
@@ -95,31 +70,6 @@ def transform_vec(triangulation, x, y):
     for triangle in triangulation:
         triangle.intriangle_vec(x, y, xPrime, yPrime)
     return (xPrime, yPrime)
-
-
-def forwardtransform(triangulation, x, y):
-    """
-    Forward transforms a point using a triangulation.
-
-    Args:
-        triangulation (list): List of triangles.
-        x (float): X coordinate of the point.
-        y (float): Y coordinate of the point.
-
-    Returns:
-        tuple: Transformed coordinates.
-    """
-    for triangle in triangulation:
-        uv1 = triangle.inforward(x, y)
-        if uv1:
-            return (
-                triangle.A[2]
-                + (triangle.B[2] - triangle.A[2]) * uv1[0]
-                + (triangle.C[2] - triangle.A[2]) * uv1[1],
-                triangle.A[3]
-                + (triangle.B[3] - triangle.A[3]) * uv1[0]
-                + (triangle.C[3] - triangle.A[3]) * uv1[1],
-            )
 
 
 def forwardtransform_vec(triangulation, x, y):
@@ -282,21 +232,6 @@ class Triangle:
             list: Barycentric coordinates of the point if inside, None otherwise.
         """
         uv1 = rowmul3([x, y, 1], self.decomp)
-        if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
-            return uv1
-
-    def inforward(self, x, y):
-        """
-        Checks if a point is inside the forward-transformed triangle.
-
-        Args:
-            x (float): X coordinate of the point.
-            y (float): Y coordinate of the point.
-
-        Returns:
-            list: Barycentric coordinates of the point if inside, None otherwise.
-        """
-        uv1 = rowmul3([x, y, 1], self.forwarddecomp)
         if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
             return uv1
 

@@ -76,13 +76,6 @@ class RegistrationData:
     grid_spacing: Optional[int] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def get_slice_by_number(self, number: int) -> Optional[SliceInfo]:
-        """Find a slice by its section number."""
-        for s in self.slices:
-            if s.section_number == number:
-                return s
-        return None
-
 
 # =============================================================================
 # Abstract Base Classes

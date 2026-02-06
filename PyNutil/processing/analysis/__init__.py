@@ -2,7 +2,7 @@
 
 Contains:
 - data_analysis: Quantification and aggregation of labelled data.
-- counting_and_load: Per-region pixel/object counting.
+- region_counting: Per-region pixel/object counting.
 - aggregator: Intensity aggregation per atlas region.
 """
 

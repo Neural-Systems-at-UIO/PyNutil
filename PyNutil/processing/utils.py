@@ -1,20 +1,13 @@
 import numpy as np
 import pandas as pd
 
-import re
 import os
-from glob import glob
 import cv2
 
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
-
-#: Standard regex for extracting section numbers from filenames (e.g. "_s001").
-SECTION_NUMBER_PATTERN = re.compile(r"\_s(\d+)")
-#: Fallback regex when the standard pattern is absent (e.g. "_001").
-SECTION_NUMBER_FALLBACK = re.compile(r"\_(\d+)")
 
 
 def safe_area_fraction(df, numerator_col, denominator_col, result_col):
@@ -189,59 +182,6 @@ def convert_to_intensity(image, channel):
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
 
-def number_sections(filenames, legacy=False):
-    """
-    Extract section numbers from a list of filenames.
-
-    Args:
-        filenames (list): List of file paths.
-        legacy (bool, optional): Use a legacy extraction mode if True. Defaults to False.
-
-    Returns:
-        list: List of section numbers as integers.
-    """
-    filenames = [os.path.basename(filename) for filename in filenames]
-    section_numbers = []
-    for filename in filenames:
-        if not legacy:
-            # Try _s### first (standard PyNutil/QUINT format)
-            match = re.findall(r"\_s(\d+)", filename)
-            if len(match) == 0:
-                # Try _### (common alternative)
-                match = re.findall(r"\_(\d+)", filename)
-
-            if len(match) == 0:
-                raise ValueError(
-                    f"No section number found in filename: {filename}. Expected format like '_s001' or '_001'."
-                )
-
-            section_numbers.append(int(match[-1]))
-        else:
-            match = re.sub("[^0-9]", "", filename)
-            section_numbers.append(int(match[-3:]))
-    if len(section_numbers) == 0:
-        raise ValueError("No section numbers found in filenames")
-    return section_numbers
-
-
-def find_matching_pixels(segmentation, id):
-    """
-    Returns the Y and X coordinates of all the pixels in the segmentation that match the id provided.
-
-    Args:
-        segmentation (ndarray): Segmentation array.
-        id (int): ID to match.
-
-    Returns:
-        tuple: Y and X coordinates of matching pixels.
-    """
-    mask = segmentation == id
-    mask = np.all(mask, axis=2)
-    id_positions = np.where(mask)
-    id_y, id_x = id_positions[0], id_positions[1]
-    return id_y, id_x
-
-
 def scale_positions(id_y, id_x, y_scale, x_scale):
     """
     Scales the Y and X coordinates to the registration space.
@@ -260,126 +200,44 @@ def scale_positions(id_y, id_x, y_scale, x_scale):
     return id_y, id_x
 
 
-def update_spacing(anchoring, width, height, grid_spacing):
-    """
-    Calculates spacing along width and height from slice anchoring.
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".dzip"}
+
+
+def discover_image_files(folder):
+    """Discover image files in *folder* (case-insensitive, sorted, no dirs).
 
     Args:
-        anchoring (list): Anchoring transformation parameters.
-        width (int): Image width.
-        height (int): Image height.
-        grid_spacing (int): Grid spacing in image units.
+        folder (str): Path to the folder containing images.
 
     Returns:
-        tuple: (xspacing, yspacing)
+        list: Sorted list of image file paths.
+
+    Raises:
+        ValueError: If no image files are found.
     """
-    if len(anchoring) != 9:
-        print("Anchoring does not have 9 elements.")
-    ow = np.sqrt(sum([anchoring[i + 3] ** 2 for i in range(3)]))
-    oh = np.sqrt(sum([anchoring[i + 6] ** 2 for i in range(3)]))
-    xspacing = int(width * grid_spacing / ow)
-    yspacing = int(height * grid_spacing / oh)
-    return xspacing, yspacing
-
-
-def create_damage_mask(section, grid_spacing):
-    """
-    Creates a binary damage mask from grid information in the given section.
-
-    Args:
-        section (dict): Dictionary with slice and grid data.
-        grid_spacing (int): Space between grid marks.
-
-    Returns:
-        ndarray: Binary mask with damaged areas marked as 0.
-    """
-    width = section["width"]
-    height = section["height"]
-    anchoring = section["anchoring"]
-    grid_values = section["grid"]
-    gridx = section["gridx"]
-    gridy = section["gridy"]
-
-    xspacing, yspacing = update_spacing(anchoring, width, height, grid_spacing)
-    x_coords = np.arange(gridx, width, xspacing)
-    y_coords = np.arange(gridy, height, yspacing)
-
-    num_markers = len(grid_values)
-    markers = [
-        (x_coords[i % len(x_coords)], y_coords[i // len(x_coords)])
-        for i in range(num_markers)
+    paths = [
+        os.path.join(folder, name)
+        for name in os.listdir(folder)
+        if os.path.isfile(os.path.join(folder, name))
+        and os.path.splitext(name)[1].lower() in _IMAGE_EXTS
     ]
-
-    binary_image = np.ones((len(y_coords), len(x_coords)), dtype=int)
-
-    for i, (x, y) in enumerate(markers):
-        if grid_values[i] == 4:
-            binary_image[y // yspacing, x // xspacing] = 0
-
-    return binary_image
-
-
-def get_segmentations(folder):
-    """
-    Collects segmentation file paths from the specified folder.
-
-    Args:
-        folder (str): Path to the folder containing segmentations.
-
-    Returns:
-        list: List of segmentation file paths.
-    """
-    segmentation_file_types = [".png", ".tif", ".tiff", ".jpg", ".jpeg", ".dzip"]
-    segmentations = [
-        file
-        for file in glob(folder + "/*")
-        if any([file.endswith(type) for type in segmentation_file_types])
-    ]
-    if len(segmentations) == 0:
+    paths.sort()
+    if not paths:
         raise ValueError(
-            f"No image files found in folder {folder}. Make sure the folder contains images."
+            f"No image files found in folder {folder}. "
+            "Make sure the folder contains images."
         )
-    print(f"Found {len(segmentations)} segmentations in folder {folder}")
-    return segmentations
+    print(f"Found {len(paths)} segmentations in folder {folder}")
+    return paths
 
 
-def get_flat_files(folder, use_flat=False):
-    """
-    Retrieves flat file paths from the given folder.
-
-    Args:
-        folder (str): Path to the folder containing flat files.
-        use_flat (bool, optional): If True, filter only flat files.
-
-    Returns:
-        tuple: A list of flat file paths and their numeric indices.
-    """
-    if use_flat:
-        flat_files = [
-            file
-            for file in glob(folder + "/flat_files/*")
-            if any([file.endswith(".flat"), file.endswith(".seg")])
-        ]
-        print(f"Found {len(flat_files)} flat files in folder {folder}")
-        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
-        return flat_files, flat_file_nrs
-    return [], []
+# Backward-compatible alias
+get_segmentations = discover_image_files
 
 
-def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
-    """
-    Determines the correct flat file for a given section number.
-
-    Args:
-        seg_nr (int): Numeric index of the segmentation.
-        flat_files (list): List of flat file paths.
-        flat_file_nrs (list): Numeric indices for each flat file.
-        use_flat (bool): If True, attempts to match flat files to segments.
-
-    Returns:
-        str or None: The matched flat file path, or None if not found or unused.
-    """
-    if use_flat:
-        current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
-        return flat_files[current_flat_file_index[0][0]]
-    return None
+# Re-exported from io.loaders for backward compatibility
+from ..io.loaders import (  # noqa: E402, F401
+    number_sections,
+    get_flat_files,
+    get_current_flat_file,
+)

@@ -32,7 +32,6 @@ class VisuAlignDeformationProvider(DeformationProvider):
                   If None, uses markers from the anchoring file.
         """
         self.path = path
-        self._markers_by_nr: Optional[Dict[int, List[List[float]]]] = None
 
     def _load_markers(self, path: str) -> Dict[int, List[List[float]]]:
         """Load markers from a VisuAlign JSON file."""

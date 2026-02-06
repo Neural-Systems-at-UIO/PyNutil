@@ -18,6 +18,24 @@ from typing import Dict, List, Optional, Tuple, Type
 import numpy as np
 
 
+def detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
+    """Infer the foreground pixel id from the first non-background region."""
+    if segmentation.ndim == 2:
+        non_zero = segmentation[segmentation != 0]
+        if non_zero.size > 0:
+            pixel_id = [int(non_zero[0])]
+        else:
+            pixel_id = [255]
+    else:
+        mask = ~np.all(segmentation == 0, axis=2)
+        segmentation_no_background = segmentation[mask]
+        if segmentation_no_background.size > 0:
+            pixel_id = segmentation_no_background[0]
+        else:
+            pixel_id = [255, 255, 255]
+    return np.asarray(pixel_id)
+
+
 @dataclass
 class ObjectInfo:
     """Information about a detected object/cell."""
@@ -88,14 +106,6 @@ class SegmentationAdapter(ABC):
         """
         return None
 
-    def needs_pixel_id(self) -> bool:
-        """Whether this format requires a pixel_id to identify foreground.
-
-        Returns:
-            True if pixel_id is needed, False otherwise.
-        """
-        return False
-
 
 class BinaryAdapter(SegmentationAdapter):
     """Adapter for binary/color-based segmentation masks (ilastik format).
@@ -141,11 +151,7 @@ class BinaryAdapter(SegmentationAdapter):
 
     def detect_pixel_id(self, segmentation: np.ndarray) -> Optional[List[int]]:
         """Detect the most common non-black pixel color."""
-        from ..pipeline.image_loaders import detect_pixel_id
         return detect_pixel_id(segmentation)
-
-    def needs_pixel_id(self) -> bool:
-        return True
 
 
 class CellposeAdapter(SegmentationAdapter):
@@ -183,9 +189,6 @@ class CellposeAdapter(SegmentationAdapter):
             if p["area"] > min_area
         ]
 
-    def needs_pixel_id(self) -> bool:
-        return False
-
 
 class SegmentationAdapterRegistry:
     """Registry for segmentation format adapters.
@@ -214,11 +217,6 @@ class SegmentationAdapterRegistry:
                 f"Available: {available}"
             )
         return cls._adapters[name]()
-
-    @classmethod
-    def list_available(cls) -> List[str]:
-        """List all registered adapter names."""
-        return list(cls._adapters.keys())
 
 
 # Register built-in adapters

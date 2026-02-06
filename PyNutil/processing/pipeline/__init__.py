@@ -4,7 +4,6 @@ Contains:
 - batch_processor: Folder-level batch processing with threading.
 - section_processor: Single section transformation to atlas space.
 - connected_components: Connected component analysis and region assignment.
-- image_loaders: Pixel ID detection from segmentation images.
 """
 
 from .batch_processor import (

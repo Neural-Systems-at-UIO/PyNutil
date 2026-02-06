@@ -43,7 +43,7 @@ def _group_pixels_by_label(ys, xs, labels, *, compute_centroid=True):
     end_idx = np.r_[start_idx[1:], labels.size]
 
     props = []
-    for label_id, start, end in zip(unique_ids, start_idx, end_idx):
+    for _, start, end in zip(unique_ids, start_idx, end_idx):
         comp_ys = ys[start:end]
         comp_xs = xs[start:end]
         area = int(end - start)
@@ -114,26 +114,6 @@ def labeled_image_props(label_image: np.ndarray):
         return []
     labels = label_image[ys, xs]
     return _group_pixels_by_label(ys, xs, labels)
-
-
-def get_centroids_and_area(segmentation, pixel_cut_off=0):
-    """Retrieve centroids, areas, and pixel coordinates of labeled regions.
-
-    Args:
-        segmentation: Binary segmentation array.
-        pixel_cut_off: Minimum object size threshold.
-
-    Returns:
-        tuple: (centroids, area, coords) of retained objects.
-    """
-    labels_info = connected_components_props(
-        segmentation.astype(bool, copy=False), connectivity=4
-    )
-    labels_info = [label for label in labels_info if label["area"] > pixel_cut_off]
-    centroids = np.array([label["centroid"] for label in labels_info])
-    area = np.array([label["area"] for label in labels_info])
-    coords = np.array([label["coords"] for label in labels_info], dtype=object)
-    return centroids, area, coords
 
 
 def get_objects_and_assign_regions(

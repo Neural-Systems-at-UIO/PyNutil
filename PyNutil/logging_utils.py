@@ -80,33 +80,3 @@ def configure_logging(
 
     _pynutil_logger = logger
     return logger
-
-
-def get_logger() -> logging.Logger:
-    """Get the PyNutil logger, configuring it with defaults if needed.
-
-    Returns
-    -------
-    logging.Logger
-        The PyNutil logger instance.
-    """
-    global _pynutil_logger
-
-    if _pynutil_logger is None:
-        return configure_logging()
-    return _pynutil_logger
-
-
-def reset_logging() -> None:
-    """Reset the PyNutil logger by removing all handlers.
-
-    This is useful for testing or reconfiguring logging.
-    """
-    global _pynutil_logger
-
-    logger = logging.getLogger("PyNutil")
-    for handler in logger.handlers[:]:
-        handler.close()
-        logger.removeHandler(handler)
-
-    _pynutil_logger = None

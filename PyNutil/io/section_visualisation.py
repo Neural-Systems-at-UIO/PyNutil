@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from ..processing.generate_target_slice import generate_target_slice
+from ..processing.atlas_map import generate_target_slice
 from ..io.loaders import load_segmentation
 
 

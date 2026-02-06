@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import os
 from typing import Optional, Tuple
 
+import cv2
 import numpy as np
 
 from .adapters import load_registration
 from .transforms import transform_to_atlas_space
-from .utils import number_sections, convert_to_intensity
+from .utils import number_sections, convert_to_intensity, discover_image_files
 
 
 def derive_shape_from_atlas(
@@ -59,7 +61,7 @@ def _knn_interpolate_generic(
     for start in range(0, query_pts.shape[0], batch_size):
         end = min(start + batch_size, query_pts.shape[0])
         q = query_pts[start:end]
-        dist, ind = tree.query(q, k=k)
+        _, ind = tree.query(q, k=k)
         if k == 1:
             out_vals[start:end] = fit_vals[ind]
         else:
@@ -76,6 +78,185 @@ def _knn_interpolate_generic(
 
     gv[target_mask] = out_vals
     return gv
+
+
+def _read_section_signal(
+    seg_path: str,
+    colour_arr: Optional[np.ndarray],
+    intensity_channel: str,
+    min_intensity: Optional[int],
+    max_intensity: Optional[int],
+):
+    """Load an image and return (seg_values, mask, seg_height, seg_width) or None."""
+    seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
+    if seg is None:
+        return None
+
+    if colour_arr is None:
+        # Intensity mode
+        seg_values = convert_to_intensity(seg, intensity_channel)
+        if min_intensity is not None:
+            seg_values[seg_values < min_intensity] = 0
+        if max_intensity is not None:
+            seg_values[seg_values > max_intensity] = 0
+        mask = (seg_values != 0).astype(np.float32, copy=False)
+    else:
+        # Segmentation mode
+        if seg.ndim == 2:
+            seg_values = seg.astype(np.float32, copy=False)
+            mask = (seg_values != 0).astype(np.float32, copy=False)
+        else:
+            seg = seg[:, :, :3]
+            mask = np.all(seg == colour_arr[None, None, :], axis=2).astype(np.float32)
+            seg_values = mask
+
+    seg_height, seg_width = seg.shape[:2]
+    return seg_values, mask, seg_height, seg_width
+
+
+def _sample_and_deform_plane(
+    slice_info,
+    values_reg: np.ndarray,
+    damage_reg: Optional[np.ndarray],
+    scale: float,
+    reg_height: int,
+    reg_width: int,
+    non_linear: bool,
+):
+    """Construct a sampling grid, optionally deform, and remap values.
+
+    Returns (sampled_2d, vals_flat, damage_vals, flat_x, flat_y, plane_h, plane_w).
+    """
+    anch = slice_info.anchoring
+    u = np.asarray(anch[3:6], dtype=np.float32)
+    v = np.asarray(anch[6:9], dtype=np.float32)
+    plane_w = max(1, int(round(float(np.linalg.norm(u)) * float(scale))))
+    plane_h = max(1, int(round(float(np.linalg.norm(v)) * float(scale))))
+
+    yy, xx = np.indices((plane_h, plane_w), dtype=np.float32)
+    reg_x = (xx + 0.5) * (float(reg_width) / float(plane_w))
+    reg_y = (yy + 0.5) * (float(reg_height) / float(plane_h))
+
+    flat_x = reg_x.reshape(-1)
+    flat_y = reg_y.reshape(-1)
+
+    if non_linear and slice_info.forward_deformation is not None:
+        new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
+        map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
+        map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
+    else:
+        map_x = reg_x.astype(np.float32, copy=False)
+        map_y = reg_y.astype(np.float32, copy=False)
+
+    sampled_2d = cv2.remap(
+        values_reg, map_x, map_y,
+        interpolation=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+    )
+    vals_flat = sampled_2d.reshape(-1).astype(np.float32, copy=False)
+
+    damage_vals = None
+    if damage_reg is not None:
+        sampled_damage = cv2.remap(
+            damage_reg, map_x, map_y,
+            interpolation=cv2.INTER_NEAREST,
+            borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+        )
+        damage_vals = sampled_damage.reshape(-1)
+
+    return sampled_2d, vals_flat, damage_vals, flat_x, flat_y, plane_h, plane_w
+
+
+def _accumulate_object_counts(
+    sampled_2d: np.ndarray,
+    inb: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    seg_nr: int,
+    out_shape: Tuple[int, int, int],
+    ov_flat: np.ndarray,
+):
+    """Count unique 2-D connected components per voxel, accumulating into *ov_flat*."""
+    sampled_u8 = (sampled_2d != 0).astype(np.uint8)
+    _n_labels, labels = cv2.connectedComponents(sampled_u8, connectivity=8)
+    flat_labels = labels.reshape(-1)
+
+    obj = flat_labels[inb]
+    pos = obj != 0
+    if not np.any(pos):
+        return
+
+    x_pos = x[pos].astype(np.int64, copy=False)
+    y_pos = y[pos].astype(np.int64, copy=False)
+    z_pos = z[pos].astype(np.int64, copy=False)
+    voxel_lin = np.ravel_multi_index(
+        (x_pos, y_pos, z_pos), dims=out_shape, mode="raise", order="C",
+    ).astype(np.int64, copy=False)
+
+    obj_u32 = obj[pos].astype(np.uint64, copy=False)
+    sec_u64 = np.uint64(seg_nr)
+    obj_key = (sec_u64 << np.uint64(32)) | obj_u32
+
+    pairs = np.empty((voxel_lin.shape[0],), dtype=[("v", "u8"), ("o", "u8")])
+    pairs["v"] = voxel_lin.astype(np.uint64, copy=False)
+    pairs["o"] = obj_key
+
+    uniq_pairs = np.unique(pairs)
+    vox_u = uniq_pairs["v"].astype(np.int64, copy=False)
+    vox_ids, per_vox = np.unique(vox_u, return_counts=True)
+    np.add.at(ov_flat, vox_ids, per_vox.astype(np.uint32, copy=False))
+
+
+def _finalize_volumes(
+    gv: np.ndarray,
+    fv: np.ndarray,
+    dv: np.ndarray,
+    ov_flat: Optional[np.ndarray],
+    out_shape: Tuple[int, int, int],
+    value_mode: str,
+    missing_fill: float,
+    do_interpolation: bool,
+    atlas_volume: Optional[np.ndarray],
+    use_atlas_mask: bool,
+    k: int,
+    batch_size: int,
+):
+    """Convert accumulated sums and optionally interpolate."""
+    if value_mode == "mean":
+        out = np.zeros_like(gv, dtype=np.float32)
+        covered = fv != 0
+        out[covered] = gv[covered] / fv[covered].astype(np.float32)
+        if missing_fill is not None and np.any(~covered):
+            out[~covered] = float(missing_fill)
+        gv = out
+    elif value_mode == "object_count":
+        gv = ov_flat.reshape(out_shape).astype(np.float32, copy=False)
+
+    if do_interpolation:
+        atlas_mask = None
+        if use_atlas_mask and atlas_volume is not None and atlas_volume.shape == gv.shape:
+            atlas_mask = atlas_volume != 0
+
+        gv = _knn_interpolate_generic(
+            gv=gv, fv=fv, atlas_mask=atlas_mask, k=k, batch_size=batch_size, mode="mean",
+        )
+
+        if np.any(dv > 0):
+            dv_float = dv.astype(np.float32)
+            dv_interp = _knn_interpolate_generic(
+                gv=dv_float, fv=fv, atlas_mask=atlas_mask, k=k, batch_size=batch_size, mode="max",
+            )
+            dv = (dv_interp > 0).astype(np.uint8)
+    else:
+        if missing_fill is not None and not (missing_fill == 0):
+            gv[fv == 0] = float(missing_fill)
+
+    return (
+        gv.astype(np.float32, copy=False),
+        fv.astype(np.uint32, copy=False),
+        dv.astype(np.uint8, copy=False),
+    )
 
 
 def project_sections_to_volume(
@@ -99,62 +280,29 @@ def project_sections_to_volume(
 ):
     """Project section segmentations into a 3D atlas-space volume.
 
-    This constructs two 3D volumes:
-        - value volume (gv): depends on `value_mode`
-        - frequency volume (fv): denominator used by `value_mode` (see below)
+    Constructs three volumes:
+        - value volume (gv): depends on *value_mode*
+        - frequency volume (fv): number of sampled pixels per voxel
+        - damage volume (dv): binary mask of damaged voxels
 
-    Supported `value_mode`:
-        - "pixel_count": number of segmented pixels per voxel (default; backwards compatible)
-        - "mean": mean segmentation value per voxel, averaged over all sampled pixels (including zeros)
-        - "object_count": number of 2D connected components contributing to each voxel
-
-    Notes:
-        - `fv` always counts all sampled pixels per voxel.
-
-    Interpolation (if enabled) is applied to the value volume; the frequency
-    volume is never interpolated.
+    Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
     """
-
-    import cv2
-    import os
+    if value_mode not in {"pixel_count", "mean", "object_count"}:
+        raise ValueError("value_mode must be one of 'pixel_count', 'mean', or 'object_count'")
 
     out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
+    sx, sy, sz = out_shape
 
-    # Load registration data using the adapter
     registration = load_registration(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}
+    seg_paths = discover_image_files(segmentation_folder)
 
-    seg_paths = []
-    for name in os.listdir(segmentation_folder):
-        p = os.path.join(segmentation_folder, name)
-        if not os.path.isfile(p):
-            continue
-        ext = os.path.splitext(name)[1].lower()
-        if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"} or name.endswith(
-            ".dzip"
-        ):
-            seg_paths.append(p)
-    seg_paths.sort()
+    colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
 
     gv = np.zeros(out_shape, dtype=np.float32)
     fv = np.zeros(out_shape, dtype=np.uint32)
     dv = np.zeros(out_shape, dtype=np.uint8)
-
-    if value_mode not in {"pixel_count", "mean", "object_count"}:
-        raise ValueError(
-            "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
-        )
-    ov_flat: Optional[np.ndarray]
-    if value_mode == "object_count":
-        ov_flat = np.zeros((gv.size,), dtype=np.uint32)
-    else:
-        ov_flat = None
-
-    sx, sy, sz = out_shape
-    if colour is not None:
-        colour_arr = np.array(colour, dtype=np.uint8)
-    else:
-        colour_arr = None
+    ov_flat = np.zeros((gv.size,), dtype=np.uint32) if value_mode == "object_count" else None
 
     for seg_path in seg_paths:
         seg_nr = int(number_sections([seg_path])[0])
@@ -162,214 +310,59 @@ def project_sections_to_volume(
         if not slice_info or not slice_info.anchoring:
             continue
 
-        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
-        if seg is None:
+        loaded = _read_section_signal(seg_path, colour_arr, intensity_channel, min_intensity, max_intensity)
+        if loaded is None:
             continue
-
-        if colour_arr is None:
-            # Intensity mode
-            seg_values = convert_to_intensity(seg, intensity_channel)
-            if min_intensity is not None:
-                seg_values[seg_values < min_intensity] = 0
-            if max_intensity is not None:
-                seg_values[seg_values > max_intensity] = 0
-            mask = (seg_values != 0).astype(np.float32, copy=False)
-            seg_height, seg_width = seg.shape[:2]
-        else:
-            # Segmentation mode
-            if seg.ndim == 2:
-                seg_values = seg.astype(np.float32, copy=False)
-                mask = (seg_values != 0).astype(np.float32, copy=False)
-                seg_height, seg_width = seg.shape
-            else:
-                seg = seg[:, :, :3]
-                mask = np.all(seg == colour_arr[None, None, :], axis=2).astype(np.float32)
-                # For RGB segmentations, we only currently support colour-matched binary masks.
-                seg_values = mask
-                seg_height, seg_width = seg.shape[:2]
+        seg_values, mask, seg_height, seg_width = loaded
 
         reg_height, reg_width = slice_info.height, slice_info.width
 
-        # Handle damage mask from adapter (already computed as 2D boolean array)
+        # Prepare damage mask in registration space
         damage_reg = None
         if slice_info.damage_mask is not None:
-            # Resize to registration dimensions if needed
             if slice_info.damage_mask.shape != (reg_height, reg_width):
                 damage_reg = cv2.resize(
                     slice_info.damage_mask.astype(np.uint8),
-                    (reg_width, reg_height),
-                    interpolation=cv2.INTER_NEAREST,
+                    (reg_width, reg_height), interpolation=cv2.INTER_NEAREST,
                 )
             else:
                 damage_reg = slice_info.damage_mask.astype(np.uint8)
 
-        # Plane sampling: evaluate on a regular grid sized to the slice plane
-        # extent in atlas voxels (||u|| and ||v||), similar to the reference
-        # "perfect_image" approach but without atlas-specific assumptions.
-        anch = slice_info.anchoring
-        u = np.asarray(anch[3:6], dtype=np.float32)
-        v = np.asarray(anch[6:9], dtype=np.float32)
-        plane_w = max(1, int(round(float(np.linalg.norm(u)) * float(scale))))
-        plane_h = max(1, int(round(float(np.linalg.norm(v)) * float(scale))))
+        # Resample segmentation values into registration space
+        src = seg_values if value_mode == "mean" else mask
+        values_reg = cv2.resize(src, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST)
 
-        # Resample segmentation into registration space.
-        # For mean mode, we use the raw segmentation values (2D scalar images),
-        # but compute the mean over non-zero values only.
-        if value_mode == "mean":
-            values_reg = cv2.resize(
-                seg_values, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST
+        # Sample, deform, and remap the plane
+        sampled_2d, vals, damage_vals, flat_x, flat_y, plane_h, plane_w = (
+            _sample_and_deform_plane(
+                slice_info, values_reg, damage_reg, scale, reg_height, reg_width, non_linear,
             )
-        else:
-            values_reg = cv2.resize(
-                mask, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST
-            )
-
-        yy, xx = np.indices((plane_h, plane_w), dtype=np.float32)
-        reg_x = (xx + 0.5) * (float(reg_width) / float(plane_w))
-        reg_y = (yy + 0.5) * (float(reg_height) / float(plane_h))
-
-        flat_x = reg_x.reshape(-1)
-        flat_y = reg_y.reshape(-1)
-
-        # Apply non-linear deformation if available from the adapter
-        # Use forward_deformation for volume projection (maps original -> deformed)
-        if non_linear and slice_info.forward_deformation is not None:
-            new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
-            map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
-            map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
-        else:
-            map_x = reg_x.astype(np.float32, copy=False)
-            map_y = reg_y.astype(np.float32, copy=False)
-            new_x = flat_x
-            new_y = flat_y
-
-        sampled = cv2.remap(
-            values_reg,
-            map_x,
-            map_y,
-            interpolation=cv2.INTER_NEAREST,
-            borderMode=cv2.BORDER_CONSTANT,
-            borderValue=0,
         )
-        vals = sampled.reshape(-1).astype(np.float32, copy=False)
 
-        damage_vals = None
-        if damage_reg is not None:
-            sampled_damage = cv2.remap(
-                damage_reg,
-                map_x,
-                map_y,
-                interpolation=cv2.INTER_NEAREST,
-                borderMode=cv2.BORDER_CONSTANT,
-                borderValue=0,
-            )
-            damage_vals = sampled_damage.reshape(-1)
-
-        flat_labels: Optional[np.ndarray] = None
-        if ov_flat is not None:
-            sampled_u8 = (sampled != 0).astype(np.uint8)
-            _n_labels, labels = cv2.connectedComponents(sampled_u8, connectivity=8)
-            flat_labels = labels.reshape(-1)
-
-        coords = transform_to_atlas_space(
-            slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
-        )
+        # Transform flat grid to atlas-space 3-D coordinates
+        coords = transform_to_atlas_space(slice_info.anchoring, flat_y, flat_x, reg_height, reg_width)
         if scale != 1.0:
             coords = coords * float(scale)
 
         idx = np.rint(coords).astype(np.int64, copy=False)
-        x = idx[:, 0]
-        y = idx[:, 1]
-        z = idx[:, 2]
+        x, y, z = idx[:, 0], idx[:, 1], idx[:, 2]
         inb = (x >= 0) & (x < sx) & (y >= 0) & (y < sy) & (z >= 0) & (z < sz)
         if not np.any(inb):
             continue
 
-        x = x[inb]
-        y = y[inb]
-        z = z[inb]
-        vals_in = vals[inb]
-
+        x, y, z = x[inb], y[inb], z[inb]
         np.add.at(fv, (x, y, z), 1)
-        np.add.at(gv, (x, y, z), vals_in)
+        np.add.at(gv, (x, y, z), vals[inb])
 
         if damage_vals is not None:
-            damage_in = damage_vals[inb]
-            # Mark voxels as damaged if any contributing pixel is damaged
-            dv[x, y, z] |= damage_in.astype(np.uint8)
+            dv[x, y, z] |= damage_vals[inb].astype(np.uint8)
 
         if ov_flat is not None:
-            if flat_labels is None:  # pragma: no cover
-                continue
-            obj = flat_labels[inb]
-            pos = obj != 0
-            if np.any(pos):
-                x_pos = x[pos].astype(np.int64, copy=False)
-                y_pos = y[pos].astype(np.int64, copy=False)
-                z_pos = z[pos].astype(np.int64, copy=False)
-                voxel_lin = np.ravel_multi_index(
-                    (x_pos, y_pos, z_pos), dims=out_shape, mode="raise", order="C"
-                ).astype(np.int64, copy=False)
+            _accumulate_object_counts(sampled_2d, inb, x, y, z, seg_nr, out_shape, ov_flat)
 
-                obj_u32 = obj[pos].astype(np.uint64, copy=False)
-                sec_u64 = np.uint64(seg_nr)
-                obj_key = (sec_u64 << np.uint64(32)) | obj_u32
-
-                pairs = np.empty(
-                    (voxel_lin.shape[0],), dtype=[("v", "u8"), ("o", "u8")]
-                )
-                pairs["v"] = voxel_lin.astype(np.uint64, copy=False)
-                pairs["o"] = obj_key
-
-                uniq_pairs = np.unique(pairs)
-                vox_u = uniq_pairs["v"].astype(np.int64, copy=False)
-                vox_ids, per_vox = np.unique(vox_u, return_counts=True)
-                np.add.at(ov_flat, vox_ids, per_vox.astype(np.uint32, copy=False))
-
-    # Convert accumulated sums into the requested value volume.
-    if value_mode == "mean":
-        out = np.zeros_like(gv, dtype=np.float32)
-        covered = fv != 0
-        out[covered] = gv[covered] / fv[covered].astype(np.float32)
-        if missing_fill is not None and np.any(~covered):
-            out[~covered] = float(missing_fill)
-        gv = out
-    elif value_mode == "object_count":
-        gv = ov_flat.reshape(out_shape).astype(np.float32, copy=False)
-
-    if do_interpolation:
-        atlas_mask = None
-        if use_atlas_mask and atlas_volume is not None and atlas_volume.shape == gv.shape:
-            atlas_mask = atlas_volume != 0
-
-        gv = _knn_interpolate_generic(
-            gv=gv,
-            fv=fv,
-            atlas_mask=atlas_mask,
-            k=k,
-            batch_size=batch_size,
-            mode="mean",
-        )
-
-        if np.any(dv > 0):
-            dv_float = dv.astype(np.float32)
-            dv_interp = _knn_interpolate_generic(
-                gv=dv_float,
-                fv=fv,
-                atlas_mask=atlas_mask,
-                k=k,
-                batch_size=batch_size,
-                mode="max",
-            )
-            dv = (dv_interp > 0).astype(np.uint8)
-    else:
-        if missing_fill is not None and not (missing_fill == 0):
-            gv[fv == 0] = float(missing_fill)
-
-    return (
-        gv.astype(np.float32, copy=False),
-        fv.astype(np.uint32, copy=False),
-        dv.astype(np.uint8, copy=False),
+    return _finalize_volumes(
+        gv, fv, dv, ov_flat, out_shape, value_mode, missing_fill,
+        do_interpolation, atlas_volume, use_atlas_mask, k, batch_size,
     )
 
 
