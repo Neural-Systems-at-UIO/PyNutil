@@ -174,17 +174,29 @@ def create_colored_atlas_slice(
     if seg_available:
         try:
             segmentation_img = load_segmentation(segmentation_path)
-            target_width, target_height = segmentation_img.shape[1], segmentation_img.shape[0]
+            target_width, target_height = (
+                segmentation_img.shape[1],
+                segmentation_img.shape[0],
+            )
         except Exception as e:
             print(f"Warning: Could not load segmentation for sizing: {e}")
             seg_available = False
-            target_width, target_height = _resolve_target_dimensions(slice_dict, coloured_slice)
+            target_width, target_height = _resolve_target_dimensions(
+                slice_dict, coloured_slice
+            )
     else:
-        target_width, target_height = _resolve_target_dimensions(slice_dict, coloured_slice)
+        target_width, target_height = _resolve_target_dimensions(
+            slice_dict, coloured_slice
+        )
 
-    if (coloured_slice.shape[1], coloured_slice.shape[0]) != (target_width, target_height):
+    if (coloured_slice.shape[1], coloured_slice.shape[0]) != (
+        target_width,
+        target_height,
+    ):
         coloured_slice = cv2.resize(
-            coloured_slice, (target_width, target_height), interpolation=cv2.INTER_NEAREST,
+            coloured_slice,
+            (target_width, target_height),
+            interpolation=cv2.INTER_NEAREST,
         )
 
     if scale_factor != 1.0:
@@ -276,7 +288,9 @@ def create_section_visualisations(
             filename = slice_dict.get("filename", "")
             base_name = os.path.splitext(filename)[0] if filename else f"slice_{i:03d}"
             segmentation_path = _resolve_segmentation_path(
-                filename, seg_index, segmentation_folder,
+                filename,
+                seg_index,
+                segmentation_folder,
             )
 
             section_objects = None

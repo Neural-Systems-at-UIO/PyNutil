@@ -20,7 +20,7 @@ def _plasma(t):
 
 
 def _magma(t):
-    return t, t ** 2, 1.0 - t
+    return t, t**2, 1.0 - t
 
 
 def _hot(t):

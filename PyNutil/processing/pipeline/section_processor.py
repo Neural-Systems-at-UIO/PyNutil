@@ -82,10 +82,21 @@ def _prepare_section(
 # Helpers for segmentation_to_atlas_space
 # ---------------------------------------------------------------------------
 
-def _compute_damage_state(damage_mask, scaled_x, scaled_y, scaled_centroidsX, scaled_centroidsY, reg_width, reg_height):
+
+def _compute_damage_state(
+    damage_mask,
+    scaled_x,
+    scaled_y,
+    scaled_centroidsX,
+    scaled_centroidsY,
+    reg_width,
+    reg_height,
+):
     """Compute per-point and per-centroid undamaged boolean masks."""
     if damage_mask is not None:
-        damage_mask = resize_mask_nearest(damage_mask, reg_width, reg_height).astype(bool)
+        damage_mask = resize_mask_nearest(damage_mask, reg_width, reg_height).astype(
+            bool
+        )
         per_point_undamaged = damage_mask[
             np.round(scaled_y).astype(int), np.round(scaled_x).astype(int)
         ]
@@ -105,7 +116,15 @@ def _compute_damage_state(damage_mask, scaled_x, scaled_y, scaled_centroidsX, sc
     return per_point_undamaged, per_centroid_undamaged
 
 
-def _compute_hemi_state(hemi_mask, scaled_x, scaled_y, scaled_centroidsX, scaled_centroidsY, reg_height, reg_width):
+def _compute_hemi_state(
+    hemi_mask,
+    scaled_x,
+    scaled_y,
+    scaled_centroidsX,
+    scaled_centroidsY,
+    reg_height,
+    reg_width,
+):
     """Compute per-point and per-centroid hemisphere labels."""
     if hemi_mask is not None:
         per_point_hemi = assign_labels_at_coordinates(
@@ -143,6 +162,7 @@ def _to_array(val, gate):
 # Helpers for segmentation_to_atlas_space_intensity
 # ---------------------------------------------------------------------------
 
+
 def _apply_intensity_bounds(arr, min_val, max_val):
     """Zero out pixels outside ``[min_val, max_val]`` bounds, in-place."""
     if min_val is not None:
@@ -166,12 +186,22 @@ def _filter_rgb_by_intensity(image_resized, min_intensity, max_intensity):
         image_resized[temp_gray > max_intensity] = 0
 
 
-def _extract_signal_pixels(image, intensity_resized, signal_mask, reg_width, reg_height, min_intensity, max_intensity):
+def _extract_signal_pixels(
+    image,
+    intensity_resized,
+    signal_mask,
+    reg_width,
+    reg_height,
+    min_intensity,
+    max_intensity,
+):
     """Extract and subsample signal pixels for MeshView."""
     sig_y, sig_x = np.where(signal_mask)
 
     if image.ndim == 3:
-        image_resized = cv2.resize(image, (reg_width, reg_height), interpolation=cv2.INTER_AREA)
+        image_resized = cv2.resize(
+            image, (reg_width, reg_height), interpolation=cv2.INTER_AREA
+        )
         image_resized = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)
         _filter_rgb_by_intensity(image_resized, min_intensity, max_intensity)
         sig_intensities = image_resized[sig_y, sig_x]
@@ -192,6 +222,7 @@ def _extract_signal_pixels(image, intensity_resized, signal_mask, reg_width, reg
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def segmentation_to_atlas_space(
     slice_info: "SliceInfo",
@@ -231,8 +262,15 @@ def segmentation_to_atlas_space(
     reg_height, reg_width = slice_info.height, slice_info.width
 
     atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
-        slice_info, seg_width, seg_height, atlas_labels, flat_file_atlas,
-        atlas_volume, hemi_map, non_linear, use_flat,
+        slice_info,
+        seg_width,
+        seg_height,
+        atlas_labels,
+        flat_file_atlas,
+        atlas_volume,
+        hemi_map,
+        non_linear,
+        use_flat,
     )
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
@@ -266,14 +304,22 @@ def segmentation_to_atlas_space(
         scaled_y, scaled_x, atlas_map, reg_height, reg_width
     )
     per_point_undamaged, per_centroid_undamaged = _compute_damage_state(
-        damage_mask, scaled_x, scaled_y,
-        scaled_centroidsX, scaled_centroidsY,
-        reg_width, reg_height,
+        damage_mask,
+        scaled_x,
+        scaled_y,
+        scaled_centroidsX,
+        scaled_centroidsY,
+        reg_width,
+        reg_height,
     )
     per_point_hemi, per_centroid_hemi = _compute_hemi_state(
-        hemi_mask, scaled_x, scaled_y,
-        scaled_centroidsX, scaled_centroidsY,
-        reg_height, reg_width,
+        hemi_mask,
+        scaled_x,
+        scaled_y,
+        scaled_centroidsX,
+        scaled_centroidsY,
+        reg_height,
+        reg_width,
     )
 
     if per_centroid_labels is None:
@@ -351,8 +397,15 @@ def segmentation_to_atlas_space_intensity(
     reg_height, reg_width = slice_info.height, slice_info.width
 
     atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
-        slice_info, image.shape[1], image.shape[0], atlas_labels, flat_file_atlas,
-        atlas_volume, hemi_map, non_linear, use_flat,
+        slice_info,
+        image.shape[1],
+        image.shape[0],
+        atlas_labels,
+        flat_file_atlas,
+        atlas_volume,
+        hemi_map,
+        non_linear,
+        use_flat,
     )
 
     # Ensure atlas_map and hemi_mask match registration resolution
@@ -395,45 +448,79 @@ def segmentation_to_atlas_space_intensity(
     # Build signal mask and extract pixels for MeshView
     signal_mask = np.ones_like(intensity_resized, dtype=bool)
     if min_intensity is not None:
-        signal_mask &= (intensity_resized >= min_intensity)
+        signal_mask &= intensity_resized >= min_intensity
     if max_intensity is not None:
-        signal_mask &= (intensity_resized <= max_intensity)
+        signal_mask &= intensity_resized <= max_intensity
     if damage_mask is not None:
         signal_mask &= damage_mask_resized
 
     sig_y, sig_x, sig_intensities = _extract_signal_pixels(
-        image, intensity_resized, signal_mask, reg_width, reg_height,
-        min_intensity, max_intensity,
+        image,
+        intensity_resized,
+        signal_mask,
+        reg_width,
+        reg_height,
+        min_intensity,
+        max_intensity,
     )
 
     result = _build_intensity_result(
-        df, sig_y, sig_x, sig_intensities,
-        slice_info, atlas_map, hemi_mask, reg_height, reg_width,
+        df,
+        sig_y,
+        sig_x,
+        sig_intensities,
+        slice_info,
+        atlas_map,
+        hemi_mask,
+        reg_height,
+        reg_width,
     )
 
     gc.collect()
     return result
 
 
-def _build_intensity_result(df, sig_y, sig_x, sig_intensities, slice_info, atlas_map, hemi_mask, reg_height, reg_width):
+def _build_intensity_result(
+    df,
+    sig_y,
+    sig_x,
+    sig_intensities,
+    slice_info,
+    atlas_map,
+    hemi_mask,
+    reg_height,
+    reg_width,
+):
     """Construct an IntensitySectionResult from extracted signal pixels."""
     if len(sig_y) == 0:
         return IntensitySectionResult(
             region_intensities=df,
-            points=None, points_labels=None,
-            points_hemi_labels=None, point_intensities=None,
+            points=None,
+            points_labels=None,
+            points_hemi_labels=None,
+            point_intensities=None,
             num_points=0,
         )
 
     sig_points_3d = transform_to_atlas_space(
-        slice_info.anchoring, sig_y, sig_x, reg_height, reg_width,
+        slice_info.anchoring,
+        sig_y,
+        sig_x,
+        reg_height,
+        reg_width,
     )
     sig_labels = atlas_map[sig_y, sig_x]
-    sig_hemi = hemi_mask[sig_y, sig_x] if hemi_mask is not None else np.zeros(len(sig_y), dtype=int)
+    sig_hemi = (
+        hemi_mask[sig_y, sig_x]
+        if hemi_mask is not None
+        else np.zeros(len(sig_y), dtype=int)
+    )
 
     return IntensitySectionResult(
         region_intensities=df,
-        points=sig_points_3d, points_labels=sig_labels,
-        points_hemi_labels=sig_hemi, point_intensities=sig_intensities,
+        points=sig_points_3d,
+        points_labels=sig_labels,
+        points_hemi_labels=sig_hemi,
+        point_intensities=sig_intensities,
         num_points=len(sig_y),
     )

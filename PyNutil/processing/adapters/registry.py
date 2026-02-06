@@ -33,7 +33,9 @@ class AnchoringLoaderRegistry:
     def get(cls, name: str) -> AnchoringLoader:
         if name not in cls._loaders:
             available = ", ".join(cls._loaders.keys())
-            raise ValueError(f"Unknown anchoring loader '{name}'. Available: {available}")
+            raise ValueError(
+                f"Unknown anchoring loader '{name}'. Available: {available}"
+            )
         return cls._loaders[name]()
 
     @classmethod
@@ -129,8 +131,10 @@ def load_registration(
 # Legacy Compatibility
 # =============================================================================
 
+
 class RegistrationAdapter(AnchoringLoader):
     """Alias for AnchoringLoader (backwards compatibility)."""
+
     pass
 
 

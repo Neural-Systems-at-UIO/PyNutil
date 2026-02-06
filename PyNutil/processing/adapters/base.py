@@ -28,6 +28,7 @@ DeformationFunction = Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.nd
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class SliceInfo:
     """Standardized slice information from any registration source.
@@ -80,6 +81,7 @@ class RegistrationData:
 # =============================================================================
 # Abstract Base Classes
 # =============================================================================
+
 
 class AnchoringLoader(ABC):
     """Loads basic slice info and linear registration (anchoring).

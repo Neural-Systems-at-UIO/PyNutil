@@ -213,8 +213,7 @@ class SegmentationAdapterRegistry:
         if name not in cls._adapters:
             available = ", ".join(cls._adapters.keys())
             raise ValueError(
-                f"Unknown segmentation format '{name}'. "
-                f"Available: {available}"
+                f"Unknown segmentation format '{name}'. Available: {available}"
             )
         return cls._adapters[name]()
 

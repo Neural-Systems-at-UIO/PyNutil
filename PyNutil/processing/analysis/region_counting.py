@@ -61,7 +61,9 @@ def create_base_counts_dict(with_hemisphere=False, with_damage=False):
     return counts
 
 
-def _counts_for(mask: np.ndarray | None, arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _counts_for(
+    mask: np.ndarray | None, arr: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Return (label_ids, counts) from *arr*, optionally filtered by boolean *mask*."""
     _empty = np.array([], dtype=np.int64)
     if arr.size == 0:
@@ -91,7 +93,9 @@ def _counts_for(mask: np.ndarray | None, arr: np.ndarray) -> tuple[np.ndarray, n
     return labels.astype(np.int64, copy=False), counts.astype(np.int64, copy=False)
 
 
-def _lookup_counts(idx: np.ndarray, labels: np.ndarray, counts: np.ndarray) -> np.ndarray:
+def _lookup_counts(
+    idx: np.ndarray, labels: np.ndarray, counts: np.ndarray
+) -> np.ndarray:
     """Map *idx* values to corresponding *counts* via sorted *labels*."""
     if idx.size == 0 or labels.size == 0:
         return np.zeros(idx.shape, dtype=np.int64)
@@ -122,10 +126,22 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
     """Derive aggregate columns (totals) from leaf-level count columns."""
     if with_hemi and with_damage:
         for entity in ("pixel_count", "object_count"):
-            base[f"left_hemi_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"left_hemi_damaged_{entity}"]
-            base[f"right_hemi_{entity}"] = base[f"right_hemi_undamaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
-            base[f"undamaged_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"right_hemi_undamaged_{entity}"]
-            base[f"damaged_{entity}"] = base[f"left_hemi_damaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
+            base[f"left_hemi_{entity}"] = (
+                base[f"left_hemi_undamaged_{entity}"]
+                + base[f"left_hemi_damaged_{entity}"]
+            )
+            base[f"right_hemi_{entity}"] = (
+                base[f"right_hemi_undamaged_{entity}"]
+                + base[f"right_hemi_damaged_{entity}"]
+            )
+            base[f"undamaged_{entity}"] = (
+                base[f"left_hemi_undamaged_{entity}"]
+                + base[f"right_hemi_undamaged_{entity}"]
+            )
+            base[f"damaged_{entity}"] = (
+                base[f"left_hemi_damaged_{entity}"]
+                + base[f"right_hemi_damaged_{entity}"]
+            )
             base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
     elif with_hemi:
         for entity in ("pixel_count", "object_count"):
@@ -137,7 +153,9 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
 
     # Legacy naming: "damaged_pixel_counts" (trailing 's')
     if "damaged_pixel_count" in base.columns:
-        base.rename(columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True)
+        base.rename(
+            columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True
+        )
 
 
 def pixel_count_per_region(
@@ -171,15 +189,21 @@ def pixel_count_per_region(
 
     # ── Build leaf count specs ───────────────────────────────────────
     hemi_iter = [(1, "left_hemi_"), (2, "right_hemi_")] if with_hemi else [(None, "")]
-    dmg_iter = [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
+    dmg_iter = (
+        [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
+    )
 
     computed = {}  # col_name -> (idx_array, count_array)
     all_indices = []
 
     for hemi_val, hemi_pfx in hemi_iter:
         for dmg_val, dmg_pfx in dmg_iter:
-            p_mask = _build_count_mask(current_points_hemi, current_points_undamaged, hemi_val, dmg_val)
-            c_mask = _build_count_mask(current_centroids_hemi, current_centroids_undamaged, hemi_val, dmg_val)
+            p_mask = _build_count_mask(
+                current_points_hemi, current_points_undamaged, hemi_val, dmg_val
+            )
+            c_mask = _build_count_mask(
+                current_centroids_hemi, current_centroids_undamaged, hemi_val, dmg_val
+            )
 
             px_col = f"{hemi_pfx}{dmg_pfx}pixel_count"
             obj_col = f"{hemi_pfx}{dmg_pfx}object_count"
@@ -192,11 +216,17 @@ def pixel_count_per_region(
             all_indices.extend([p_idx, c_idx])
 
     # ── Build sparse DataFrame ────────────────────────────────────────
-    all_idx = np.unique(np.concatenate(all_indices)) if all_indices else np.array([], dtype=np.int64)
+    all_idx = (
+        np.unique(np.concatenate(all_indices))
+        if all_indices
+        else np.array([], dtype=np.int64)
+    )
     if all_idx.size == 0:
         return pd.DataFrame(
             columns=list(
-                create_base_counts_dict(with_hemisphere=with_hemi, with_damage=with_damage).keys()
+                create_base_counts_dict(
+                    with_hemisphere=with_hemi, with_damage=with_damage
+                ).keys()
             )
         )
 
@@ -210,4 +240,3 @@ def pixel_count_per_region(
     _derive_count_aggregates(base, with_hemi, with_damage)
 
     return base
-

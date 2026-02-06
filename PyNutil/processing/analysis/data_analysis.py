@@ -312,9 +312,7 @@ def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
     sum_cols = [c for c in numeric_cols if c not in set(available_group_cols)]
     sum_cols = [c for c in sum_cols if c not in _RATIO_COLS]
 
-    label_df = (
-        combined.groupby(available_group_cols)[sum_cols].sum().reset_index()
-    )
+    label_df = combined.groupby(available_group_cols)[sum_cols].sum().reset_index()
 
     derive_fn(label_df)
     label_df.fillna(0, inplace=True)

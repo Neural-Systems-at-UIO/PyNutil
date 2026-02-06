@@ -17,6 +17,7 @@ from .base import DamageProvider, RegistrationData
 # Grid-based damage mask construction
 # ---------------------------------------------------------------------------
 
+
 def update_spacing(anchoring, width, height, grid_spacing):
     """Calculate spacing along width and height from slice anchoring.
 

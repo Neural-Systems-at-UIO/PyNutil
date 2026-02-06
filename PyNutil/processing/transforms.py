@@ -99,7 +99,9 @@ def transform_to_atlas_space(
     x_scale = x_arr / float(reg_width)
 
     # Shape: (N, 3)
-    return o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])
+    return (
+        o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -114,8 +116,15 @@ def get_transformed_coordinates(
     scaled_y: Optional[np.ndarray],
     scaled_centroidsX: Optional[np.ndarray],
     scaled_centroidsY: Optional[np.ndarray],
-    deformation: Optional[Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]] = None,
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+    deformation: Optional[
+        Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
+    ] = None,
+) -> Tuple[
+    Optional[np.ndarray],
+    Optional[np.ndarray],
+    Optional[np.ndarray],
+    Optional[np.ndarray],
+]:
     """Apply non-linear deformation to scaled coordinates.
 
     If non_linear is True and a deformation function is provided, applies the

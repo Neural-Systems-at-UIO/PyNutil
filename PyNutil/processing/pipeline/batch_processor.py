@@ -28,6 +28,7 @@ from ..utils import (
 # Shared batch scaffold
 # ---------------------------------------------------------------------------
 
+
 def _run_batch(
     folder,
     quint_alignment,
@@ -76,7 +77,9 @@ def _run_batch(
                 seg_nr = int(number_sections([seg_path])[0])
                 slice_info = slices_by_nr.get(seg_nr)
                 if slice_info is None:
-                    print(f"segmentation file does not exist in alignment json: {seg_path}")
+                    print(
+                        f"segmentation file does not exist in alignment json: {seg_path}"
+                    )
                     continue
                 if not slice_info.anchoring:
                     continue
@@ -85,7 +88,10 @@ def _run_batch(
                     seg_nr, flat_files, flat_file_nrs, use_flat
                 )
                 futures.append(
-                    (index, submit_fn(executor, index, slice_info, seg_path, current_flat))
+                    (
+                        index,
+                        submit_fn(executor, index, slice_info, seg_path, current_flat),
+                    )
                 )
 
             for idx, future in futures:
@@ -97,6 +103,7 @@ def _run_batch(
 # ---------------------------------------------------------------------------
 # Concatenation helpers
 # ---------------------------------------------------------------------------
+
 
 def _concat_float(arrays):
     """Concatenate arrays, returning empty float64 array if all empty."""
@@ -138,8 +145,10 @@ def _unzip_section_results(results):
     areas = []
 
     for r in results:
-        pts.append(r.points);          ctrs.append(r.centroids)
-        pts_lbl.append(r.points_labels);  ctrs_lbl.append(r.centroids_labels)
+        pts.append(r.points)
+        ctrs.append(r.centroids)
+        pts_lbl.append(r.points_labels)
+        ctrs_lbl.append(r.centroids_labels)
         pts_hemi.append(r.points_hemi_labels)
         ctrs_hemi.append(r.centroids_hemi_labels)
         pt_undam.append(r.per_point_undamaged)
@@ -150,30 +159,62 @@ def _unzip_section_results(results):
         tot_ctrs_len.append(_safe_len(r.per_centroid_undamaged))
         areas.append(r.region_areas)
 
-    return (pts, ctrs, pts_lbl, ctrs_lbl, pts_hemi, ctrs_hemi,
-            pt_undam, ct_undam, pts_len, ctrs_len, tot_pts_len,
-            tot_ctrs_len, areas)
+    return (
+        pts,
+        ctrs,
+        pts_lbl,
+        ctrs_lbl,
+        pts_hemi,
+        ctrs_hemi,
+        pt_undam,
+        ct_undam,
+        pts_len,
+        ctrs_len,
+        tot_pts_len,
+        tot_ctrs_len,
+        areas,
+    )
 
 
 def _collect_section_results(results):
     """Concatenate a list of SectionResults into flat arrays and length lists."""
-    (pts, ctrs, pts_lbl, ctrs_lbl, pts_hemi, ctrs_hemi,
-     pt_undam, ct_undam, pts_len, ctrs_len, tot_pts_len,
-     tot_ctrs_len, areas) = _unzip_section_results(results)
+    (
+        pts,
+        ctrs,
+        pts_lbl,
+        ctrs_lbl,
+        pts_hemi,
+        ctrs_hemi,
+        pt_undam,
+        ct_undam,
+        pts_len,
+        ctrs_len,
+        tot_pts_len,
+        tot_ctrs_len,
+        areas,
+    ) = _unzip_section_results(results)
 
     return (
-        _concat_float(pts), _concat_float(ctrs),
-        _concat_int(pts_lbl), _concat_int(ctrs_lbl),
-        _concat_int(pts_hemi), _concat_int(ctrs_hemi),
-        areas, pts_len, ctrs_len,
-        _concat_bool(pt_undam), _concat_bool(ct_undam),
-        tot_pts_len, tot_ctrs_len,
+        _concat_float(pts),
+        _concat_float(ctrs),
+        _concat_int(pts_lbl),
+        _concat_int(ctrs_lbl),
+        _concat_int(pts_hemi),
+        _concat_int(ctrs_hemi),
+        areas,
+        pts_len,
+        ctrs_len,
+        _concat_bool(pt_undam),
+        _concat_bool(ct_undam),
+        tot_pts_len,
+        tot_ctrs_len,
     )
 
 
 # ---------------------------------------------------------------------------
 # Binary pipeline
 # ---------------------------------------------------------------------------
+
 
 def folder_to_atlas_space(
     folder,
@@ -227,16 +268,29 @@ def folder_to_atlas_space(
         )
 
     segmentations, results = _run_batch(
-        folder, quint_alignment, non_linear, apply_damage_mask, use_flat,
-        SectionResult.empty, _submit,
+        folder,
+        quint_alignment,
+        non_linear,
+        apply_damage_mask,
+        use_flat,
+        SectionResult.empty,
+        _submit,
     )
 
     (
-        points, centroids, points_labels, centroids_labels,
-        points_hemi_labels, centroids_hemi_labels,
-        region_areas_list, points_len, centroids_len,
-        per_point_undamaged, per_centroid_undamaged,
-        total_points_len, total_centroids_len,
+        points,
+        centroids,
+        points_labels,
+        centroids_labels,
+        points_hemi_labels,
+        centroids_hemi_labels,
+        region_areas_list,
+        points_len,
+        centroids_len,
+        per_point_undamaged,
+        per_centroid_undamaged,
+        total_points_len,
+        total_centroids_len,
     ) = _collect_section_results(results)
 
     return (
@@ -307,8 +361,13 @@ def folder_to_atlas_space_intensity(
         )
 
     images, results = _run_batch(
-        folder, quint_alignment, non_linear, apply_damage_mask, use_flat,
-        IntensitySectionResult.empty, _submit,
+        folder,
+        quint_alignment,
+        non_linear,
+        apply_damage_mask,
+        use_flat,
+        IntensitySectionResult.empty,
+        _submit,
     )
 
     # ── Concatenate IntensitySectionResults ────────────────────────────

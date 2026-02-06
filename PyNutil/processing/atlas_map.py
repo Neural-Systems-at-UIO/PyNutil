@@ -33,6 +33,7 @@ from ..io.loaders import read_flat_file, read_seg_file
 # Slice extraction from 3-D atlas
 # ---------------------------------------------------------------------------
 
+
 def generate_target_slice(ouv, atlas):
     """Generate a 2D slice from a 3D atlas based on orientation vectors.
 
@@ -51,9 +52,15 @@ def generate_target_slice(ouv, atlas):
     y_values = np.arange(height)
     x_values = np.arange(width)
 
-    lx = np.floor((ox + vx * (y_values / height))[:, None] + ux * (x_values / width)).astype(int)
-    ly = np.floor((oy + vy * (y_values / height))[:, None] + uy * (x_values / width)).astype(int)
-    lz = np.floor((oz + vz * (y_values / height))[:, None] + uz * (x_values / width)).astype(int)
+    lx = np.floor(
+        (ox + vx * (y_values / height))[:, None] + ux * (x_values / width)
+    ).astype(int)
+    ly = np.floor(
+        (oy + vy * (y_values / height))[:, None] + uy * (x_values / width)
+    ).astype(int)
+    lz = np.floor(
+        (oz + vz * (y_values / height))[:, None] + uz * (x_values / width)
+    ).astype(int)
 
     valid = (0 <= lx) & (lx < xdim) & (0 <= ly) & (ly < ydim) & (0 <= lz) & (lz < zdim)
 
@@ -65,6 +72,7 @@ def generate_target_slice(ouv, atlas):
 # ---------------------------------------------------------------------------
 # Image warping
 # ---------------------------------------------------------------------------
+
 
 def warp_image(image, deformation, rescaleXY):
     """Warp an image using a deformation function, applying optional resizing.
@@ -99,6 +107,7 @@ def warp_image(image, deformation, rescaleXY):
 # Label assignment and loading
 # ---------------------------------------------------------------------------
 
+
 def assign_labels_to_image(image, labelfile):
     """Assign atlas or region labels to an image array.
 
@@ -120,7 +129,9 @@ def assign_labels_to_image(image, labelfile):
     return allen_id_image
 
 
-def load_atlas_image(file, image_vector, volume, deformation, rescaleXY, labelfile=None):
+def load_atlas_image(
+    file, image_vector, volume, deformation, rescaleXY, labelfile=None
+):
     """Load an image from file or generate from atlas volume, optionally warping.
 
     Args:
@@ -171,6 +182,7 @@ def calculate_scale_factor(image, rescaleXY):
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
 
+
 def count_pixels_per_label(image, scale_factor=False):
     """Count the pixels associated with each label in an image.
 
@@ -219,31 +231,20 @@ def _derive_area_aggregates(df, hemi_mask, damage_mask):
             + df["right_hemi_undamaged_region_area"]
         )
         df["damaged_region_area"] = (
-            df["left_hemi_damaged_region_area"]
-            + df["right_hemi_damaged_region_area"]
+            df["left_hemi_damaged_region_area"] + df["right_hemi_damaged_region_area"]
         )
         df["left_hemi_region_area"] = (
-            df["left_hemi_damaged_region_area"]
-            + df["left_hemi_undamaged_region_area"]
+            df["left_hemi_damaged_region_area"] + df["left_hemi_undamaged_region_area"]
         )
         df["right_hemi_region_area"] = (
             df["right_hemi_damaged_region_area"]
             + df["right_hemi_undamaged_region_area"]
         )
-        df["region_area"] = (
-            df["undamaged_region_area"]
-            + df["damaged_region_area"]
-        )
+        df["region_area"] = df["undamaged_region_area"] + df["damaged_region_area"]
     if (hemi_mask is not None) and (damage_mask is None):
-        df["region_area"] = (
-            df["left_hemi_region_area"]
-            + df["right_hemi_region_area"]
-        )
+        df["region_area"] = df["left_hemi_region_area"] + df["right_hemi_region_area"]
     if (hemi_mask is None) and (damage_mask is not None):
-        df["region_area"] = (
-            df["undamaged_region_area"]
-            + df["damaged_region_area"]
-        )
+        df["region_area"] = df["undamaged_region_area"] + df["damaged_region_area"]
 
 
 def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
@@ -297,6 +298,7 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
 # High-level: region area computation for a section
 # ---------------------------------------------------------------------------
 
+
 def get_region_areas(
     use_flat: bool,
     atlas_labels,
@@ -308,7 +310,9 @@ def get_region_areas(
     reg_height: int,
     atlas_volume: np.ndarray,
     hemi_mask: Optional[np.ndarray],
-    deformation: Optional[Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]],
+    deformation: Optional[
+        Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
+    ],
     damage_mask: Optional[np.ndarray],
 ) -> Tuple[Any, np.ndarray]:
     """Build the atlas map for a slice and compute region areas.

@@ -34,7 +34,9 @@ def _knn_batch_query(tree, fit_vals, query_pts, k, batch_size, mode):
             out_vals[start:end] = fit_vals[ind]
         else:
             neigh_vals = fit_vals[ind]
-            out_vals[start:end] = neigh_vals.mean(axis=1) if mode == "mean" else neigh_vals.max(axis=1)
+            out_vals[start:end] = (
+                neigh_vals.mean(axis=1) if mode == "mean" else neigh_vals.max(axis=1)
+            )
     return out_vals
 
 
@@ -150,18 +152,24 @@ def _sample_and_deform_plane(
         map_y = reg_y.astype(np.float32, copy=False)
 
     sampled_2d = cv2.remap(
-        values_reg, map_x, map_y,
+        values_reg,
+        map_x,
+        map_y,
         interpolation=cv2.INTER_NEAREST,
-        borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
     )
     vals_flat = sampled_2d.reshape(-1).astype(np.float32, copy=False)
 
     damage_vals = None
     if damage_reg is not None:
         sampled_damage = cv2.remap(
-            damage_reg, map_x, map_y,
+            damage_reg,
+            map_x,
+            map_y,
             interpolation=cv2.INTER_NEAREST,
-            borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=0,
         )
         damage_vals = sampled_damage.reshape(-1)
 
@@ -192,7 +200,10 @@ def _accumulate_object_counts(
     y_pos = y[pos].astype(np.int64, copy=False)
     z_pos = z[pos].astype(np.int64, copy=False)
     voxel_lin = np.ravel_multi_index(
-        (x_pos, y_pos, z_pos), dims=out_shape, mode="raise", order="C",
+        (x_pos, y_pos, z_pos),
+        dims=out_shape,
+        mode="raise",
+        order="C",
     ).astype(np.int64, copy=False)
 
     obj_u32 = obj[pos].astype(np.uint64, copy=False)
@@ -250,12 +261,22 @@ def _finalize_volumes(
     if do_interpolation:
         atlas_mask = _resolve_atlas_mask(use_atlas_mask, atlas_volume, gv)
         gv = _knn_interpolate_generic(
-            gv=gv, fv=fv, atlas_mask=atlas_mask, k=k, batch_size=batch_size, mode="mean",
+            gv=gv,
+            fv=fv,
+            atlas_mask=atlas_mask,
+            k=k,
+            batch_size=batch_size,
+            mode="mean",
         )
         if np.any(dv > 0):
             dv_float = dv.astype(np.float32)
             dv_interp = _knn_interpolate_generic(
-                gv=dv_float, fv=fv, atlas_mask=atlas_mask, k=k, batch_size=batch_size, mode="max",
+                gv=dv_float,
+                fv=fv,
+                atlas_mask=atlas_mask,
+                k=k,
+                batch_size=batch_size,
+                mode="max",
             )
             dv = (dv_interp > 0).astype(np.uint8)
     elif missing_fill is not None and missing_fill != 0:
@@ -269,9 +290,20 @@ def _finalize_volumes(
 
 
 def _process_one_section(
-    seg_path, slice_by_nr, colour_arr, intensity_channel,
-    min_intensity, max_intensity, scale, non_linear, value_mode,
-    gv, fv, dv, ov_flat, out_shape,
+    seg_path,
+    slice_by_nr,
+    colour_arr,
+    intensity_channel,
+    min_intensity,
+    max_intensity,
+    scale,
+    non_linear,
+    value_mode,
+    gv,
+    fv,
+    dv,
+    ov_flat,
+    out_shape,
 ):
     """Process a single section path and accumulate into the output volumes."""
     sx, sy, sz = out_shape
@@ -280,7 +312,9 @@ def _process_one_section(
     if not slice_info or not slice_info.anchoring:
         return
 
-    loaded = _read_section_signal(seg_path, colour_arr, intensity_channel, min_intensity, max_intensity)
+    loaded = _read_section_signal(
+        seg_path, colour_arr, intensity_channel, min_intensity, max_intensity
+    )
     if loaded is None:
         return
     seg_values, mask, seg_height, seg_width = loaded
@@ -292,17 +326,27 @@ def _process_one_section(
 
     # Resample segmentation values into registration space
     src = seg_values if value_mode == "mean" else mask
-    values_reg = cv2.resize(src, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST)
+    values_reg = cv2.resize(
+        src, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST
+    )
 
     # Sample, deform, and remap the plane
     sampled_2d, vals, damage_vals, flat_x, flat_y, plane_h, plane_w = (
         _sample_and_deform_plane(
-            slice_info, values_reg, damage_reg, scale, reg_height, reg_width, non_linear,
+            slice_info,
+            values_reg,
+            damage_reg,
+            scale,
+            reg_height,
+            reg_width,
+            non_linear,
         )
     )
 
     # Transform flat grid to atlas-space 3-D coordinates
-    coords = transform_to_atlas_space(slice_info.anchoring, flat_y, flat_x, reg_height, reg_width)
+    coords = transform_to_atlas_space(
+        slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
+    )
     if scale != 1.0:
         coords = coords * float(scale)
 
@@ -330,7 +374,8 @@ def _resize_damage_mask(damage_mask, reg_width, reg_height):
     if damage_mask.shape != (reg_height, reg_width):
         return cv2.resize(
             damage_mask.astype(np.uint8),
-            (reg_width, reg_height), interpolation=cv2.INTER_NEAREST,
+            (reg_width, reg_height),
+            interpolation=cv2.INTER_NEAREST,
         )
     return damage_mask.astype(np.uint8)
 
@@ -364,7 +409,9 @@ def project_sections_to_volume(
     Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
     """
     if value_mode not in {"pixel_count", "mean", "object_count"}:
-        raise ValueError("value_mode must be one of 'pixel_count', 'mean', or 'object_count'")
+        raise ValueError(
+            "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
+        )
 
     out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
 
@@ -377,18 +424,39 @@ def project_sections_to_volume(
     gv = np.zeros(out_shape, dtype=np.float32)
     fv = np.zeros(out_shape, dtype=np.uint32)
     dv = np.zeros(out_shape, dtype=np.uint8)
-    ov_flat = np.zeros((gv.size,), dtype=np.uint32) if value_mode == "object_count" else None
+    ov_flat = (
+        np.zeros((gv.size,), dtype=np.uint32) if value_mode == "object_count" else None
+    )
 
     for seg_path in seg_paths:
         _process_one_section(
-            seg_path, slice_by_nr, colour_arr, intensity_channel,
-            min_intensity, max_intensity, scale, non_linear, value_mode,
-            gv, fv, dv, ov_flat, out_shape,
+            seg_path,
+            slice_by_nr,
+            colour_arr,
+            intensity_channel,
+            min_intensity,
+            max_intensity,
+            scale,
+            non_linear,
+            value_mode,
+            gv,
+            fv,
+            dv,
+            ov_flat,
+            out_shape,
         )
 
     return _finalize_volumes(
-        gv, fv, dv, ov_flat, out_shape, value_mode, missing_fill,
-        do_interpolation, atlas_volume, use_atlas_mask, k, batch_size,
+        gv,
+        fv,
+        dv,
+        ov_flat,
+        out_shape,
+        value_mode,
+        missing_fill,
+        do_interpolation,
+        atlas_volume,
+        use_atlas_mask,
+        k,
+        batch_size,
     )
-
-

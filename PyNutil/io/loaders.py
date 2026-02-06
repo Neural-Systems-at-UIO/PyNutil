@@ -74,13 +74,15 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
         "subregion_ids": atlas_ids,
     }
 
-    result_df = pd.DataFrame({
-        "idx": custom_region_dict["custom_ids"],
-        "name": custom_region_dict["custom_names"],
-        "r": [c[0] for c in custom_region_dict["rgb_values"]],
-        "g": [c[1] for c in custom_region_dict["rgb_values"]],
-        "b": [c[2] for c in custom_region_dict["rgb_values"]],
-    })
+    result_df = pd.DataFrame(
+        {
+            "idx": custom_region_dict["custom_ids"],
+            "name": custom_region_dict["custom_names"],
+            "r": [c[0] for c in custom_region_dict["rgb_values"]],
+            "g": [c[1] for c in custom_region_dict["rgb_values"]],
+            "b": [c[2] for c in custom_region_dict["rgb_values"]],
+        }
+    )
 
     if result_df["name"].duplicated().any():
         raise ValueError("Duplicate region names found in custom region file.")
@@ -232,7 +234,9 @@ def load_quint_json(
         slices = vafile["sections"]
         vafile["slices"] = slices
         for slice_data in slices:
-            slice_data["nr"] = int(re.search(r"_s(\d+)", slice_data["filename"]).group(1))
+            slice_data["nr"] = int(
+                re.search(r"_s(\d+)", slice_data["filename"]).group(1)
+            )
             if "ouv" in slice_data:
                 slice_data["anchoring"] = slice_data["ouv"]
     else:

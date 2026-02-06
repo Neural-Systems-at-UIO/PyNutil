@@ -276,7 +276,9 @@ class PyNutil:
         self.colour = cfg.colour
         self.intensity_channel = cfg.intensity_channel
         self.atlas_name = cfg.atlas_name
-        self.voxel_size_um = float(cfg.voxel_size_um) if cfg.voxel_size_um is not None else None
+        self.voxel_size_um = (
+            float(cfg.voxel_size_um) if cfg.voxel_size_um is not None else None
+        )
         self.min_intensity = cfg.min_intensity
         self.max_intensity = cfg.max_intensity
         self.segmentation_format = cfg.segmentation_format
@@ -508,7 +510,11 @@ class PyNutil:
 
     def _filter_undamaged(self, full_arr, undamaged_mask):
         """Filter *full_arr* to undamaged-only using *undamaged_mask* if lengths match."""
-        if undamaged_mask is not None and full_arr is not None and len(undamaged_mask) == len(full_arr):
+        if (
+            undamaged_mask is not None
+            and full_arr is not None
+            and len(undamaged_mask) == len(full_arr)
+        ):
             return full_arr[undamaged_mask]
         return full_arr
 
@@ -519,8 +525,12 @@ class PyNutil:
         return SaveContext(
             pixel_points=getattr(self, "pixel_points", None),
             centroids=getattr(self, "centroids", None),
-            points_hemi_labels=self._filter_undamaged(getattr(self, "points_hemi_labels", None), _und_p),
-            centroids_hemi_labels=self._filter_undamaged(getattr(self, "centroids_hemi_labels", None), _und_c),
+            points_hemi_labels=self._filter_undamaged(
+                getattr(self, "points_hemi_labels", None), _und_p
+            ),
+            centroids_hemi_labels=self._filter_undamaged(
+                getattr(self, "centroids_hemi_labels", None), _und_c
+            ),
             points_len=getattr(self, "points_len", None),
             centroids_len=getattr(self, "centroids_len", None),
             segmentation_filenames=getattr(self, "segmentation_filenames", None),
@@ -544,8 +554,12 @@ class PyNutil:
         _und_c = getattr(self, "per_centroid_undamaged", None)
         base_ctx.label_df = getattr(self, "label_df", None)
         base_ctx.per_section_df = getattr(self, "per_section_df", None)
-        base_ctx.labeled_points = self._filter_undamaged(getattr(self, "points_labels", None), _und_p)
-        base_ctx.labeled_points_centroids = self._filter_undamaged(getattr(self, "centroids_labels", None), _und_c)
+        base_ctx.labeled_points = self._filter_undamaged(
+            getattr(self, "points_labels", None), _und_p
+        )
+        base_ctx.labeled_points_centroids = self._filter_undamaged(
+            getattr(self, "centroids_labels", None), _und_c
+        )
         base_ctx.atlas_labels = self.atlas_labels
         base_ctx.prepend = ""
         save_analysis_output(base_ctx, output_folder)
@@ -571,8 +585,12 @@ class PyNutil:
         _und_c = getattr(self, "per_centroid_undamaged", None)
         base_ctx.label_df = getattr(self, "custom_label_df", None)
         base_ctx.per_section_df = getattr(self, "custom_per_section_df", None)
-        base_ctx.labeled_points = self._filter_undamaged(getattr(self, "points_custom_labels", None), _und_p)
-        base_ctx.labeled_points_centroids = self._filter_undamaged(getattr(self, "centroids_custom_labels", None), _und_c)
+        base_ctx.labeled_points = self._filter_undamaged(
+            getattr(self, "points_custom_labels", None), _und_p
+        )
+        base_ctx.labeled_points_centroids = self._filter_undamaged(
+            getattr(self, "centroids_custom_labels", None), _und_c
+        )
         base_ctx.atlas_labels = self.custom_atlas_labels
         base_ctx.prepend = "custom_"
         base_ctx.colormap = "gray"
@@ -584,9 +602,13 @@ class PyNutil:
             self.label_df["idx"] = self.label_df["original_idx"]
             self.label_df = self.label_df.drop(columns=["original_idx"])
             self.label_df.to_csv(
-                f"{output_folder}/whole_series_report/counts.csv", sep=";", index=False,
+                f"{output_folder}/whole_series_report/counts.csv",
+                sep=";",
+                index=False,
             )
-        elif hasattr(self, "atlas_labels") and ("original_idx" in self.atlas_labels.columns):
+        elif hasattr(self, "atlas_labels") and (
+            "original_idx" in self.atlas_labels.columns
+        ):
             self._remap_via_atlas_labels(output_folder)
 
     def _remap_via_atlas_labels(self, output_folder):
@@ -604,7 +626,9 @@ class PyNutil:
         )
         self.label_df = self.label_df.drop(columns=["original_idx"])
         self.label_df.to_csv(
-            f"{output_folder}/whole_series_report/counts.csv", sep=";", index=False,
+            f"{output_folder}/whole_series_report/counts.csv",
+            sep=";",
+            index=False,
         )
 
     def _create_visualisations(self, output_folder):

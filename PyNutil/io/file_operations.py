@@ -149,7 +149,13 @@ def _save_per_section_reports(ctx: SaveContext, output_folder: str):
                 else None
             )
             _save_per_section_meshview(
-                ctx, output_folder, split_fn, pl, cl, prev_pl, prev_cl,
+                ctx,
+                output_folder,
+                split_fn,
+                pl,
+                cl,
+                prev_pl,
+                prev_cl,
                 section_intensities,
             )
         prev_cl += cl
@@ -168,8 +174,12 @@ def _save_per_section_meshview(
 ):
     """Write per-section MeshView JSONs for pixels and centroids."""
     write_hemi_points_to_meshview(
-        ctx.pixel_points[prev_pl : pl + prev_pl] if ctx.pixel_points is not None else None,
-        ctx.labeled_points[prev_pl : pl + prev_pl] if ctx.labeled_points is not None else None,
+        ctx.pixel_points[prev_pl : pl + prev_pl]
+        if ctx.pixel_points is not None
+        else None,
+        ctx.labeled_points[prev_pl : pl + prev_pl]
+        if ctx.labeled_points is not None
+        else None,
         ctx.points_hemi_labels[prev_pl : pl + prev_pl]
         if ctx.points_hemi_labels is not None
         else None,

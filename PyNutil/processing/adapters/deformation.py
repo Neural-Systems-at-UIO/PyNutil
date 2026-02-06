@@ -58,14 +58,22 @@ class VisuAlignDeformationProvider(DeformationProvider):
             - inverse_deform: maps from deformed to original (transform_vec)
             - forward_deform: maps from original to deformed (forwardtransform_vec)
         """
-        from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
+        from .visualign_deformations import (
+            triangulate,
+            transform_vec,
+            forwardtransform_vec,
+        )
 
         triangulation = triangulate(width, height, markers)
 
-        def deform_inverse(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        def deform_inverse(
+            x: np.ndarray, y: np.ndarray
+        ) -> Tuple[np.ndarray, np.ndarray]:
             return transform_vec(triangulation, x, y)
 
-        def deform_forward(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        def deform_forward(
+            x: np.ndarray, y: np.ndarray
+        ) -> Tuple[np.ndarray, np.ndarray]:
             return forwardtransform_vec(triangulation, x, y)
 
         return deform_inverse, deform_forward
@@ -87,7 +95,9 @@ class VisuAlignDeformationProvider(DeformationProvider):
         for s in data.slices:
             markers = markers_by_nr.get(s.section_number)
             if markers:
-                inverse_deform, forward_deform = self._create_deformation(s.width, s.height, markers)
+                inverse_deform, forward_deform = self._create_deformation(
+                    s.width, s.height, markers
+                )
                 s.deformation = inverse_deform
                 s.forward_deformation = forward_deform
                 s.metadata["markers"] = markers

@@ -164,7 +164,9 @@ def get_objects_and_assign_regions(
     scaled_y, scaled_x = scale_positions(pixel_y, pixel_x, y_scale, x_scale)
 
     # Extract objects using the adapter
-    objects_info = adapter.extract_objects(segmentation, binary_seg, min_area=object_cutoff)
+    objects_info = adapter.extract_objects(
+        segmentation, binary_seg, min_area=object_cutoff
+    )
 
     if len(objects_info) == 0:
         return None, None, None, scaled_y, scaled_x, None
@@ -191,8 +193,10 @@ def get_objects_and_assign_regions(
         iy = np.round(assignment_y).astype(int)
         ix = np.round(assignment_x).astype(int)
         valid_mask = (
-            (iy >= 0) & (iy < atlas_map.shape[0])
-            & (ix >= 0) & (ix < atlas_map.shape[1])
+            (iy >= 0)
+            & (iy < atlas_map.shape[0])
+            & (ix >= 0)
+            & (ix < atlas_map.shape[1])
         )
 
         if not np.any(valid_mask):

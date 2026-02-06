@@ -34,20 +34,22 @@ class QuintAnchoringLoader(AnchoringLoader):
             if not anchoring:
                 continue
 
-            slices.append(SliceInfo(
-                section_id=s.get("filename", str(s.get("nr", 0))),
-                section_number=s.get("nr", 0),
-                width=s.get("width", 0),
-                height=s.get("height", 0),
-                anchoring=anchoring,
-                deformation=None,  # Added by DeformationProvider
-                damage_mask=None,  # Added by DamageProvider
-                metadata={
-                    "filename": s.get("filename"),
-                    # Store raw data for providers to use
-                    "_raw_slice": s,
-                },
-            ))
+            slices.append(
+                SliceInfo(
+                    section_id=s.get("filename", str(s.get("nr", 0))),
+                    section_number=s.get("nr", 0),
+                    width=s.get("width", 0),
+                    height=s.get("height", 0),
+                    anchoring=anchoring,
+                    deformation=None,  # Added by DeformationProvider
+                    damage_mask=None,  # Added by DamageProvider
+                    metadata={
+                        "filename": s.get("filename"),
+                        # Store raw data for providers to use
+                        "_raw_slice": s,
+                    },
+                )
+            )
 
         return RegistrationData(
             slices=slices,

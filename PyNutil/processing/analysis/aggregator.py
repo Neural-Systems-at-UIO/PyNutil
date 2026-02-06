@@ -27,7 +27,9 @@ def build_region_intensity_dataframe(
     sums = np.bincount(inverse_indices, weights=flat_intensity)
     counts = np.bincount(inverse_indices)
 
-    df = pd.DataFrame({"idx": unique_labels, "sum_intensity": sums, "pixel_count": counts})
+    df = pd.DataFrame(
+        {"idx": unique_labels, "sum_intensity": sums, "pixel_count": counts}
+    )
 
     if hemi_mask is not None:
         for hemi_id, hemi_name in [(1, "left_hemi"), (2, "right_hemi")]:
