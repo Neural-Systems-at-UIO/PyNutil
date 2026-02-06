@@ -1,9 +1,7 @@
 """Immutable context objects for pipeline orchestration.
 
 These frozen dataclasses carry state through the batch and section
-processing layers.  They must **never** be passed into pure math
-functions (transforms.py, atlas_map.py, processing/geometry) — the
-section_processor unboxes them into primitive values at the boundary.
+processing layers.
 """
 
 from __future__ import annotations
