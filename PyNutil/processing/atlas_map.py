@@ -277,7 +277,8 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
 
     combos = _build_area_combos(hemi_mask, damage_mask)
 
-    # Count pixels for each combo
+    # Count pixels for each combo and join all at once (avoids repeated pd.merge)
+    combo_dfs = []
     for hemi_val, damage_val, col_name in combos:
         mask = np.ones_like(image, dtype=bool)
         if hemi_mask is not None:
@@ -285,10 +286,19 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
         if damage_mask is not None:
             mask &= damage_mask == damage_val
         combo_df = count_pixels_per_label(image[mask], scale_factor)
-        combo_df = combo_df.rename(columns={"region_area": col_name})
-        df_area_per_label = pd.merge(
-            df_area_per_label, combo_df, on="idx", how="outer"
-        ).fillna(0)
+        combo_df = combo_df.rename(columns={"region_area": col_name}).set_index("idx")
+        combo_dfs.append(combo_df)
+
+    if combo_dfs:
+        # Use outer join to preserve all region IDs from any combo
+        df_area_per_label = combo_dfs[0]
+        for cdf in combo_dfs[1:]:
+            df_area_per_label = df_area_per_label.join(cdf, how="outer")
+        df_area_per_label = (
+            df_area_per_label.fillna(0).infer_objects(copy=False).reset_index()
+        )
+    else:
+        df_area_per_label = pd.DataFrame(columns=["idx"])
 
     _derive_area_aggregates(df_area_per_label, hemi_mask, damage_mask)
     return df_area_per_label

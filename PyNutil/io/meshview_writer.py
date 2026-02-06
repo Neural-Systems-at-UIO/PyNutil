@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from .atlas_loader import load_atlas_labels
-from .colormap import get_colormap_color
+from .colormap import get_colormap_color, get_colormap_colors
 
 
 def create_region_dict(
@@ -102,7 +102,7 @@ def _write_points(
         )
 
     with open(filename, "w") as f:
-        json.dump(meshview, f)
+        f.write(json.dumps(meshview))
 
 
 def write_hemi_points_to_meshview(
@@ -241,19 +241,17 @@ def _write_rgb_meshview(
         if len(bin_points) > 0:
             r, g, b = color
             triplets = bin_points.flatten().tolist()
-            meshview.append(
-                _meshview_entry(
-                    i,
-                    f"Color {r},{g},{b}",
-                    triplets,
-                    r,
-                    g,
-                    b,
-                )
-            )
+            meshview.append(_meshview_entry(
+                i,
+                f"Color {r},{g},{b}",
+                triplets,
+                r,
+                g,
+                b,
+            ))
 
     with open(filename, "w") as f:
-        json.dump(meshview, f)
+        f.write(json.dumps(meshview))
 
 
 def _write_scalar_meshview(
@@ -275,24 +273,25 @@ def _write_scalar_meshview(
 
     unique_intensities = np.unique(intensities)
 
+    # Vectorised colormap lookup for all unique values at once
+    colors = get_colormap_colors(unique_intensities, colormap)
+
     meshview = []
-    for val in unique_intensities:
+    for i, val in enumerate(unique_intensities):
         mask = intensities == val
         bin_points = points[mask]
-
         if len(bin_points) > 0:
-            r, g, b = get_colormap_color(val, colormap)
+            r, g, b = colors[i]
             triplets = bin_points.flatten().tolist()
-            meshview.append(
-                _meshview_entry(
-                    int(val),
-                    f"Intensity {val}",
-                    triplets,
-                    r,
-                    g,
-                    b,
-                )
-            )
+            meshview.append({
+                "idx": int(val),
+                "count": len(bin_points),
+                "name": f"Intensity {val}",
+                "triplets": triplets,
+                "r": int(r),
+                "g": int(g),
+                "b": int(b),
+            })
 
     with open(filename, "w") as f:
-        json.dump(meshview, f)
+        f.write(json.dumps(meshview))

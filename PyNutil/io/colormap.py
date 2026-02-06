@@ -24,7 +24,11 @@ def _magma(t):
 
 
 def _hot(t):
-    return min(1.0, t * 3), min(1.0, max(0.0, t * 3 - 1)), min(1.0, max(0.0, t * 3 - 2))
+    return (
+        np.minimum(1.0, t * 3),
+        np.minimum(1.0, np.maximum(0.0, t * 3 - 1)),
+        np.minimum(1.0, np.maximum(0.0, t * 3 - 2)),
+    )
 
 
 _COLORMAPS = {
@@ -33,6 +37,40 @@ _COLORMAPS = {
     "magma": _magma,
     "hot": _hot,
 }
+
+# Pre-built 256-entry LUT cache:  {name: (N, 3) uint8 array}
+_LUT_CACHE: dict[str, np.ndarray] = {}
+
+
+def _build_lut(name: str) -> np.ndarray:
+    """Build a (256, 3) uint8 lookup table for *name*."""
+    if name in _LUT_CACHE:
+        return _LUT_CACHE[name]
+    t = np.arange(256, dtype=np.float64) / 255.0
+    fn = _COLORMAPS.get(name)
+    if fn is None:
+        # gray
+        v = np.arange(256, dtype=np.uint8)
+        lut = np.column_stack([v, v, v])
+    else:
+        r, g, b = fn(t)
+        lut = np.column_stack([
+            np.clip(np.asarray(r) * 255, 0, 255).astype(np.uint8),
+            np.clip(np.asarray(g) * 255, 0, 255).astype(np.uint8),
+            np.clip(np.asarray(b) * 255, 0, 255).astype(np.uint8),
+        ])
+    _LUT_CACHE[name] = lut
+    return lut
+
+
+def get_colormap_colors(values: np.ndarray, name: str = "gray") -> np.ndarray:
+    """Vectorised colormap lookup for an array of intensity values (0-255).
+
+    Returns a (N, 3) uint8 array of RGB colours.
+    """
+    lut = _build_lut(name)
+    idx = np.clip(values, 0, 255).astype(np.intp)
+    return lut[idx]
 
 
 def get_colormap_color(value: int, name: str = "gray") -> Tuple[int, int, int]:
@@ -50,12 +88,7 @@ def get_colormap_color(value: int, name: str = "gray") -> Tuple[int, int, int]:
     tuple
         (r, g, b) color values (0-255).
     """
-    t = np.clip(value, 0, 255) / 255.0
-
-    fn = _COLORMAPS.get(name)
-    if fn is None:
-        v = int(t * 255)
-        return v, v, v
-
-    r, g, b = fn(t)
-    return int(r * 255), int(g * 255), int(b * 255)
+    lut = _build_lut(name)
+    idx = int(np.clip(value, 0, 255))
+    row = lut[idx]
+    return int(row[0]), int(row[1]), int(row[2])

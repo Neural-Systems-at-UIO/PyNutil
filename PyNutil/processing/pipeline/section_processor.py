@@ -6,7 +6,6 @@ files or images into atlas space coordinates.
 
 from __future__ import annotations
 
-import gc
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -297,7 +296,6 @@ def segmentation_to_atlas_space(
     )
 
     if scaled_y is None or scaled_x is None:
-        gc.collect()
         return SectionResult.empty(region_areas)
 
     per_point_labels = assign_labels_at_coordinates(
@@ -355,7 +353,6 @@ def segmentation_to_atlas_space(
         centroids_hemi_labels=_to_array(per_centroid_hemi, points),
     )
 
-    gc.collect()
     return result
 
 
@@ -476,7 +473,6 @@ def segmentation_to_atlas_space_intensity(
         reg_width,
     )
 
-    gc.collect()
     return result
 
 
