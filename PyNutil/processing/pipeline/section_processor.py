@@ -6,12 +6,11 @@ files or images into atlas space coordinates.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 import cv2
 
 from ...io.loaders import load_segmentation
+from ...context import PipelineContext, SectionContext
 from ...results import SectionResult, IntensitySectionResult
 from .connected_components import (
     get_objects_and_assign_regions,
@@ -30,9 +29,6 @@ from ..utils import (
     assign_labels_at_coordinates,
     resize_mask_nearest,
 )
-
-if TYPE_CHECKING:
-    from ..adapters import SliceInfo
 
 
 def _prepare_section(
@@ -224,38 +220,33 @@ def _extract_signal_pixels(
 
 
 def segmentation_to_atlas_space(
-    slice_info: "SliceInfo",
-    segmentation_path,
-    atlas_labels,
-    flat_file_atlas=None,
-    pixel_id="auto",
-    non_linear=True,
-    object_cutoff=0,
-    atlas_volume=None,
-    hemi_map=None,
-    use_flat=False,
-    segmentation_format="binary",
+    p_ctx: PipelineContext,
+    s_ctx: SectionContext,
 ):
     """Transform a single segmentation file into atlas space.
 
     Args:
-        slice_info: SliceInfo object from registration adapter.
-        segmentation_path: Path to the segmentation file.
-        atlas_labels: Atlas labels DataFrame.
-        flat_file_atlas: Path to flat atlas (optional).
-        pixel_id: Pixel color or 'auto' for auto-detection.
-        non_linear: Use non-linear transforms if True.
-        object_cutoff: Minimum object size.
-        atlas_volume: 3D atlas volume.
-        hemi_map: Hemisphere mask.
-        use_flat: Use flat files if True.
-        segmentation_format: Format name ("binary" or "cellpose").
+        p_ctx: Immutable pipeline-wide state (atlas, adapter, options).
+        s_ctx: Immutable per-section state (slice_info, paths).
 
     Returns:
         SectionResult with transformed coordinates, labels, and metadata.
     """
+    # ── unbox contexts at the boundary ─────────────────────────────────
+    slice_info = s_ctx.slice_info
+    segmentation_path = s_ctx.segmentation_path
+    flat_file_atlas = s_ctx.flat_file_path
+    atlas_labels = p_ctx.atlas_labels
+    pixel_id = p_ctx.pixel_id
+    non_linear = p_ctx.non_linear
+    object_cutoff = p_ctx.object_cutoff
+    atlas_volume = p_ctx.atlas_volume
+    hemi_map = p_ctx.hemi_map
+    use_flat = p_ctx.use_flat
+    adapter = p_ctx.segmentation_adapter
+
     segmentation = load_segmentation(segmentation_path)
-    if pixel_id == "auto" and segmentation_format == "binary":
+    if pixel_id == "auto" and adapter.name == "binary":
         pixel_id = detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_info.height, slice_info.width
@@ -292,7 +283,7 @@ def segmentation_to_atlas_space(
         atlas_at_original_resolution=True,
         reg_height=reg_height,
         reg_width=reg_width,
-        segmentation_format=segmentation_format,
+        segmentation_format=adapter.name,
     )
 
     if scaled_y is None or scaled_x is None:
@@ -357,36 +348,31 @@ def segmentation_to_atlas_space(
 
 
 def segmentation_to_atlas_space_intensity(
-    slice_info: "SliceInfo",
-    image_path,
-    atlas_labels,
-    intensity_channel,
-    flat_file_atlas=None,
-    non_linear=True,
-    atlas_volume=None,
-    hemi_map=None,
-    use_flat=False,
-    min_intensity=None,
-    max_intensity=None,
+    p_ctx: PipelineContext,
+    s_ctx: SectionContext,
 ):
     """Transform a single image file into atlas space and extract intensity.
 
     Args:
-        slice_info: SliceInfo object from registration adapter.
-        image_path: Path to the image file.
-        atlas_labels: Atlas labels DataFrame.
-        intensity_channel: Channel to use for intensity.
-        flat_file_atlas: Path to flat atlas (optional).
-        non_linear: Apply non-linear transform.
-        atlas_volume: 3D atlas volume.
-        hemi_map: Hemisphere mask.
-        use_flat: Use flat files if True.
-        min_intensity: Minimum intensity threshold.
-        max_intensity: Maximum intensity threshold.
+        p_ctx: Immutable pipeline-wide state (atlas, adapter, options).
+        s_ctx: Immutable per-section state (slice_info, paths).
 
     Returns:
         IntensitySectionResult with region intensities and MeshView point data.
     """
+    # ── unbox contexts at the boundary ─────────────────────────────────
+    slice_info = s_ctx.slice_info
+    image_path = s_ctx.segmentation_path
+    flat_file_atlas = s_ctx.flat_file_path
+    atlas_labels = p_ctx.atlas_labels
+    intensity_channel = p_ctx.intensity_channel
+    non_linear = p_ctx.non_linear
+    atlas_volume = p_ctx.atlas_volume
+    hemi_map = p_ctx.hemi_map
+    use_flat = p_ctx.use_flat
+    min_intensity = p_ctx.min_intensity
+    max_intensity = p_ctx.max_intensity
+
     image = load_segmentation(image_path)
     intensity = convert_to_intensity(image, intensity_channel)
     _apply_intensity_bounds(intensity, min_intensity, max_intensity)

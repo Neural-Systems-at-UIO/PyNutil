@@ -10,8 +10,10 @@ import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
+from ...context import PipelineContext, SectionContext
 from ...results import SectionResult, IntensitySectionResult
 from ..adapters import load_registration
+from ..adapters.segmentation import SegmentationAdapterRegistry
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
@@ -25,20 +27,56 @@ from ..utils import (
 
 
 # ---------------------------------------------------------------------------
+# Context builders
+# ---------------------------------------------------------------------------
+
+
+def _build_pipeline_context(
+    *,
+    atlas_labels,
+    atlas_volume,
+    hemi_map,
+    segmentation_format,
+    non_linear,
+    object_cutoff,
+    use_flat,
+    pixel_id,
+    apply_damage_mask,
+    intensity_channel=None,
+    min_intensity=None,
+    max_intensity=None,
+) -> PipelineContext:
+    """Construct an immutable PipelineContext from loose parameters."""
+    adapter = SegmentationAdapterRegistry.get(segmentation_format)
+    return PipelineContext(
+        atlas_labels=atlas_labels,
+        atlas_volume=atlas_volume,
+        hemi_map=hemi_map,
+        segmentation_adapter=adapter,
+        non_linear=non_linear,
+        object_cutoff=object_cutoff,
+        use_flat=use_flat,
+        pixel_id=pixel_id,
+        apply_damage_mask=apply_damage_mask,
+        intensity_channel=intensity_channel,
+        min_intensity=min_intensity,
+        max_intensity=max_intensity,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Shared batch scaffold
 # ---------------------------------------------------------------------------
 
 
-def _run_batch(
+def _run_batch_with_context(
     folder,
     quint_alignment,
-    non_linear,
-    apply_damage_mask,
-    use_flat,
+    pipeline_ctx: PipelineContext,
     empty_result_factory,
-    submit_fn,
+    processing_fn,
 ):
-    """Generic batch scaffold shared by binary and intensity pipelines.
+    """Generic batch scaffold using context objects.
 
     Handles registration loading, file discovery, thread-pool setup,
     per-section looping, and futures collection.
@@ -46,12 +84,9 @@ def _run_batch(
     Args:
         folder: Path to segmentation / image files.
         quint_alignment: Path to alignment JSON.
-        non_linear: Apply non-linear transform.
-        apply_damage_mask: Apply damage mask.
-        use_flat: Load flat files.
+        pipeline_ctx: Immutable pipeline-wide state.
         empty_result_factory: Callable returning a default empty result.
-        submit_fn: ``submit_fn(executor, index, slice_info, seg_path, current_flat)``
-            — submits the per-section work to the executor and returns a Future.
+        processing_fn: ``fn(p_ctx, s_ctx)`` — processes one section.
 
     Returns:
         tuple: (segmentations, results) where *results* is a list parallel to
@@ -59,13 +94,13 @@ def _run_batch(
     """
     registration = load_registration(
         quint_alignment,
-        apply_deformation=non_linear,
-        apply_damage=apply_damage_mask,
+        apply_deformation=pipeline_ctx.non_linear,
+        apply_damage=pipeline_ctx.apply_damage_mask,
     )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
     segmentations = get_segmentations(folder)
-    flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
+    flat_files, flat_file_nrs = get_flat_files(folder, pipeline_ctx.use_flat)
 
     results = [empty_result_factory() for _ in range(len(segmentations))]
 
@@ -85,12 +120,18 @@ def _run_batch(
                     continue
 
                 current_flat = get_current_flat_file(
-                    seg_nr, flat_files, flat_file_nrs, use_flat
+                    seg_nr, flat_files, flat_file_nrs, pipeline_ctx.use_flat
+                )
+                section_ctx = SectionContext(
+                    section_number=seg_nr,
+                    slice_info=slice_info,
+                    segmentation_path=seg_path,
+                    flat_file_path=current_flat,
                 )
                 futures.append(
                     (
                         index,
-                        submit_fn(executor, index, slice_info, seg_path, current_flat),
+                        executor.submit(processing_fn, pipeline_ctx, section_ctx),
                     )
                 )
 
@@ -250,31 +291,24 @@ def folder_to_atlas_space(
                 points_len, centroids_len, segmentations,
                 per_point_undamaged_list, per_centroid_undamaged_list)
     """
+    pipeline_ctx = _build_pipeline_context(
+        atlas_labels=atlas_labels,
+        atlas_volume=atlas_volume,
+        hemi_map=hemi_map,
+        segmentation_format=segmentation_format,
+        non_linear=non_linear,
+        object_cutoff=object_cutoff,
+        use_flat=use_flat,
+        pixel_id=pixel_id,
+        apply_damage_mask=apply_damage_mask,
+    )
 
-    def _submit(executor, index, slice_info, seg_path, current_flat):
-        return executor.submit(
-            segmentation_to_atlas_space,
-            slice_info,
-            seg_path,
-            atlas_labels,
-            current_flat,
-            pixel_id,
-            non_linear,
-            object_cutoff,
-            atlas_volume,
-            hemi_map,
-            use_flat,
-            segmentation_format=segmentation_format,
-        )
-
-    segmentations, results = _run_batch(
+    segmentations, results = _run_batch_with_context(
         folder,
         quint_alignment,
-        non_linear,
-        apply_damage_mask,
-        use_flat,
+        pipeline_ctx,
         SectionResult.empty,
-        _submit,
+        segmentation_to_atlas_space,
     )
 
     (
@@ -343,31 +377,27 @@ def folder_to_atlas_space_intensity(
         tuple: (region_intensities_list, images, centroids, centroids_labels,
                 centroids_hemi_labels, centroids_len, centroids_intensities)
     """
+    pipeline_ctx = _build_pipeline_context(
+        atlas_labels=atlas_labels,
+        atlas_volume=atlas_volume,
+        hemi_map=hemi_map,
+        segmentation_format="binary",
+        non_linear=non_linear,
+        object_cutoff=0,
+        use_flat=use_flat,
+        pixel_id=[0, 0, 0],
+        apply_damage_mask=apply_damage_mask,
+        intensity_channel=intensity_channel,
+        min_intensity=min_intensity,
+        max_intensity=max_intensity,
+    )
 
-    def _submit(executor, index, slice_info, seg_path, current_flat):
-        return executor.submit(
-            segmentation_to_atlas_space_intensity,
-            slice_info,
-            seg_path,
-            atlas_labels,
-            intensity_channel,
-            current_flat,
-            non_linear,
-            atlas_volume,
-            hemi_map,
-            use_flat,
-            min_intensity=min_intensity,
-            max_intensity=max_intensity,
-        )
-
-    images, results = _run_batch(
+    images, results = _run_batch_with_context(
         folder,
         quint_alignment,
-        non_linear,
-        apply_damage_mask,
-        use_flat,
+        pipeline_ctx,
         IntensitySectionResult.empty,
-        _submit,
+        segmentation_to_atlas_space_intensity,
     )
 
     # ── Concatenate IntensitySectionResults ────────────────────────────

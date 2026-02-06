@@ -16,6 +16,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from PyNutil.processing.pipeline.section_processor import segmentation_to_atlas_space
 from PyNutil.processing.transforms import get_region_areas
 from PyNutil.processing.adapters import SliceInfo
+from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
+from PyNutil.context import PipelineContext, SectionContext
 
 
 class TestCoordinateScaling(TimedTestCase):
@@ -102,18 +104,25 @@ class TestCoordinateScaling(TimedTestCase):
                     side_effect=_fake_get_objects,
                 ),
             ):
-                result = segmentation_to_atlas_space(
-                    slice_info=slice_info,
-                    segmentation_path=seg_path,
+                adapter = SegmentationAdapterRegistry.get("binary")
+                p_ctx = PipelineContext(
                     atlas_labels=pd.DataFrame(),
-                    flat_file_atlas=None,
-                    pixel_id="auto",
-                    non_linear=False,
-                    object_cutoff=0,
                     atlas_volume=None,
                     hemi_map=None,
+                    segmentation_adapter=adapter,
+                    non_linear=False,
+                    object_cutoff=0,
                     use_flat=False,
+                    pixel_id="auto",
+                    apply_damage_mask=True,
                 )
+                s_ctx = SectionContext(
+                    section_number=1,
+                    slice_info=slice_info,
+                    segmentation_path=seg_path,
+                    flat_file_path=None,
+                )
+                result = segmentation_to_atlas_space(p_ctx, s_ctx)
 
             # The single pixel at x=25 should land in the left half (label 1).
             self.assertIsNotNone(result.points_labels)
