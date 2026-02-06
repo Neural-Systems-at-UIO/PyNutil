@@ -94,6 +94,87 @@ def _run_batch(
     return segmentations, results
 
 
+# ---------------------------------------------------------------------------
+# Concatenation helpers
+# ---------------------------------------------------------------------------
+
+def _concat_float(arrays):
+    """Concatenate arrays, returning empty float64 array if all empty."""
+    non_empty = [a for a in arrays if a is not None and len(a) > 0]
+    return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.float64)
+
+
+def _concat_int(arrays):
+    """Concatenate arrays, returning empty int64 array if all empty."""
+    non_empty = [a for a in arrays if a is not None and len(a) > 0]
+    return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.int64)
+
+
+def _concat_bool(arrays):
+    """Concatenate arrays, returning empty bool array if all empty."""
+    non_empty = [a for a in arrays if a is not None and len(a) > 0]
+    return np.concatenate(non_empty) if non_empty else np.array([], dtype=bool)
+
+
+def _concat_or_none(arrays):
+    """Concatenate arrays, returning None if all empty (for intensity pipeline)."""
+    non_empty = [a for a in arrays if a is not None and len(a) > 0]
+    return np.concatenate(non_empty) if non_empty else None
+
+
+def _safe_len(arr):
+    """Return len(arr) if arr is not None, else 0."""
+    return len(arr) if arr is not None else 0
+
+
+def _unzip_section_results(results):
+    """Unzip a list of SectionResults into per-field lists (single pass)."""
+    pts, ctrs = [], []
+    pts_lbl, ctrs_lbl = [], []
+    pts_hemi, ctrs_hemi = [], []
+    pt_undam, ct_undam = [], []
+    pts_len, ctrs_len = [], []
+    tot_pts_len, tot_ctrs_len = [], []
+    areas = []
+
+    for r in results:
+        pts.append(r.points);          ctrs.append(r.centroids)
+        pts_lbl.append(r.points_labels);  ctrs_lbl.append(r.centroids_labels)
+        pts_hemi.append(r.points_hemi_labels)
+        ctrs_hemi.append(r.centroids_hemi_labels)
+        pt_undam.append(r.per_point_undamaged)
+        ct_undam.append(r.per_centroid_undamaged)
+        pts_len.append(_safe_len(r.points))
+        ctrs_len.append(_safe_len(r.centroids))
+        tot_pts_len.append(_safe_len(r.per_point_undamaged))
+        tot_ctrs_len.append(_safe_len(r.per_centroid_undamaged))
+        areas.append(r.region_areas)
+
+    return (pts, ctrs, pts_lbl, ctrs_lbl, pts_hemi, ctrs_hemi,
+            pt_undam, ct_undam, pts_len, ctrs_len, tot_pts_len,
+            tot_ctrs_len, areas)
+
+
+def _collect_section_results(results):
+    """Concatenate a list of SectionResults into flat arrays and length lists."""
+    (pts, ctrs, pts_lbl, ctrs_lbl, pts_hemi, ctrs_hemi,
+     pt_undam, ct_undam, pts_len, ctrs_len, tot_pts_len,
+     tot_ctrs_len, areas) = _unzip_section_results(results)
+
+    return (
+        _concat_float(pts), _concat_float(ctrs),
+        _concat_int(pts_lbl), _concat_int(ctrs_lbl),
+        _concat_int(pts_hemi), _concat_int(ctrs_hemi),
+        areas, pts_len, ctrs_len,
+        _concat_bool(pt_undam), _concat_bool(ct_undam),
+        tot_pts_len, tot_ctrs_len,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Binary pipeline
+# ---------------------------------------------------------------------------
+
 def folder_to_atlas_space(
     folder,
     quint_alignment,
@@ -150,43 +231,13 @@ def folder_to_atlas_space(
         SectionResult.empty, _submit,
     )
 
-    # ── Concatenate SectionResults ────────────────────────────────────
-    def _concat(arrays):
-        non_empty = [a for a in arrays if a is not None and len(a) > 0]
-        return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.float64)
-
-    def _concat_int(arrays):
-        non_empty = [a for a in arrays if a is not None and len(a) > 0]
-        return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.int64)
-
-    def _concat_bool(arrays):
-        non_empty = [a for a in arrays if a is not None and len(a) > 0]
-        return np.concatenate(non_empty) if non_empty else np.array([], dtype=bool)
-
-    points = _concat([r.points for r in results])
-    centroids = _concat([r.centroids for r in results])
-    points_labels = _concat_int([r.points_labels for r in results])
-    centroids_labels = _concat_int([r.centroids_labels for r in results])
-    points_hemi_labels = _concat_int([r.points_hemi_labels for r in results])
-    centroids_hemi_labels = _concat_int([r.centroids_hemi_labels for r in results])
-    per_point_undamaged = _concat_bool([r.per_point_undamaged for r in results])
-    per_centroid_undamaged = _concat_bool([r.per_centroid_undamaged for r in results])
-
-    # Viz lengths: undamaged-only 3D coordinates (for MeshView slicing)
-    points_len = [len(r.points) if r.points is not None else 0 for r in results]
-    centroids_len = [len(r.centroids) if r.centroids is not None else 0 for r in results]
-
-    # Total lengths: all points including damaged (for counting / PerEntityArrays)
-    total_points_len = [
-        len(r.per_point_undamaged) if r.per_point_undamaged is not None else 0
-        for r in results
-    ]
-    total_centroids_len = [
-        len(r.per_centroid_undamaged) if r.per_centroid_undamaged is not None else 0
-        for r in results
-    ]
-
-    region_areas_list = [r.region_areas for r in results]
+    (
+        points, centroids, points_labels, centroids_labels,
+        points_hemi_labels, centroids_hemi_labels,
+        region_areas_list, points_len, centroids_len,
+        per_point_undamaged, per_centroid_undamaged,
+        total_points_len, total_centroids_len,
+    ) = _collect_section_results(results)
 
     return (
         points,
@@ -263,14 +314,10 @@ def folder_to_atlas_space_intensity(
     # ── Concatenate IntensitySectionResults ────────────────────────────
     region_intensities_list = [r.region_intensities for r in results]
 
-    def _concat(arrays):
-        non_empty = [a for a in arrays if a is not None and len(a) > 0]
-        return np.concatenate(non_empty) if non_empty else None
-
-    all_centroids = _concat([r.points for r in results])
-    all_labels = _concat([r.points_labels for r in results])
-    all_hemi = _concat([r.points_hemi_labels for r in results])
-    all_intensities = _concat([r.point_intensities for r in results])
+    all_centroids = _concat_or_none([r.points for r in results])
+    all_labels = _concat_or_none([r.points_labels for r in results])
+    all_hemi = _concat_or_none([r.points_hemi_labels for r in results])
+    all_intensities = _concat_or_none([r.point_intensities for r in results])
     centroids_len = [r.num_points for r in results]
 
     return (

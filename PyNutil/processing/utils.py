@@ -155,6 +155,9 @@ def apply_mean_intensities(df):
         safe_mean_ratio(df, num, den, res)
 
 
+_CHANNEL_INDEX = {"R": 2, "G": 1, "B": 0}
+
+
 def convert_to_intensity(image, channel):
     """
     Converts an image to an intensity map based on the specified channel.
@@ -169,17 +172,11 @@ def convert_to_intensity(image, channel):
     if image.ndim == 2:
         return image.astype(np.float32)
 
-    if channel == "R":
-        return image[:, :, 2].astype(np.float32)
-    elif channel == "G":
-        return image[:, :, 1].astype(np.float32)
-    elif channel == "B":
-        return image[:, :, 0].astype(np.float32)
-    elif channel == "grayscale" or channel == "auto":
-        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    else:
-        # Default to grayscale if channel is unknown
-        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    idx = _CHANNEL_INDEX.get(channel)
+    if idx is not None:
+        return image[:, :, idx].astype(np.float32)
+
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
 
 def scale_positions(id_y, id_x, y_scale, x_scale):

@@ -92,7 +92,11 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
     if ctx.pixel_points is not None:
         _save_whole_series_meshview(ctx, output_folder)
 
-    # Save settings to JSON file for reference
+    _save_settings_json(ctx, output_folder)
+
+
+def _save_settings_json(ctx: SaveContext, output_folder: str) -> None:
+    """Write a reference settings JSON to *output_folder*."""
     settings_dict = {
         "segmentation_folder": ctx.segmentation_folder,
         "image_folder": ctx.image_folder,
@@ -102,17 +106,15 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
         "custom_region_path": ctx.custom_region_path,
     }
 
-    # Add atlas information to settings
-    if ctx.atlas_name:
-        settings_dict["atlas_name"] = ctx.atlas_name
-    if ctx.atlas_path:
-        settings_dict["atlas_path"] = ctx.atlas_path
-    if ctx.label_path:
-        settings_dict["label_path"] = ctx.label_path
-    if ctx.settings_file:
-        settings_dict["settings_file"] = ctx.settings_file
+    for key, val in [
+        ("atlas_name", ctx.atlas_name),
+        ("atlas_path", ctx.atlas_path),
+        ("label_path", ctx.label_path),
+        ("settings_file", ctx.settings_file),
+    ]:
+        if val:
+            settings_dict[key] = val
 
-    # Write settings to file
     settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
     with open(settings_file_path, "w") as f:
         json.dump(settings_dict, f, indent=4)

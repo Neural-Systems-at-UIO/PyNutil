@@ -109,17 +109,7 @@ def apply_custom_regions(df, custom_regions_dict):
     # Annotate original df
     df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
     temp_df = df.copy()
-
-    temp_df["r"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][0] if x in rgb_mapping else None
-    )
-    temp_df["g"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][1] if x in rgb_mapping else None
-    )
-    temp_df["b"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][2] if x in rgb_mapping else None
-    )
-    temp_df["idx"] = temp_df["idx"].map(id_mapping)
+    _apply_rgb_mapping(temp_df, id_mapping, rgb_mapping)
 
     # Aggregate all numeric columns dynamically
     numeric_cols = temp_df.select_dtypes(include=[np.number]).columns
@@ -145,6 +135,20 @@ def apply_custom_regions(df, custom_regions_dict):
         + [col for col in grouped_df.columns if col not in common_columns]
     )
     return grouped_df, df
+
+
+def _apply_rgb_mapping(temp_df, id_mapping, rgb_mapping):
+    """Set r/g/b columns and remap idx using *id_mapping* and *rgb_mapping*."""
+    temp_df["r"] = temp_df["idx"].map(
+        lambda x: rgb_mapping[x][0] if x in rgb_mapping else None
+    )
+    temp_df["g"] = temp_df["idx"].map(
+        lambda x: rgb_mapping[x][1] if x in rgb_mapping else None
+    )
+    temp_df["b"] = temp_df["idx"].map(
+        lambda x: rgb_mapping[x][2] if x in rgb_mapping else None
+    )
+    temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
 
 # ── Segmentation quantification ─────────────────────────────────────────
@@ -266,6 +270,25 @@ def quantify_intensity(region_intensities_list, atlas_labels):
 # ── Shared combine logic ────────────────────────────────────────────────
 
 
+def _backfill_label_info(label_df, atlas_labels):
+    """Fill missing name/colour columns from *atlas_labels* for zero-count regions."""
+    if "name" not in atlas_labels.columns or "name" not in label_df.columns:
+        return
+    idx_map = atlas_labels.set_index("idx")
+    for col in ["name", "r", "g", "b"]:
+        if col in atlas_labels.columns:
+            label_df[col] = label_df[col].fillna(label_df["idx"].map(idx_map[col]))
+
+
+def _prepare_combined_df(per_section_df, available_group_cols):
+    """Concat per-section DataFrames and coerce non-group columns to numeric."""
+    combined = pd.concat(per_section_df)
+    for col in combined.columns:
+        if col not in available_group_cols:
+            combined[col] = pd.to_numeric(combined[col], errors="coerce")
+    return combined
+
+
 def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
     """Combine per-section DataFrames into a whole-series report.
 
@@ -281,48 +304,22 @@ def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
     Returns:
         Combined DataFrame reindexed to all atlas regions.
     """
-    combined = pd.concat(per_section_df)
-
-    # Determine which columns to sum (only numeric, exclude groupby keys)
     group_cols = ["idx", "name", "r", "g", "b"]
-    available_group_cols = [c for c in group_cols if c in combined.columns]
-
-    # Ensure all data columns are numeric — empty DataFrames from
-    # pixel_count_per_region may produce 'object' dtype columns that
-    # would otherwise be silently dropped by the groupby sum.
-    for col in combined.columns:
-        if col not in available_group_cols:
-            combined[col] = pd.to_numeric(combined[col], errors="coerce")
+    available_group_cols = [c for c in group_cols if c in per_section_df[0].columns]
+    combined = _prepare_combined_df(per_section_df, available_group_cols)
 
     numeric_cols = combined.select_dtypes(include=[np.number]).columns
     sum_cols = [c for c in numeric_cols if c not in set(available_group_cols)]
-
-    # Drop any pre-existing derived ratio columns before summing — they
-    # must be recomputed from the summed numerator/denominator.
     sum_cols = [c for c in sum_cols if c not in _RATIO_COLS]
 
     label_df = (
         combined.groupby(available_group_cols)[sum_cols].sum().reset_index()
     )
 
-    # Compute derived columns via the mode-specific callback
     derive_fn(label_df)
-
     label_df.fillna(0, inplace=True)
-
-    # Reindex to include all atlas regions
     label_df = reindex_to_atlas(label_df, atlas_labels)
-
-    # Ensure name/colour columns are present for regions with zero counts
-    if "name" in atlas_labels.columns and "name" in label_df.columns:
-        for col in ["name", "r", "g", "b"]:
-            if col in atlas_labels.columns:
-                label_df[col] = label_df[col].fillna(
-                    label_df["idx"].map(
-                        atlas_labels.set_index("idx")[col]
-                    )
-                )
-
+    _backfill_label_info(label_df, atlas_labels)
     label_df.fillna(0, inplace=True)
     return label_df
 

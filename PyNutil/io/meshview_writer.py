@@ -42,6 +42,19 @@ def create_region_dict(
     return region_dict
 
 
+def _meshview_entry(idx, name, triplets, r, g, b):
+    """Build a single MeshView JSON entry dict."""
+    return {
+        "idx": idx,
+        "count": len(triplets) // 3,
+        "name": name,
+        "triplets": triplets,
+        "r": int(r),
+        "g": int(g),
+        "b": int(b),
+    }
+
+
 def _write_points(
     points_dict: Dict[int, List[float]],
     filename: str,
@@ -77,15 +90,9 @@ def _write_points(
         if colors_dict is not None and name in colors_dict:
             r, g, b = colors_dict[name]
 
-        meshview.append({
-            "idx": idx,
-            "count": len(points_dict[name]) // 3,
-            "name": str(region_info["name"].values[0]),
-            "triplets": points_dict[name],
-            "r": r,
-            "g": g,
-            "b": b,
-        })
+        meshview.append(_meshview_entry(
+            idx, str(region_info["name"].values[0]), points_dict[name], r, g, b,
+        ))
 
     with open(filename, "w") as f:
         json.dump(meshview, f)
@@ -126,31 +133,19 @@ def write_hemi_points_to_meshview(
         return
 
     if hemi_label is not None and not (hemi_label == None).all():
-        # Left hemisphere
-        split_fn_left = filename.split("/")
-        split_fn_left[-1] = "left_hemisphere_" + split_fn_left[-1]
-        outname_left = os.sep.join(split_fn_left)
-        write_points_to_meshview(
-            points[hemi_label == 1],
-            point_names[hemi_label == 1],
-            outname_left,
-            info_file,
-            intensities[hemi_label == 1] if intensities is not None else None,
-            colormap,
-        )
-
-        # Right hemisphere
-        split_fn_right = filename.split("/")
-        split_fn_right[-1] = "right_hemisphere_" + split_fn_right[-1]
-        outname_right = os.sep.join(split_fn_right)
-        write_points_to_meshview(
-            points[hemi_label == 2],
-            point_names[hemi_label == 2],
-            outname_right,
-            info_file,
-            intensities[hemi_label == 2] if intensities is not None else None,
-            colormap,
-        )
+        for hval, prefix in ((1, "left_hemisphere_"), (2, "right_hemisphere_")):
+            parts = filename.split("/")
+            parts[-1] = prefix + parts[-1]
+            hemi_path = os.sep.join(parts)
+            mask = hemi_label == hval
+            write_points_to_meshview(
+                points[mask],
+                point_names[mask],
+                hemi_path,
+                info_file,
+                intensities[mask] if intensities is not None else None,
+                colormap,
+            )
 
     write_points_to_meshview(
         points, point_names, filename, info_file, intensities, colormap
@@ -203,39 +198,51 @@ def _write_intensity_meshview(
 
     Groups points by intensity bins for efficient visualization.
     """
-    # RGB mode: group by unique RGB values for maximum fidelity
     if colormap == "original_colours" and intensities.ndim == 2 and intensities.shape[1] == 3:
-        rgb_data = intensities.astype(np.uint8)
-        unique_colors, inverse_indices = np.unique(rgb_data, axis=0, return_inverse=True)
-
-        # If there are too many unique colors, MeshView UI becomes slow.
-        # Rounding to nearest 8 (32 levels per channel) keeps it responsive.
-        if len(unique_colors) > 1024:
-            rgb_data = (np.round(rgb_data / 8) * 8)
-            rgb_data = np.clip(rgb_data, 0, 255).astype(np.uint8)
-            unique_colors, inverse_indices = np.unique(rgb_data, axis=0, return_inverse=True)
-
-        meshview = []
-        for i, color in enumerate(unique_colors):
-            mask = inverse_indices == i
-            bin_points = points[mask]
-            if len(bin_points) > 0:
-                r, g, b = color
-                meshview.append({
-                    "idx": i,
-                    "count": len(bin_points),
-                    "name": f"Color {r},{g},{b}",
-                    "triplets": bin_points.flatten().tolist(),
-                    "r": int(r),
-                    "g": int(g),
-                    "b": int(b),
-                })
-
-        with open(filename, "w") as f:
-            json.dump(meshview, f)
+        _write_rgb_meshview(points, intensities, filename)
         return
 
-    # Grayscale or Colormap mode
+    _write_scalar_meshview(points, intensities, filename, colormap)
+
+
+def _write_rgb_meshview(
+    points: np.ndarray,
+    intensities: np.ndarray,
+    filename: str,
+) -> None:
+    """Write RGB-coloured point cloud to MeshView JSON."""
+    rgb_data = intensities.astype(np.uint8)
+    unique_colors, inverse_indices = np.unique(rgb_data, axis=0, return_inverse=True)
+
+    # If there are too many unique colors, MeshView UI becomes slow.
+    # Rounding to nearest 8 (32 levels per channel) keeps it responsive.
+    if len(unique_colors) > 1024:
+        rgb_data = (np.round(rgb_data / 8) * 8)
+        rgb_data = np.clip(rgb_data, 0, 255).astype(np.uint8)
+        unique_colors, inverse_indices = np.unique(rgb_data, axis=0, return_inverse=True)
+
+    meshview = []
+    for i, color in enumerate(unique_colors):
+        mask = inverse_indices == i
+        bin_points = points[mask]
+        if len(bin_points) > 0:
+            r, g, b = color
+            triplets = bin_points.flatten().tolist()
+            meshview.append(_meshview_entry(
+                i, f"Color {r},{g},{b}", triplets, r, g, b,
+            ))
+
+    with open(filename, "w") as f:
+        json.dump(meshview, f)
+
+
+def _write_scalar_meshview(
+    points: np.ndarray,
+    intensities: np.ndarray,
+    filename: str,
+    colormap: str,
+) -> None:
+    """Write grayscale/colormap point cloud to MeshView JSON."""
     if intensities.ndim == 2 and intensities.shape[1] == 3:
         # Convert RGB to grayscale for binning
         intensities = (
@@ -255,17 +262,10 @@ def _write_intensity_meshview(
 
         if len(bin_points) > 0:
             r, g, b = get_colormap_color(val, colormap)
-            name = f"Intensity {val}"
-
-            meshview.append({
-                "idx": int(val),
-                "count": len(bin_points),
-                "name": name,
-                "triplets": bin_points.flatten().tolist(),
-                "r": int(r),
-                "g": int(g),
-                "b": int(b),
-            })
+            triplets = bin_points.flatten().tolist()
+            meshview.append(_meshview_entry(
+                int(val), f"Intensity {val}", triplets, r, g, b,
+            ))
 
     with open(filename, "w") as f:
         json.dump(meshview, f)

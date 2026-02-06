@@ -73,6 +73,10 @@ class PyNutilConfig:
         return self
 
     def validate(self) -> None:
+        self._validate_folders()
+        self._validate_atlas()
+
+    def _validate_folders(self) -> None:
         if self.segmentation_folder and self.image_folder:
             raise ValueError(
                 "Please specify either segmentation_folder or image_folder, not both."
@@ -90,6 +94,7 @@ class PyNutilConfig:
                 "You can't specify both colour and image_folder since there are no segmentations"
             )
 
+    def _validate_atlas(self) -> None:
         if (self.atlas_path or self.label_path) and self.atlas_name:
             raise ValueError(
                 "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."

@@ -124,6 +124,24 @@ def overlay_segmentation_on_rgb(
         return rgb_image
 
 
+def _resolve_target_dimensions(slice_dict, coloured_slice):
+    """Determine target (width, height) from segmentation or registration dims."""
+    target_width = coloured_slice.shape[1]
+    target_height = coloured_slice.shape[0]
+    segmentation_img = None
+
+    seg_path = None  # not used here; caller handles seg loading
+    try:
+        reg_w = int(slice_dict.get("width", target_width))
+        reg_h = int(slice_dict.get("height", target_height))
+        if reg_w > 0 and reg_h > 0:
+            target_width, target_height = reg_w, reg_h
+    except Exception:
+        pass
+
+    return target_width, target_height
+
+
 def create_colored_atlas_slice(
     slice_dict: Dict,
     atlas_volume: np.ndarray,
@@ -151,35 +169,22 @@ def create_colored_atlas_slice(
         default_colour,
     )
 
-    target_width = coloured_slice.shape[1]
-    target_height = coloured_slice.shape[0]
-
     segmentation_img = None
-    if segmentation_path and os.path.exists(segmentation_path):
+    seg_available = segmentation_path and os.path.exists(segmentation_path)
+    if seg_available:
         try:
             segmentation_img = load_segmentation(segmentation_path)
-            seg_height, seg_width = segmentation_img.shape[:2]
-            target_width, target_height = seg_width, seg_height
+            target_width, target_height = segmentation_img.shape[1], segmentation_img.shape[0]
         except Exception as e:
             print(f"Warning: Could not load segmentation for sizing: {e}")
+            seg_available = False
+            target_width, target_height = _resolve_target_dimensions(slice_dict, coloured_slice)
+    else:
+        target_width, target_height = _resolve_target_dimensions(slice_dict, coloured_slice)
 
-    if segmentation_img is None:
-        try:
-            reg_w = int(slice_dict.get("width", target_width))
-            reg_h = int(slice_dict.get("height", target_height))
-            if reg_w > 0 and reg_h > 0:
-                target_width, target_height = reg_w, reg_h
-        except Exception:
-            pass
-
-    if (coloured_slice.shape[1], coloured_slice.shape[0]) != (
-        target_width,
-        target_height,
-    ):
+    if (coloured_slice.shape[1], coloured_slice.shape[0]) != (target_width, target_height):
         coloured_slice = cv2.resize(
-            coloured_slice,
-            (target_width, target_height),
-            interpolation=cv2.INTER_NEAREST,
+            coloured_slice, (target_width, target_height), interpolation=cv2.INTER_NEAREST,
         )
 
     if scale_factor != 1.0:
@@ -189,37 +194,22 @@ def create_colored_atlas_slice(
             coloured_slice, (new_width, new_height), interpolation=cv2.INTER_NEAREST
         )
 
-    if segmentation_path and os.path.exists(segmentation_path):
+    if seg_available:
         coloured_slice = overlay_segmentation_on_rgb(
             coloured_slice, segmentation_path, segmentation=segmentation_img
         )
 
-    # Object overlay intentionally not implemented yet in PyNutil core (requires passing object coords)
-    # Kept as a hook for future usage.
     _ = objects_data
 
-    # OpenCV expects BGR ordering when saving.
     bgr = cv2.cvtColor(coloured_slice, cv2.COLOR_RGB2BGR)
     if not cv2.imwrite(output_path, bgr):
         raise RuntimeError(f"Failed to write visualisation image: {output_path}")
 
 
-def create_section_visualisations(
-    segmentation_folder: str,
-    alignment_json: Dict,
-    atlas_volume: np.ndarray,
-    atlas_labels: pd.DataFrame,
-    output_folder: str,
-    objects_per_section: Optional[List[List[Dict]]] = None,
-    scale_factor: float = 0.5,
-):
-    """Create visualisation images for all sections in the analysis."""
-    viz_dir = os.path.join(output_folder, "visualisations")
-    os.makedirs(viz_dir, exist_ok=True)
-
-    # Pre-index segmentations once to avoid repeated exists checks.
-    seg_index: Dict[str, str] = {}
+def _index_segmentation_files(segmentation_folder: str) -> Dict[str, str]:
+    """Build a base-name→path index of segmentation images in a folder."""
     ext_priority = {".png": 0, ".tif": 1, ".tiff": 2, ".jpg": 3, ".jpeg": 4}
+    seg_index: Dict[str, str] = {}
     try:
         for filename in os.listdir(segmentation_folder):
             base, ext = os.path.splitext(filename)
@@ -235,9 +225,49 @@ def create_section_visualisations(
             if ext_priority.get(ext, 999) < ext_priority.get(existing_ext.lower(), 999):
                 seg_index[base] = path
     except Exception:
-        # Fall back to per-slice existence checks if indexing fails.
         seg_index = {}
+    return seg_index
 
+
+def _resolve_segmentation_path(
+    filename: str,
+    seg_index: Dict[str, str],
+    segmentation_folder: str,
+) -> Optional[str]:
+    """Resolve the segmentation file path for a given slice filename."""
+    if not filename:
+        return None
+    base_name = os.path.splitext(filename)[0]
+    if seg_index:
+        return seg_index.get(base_name)
+    candidates = [
+        f"{base_name}.png",
+        f"{base_name}.tif",
+        f"{base_name}.tiff",
+        f"{base_name}.jpg",
+        f"{base_name}.jpeg",
+    ]
+    for candidate in candidates:
+        p = os.path.join(segmentation_folder, candidate)
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def create_section_visualisations(
+    segmentation_folder: str,
+    alignment_json: Dict,
+    atlas_volume: np.ndarray,
+    atlas_labels: pd.DataFrame,
+    output_folder: str,
+    objects_per_section: Optional[List[List[Dict]]] = None,
+    scale_factor: float = 0.5,
+):
+    """Create visualisation images for all sections in the analysis."""
+    viz_dir = os.path.join(output_folder, "visualisations")
+    os.makedirs(viz_dir, exist_ok=True)
+
+    seg_index = _index_segmentation_files(segmentation_folder)
     color_lookup = _build_color_lookup(atlas_labels)
 
     slices = alignment_json.get("slices", [])
@@ -245,23 +275,9 @@ def create_section_visualisations(
         try:
             filename = slice_dict.get("filename", "")
             base_name = os.path.splitext(filename)[0] if filename else f"slice_{i:03d}"
-
-            segmentation_path = None
-            if filename and seg_index:
-                segmentation_path = seg_index.get(base_name)
-            elif filename:
-                candidates = [
-                    f"{base_name}.png",
-                    f"{base_name}.tif",
-                    f"{base_name}.tiff",
-                    f"{base_name}.jpg",
-                    f"{base_name}.jpeg",
-                ]
-                for candidate in candidates:
-                    p = os.path.join(segmentation_folder, candidate)
-                    if os.path.exists(p):
-                        segmentation_path = p
-                        break
+            segmentation_path = _resolve_segmentation_path(
+                filename, seg_index, segmentation_folder,
+            )
 
             section_objects = None
             if objects_per_section and i < len(objects_per_section):
@@ -271,8 +287,6 @@ def create_section_visualisations(
                 f"section_{slice_dict.get('nr', i):03d}_{base_name}_atlas_colored.png"
             )
             output_path = os.path.join(viz_dir, output_filename)
-
-            # Ensure the directory for the output file exists (in case base_name has slashes)
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             create_colored_atlas_slice(

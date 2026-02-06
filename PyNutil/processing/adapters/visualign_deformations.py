@@ -3,6 +3,40 @@
 import numpy as np
 
 
+def _classify_triangles(x, y, triangles):
+    """Partition *triangles* into keep/remove lists via circumcircle test."""
+    found = False
+    keep = []
+    remove = []
+    for triangle in triangles:
+        if not found and triangle.intriangle(x, y):
+            found = True
+        if triangle.incircle(x, y):
+            remove.append(triangle)
+        else:
+            keep.append(triangle)
+    return found, keep, remove
+
+
+def _insert_marker(marker, vertices, edges, triangles):
+    """Insert a single marker into the triangulation, returning updated triangle list."""
+    x, y = marker[2:4]
+    found, keep, remove = _classify_triangles(x, y, triangles)
+    if found:
+        for triangle in remove:
+            triangle.removeedges()
+    else:
+        keep.extend(remove)
+
+    vcount = len(vertices)
+    vertices.append(marker)
+    for i in range(vcount - 1):
+        for j in range(i + 1, vcount):
+            if edges[edgeindex(i, j)] == 1:
+                keep.append(Triangle(i, j, vcount, vertices, edges))
+    return keep
+
+
 def triangulate(w, h, markers):
     """
     Triangulates a set of markers.
@@ -27,29 +61,7 @@ def triangulate(w, h, markers):
     edges[0] = edges[1] = edges[4] = edges[5] = 2
 
     for marker in markers:
-        x, y = marker[2:4]
-        found = False
-        keep = []
-        remove = []
-        for triangle in triangles:
-            if not found and triangle.intriangle(x, y):
-                found = True
-            if triangle.incircle(x, y):
-                remove.append(triangle)
-            else:
-                keep.append(triangle)
-        if found:
-            for triangle in remove:
-                triangle.removeedges()
-        else:
-            keep.extend(remove)
-        triangles = keep
-        vcount = len(vertices)
-        vertices.append(marker)
-        for i in range(vcount - 1):
-            for j in range(i + 1, vcount):
-                if edges[edgeindex(i, j)] == 1:
-                    triangles.append(Triangle(i, j, vcount, vertices, edges))
+        triangles = _insert_marker(marker, vertices, edges, triangles)
     return triangles
 
 
@@ -154,6 +166,14 @@ def edgeindex(a, b):
     return j * (j - 1) // 2 + i
 
 
+def _build_decomp(A, B, C, i, j):
+    """Build a 3x3 decomposition matrix from vertex coordinates at indices *i*, *j*."""
+    ax, ay = A[i], A[j]
+    bx, by = B[i], B[j]
+    cx, cy = C[i], C[j]
+    return inv3x3([[bx - ax, by - ay, 0], [cx - ax, cy - ay, 0], [ax, ay, 1]])
+
+
 class Triangle:
     def __init__(self, a, b, c, vlist, elist):
         """
@@ -173,18 +193,15 @@ class Triangle:
         self.edges = [edgeindex(a, b), edgeindex(a, c), edgeindex(b, c)]
         for edge in self.edges:
             elist[edge] += 1
-        ax, ay = self.A[0:2]
-        bx, by = self.B[0:2]
-        cx, cy = self.C[0:2]
-        self.forwarddecomp = inv3x3(
-            [[bx - ax, by - ay, 0], [cx - ax, cy - ay, 0], [ax, ay, 1]]
-        )
-        ax, ay = self.A[2:4]
-        bx, by = self.B[2:4]
-        cx, cy = self.C[2:4]
-        self.decomp = inv3x3(
-            [[bx - ax, by - ay, 0], [cx - ax, cy - ay, 0], [ax, ay, 1]]
-        )
+        self.forwarddecomp = _build_decomp(self.A, self.B, self.C, 0, 1)
+        self.decomp = _build_decomp(self.A, self.B, self.C, 2, 3)
+        self._compute_circumcircle()
+
+    def _compute_circumcircle(self):
+        """Compute circumcircle parameters from backward-transform vertices."""
+        ax, ay = self.A[2], self.A[3]
+        bx, by = self.B[2], self.B[3]
+        cx, cy = self.C[2], self.C[3]
         a2 = distsquare(bx, by, cx, cy)
         b2 = distsquare(ax, ay, cx, cy)
         c2 = distsquare(ax, ay, bx, by)
@@ -235,17 +252,9 @@ class Triangle:
         if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
             return uv1
 
-    def inforward_vec(self, x, y, xPrime, yPrime):
-        """
-        Checks if a set of points are inside the forward-transformed triangle.
-
-        Args:
-            x (ndarray): X coordinates of the points.
-            y (ndarray): Y coordinates of the points.
-            xPrime (ndarray): Transformed X coordinates of the points.
-            yPrime (ndarray): Transformed Y coordinates of the points.
-        """
-        uv1 = rowmul3_vec(x, y, self.forwarddecomp)
+    def _barycentric_transform_vec(self, x, y, xPrime, yPrime, decomp, xi, yi):
+        """Shared barycentric interpolation for vectorised triangle transforms."""
+        uv1 = rowmul3_vec(x, y, decomp)
         ok = (
             (uv1[:, 0] >= 0)
             & (uv1[:, 0] <= 1)
@@ -254,41 +263,20 @@ class Triangle:
             & (uv1[:, 0] + uv1[:, 1] <= 1)
         )
         xPrime[ok] = (
-            self.A[2]
-            + (self.B[2] - self.A[2]) * uv1[ok, 0]
-            + (self.C[2] - self.A[2]) * uv1[ok, 1]
+            self.A[xi]
+            + (self.B[xi] - self.A[xi]) * uv1[ok, 0]
+            + (self.C[xi] - self.A[xi]) * uv1[ok, 1]
         )
         yPrime[ok] = (
-            self.A[3]
-            + (self.B[3] - self.A[3]) * uv1[ok, 0]
-            + (self.C[3] - self.A[3]) * uv1[ok, 1]
+            self.A[yi]
+            + (self.B[yi] - self.A[yi]) * uv1[ok, 0]
+            + (self.C[yi] - self.A[yi]) * uv1[ok, 1]
         )
+
+    def inforward_vec(self, x, y, xPrime, yPrime):
+        """Apply forward barycentric transform to points inside this triangle."""
+        self._barycentric_transform_vec(x, y, xPrime, yPrime, self.forwarddecomp, 2, 3)
 
     def intriangle_vec(self, x, y, xPrime, yPrime):
-        """
-        Checks if a set of points are inside the triangle.
-
-        Args:
-            x (ndarray): X coordinates of the points.
-            y (ndarray): Y coordinates of the points.
-            xPrime (ndarray): Transformed X coordinates of the points.
-            yPrime (ndarray): Transformed Y coordinates of the points.
-        """
-        uv1 = rowmul3_vec(x, y, self.decomp)
-        ok = (
-            (uv1[:, 0] >= 0)
-            & (uv1[:, 0] <= 1)
-            & (uv1[:, 1] >= 0)
-            & (uv1[:, 1] <= 1)
-            & (uv1[:, 0] + uv1[:, 1] <= 1)
-        )
-        xPrime[ok] = (
-            self.A[0]
-            + (self.B[0] - self.A[0]) * uv1[ok, 0]
-            + (self.C[0] - self.A[0]) * uv1[ok, 1]
-        )
-        yPrime[ok] = (
-            self.A[1]
-            + (self.B[1] - self.A[1]) * uv1[ok, 0]
-            + (self.C[1] - self.A[1]) * uv1[ok, 1]
-        )
+        """Apply backward barycentric transform to points inside this triangle."""
+        self._barycentric_transform_vec(x, y, xPrime, yPrime, self.decomp, 0, 1)

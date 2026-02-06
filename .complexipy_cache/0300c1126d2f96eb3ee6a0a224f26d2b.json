@@ -85,6 +85,18 @@
       "path": "PyNutil/io/file_operations.py"
     },
     {
+      "complexity": 1,
+      "file_name": "loaders.py",
+      "function_name": "get_current_flat_file",
+      "path": "PyNutil/io/loaders.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "loaders.py",
+      "function_name": "get_flat_files",
+      "path": "PyNutil/io/loaders.py"
+    },
+    {
       "complexity": 2,
       "file_name": "loaders.py",
       "function_name": "load_segmentation",
@@ -112,6 +124,12 @@
       "complexity": 10,
       "file_name": "loaders.py",
       "function_name": "open_custom_region_file",
+      "path": "PyNutil/io/loaders.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "loaders.py",
+      "function_name": "number_sections",
       "path": "PyNutil/io/loaders.py"
     },
     {
@@ -183,6 +201,12 @@
     {
       "complexity": 2,
       "file_name": "propagation.py",
+      "function_name": "_propagate_endpoints",
+      "path": "PyNutil/io/propagation.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "propagation.py",
       "function_name": "normalize",
       "path": "PyNutil/io/propagation.py"
     },
@@ -193,7 +217,19 @@
       "path": "PyNutil/io/propagation.py"
     },
     {
-      "complexity": 33,
+      "complexity": 3,
+      "file_name": "propagation.py",
+      "function_name": "_finalize_anchorings",
+      "path": "PyNutil/io/propagation.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "propagation.py",
+      "function_name": "_interpolate_gaps",
+      "path": "PyNutil/io/propagation.py"
+    },
+    {
+      "complexity": 13,
       "file_name": "propagation.py",
       "function_name": "propagate",
       "path": "PyNutil/io/propagation.py"
@@ -213,7 +249,19 @@
     {
       "complexity": 4,
       "file_name": "section_visualisation.py",
+      "function_name": "_resolve_target_dimensions",
+      "path": "PyNutil/io/section_visualisation.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "section_visualisation.py",
       "function_name": "create_colored_image_from_slice",
+      "path": "PyNutil/io/section_visualisation.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "section_visualisation.py",
+      "function_name": "_resolve_segmentation_path",
       "path": "PyNutil/io/section_visualisation.py"
     },
     {
@@ -223,15 +271,21 @@
       "path": "PyNutil/io/section_visualisation.py"
     },
     {
-      "complexity": 16,
+      "complexity": 9,
+      "file_name": "section_visualisation.py",
+      "function_name": "create_section_visualisations",
+      "path": "PyNutil/io/section_visualisation.py"
+    },
+    {
+      "complexity": 11,
       "file_name": "section_visualisation.py",
       "function_name": "create_colored_atlas_slice",
       "path": "PyNutil/io/section_visualisation.py"
     },
     {
-      "complexity": 35,
+      "complexity": 12,
       "file_name": "section_visualisation.py",
-      "function_name": "create_section_visualisations",
+      "function_name": "_index_segmentation_files",
       "path": "PyNutil/io/section_visualisation.py"
     },
     {
@@ -261,6 +315,24 @@
     {
       "complexity": 0,
       "file_name": "main.py",
+      "function_name": "PyNutil::_build_save_context",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "main.py",
+      "function_name": "PyNutil::_save_custom_regions",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "main.py",
+      "function_name": "PyNutil::_save_primary",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "main.py",
       "function_name": "PyNutil::get_coordinates",
       "path": "PyNutil/main.py"
     },
@@ -285,6 +357,18 @@
     {
       "complexity": 1,
       "file_name": "main.py",
+      "function_name": "PyNutil::_create_visualisations",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "main.py",
+      "function_name": "PyNutil::_save_volumes",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "main.py",
       "function_name": "_BinaryMode::get_coordinates",
       "path": "PyNutil/main.py"
     },
@@ -297,13 +381,37 @@
     {
       "complexity": 2,
       "file_name": "main.py",
+      "function_name": "PyNutil::_filter_undamaged",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "main.py",
       "function_name": "_BinaryMode::quantify",
       "path": "PyNutil/main.py"
     },
     {
       "complexity": 3,
       "file_name": "main.py",
+      "function_name": "PyNutil::_remap_via_atlas_labels",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "main.py",
+      "function_name": "PyNutil::save_analysis",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "main.py",
       "function_name": "_apply_custom_regions_to_quantification",
+      "path": "PyNutil/main.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "main.py",
+      "function_name": "PyNutil::_remap_compressed_ids",
       "path": "PyNutil/main.py"
     },
     {
@@ -316,12 +424,6 @@
       "complexity": 15,
       "file_name": "main.py",
       "function_name": "PyNutil::__init__",
-      "path": "PyNutil/main.py"
-    },
-    {
-      "complexity": 15,
-      "file_name": "main.py",
-      "function_name": "PyNutil::save_analysis",
       "path": "PyNutil/main.py"
     },
     {
@@ -364,6 +466,18 @@
       "complexity": 0,
       "file_name": "damage.py",
       "function_name": "QCAlignDamageProvider::_create_damage_mask",
+      "path": "PyNutil/processing/adapters/damage.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "damage.py",
+      "function_name": "update_spacing",
+      "path": "PyNutil/processing/adapters/damage.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "damage.py",
+      "function_name": "create_damage_mask",
       "path": "PyNutil/processing/adapters/damage.py"
     },
     {
@@ -529,6 +643,12 @@
       "path": "PyNutil/processing/adapters/segmentation.py"
     },
     {
+      "complexity": 8,
+      "file_name": "segmentation.py",
+      "function_name": "detect_pixel_id",
+      "path": "PyNutil/processing/adapters/segmentation.py"
+    },
+    {
       "complexity": 0,
       "file_name": "visualign_deformations.py",
       "function_name": "Triangle::incircle",
@@ -601,15 +721,27 @@
       "path": "PyNutil/processing/adapters/visualign_deformations.py"
     },
     {
+      "complexity": 1,
+      "file_name": "visualign_deformations.py",
+      "function_name": "triangulate",
+      "path": "PyNutil/processing/adapters/visualign_deformations.py"
+    },
+    {
       "complexity": 2,
       "file_name": "visualign_deformations.py",
       "function_name": "Triangle::intriangle",
       "path": "PyNutil/processing/adapters/visualign_deformations.py"
     },
     {
-      "complexity": 26,
+      "complexity": 7,
       "file_name": "visualign_deformations.py",
-      "function_name": "triangulate",
+      "function_name": "_classify_triangles",
+      "path": "PyNutil/processing/adapters/visualign_deformations.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "visualign_deformations.py",
+      "function_name": "_insert_marker",
       "path": "PyNutil/processing/adapters/visualign_deformations.py"
     },
     {
@@ -679,9 +811,33 @@
       "path": "PyNutil/processing/analysis/region_counting.py"
     },
     {
-      "complexity": 54,
+      "complexity": 5,
+      "file_name": "region_counting.py",
+      "function_name": "_lookup_counts",
+      "path": "PyNutil/processing/analysis/region_counting.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "region_counting.py",
+      "function_name": "_build_count_mask",
+      "path": "PyNutil/processing/analysis/region_counting.py"
+    },
+    {
+      "complexity": 8,
       "file_name": "region_counting.py",
       "function_name": "pixel_count_per_region",
+      "path": "PyNutil/processing/analysis/region_counting.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "region_counting.py",
+      "function_name": "_counts_for",
+      "path": "PyNutil/processing/analysis/region_counting.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "region_counting.py",
+      "function_name": "_derive_count_aggregates",
       "path": "PyNutil/processing/analysis/region_counting.py"
     },
     {
@@ -721,15 +877,27 @@
       "path": "PyNutil/processing/atlas_map.py"
     },
     {
-      "complexity": 9,
+      "complexity": 6,
       "file_name": "atlas_map.py",
-      "function_name": "load_atlas_image",
+      "function_name": "_build_area_combos",
       "path": "PyNutil/processing/atlas_map.py"
     },
     {
-      "complexity": 20,
+      "complexity": 6,
+      "file_name": "atlas_map.py",
+      "function_name": "_derive_area_aggregates",
+      "path": "PyNutil/processing/atlas_map.py"
+    },
+    {
+      "complexity": 7,
       "file_name": "atlas_map.py",
       "function_name": "flat_to_dataframe",
+      "path": "PyNutil/processing/atlas_map.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "atlas_map.py",
+      "function_name": "load_atlas_image",
       "path": "PyNutil/processing/atlas_map.py"
     },
     {
@@ -775,10 +943,28 @@
       "path": "PyNutil/processing/pipeline/connected_components.py"
     },
     {
-      "complexity": 8,
-      "file_name": "image_loaders.py",
-      "function_name": "detect_pixel_id",
-      "path": "PyNutil/processing/pipeline/image_loaders.py"
+      "complexity": 1,
+      "file_name": "section_processor.py",
+      "function_name": "_safe_index",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "section_processor.py",
+      "function_name": "_to_array",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "section_processor.py",
+      "function_name": "_apply_intensity_bounds",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "section_processor.py",
+      "function_name": "_extract_signal_pixels",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
     },
     {
       "complexity": 3,
@@ -787,15 +973,39 @@
       "path": "PyNutil/processing/pipeline/section_processor.py"
     },
     {
-      "complexity": 22,
+      "complexity": 4,
+      "file_name": "section_processor.py",
+      "function_name": "_build_intensity_result",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "section_processor.py",
+      "function_name": "_filter_rgb_by_intensity",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 5,
       "file_name": "section_processor.py",
       "function_name": "segmentation_to_atlas_space",
       "path": "PyNutil/processing/pipeline/section_processor.py"
     },
     {
-      "complexity": 29,
+      "complexity": 6,
+      "file_name": "section_processor.py",
+      "function_name": "_compute_hemi_state",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 8,
       "file_name": "section_processor.py",
       "function_name": "segmentation_to_atlas_space_intensity",
+      "path": "PyNutil/processing/pipeline/section_processor.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "section_processor.py",
+      "function_name": "_compute_damage_state",
       "path": "PyNutil/processing/pipeline/section_processor.py"
     },
     {
@@ -811,9 +1021,27 @@
       "path": "PyNutil/processing/section_volume.py"
     },
     {
+      "complexity": 2,
+      "file_name": "section_volume.py",
+      "function_name": "_resize_damage_mask",
+      "path": "PyNutil/processing/section_volume.py"
+    },
+    {
       "complexity": 4,
       "file_name": "section_volume.py",
       "function_name": "_sample_and_deform_plane",
+      "path": "PyNutil/processing/section_volume.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "section_volume.py",
+      "function_name": "project_sections_to_volume",
+      "path": "PyNutil/processing/section_volume.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "section_volume.py",
+      "function_name": "_process_one_section",
       "path": "PyNutil/processing/section_volume.py"
     },
     {
@@ -832,12 +1060,6 @@
       "complexity": 15,
       "file_name": "section_volume.py",
       "function_name": "_knn_interpolate_generic",
-      "path": "PyNutil/processing/section_volume.py"
-    },
-    {
-      "complexity": 25,
-      "file_name": "section_volume.py",
-      "function_name": "project_sections_to_volume",
       "path": "PyNutil/processing/section_volume.py"
     },
     {
@@ -903,25 +1125,7 @@
     {
       "complexity": 1,
       "file_name": "utils.py",
-      "function_name": "get_current_flat_file",
-      "path": "PyNutil/processing/utils.py"
-    },
-    {
-      "complexity": 1,
-      "file_name": "utils.py",
-      "function_name": "get_flat_files",
-      "path": "PyNutil/processing/utils.py"
-    },
-    {
-      "complexity": 1,
-      "file_name": "utils.py",
       "function_name": "resize_mask_nearest",
-      "path": "PyNutil/processing/utils.py"
-    },
-    {
-      "complexity": 1,
-      "file_name": "utils.py",
-      "function_name": "update_spacing",
       "path": "PyNutil/processing/utils.py"
     },
     {
@@ -937,21 +1141,9 @@
       "path": "PyNutil/processing/utils.py"
     },
     {
-      "complexity": 3,
-      "file_name": "utils.py",
-      "function_name": "create_damage_mask",
-      "path": "PyNutil/processing/utils.py"
-    },
-    {
       "complexity": 7,
       "file_name": "utils.py",
       "function_name": "convert_to_intensity",
-      "path": "PyNutil/processing/utils.py"
-    },
-    {
-      "complexity": 11,
-      "file_name": "utils.py",
-      "function_name": "number_sections",
       "path": "PyNutil/processing/utils.py"
     },
     {

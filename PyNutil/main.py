@@ -292,6 +292,16 @@ class PyNutil:
         self.custom_regions_dict = custom_regions_dict
         self.custom_atlas_labels = custom_atlas_labels
 
+        self._load_atlas_data(cfg)
+        self._infer_voxel_size()
+
+        self.point_intensities = None
+
+        # Select the quantification strategy based on the input mode (OCP)
+        self._mode = _IntensityMode() if self.image_folder else _BinaryMode()
+
+    def _load_atlas_data(self, cfg):
+        """Load atlas volume, hemisphere map, and labels from config."""
         if cfg.atlas_path and cfg.label_path:
             self.atlas_path = cfg.atlas_path
             self.label_path = cfg.label_path
@@ -305,20 +315,16 @@ class PyNutil:
                 atlas_name=cfg.atlas_name
             )
 
-        # If not provided, try to infer voxel size from brainglobe atlas name
-        # e.g. "allen_mouse_25um" -> 25 microns.
-        if self.voxel_size_um is None and isinstance(self.atlas_name, str):
-            m = re.search(r"(\d+(?:\.\d+)?)um$", self.atlas_name)
-            if m:
-                try:
-                    self.voxel_size_um = float(m.group(1))
-                except Exception:
-                    self.voxel_size_um = None
-
-        self.point_intensities = None
-
-        # Select the quantification strategy based on the input mode (OCP)
-        self._mode = _IntensityMode() if self.image_folder else _BinaryMode()
+    def _infer_voxel_size(self):
+        """Try to infer voxel size from brainglobe atlas name."""
+        if self.voxel_size_um is not None or not isinstance(self.atlas_name, str):
+            return
+        m = re.search(r"(\d+(?:\.\d+)?)um$", self.atlas_name)
+        if m:
+            try:
+                self.voxel_size_um = float(m.group(1))
+            except Exception:
+                self.voxel_size_um = None
 
     def _check_atlas_name(self):
         if not self.atlas_name:
@@ -485,25 +491,36 @@ class PyNutil:
         -------
         None
         """
-        # Build a shared context for save_analysis_output calls.
-        # Hemi labels are full-length; filter to undamaged-only for MeshView.
+        base_ctx = self._build_save_context(colormap)
+
+        self._save_primary(base_ctx, output_folder)
+        self._save_volumes(output_folder)
+
+        if self.custom_regions_dict is not None:
+            self._save_custom_regions(base_ctx, output_folder)
+
+        self._remap_compressed_ids(output_folder)
+
+        if create_visualisations and self.alignment_json:
+            self._create_visualisations(output_folder)
+
+        logger.info(f"Saved output to {output_folder}")
+
+    def _filter_undamaged(self, full_arr, undamaged_mask):
+        """Filter *full_arr* to undamaged-only using *undamaged_mask* if lengths match."""
+        if undamaged_mask is not None and full_arr is not None and len(undamaged_mask) == len(full_arr):
+            return full_arr[undamaged_mask]
+        return full_arr
+
+    def _build_save_context(self, colormap):
+        """Build a SaveContext with MeshView-appropriate (undamaged-only) arrays."""
         _und_p = getattr(self, "per_point_undamaged", None)
         _und_c = getattr(self, "per_centroid_undamaged", None)
-        _phl = getattr(self, "points_hemi_labels", None)
-        _chl = getattr(self, "centroids_hemi_labels", None)
-        if _und_p is not None and _phl is not None and len(_und_p) == len(_phl):
-            viz_phl = _phl[_und_p]
-        else:
-            viz_phl = _phl
-        if _und_c is not None and _chl is not None and len(_und_c) == len(_chl):
-            viz_chl = _chl[_und_c]
-        else:
-            viz_chl = _chl
-        base_ctx = SaveContext(
+        return SaveContext(
             pixel_points=getattr(self, "pixel_points", None),
             centroids=getattr(self, "centroids", None),
-            points_hemi_labels=viz_phl,
-            centroids_hemi_labels=viz_chl,
+            points_hemi_labels=self._filter_undamaged(getattr(self, "points_hemi_labels", None), _und_p),
+            centroids_hemi_labels=self._filter_undamaged(getattr(self, "centroids_hemi_labels", None), _und_c),
             points_len=getattr(self, "points_len", None),
             centroids_len=getattr(self, "centroids_len", None),
             segmentation_filenames=getattr(self, "segmentation_filenames", None),
@@ -518,42 +535,29 @@ class PyNutil:
             atlas_path=getattr(self, "atlas_path", None),
             label_path=getattr(self, "label_path", None),
             settings_file=getattr(self, "settings_file", None),
+            colormap=colormap,
         )
 
-        # Primary save
-        base_ctx.label_df = getattr(self, "label_df", None)
-        base_ctx.per_section_df = getattr(self, "per_section_df", None)
-        # Labels/hemi are full-length (all points); filter to undamaged-only
-        # to match pixel_points (undamaged 3D coords) for MeshView slicing.
+    def _save_primary(self, base_ctx, output_folder):
+        """Save primary (non-custom) analysis output."""
         _und_p = getattr(self, "per_point_undamaged", None)
         _und_c = getattr(self, "per_centroid_undamaged", None)
-        _pl = getattr(self, "points_labels", None)
-        _cl = getattr(self, "centroids_labels", None)
-        if _und_p is not None and _pl is not None and len(_und_p) == len(_pl):
-            base_ctx.labeled_points = _pl[_und_p]
-        else:
-            base_ctx.labeled_points = _pl
-        if _und_c is not None and _cl is not None and len(_und_c) == len(_cl):
-            base_ctx.labeled_points_centroids = _cl[_und_c]
-        else:
-            base_ctx.labeled_points_centroids = _cl
+        base_ctx.label_df = getattr(self, "label_df", None)
+        base_ctx.per_section_df = getattr(self, "per_section_df", None)
+        base_ctx.labeled_points = self._filter_undamaged(getattr(self, "points_labels", None), _und_p)
+        base_ctx.labeled_points_centroids = self._filter_undamaged(getattr(self, "centroids_labels", None), _und_c)
         base_ctx.atlas_labels = self.atlas_labels
         base_ctx.prepend = ""
-        base_ctx.colormap = colormap
         save_analysis_output(base_ctx, output_folder)
 
-        # Save interpolated/frequency volumes if they exist.
-        # We write NIfTI via nibabel to avoid relying on NRRD output tooling.
+    def _save_volumes(self, output_folder):
+        """Save interpolated / frequency / damage NIfTI volumes if they exist."""
         try:
-            vol = getattr(self, "interpolated_volume", None)
-            freq = getattr(self, "frequency_volume", None)
-            damage = getattr(self, "damage_volume", None)
-
             save_volume_niftis(
                 output_folder=output_folder,
-                interpolated_volume=vol,
-                frequency_volume=freq,
-                damage_volume=damage,
+                interpolated_volume=getattr(self, "interpolated_volume", None),
+                frequency_volume=getattr(self, "frequency_volume", None),
+                damage_volume=getattr(self, "damage_volume", None),
                 atlas_volume=getattr(self, "atlas_volume", None),
                 voxel_size_um=getattr(self, "voxel_size_um", None),
                 logger=logger,
@@ -561,74 +565,62 @@ class PyNutil:
         except Exception as e:
             logger.error(f"Saving NIfTI volumes failed: {e}")
 
-        if self.custom_regions_dict is not None:
-            base_ctx.label_df = getattr(self, "custom_label_df", None)
-            base_ctx.per_section_df = getattr(self, "custom_per_section_df", None)
-            # Custom labels are full-length; filter to undamaged-only for MeshView.
-            _pcl = getattr(self, "points_custom_labels", None)
-            _ccl = getattr(self, "centroids_custom_labels", None)
-            if _und_p is not None and _pcl is not None and len(_und_p) == len(_pcl):
-                base_ctx.labeled_points = _pcl[_und_p]
-            else:
-                base_ctx.labeled_points = _pcl
-            if _und_c is not None and _ccl is not None and len(_und_c) == len(_ccl):
-                base_ctx.labeled_points_centroids = _ccl[_und_c]
-            else:
-                base_ctx.labeled_points_centroids = _ccl
-            base_ctx.atlas_labels = self.custom_atlas_labels
-            base_ctx.prepend = "custom_"
-            base_ctx.colormap = "gray"
-            save_analysis_output(base_ctx, output_folder)
+    def _save_custom_regions(self, base_ctx, output_folder):
+        """Save custom-region analysis output."""
+        _und_p = getattr(self, "per_point_undamaged", None)
+        _und_c = getattr(self, "per_centroid_undamaged", None)
+        base_ctx.label_df = getattr(self, "custom_label_df", None)
+        base_ctx.per_section_df = getattr(self, "custom_per_section_df", None)
+        base_ctx.labeled_points = self._filter_undamaged(getattr(self, "points_custom_labels", None), _und_p)
+        base_ctx.labeled_points_centroids = self._filter_undamaged(getattr(self, "centroids_custom_labels", None), _und_c)
+        base_ctx.atlas_labels = self.custom_atlas_labels
+        base_ctx.prepend = "custom_"
+        base_ctx.colormap = "gray"
+        save_analysis_output(base_ctx, output_folder)
 
-        # FIX: Remap IDs back to original if they were compressed
+    def _remap_compressed_ids(self, output_folder):
+        """Restore original atlas IDs if they were compressed during loading."""
         if hasattr(self, "label_df") and ("original_idx" in self.label_df.columns):
             self.label_df["idx"] = self.label_df["original_idx"]
             self.label_df = self.label_df.drop(columns=["original_idx"])
-            # Save CSV again with correct IDs
             self.label_df.to_csv(
-                f"{output_folder}/whole_series_report/counts.csv",
-                sep=";",
-                index=False,
+                f"{output_folder}/whole_series_report/counts.csv", sep=";", index=False,
             )
-        elif hasattr(self, "atlas_labels") and (
-            "original_idx" in self.atlas_labels.columns
-        ):
-            # Back-compat for older remap implementation storing original_idx on atlas_labels
-            mapping = self.atlas_labels[["idx", "original_idx"]].dropna()
-            mapping["idx"] = mapping["idx"].astype(int)
-            mapping["original_idx"] = mapping["original_idx"].astype(int)
-            if hasattr(self, "label_df") and ("idx" in self.label_df.columns):
-                self.label_df = self.label_df.merge(mapping, on="idx", how="left")
-                if "original_idx" in self.label_df.columns:
-                    self.label_df["idx"] = (
-                        self.label_df["original_idx"]
-                        .fillna(self.label_df["idx"])
-                        .astype(int)
-                    )
-                    self.label_df = self.label_df.drop(columns=["original_idx"])
-                    self.label_df.to_csv(
-                        f"{output_folder}/whole_series_report/counts.csv",
-                        sep=";",
-                        index=False,
-                    )
+        elif hasattr(self, "atlas_labels") and ("original_idx" in self.atlas_labels.columns):
+            self._remap_via_atlas_labels(output_folder)
 
-        # visualisation
-        if create_visualisations and self.alignment_json:
-            try:
-                from .io.section_visualisation import create_section_visualisations
-                from .io.loaders import load_quint_json
+    def _remap_via_atlas_labels(self, output_folder):
+        """Back-compat remap when original_idx lives on atlas_labels."""
+        mapping = self.atlas_labels[["idx", "original_idx"]].dropna()
+        mapping["idx"] = mapping["idx"].astype(int)
+        mapping["original_idx"] = mapping["original_idx"].astype(int)
+        if not (hasattr(self, "label_df") and "idx" in self.label_df.columns):
+            return
+        self.label_df = self.label_df.merge(mapping, on="idx", how="left")
+        if "original_idx" not in self.label_df.columns:
+            return
+        self.label_df["idx"] = (
+            self.label_df["original_idx"].fillna(self.label_df["idx"]).astype(int)
+        )
+        self.label_df = self.label_df.drop(columns=["original_idx"])
+        self.label_df.to_csv(
+            f"{output_folder}/whole_series_report/counts.csv", sep=";", index=False,
+        )
 
-                alignment_data = load_quint_json(self.alignment_json)
+    def _create_visualisations(self, output_folder):
+        """Create section visualisation PNGs."""
+        try:
+            from .io.section_visualisation import create_section_visualisations
+            from .io.loaders import load_quint_json
 
-                logger.info("Creating section visualisations...")
-                create_section_visualisations(
-                    self.segmentation_folder or self.image_folder,
-                    alignment_data,
-                    self.atlas_volume,
-                    self.atlas_labels,
-                    output_folder,
-                )
-            except Exception as e:
-                logger.error(f"visualisation failed: {e}")
-
-        logger.info(f"Saved output to {output_folder}")
+            alignment_data = load_quint_json(self.alignment_json)
+            logger.info("Creating section visualisations...")
+            create_section_visualisations(
+                self.segmentation_folder or self.image_folder,
+                alignment_data,
+                self.atlas_volume,
+                self.atlas_labels,
+                output_folder,
+            )
+        except Exception as e:
+            logger.error(f"visualisation failed: {e}")

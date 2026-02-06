@@ -61,6 +61,85 @@ def create_base_counts_dict(with_hemisphere=False, with_damage=False):
     return counts
 
 
+def _counts_for(mask: np.ndarray | None, arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return (label_ids, counts) from *arr*, optionally filtered by boolean *mask*."""
+    _empty = np.array([], dtype=np.int64)
+    if arr.size == 0:
+        return _empty, _empty
+
+    data = np.asarray(arr if mask is None else arr[mask])
+    if data.size == 0:
+        return _empty, _empty
+
+    if data.dtype != np.int64:
+        data = data.astype(np.int64, copy=False)
+
+    # Filter negative / background ids.
+    data = data[data >= 0]
+    if data.size == 0:
+        return _empty, _empty
+
+    max_id = int(data.max())
+
+    # Fast path when label ids are reasonably bounded.
+    if max_id <= 2_000_000:
+        bc = np.bincount(data, minlength=max_id + 1)
+        labels = np.nonzero(bc)[0].astype(np.int64, copy=False)
+        return labels, bc[labels].astype(np.int64, copy=False)
+
+    labels, counts = np.unique(data, return_counts=True)
+    return labels.astype(np.int64, copy=False), counts.astype(np.int64, copy=False)
+
+
+def _lookup_counts(idx: np.ndarray, labels: np.ndarray, counts: np.ndarray) -> np.ndarray:
+    """Map *idx* values to corresponding *counts* via sorted *labels*."""
+    if idx.size == 0 or labels.size == 0:
+        return np.zeros(idx.shape, dtype=np.int64)
+    pos = np.searchsorted(labels, idx)
+    out = np.zeros(idx.shape, dtype=np.int64)
+    valid = (pos >= 0) & (pos < labels.size)
+    if np.any(valid):
+        pos_v = pos[valid]
+        found = labels[pos_v] == idx[valid]
+        if np.any(found):
+            out_idx = np.flatnonzero(valid)[found]
+            out[out_idx] = counts[pos_v[found]]
+    return out
+
+
+def _build_count_mask(hemi_arr, undamaged_arr, hemi_val, dmg_val):
+    """Build a boolean mask combining hemisphere and damage filters."""
+    mask = None
+    if hemi_val is not None:
+        mask = hemi_arr == hemi_val
+    if dmg_val is not None:
+        dmg_mask = undamaged_arr if dmg_val else ~undamaged_arr
+        mask = dmg_mask if mask is None else (mask & dmg_mask)
+    return mask
+
+
+def _derive_count_aggregates(base, with_hemi, with_damage):
+    """Derive aggregate columns (totals) from leaf-level count columns."""
+    if with_hemi and with_damage:
+        for entity in ("pixel_count", "object_count"):
+            base[f"left_hemi_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"left_hemi_damaged_{entity}"]
+            base[f"right_hemi_{entity}"] = base[f"right_hemi_undamaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
+            base[f"undamaged_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"right_hemi_undamaged_{entity}"]
+            base[f"damaged_{entity}"] = base[f"left_hemi_damaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
+            base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
+    elif with_hemi:
+        for entity in ("pixel_count", "object_count"):
+            base[entity] = base[f"left_hemi_{entity}"] + base[f"right_hemi_{entity}"]
+    elif with_damage:
+        for entity in ("pixel_count", "object_count"):
+            base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
+    # else: leaves are already named 'pixel_count' / 'object_count'
+
+    # Legacy naming: "damaged_pixel_counts" (trailing 's')
+    if "damaged_pixel_count" in base.columns:
+        base.rename(columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True)
+
+
 def pixel_count_per_region(
     labels_dict_points,
     labeled_dict_centroids,
@@ -90,76 +169,17 @@ def pixel_count_per_region(
     # If hemisphere labels are present, they are integers (1/2). If absent, they are None.
     with_hemi = None not in current_points_hemi
 
-    def _counts_for(mask: np.ndarray | None, arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        if arr.size == 0:
-            return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
-
-        data = arr if mask is None else arr[mask]
-        if data.size == 0:
-            return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
-
-        data = np.asarray(data)
-        if data.dtype != np.int64:
-            data = data.astype(np.int64, copy=False)
-
-        # Defensive: ignore any negative/background oddities.
-        if data.size == 0:
-            return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
-        if np.any(data < 0):
-            data = data[data >= 0]
-            if data.size == 0:
-                return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
-
-        max_id = int(data.max())
-
-        # Fast path when label ids are reasonably bounded.
-        if max_id <= 2_000_000:
-            bc = np.bincount(data, minlength=max_id + 1)
-            labels = np.nonzero(bc)[0].astype(np.int64, copy=False)
-            counts = bc[labels].astype(np.int64, copy=False)
-            return labels, counts
-
-        labels, counts = np.unique(data, return_counts=True)
-        return labels.astype(np.int64, copy=False), counts.astype(np.int64, copy=False)
-
-    def _lookup_counts(idx: np.ndarray, labels: np.ndarray, counts: np.ndarray) -> np.ndarray:
-        if idx.size == 0 or labels.size == 0:
-            return np.zeros(idx.shape, dtype=np.int64)
-        pos = np.searchsorted(labels, idx)
-        out = np.zeros(idx.shape, dtype=np.int64)
-        valid = (pos >= 0) & (pos < labels.size)
-        if np.any(valid):
-            pos_v = pos[valid]
-            found = labels[pos_v] == idx[valid]
-            if np.any(found):
-                out_idx = np.flatnonzero(valid)[found]
-                out[out_idx] = counts[pos_v[found]]
-        return out
-
     # ── Build leaf count specs ───────────────────────────────────────
-    # Iterate over the cross-product of (hemi, damage) dimensions.
-    # Each iteration produces one (mask, source_array, column) pair for
-    # pixels and one for centroids.  This replaces the four copy-pasted
-    # branches that existed previously.
     hemi_iter = [(1, "left_hemi_"), (2, "right_hemi_")] if with_hemi else [(None, "")]
     dmg_iter = [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
-
-    def _build_mask(hemi_arr, undamaged_arr, hemi_val, dmg_val):
-        mask = None
-        if hemi_val is not None:
-            mask = hemi_arr == hemi_val
-        if dmg_val is not None:
-            dmg_mask = undamaged_arr if dmg_val else ~undamaged_arr
-            mask = dmg_mask if mask is None else (mask & dmg_mask)
-        return mask
 
     computed = {}  # col_name -> (idx_array, count_array)
     all_indices = []
 
     for hemi_val, hemi_pfx in hemi_iter:
         for dmg_val, dmg_pfx in dmg_iter:
-            p_mask = _build_mask(current_points_hemi, current_points_undamaged, hemi_val, dmg_val)
-            c_mask = _build_mask(current_centroids_hemi, current_centroids_undamaged, hemi_val, dmg_val)
+            p_mask = _build_count_mask(current_points_hemi, current_points_undamaged, hemi_val, dmg_val)
+            c_mask = _build_count_mask(current_centroids_hemi, current_centroids_undamaged, hemi_val, dmg_val)
 
             px_col = f"{hemi_pfx}{dmg_pfx}pixel_count"
             obj_col = f"{hemi_pfx}{dmg_pfx}object_count"
@@ -187,24 +207,7 @@ def pixel_count_per_region(
         base[col] = _lookup_counts(idx, c_idx, c_cnt)
 
     # ── Derive aggregate columns from leaves ──────────────────────────
-    if with_hemi and with_damage:
-        for entity in ("pixel_count", "object_count"):
-            base[f"left_hemi_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"left_hemi_damaged_{entity}"]
-            base[f"right_hemi_{entity}"] = base[f"right_hemi_undamaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
-            base[f"undamaged_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"right_hemi_undamaged_{entity}"]
-            base[f"damaged_{entity}"] = base[f"left_hemi_damaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
-            base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
-    elif with_hemi:
-        for entity in ("pixel_count", "object_count"):
-            base[entity] = base[f"left_hemi_{entity}"] + base[f"right_hemi_{entity}"]
-    elif with_damage:
-        for entity in ("pixel_count", "object_count"):
-            base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
-    # else: leaves are already named 'pixel_count' / 'object_count'
-
-    # Legacy naming: "damaged_pixel_counts" (trailing 's')
-    if "damaged_pixel_count" in base.columns:
-        base.rename(columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True)
+    _derive_count_aggregates(base, with_hemi, with_damage)
 
     return base
 

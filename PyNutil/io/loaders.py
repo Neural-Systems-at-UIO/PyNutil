@@ -57,24 +57,9 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
         raise ValueError("Expected at least two columns in the file.")
 
     custom_region_names = df.columns[1:].to_list()
-    rgb_values = df.iloc[0, :].values[1:]
-
-    try:
-        rgb_values = [list(int(i) for i in rgb.split(";")) for rgb in rgb_values]
-    except ValueError:
-        print("Error: Non integer value found in rgb list")
-
-    atlas_ids = df.iloc[1:, 1:].T.values
-    atlas_ids = [[int(j) for j in i if not j is np.nan] for i in atlas_ids]
-
-    new_ids = []
-    new_id = 1
-    for i in range(len(atlas_ids)):
-        if 0 in atlas_ids[i]:
-            new_ids.append(0)
-        else:
-            new_ids.append(new_id)
-            new_id += 1
+    rgb_values = _parse_rgb_values(df.iloc[0, :].values[1:])
+    atlas_ids = _parse_atlas_ids(df)
+    new_ids = _assign_region_ids(atlas_ids)
 
     if 0 not in new_ids:
         new_ids.append(0)
@@ -103,6 +88,34 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
     return custom_region_dict, result_df
 
 
+def _parse_rgb_values(raw_values):
+    """Parse semicolon-separated RGB strings into lists of ints."""
+    try:
+        return [list(int(i) for i in rgb.split(";")) for rgb in raw_values]
+    except ValueError:
+        print("Error: Non integer value found in rgb list")
+        return raw_values
+
+
+def _parse_atlas_ids(df):
+    """Extract atlas IDs from the custom-region DataFrame body."""
+    atlas_ids = df.iloc[1:, 1:].T.values
+    return [[int(j) for j in i if not j is np.nan] for i in atlas_ids]
+
+
+def _assign_region_ids(atlas_ids):
+    """Create sequential IDs, assigning 0 to groups that contain background."""
+    new_ids = []
+    new_id = 1
+    for group in atlas_ids:
+        if 0 in group:
+            new_ids.append(0)
+        else:
+            new_ids.append(new_id)
+            new_id += 1
+    return new_ids
+
+
 def read_flat_file(file: str) -> np.ndarray:
     """Read a custom 'flat' file format.
 
@@ -123,12 +136,7 @@ def read_flat_file(file: str) -> np.ndarray:
         b, w, h = struct.unpack(">BII", f.read(9))
         data = struct.unpack(">" + ("xBH"[b] * (w * h)), f.read(b * w * h))
 
-    image_data = np.array(data)
-    image = np.zeros((h, w))
-    for x in range(w):
-        for y in range(h):
-            image[y, x] = image_data[x + y * w]
-    return image
+    return np.array(data).reshape(h, w).astype(float)
 
 
 def read_seg_file(file: str) -> np.ndarray:

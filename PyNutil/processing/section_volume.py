@@ -24,6 +24,20 @@ def derive_shape_from_atlas(
     return tuple(max(1, int(round(int(s) * float(scale)))) for s in atlas_shape)
 
 
+def _knn_batch_query(tree, fit_vals, query_pts, k, batch_size, mode):
+    """Query *tree* in batches and return interpolated values."""
+    out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
+    for start in range(0, query_pts.shape[0], batch_size):
+        end = min(start + batch_size, query_pts.shape[0])
+        _, ind = tree.query(query_pts[start:end], k=k)
+        if k == 1:
+            out_vals[start:end] = fit_vals[ind]
+        else:
+            neigh_vals = fit_vals[ind]
+            out_vals[start:end] = neigh_vals.mean(axis=1) if mode == "mean" else neigh_vals.max(axis=1)
+    return out_vals
+
+
 def _knn_interpolate_generic(
     *,
     gv: np.ndarray,
@@ -56,20 +70,7 @@ def _knn_interpolate_generic(
     tree = cKDTree(fit_pts)
 
     query_pts = np.column_stack(np.nonzero(target_mask)).astype(np.float32, copy=False)
-    out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
-
-    for start in range(0, query_pts.shape[0], batch_size):
-        end = min(start + batch_size, query_pts.shape[0])
-        q = query_pts[start:end]
-        _, ind = tree.query(q, k=k)
-        if k == 1:
-            out_vals[start:end] = fit_vals[ind]
-        else:
-            neigh_vals = fit_vals[ind]
-            if mode == "mean":
-                out_vals[start:end] = neigh_vals.mean(axis=1)
-            elif mode == "max":
-                out_vals[start:end] = neigh_vals.max(axis=1)
+    out_vals = _knn_batch_query(tree, fit_vals, query_pts, k, batch_size, mode)
 
     if atlas_mask is not None:
         out = np.zeros_like(gv)
@@ -208,6 +209,27 @@ def _accumulate_object_counts(
     np.add.at(ov_flat, vox_ids, per_vox.astype(np.uint32, copy=False))
 
 
+def _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill):
+    """Derive the value volume from accumulated sums/counts."""
+    if value_mode == "mean":
+        out = np.zeros_like(gv, dtype=np.float32)
+        covered = fv != 0
+        out[covered] = gv[covered] / fv[covered].astype(np.float32)
+        if missing_fill is not None and np.any(~covered):
+            out[~covered] = float(missing_fill)
+        return out
+    if value_mode == "object_count":
+        return ov_flat.reshape(out_shape).astype(np.float32, copy=False)
+    return gv
+
+
+def _resolve_atlas_mask(use_atlas_mask, atlas_volume, gv):
+    """Build the atlas-mask array used during interpolation."""
+    if use_atlas_mask and atlas_volume is not None and atlas_volume.shape == gv.shape:
+        return atlas_volume != 0
+    return None
+
+
 def _finalize_volumes(
     gv: np.ndarray,
     fv: np.ndarray,
@@ -223,40 +245,94 @@ def _finalize_volumes(
     batch_size: int,
 ):
     """Convert accumulated sums and optionally interpolate."""
-    if value_mode == "mean":
-        out = np.zeros_like(gv, dtype=np.float32)
-        covered = fv != 0
-        out[covered] = gv[covered] / fv[covered].astype(np.float32)
-        if missing_fill is not None and np.any(~covered):
-            out[~covered] = float(missing_fill)
-        gv = out
-    elif value_mode == "object_count":
-        gv = ov_flat.reshape(out_shape).astype(np.float32, copy=False)
+    gv = _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill)
 
     if do_interpolation:
-        atlas_mask = None
-        if use_atlas_mask and atlas_volume is not None and atlas_volume.shape == gv.shape:
-            atlas_mask = atlas_volume != 0
-
+        atlas_mask = _resolve_atlas_mask(use_atlas_mask, atlas_volume, gv)
         gv = _knn_interpolate_generic(
             gv=gv, fv=fv, atlas_mask=atlas_mask, k=k, batch_size=batch_size, mode="mean",
         )
-
         if np.any(dv > 0):
             dv_float = dv.astype(np.float32)
             dv_interp = _knn_interpolate_generic(
                 gv=dv_float, fv=fv, atlas_mask=atlas_mask, k=k, batch_size=batch_size, mode="max",
             )
             dv = (dv_interp > 0).astype(np.uint8)
-    else:
-        if missing_fill is not None and not (missing_fill == 0):
-            gv[fv == 0] = float(missing_fill)
+    elif missing_fill is not None and missing_fill != 0:
+        gv[fv == 0] = float(missing_fill)
 
     return (
         gv.astype(np.float32, copy=False),
         fv.astype(np.uint32, copy=False),
         dv.astype(np.uint8, copy=False),
     )
+
+
+def _process_one_section(
+    seg_path, slice_by_nr, colour_arr, intensity_channel,
+    min_intensity, max_intensity, scale, non_linear, value_mode,
+    gv, fv, dv, ov_flat, out_shape,
+):
+    """Process a single section path and accumulate into the output volumes."""
+    sx, sy, sz = out_shape
+    seg_nr = int(number_sections([seg_path])[0])
+    slice_info = slice_by_nr.get(seg_nr)
+    if not slice_info or not slice_info.anchoring:
+        return
+
+    loaded = _read_section_signal(seg_path, colour_arr, intensity_channel, min_intensity, max_intensity)
+    if loaded is None:
+        return
+    seg_values, mask, seg_height, seg_width = loaded
+
+    reg_height, reg_width = slice_info.height, slice_info.width
+
+    # Prepare damage mask in registration space
+    damage_reg = _resize_damage_mask(slice_info.damage_mask, reg_width, reg_height)
+
+    # Resample segmentation values into registration space
+    src = seg_values if value_mode == "mean" else mask
+    values_reg = cv2.resize(src, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST)
+
+    # Sample, deform, and remap the plane
+    sampled_2d, vals, damage_vals, flat_x, flat_y, plane_h, plane_w = (
+        _sample_and_deform_plane(
+            slice_info, values_reg, damage_reg, scale, reg_height, reg_width, non_linear,
+        )
+    )
+
+    # Transform flat grid to atlas-space 3-D coordinates
+    coords = transform_to_atlas_space(slice_info.anchoring, flat_y, flat_x, reg_height, reg_width)
+    if scale != 1.0:
+        coords = coords * float(scale)
+
+    idx = np.rint(coords).astype(np.int64, copy=False)
+    x, y, z = idx[:, 0], idx[:, 1], idx[:, 2]
+    inb = (x >= 0) & (x < sx) & (y >= 0) & (y < sy) & (z >= 0) & (z < sz)
+    if not np.any(inb):
+        return
+
+    x, y, z = x[inb], y[inb], z[inb]
+    np.add.at(fv, (x, y, z), 1)
+    np.add.at(gv, (x, y, z), vals[inb])
+
+    if damage_vals is not None:
+        dv[x, y, z] |= damage_vals[inb].astype(np.uint8)
+
+    if ov_flat is not None:
+        _accumulate_object_counts(sampled_2d, inb, x, y, z, seg_nr, out_shape, ov_flat)
+
+
+def _resize_damage_mask(damage_mask, reg_width, reg_height):
+    """Resize a damage mask to registration resolution, or return None."""
+    if damage_mask is None:
+        return None
+    if damage_mask.shape != (reg_height, reg_width):
+        return cv2.resize(
+            damage_mask.astype(np.uint8),
+            (reg_width, reg_height), interpolation=cv2.INTER_NEAREST,
+        )
+    return damage_mask.astype(np.uint8)
 
 
 def project_sections_to_volume(
@@ -291,7 +367,6 @@ def project_sections_to_volume(
         raise ValueError("value_mode must be one of 'pixel_count', 'mean', or 'object_count'")
 
     out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
-    sx, sy, sz = out_shape
 
     registration = load_registration(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}
@@ -305,60 +380,11 @@ def project_sections_to_volume(
     ov_flat = np.zeros((gv.size,), dtype=np.uint32) if value_mode == "object_count" else None
 
     for seg_path in seg_paths:
-        seg_nr = int(number_sections([seg_path])[0])
-        slice_info = slice_by_nr.get(seg_nr)
-        if not slice_info or not slice_info.anchoring:
-            continue
-
-        loaded = _read_section_signal(seg_path, colour_arr, intensity_channel, min_intensity, max_intensity)
-        if loaded is None:
-            continue
-        seg_values, mask, seg_height, seg_width = loaded
-
-        reg_height, reg_width = slice_info.height, slice_info.width
-
-        # Prepare damage mask in registration space
-        damage_reg = None
-        if slice_info.damage_mask is not None:
-            if slice_info.damage_mask.shape != (reg_height, reg_width):
-                damage_reg = cv2.resize(
-                    slice_info.damage_mask.astype(np.uint8),
-                    (reg_width, reg_height), interpolation=cv2.INTER_NEAREST,
-                )
-            else:
-                damage_reg = slice_info.damage_mask.astype(np.uint8)
-
-        # Resample segmentation values into registration space
-        src = seg_values if value_mode == "mean" else mask
-        values_reg = cv2.resize(src, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST)
-
-        # Sample, deform, and remap the plane
-        sampled_2d, vals, damage_vals, flat_x, flat_y, plane_h, plane_w = (
-            _sample_and_deform_plane(
-                slice_info, values_reg, damage_reg, scale, reg_height, reg_width, non_linear,
-            )
+        _process_one_section(
+            seg_path, slice_by_nr, colour_arr, intensity_channel,
+            min_intensity, max_intensity, scale, non_linear, value_mode,
+            gv, fv, dv, ov_flat, out_shape,
         )
-
-        # Transform flat grid to atlas-space 3-D coordinates
-        coords = transform_to_atlas_space(slice_info.anchoring, flat_y, flat_x, reg_height, reg_width)
-        if scale != 1.0:
-            coords = coords * float(scale)
-
-        idx = np.rint(coords).astype(np.int64, copy=False)
-        x, y, z = idx[:, 0], idx[:, 1], idx[:, 2]
-        inb = (x >= 0) & (x < sx) & (y >= 0) & (y < sy) & (z >= 0) & (z < sz)
-        if not np.any(inb):
-            continue
-
-        x, y, z = x[inb], y[inb], z[inb]
-        np.add.at(fv, (x, y, z), 1)
-        np.add.at(gv, (x, y, z), vals[inb])
-
-        if damage_vals is not None:
-            dv[x, y, z] |= damage_vals[inb].astype(np.uint8)
-
-        if ov_flat is not None:
-            _accumulate_object_counts(sampled_2d, inb, x, y, z, seg_nr, out_shape, ov_flat)
 
     return _finalize_volumes(
         gv, fv, dv, ov_flat, out_shape, value_mode, missing_fill,

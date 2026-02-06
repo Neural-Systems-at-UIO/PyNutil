@@ -11,6 +11,30 @@ from typing import Tuple
 import numpy as np
 
 
+def _viridis(t):
+    return 1.0 - t, t, 0.5 + 0.5 * t
+
+
+def _plasma(t):
+    return t, 1.0 - t, 1.0 - 0.5 * t
+
+
+def _magma(t):
+    return t, t ** 2, 1.0 - t
+
+
+def _hot(t):
+    return min(1.0, t * 3), min(1.0, max(0.0, t * 3 - 1)), min(1.0, max(0.0, t * 3 - 2))
+
+
+_COLORMAPS = {
+    "viridis": _viridis,
+    "plasma": _plasma,
+    "magma": _magma,
+    "hot": _hot,
+}
+
+
 def get_colormap_color(value: int, name: str = "gray") -> Tuple[int, int, int]:
     """Map an intensity value (0-255) to RGB color based on colormap name.
 
@@ -26,33 +50,12 @@ def get_colormap_color(value: int, name: str = "gray") -> Tuple[int, int, int]:
     tuple
         (r, g, b) color values (0-255).
     """
-    value = np.clip(value, 0, 255) / 255.0
+    t = np.clip(value, 0, 255) / 255.0
 
-    if name == "gray":
-        v = int(value * 255)
+    fn = _COLORMAPS.get(name)
+    if fn is None:
+        v = int(t * 255)
         return v, v, v
 
-    # Simple implementations of common colormaps
-    if name == "viridis":
-        # Simplified viridis approximation
-        r = 1.0 - value
-        g = value
-        b = 0.5 + 0.5 * value
-    elif name == "plasma":
-        r = value
-        g = 1.0 - value
-        b = 1.0 - 0.5 * value
-    elif name == "magma":
-        r = value
-        g = value**2
-        b = 1.0 - value
-    elif name == "hot":
-        r = min(1.0, value * 3)
-        g = min(1.0, max(0.0, value * 3 - 1))
-        b = min(1.0, max(0.0, value * 3 - 2))
-    else:
-        # Default to gray
-        v = int(value * 255)
-        return v, v, v
-
+    r, g, b = fn(t)
     return int(r * 255), int(g * 255), int(b * 255)

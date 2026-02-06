@@ -46,40 +46,19 @@ def generate_target_slice(ouv, atlas):
     ox, oy, oz, ux, uy, uz, vx, vy, vz = ouv
     width = np.floor(math.hypot(ux, uy, uz)).astype(int) + 1
     height = np.floor(math.hypot(vx, vy, vz)).astype(int) + 1
-    data = np.zeros((width, height), dtype=np.uint32).flatten()
     xdim, ydim, zdim = atlas.shape
 
     y_values = np.arange(height)
     x_values = np.arange(width)
 
-    hx = ox + vx * (y_values / height)
-    hy = oy + vy * (y_values / height)
-    hz = oz + vz * (y_values / height)
+    lx = np.floor((ox + vx * (y_values / height))[:, None] + ux * (x_values / width)).astype(int)
+    ly = np.floor((oy + vy * (y_values / height))[:, None] + uy * (x_values / width)).astype(int)
+    lz = np.floor((oz + vz * (y_values / height))[:, None] + uz * (x_values / width)).astype(int)
 
-    wx = ux * (x_values / width)
-    wy = uy * (x_values / width)
-    wz = uz * (x_values / width)
+    valid = (0 <= lx) & (lx < xdim) & (0 <= ly) & (ly < ydim) & (0 <= lz) & (lz < zdim)
 
-    lx = np.floor(hx[:, None] + wx).astype(int)
-    ly = np.floor(hy[:, None] + wy).astype(int)
-    lz = np.floor(hz[:, None] + wz).astype(int)
-
-    valid_indices = (
-        (0 <= lx) & (lx < xdim) & (0 <= ly) & (ly < ydim) & (0 <= lz) & (lz < zdim)
-    ).flatten()
-
-    lxf = lx.flatten()
-    lyf = ly.flatten()
-    lzf = lz.flatten()
-
-    valid_lx = lxf[valid_indices]
-    valid_ly = lyf[valid_indices]
-    valid_lz = lzf[valid_indices]
-
-    atlas_slice = atlas[valid_lx, valid_ly, valid_lz]
-    data[valid_indices] = atlas_slice
-
-    data_im = data.reshape((height, width))
+    data_im = np.zeros((height, width), dtype=np.uint32)
+    data_im[valid] = atlas[lx[valid], ly[valid], lz[valid]]
     return data_im
 
 
@@ -105,30 +84,14 @@ def warp_image(image, deformation, rescaleXY):
         h, w = image.shape
     reg_h, reg_w = image.shape
     oldX, oldY = np.meshgrid(np.arange(reg_w), np.arange(reg_h))
-    oldX = oldX.flatten()
-    oldY = oldY.flatten()
-    h_scale = h / reg_h
     w_scale = w / reg_w
-    oldX = oldX * w_scale
-    oldY = oldY * h_scale
-    newX, newY = deformation(oldX, oldY)
-    newX = newX / w_scale
-    newY = newY / h_scale
-    newX = newX.reshape(reg_h, reg_w)
-    newY = newY.reshape(reg_h, reg_w)
-    newX = newX.astype(int)
-    newY = newY.astype(int)
-    tempX = newX.copy()
-    tempY = newY.copy()
-    tempX[tempX >= reg_w] = reg_w - 1
-    tempY[tempY >= reg_h] = reg_h - 1
-    tempX[tempX < 0] = 0
-    tempY[tempY < 0] = 0
-    new_image = image[tempY, tempX]
-    new_image[newX >= reg_w] = 0
-    new_image[newY >= reg_h] = 0
-    new_image[newX < 0] = 0
-    new_image[newY < 0] = 0
+    h_scale = h / reg_h
+    newX, newY = deformation(oldX.ravel() * w_scale, oldY.ravel() * h_scale)
+    newX = (newX / w_scale).reshape(reg_h, reg_w).astype(int)
+    newY = (newY / h_scale).reshape(reg_h, reg_w).astype(int)
+    oob = (newX < 0) | (newX >= reg_w) | (newY < 0) | (newY >= reg_h)
+    new_image = image[np.clip(newY, 0, reg_h - 1), np.clip(newX, 0, reg_w - 1)]
+    new_image[oob] = 0
     return new_image
 
 
@@ -226,6 +189,63 @@ def count_pixels_per_label(image, scale_factor=False):
     return df_area_per_label
 
 
+def _build_area_combos(hemi_mask, damage_mask):
+    """Return list of (hemi_val, damage_val, column_name) for area counting."""
+    if (hemi_mask is not None) and (damage_mask is not None):
+        return [
+            (1, 0, "left_hemi_undamaged_region_area"),
+            (1, 1, "left_hemi_damaged_region_area"),
+            (2, 0, "right_hemi_undamaged_region_area"),
+            (2, 1, "right_hemi_damaged_region_area"),
+        ]
+    if (hemi_mask is not None) and (damage_mask is None):
+        return [
+            (1, 0, "left_hemi_region_area"),
+            (2, 0, "right_hemi_region_area"),
+        ]
+    if (hemi_mask is None) and (damage_mask is not None):
+        return [
+            (0, 0, "undamaged_region_area"),
+            (0, 1, "damaged_region_area"),
+        ]
+    return [(None, None, "region_area")]
+
+
+def _derive_area_aggregates(df, hemi_mask, damage_mask):
+    """Derive aggregate area columns from leaf-level columns in *df*."""
+    if (hemi_mask is not None) and (damage_mask is not None):
+        df["undamaged_region_area"] = (
+            df["left_hemi_undamaged_region_area"]
+            + df["right_hemi_undamaged_region_area"]
+        )
+        df["damaged_region_area"] = (
+            df["left_hemi_damaged_region_area"]
+            + df["right_hemi_damaged_region_area"]
+        )
+        df["left_hemi_region_area"] = (
+            df["left_hemi_damaged_region_area"]
+            + df["left_hemi_undamaged_region_area"]
+        )
+        df["right_hemi_region_area"] = (
+            df["right_hemi_damaged_region_area"]
+            + df["right_hemi_undamaged_region_area"]
+        )
+        df["region_area"] = (
+            df["undamaged_region_area"]
+            + df["damaged_region_area"]
+        )
+    if (hemi_mask is not None) and (damage_mask is None):
+        df["region_area"] = (
+            df["left_hemi_region_area"]
+            + df["right_hemi_region_area"]
+        )
+    if (hemi_mask is None) and (damage_mask is not None):
+        df["region_area"] = (
+            df["undamaged_region_area"]
+            + df["damaged_region_area"]
+        )
+
+
 def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """Build a DataFrame from an atlas map, with optional damage/hemisphere masks.
 
@@ -254,28 +274,7 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
             interpolation=cv2.INTER_NEAREST,
         ).astype(bool)
 
-    # Build combinations for each scenario
-    if (hemi_mask is not None) and (damage_mask is not None):
-        combos = [
-            (1, 0, "left_hemi_undamaged_region_area"),
-            (1, 1, "left_hemi_damaged_region_area"),
-            (2, 0, "right_hemi_undamaged_region_area"),
-            (2, 1, "right_hemi_damaged_region_area"),
-        ]
-    elif (hemi_mask is not None) and (damage_mask is None):
-        combos = [
-            (1, 0, "left_hemi_region_area"),
-            (2, 0, "right_hemi_region_area"),
-        ]
-    elif (hemi_mask is None) and (damage_mask is not None):
-        combos = [
-            (0, 0, "undamaged_region_area"),
-            (0, 1, "damaged_region_area"),
-        ]
-    else:
-        combos = [
-            (None, None, "region_area")
-        ]
+    combos = _build_area_combos(hemi_mask, damage_mask)
 
     # Count pixels for each combo
     for hemi_val, damage_val, col_name in combos:
@@ -290,38 +289,7 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
             df_area_per_label, combo_df, on="idx", how="outer"
         ).fillna(0)
 
-    # If both masks exist, compute additional columns
-    if (hemi_mask is not None) and (damage_mask is not None):
-        df_area_per_label["undamaged_region_area"] = (
-            df_area_per_label["left_hemi_undamaged_region_area"]
-            + df_area_per_label["right_hemi_undamaged_region_area"]
-        )
-        df_area_per_label["damaged_region_area"] = (
-            df_area_per_label["left_hemi_damaged_region_area"]
-            + df_area_per_label["right_hemi_damaged_region_area"]
-        )
-        df_area_per_label["left_hemi_region_area"] = (
-            df_area_per_label["left_hemi_damaged_region_area"]
-            + df_area_per_label["left_hemi_undamaged_region_area"]
-        )
-        df_area_per_label["right_hemi_region_area"] = (
-            df_area_per_label["right_hemi_damaged_region_area"]
-            + df_area_per_label["right_hemi_undamaged_region_area"]
-        )
-        df_area_per_label["region_area"] = (
-            df_area_per_label["undamaged_region_area"]
-            + df_area_per_label["damaged_region_area"]
-        )
-    if (hemi_mask is not None) and (damage_mask is None):
-        df_area_per_label["region_area"] = (
-            df_area_per_label["left_hemi_region_area"]
-            + df_area_per_label["right_hemi_region_area"]
-        )
-    if (hemi_mask is None) and (damage_mask is not None):
-        df_area_per_label["region_area"] = (
-            df_area_per_label["undamaged_region_area"]
-            + df_area_per_label["damaged_region_area"]
-        )
+    _derive_area_aggregates(df_area_per_label, hemi_mask, damage_mask)
     return df_area_per_label
 
 
