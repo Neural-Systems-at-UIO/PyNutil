@@ -36,11 +36,15 @@ def create_region_dict(
     dict
         Keys are unique region labels, values are flattened coordinate arrays.
     """
-    region_dict = {
-        region: points[regions == region].ravel()
-        for region in np.unique(regions)
-    }
-    return region_dict
+    if len(regions) == 0:
+        return {}
+    order = np.argsort(regions, kind="stable")
+    sorted_regions = regions[order]
+    sorted_points = points[order]
+    split_indices = np.flatnonzero(np.diff(sorted_regions)) + 1
+    point_groups = np.split(sorted_points, split_indices)
+    unique_regions = sorted_regions[np.r_[0, split_indices]]
+    return {r: g.ravel() for r, g in zip(unique_regions, point_groups)}
 
 
 def _meshview_entry(idx, name, triplets, r, g, b, count=None):
@@ -235,20 +239,26 @@ def _write_rgb_meshview(
             rgb_data, axis=0, return_inverse=True
         )
 
+    # Sort once, split by group boundaries
+    order = np.argsort(inverse_indices, kind="stable")
+    sorted_points = points[order]
+    sorted_indices = inverse_indices[order]
+    split_indices = np.flatnonzero(np.diff(sorted_indices)) + 1
+    point_groups = np.split(sorted_points, split_indices)
+    group_ids = sorted_indices[np.r_[0, split_indices]]
+
     meshview = []
-    for i, color in enumerate(unique_colors):
-        mask = inverse_indices == i
-        bin_points = points[mask]
-        if len(bin_points) > 0:
-            r, g, b = color
+    for gid, group in zip(group_ids, point_groups):
+        if len(group) > 0:
+            r, g, b = unique_colors[gid]
             meshview.append(_meshview_entry(
-                i,
+                int(gid),
                 f"Color {r},{g},{b}",
-                bin_points.ravel(),
+                group.ravel(),
                 r,
                 g,
                 b,
-                count=len(bin_points),
+                count=len(group),
             ))
 
     with open(filename, "wb") as f:
@@ -262,6 +272,11 @@ def _write_scalar_meshview(
     colormap: str,
 ) -> None:
     """Write grayscale/colormap point cloud to MeshView JSON."""
+    if len(intensities) == 0:
+        with open(filename, "wb") as f:
+            f.write(orjson.dumps([]))
+        return
+
     if intensities.ndim == 2 and intensities.shape[1] == 3:
         # Convert RGB to grayscale for binning
         intensities = (
@@ -272,22 +287,26 @@ def _write_scalar_meshview(
     else:
         intensities = intensities.astype(int)
 
-    unique_intensities = np.unique(intensities)
+    # Sort once, split by group boundaries — O(N log N) instead of O(N×K)
+    order = np.argsort(intensities, kind="stable")
+    sorted_intensities = intensities[order]
+    sorted_points = points[order]
+    split_indices = np.flatnonzero(np.diff(sorted_intensities)) + 1
+    point_groups = np.split(sorted_points, split_indices)
+    unique_intensities = sorted_intensities[np.r_[0, split_indices]]
 
     # Vectorised colormap lookup for all unique values at once
     colors = get_colormap_colors(unique_intensities, colormap)
 
     meshview = []
-    for i, val in enumerate(unique_intensities):
-        mask = intensities == val
-        bin_points = points[mask]
-        if len(bin_points) > 0:
+    for i, (val, group) in enumerate(zip(unique_intensities, point_groups)):
+        if len(group) > 0:
             r, g, b = colors[i]
             meshview.append({
                 "idx": int(val),
-                "count": len(bin_points),
+                "count": len(group),
                 "name": f"Intensity {val}",
-                "triplets": bin_points.ravel(),
+                "triplets": group.ravel(),
                 "r": int(r),
                 "g": int(g),
                 "b": int(b),
