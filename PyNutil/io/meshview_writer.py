@@ -6,9 +6,10 @@ supporting both atlas-region-based and intensity-based point clouds.
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Dict, List, Optional, Union
+
+import orjson
 
 import numpy as np
 import pandas as pd
@@ -20,7 +21,7 @@ from .colormap import get_colormap_color, get_colormap_colors
 def create_region_dict(
     points: np.ndarray,
     regions: np.ndarray,
-) -> Dict[int, List[float]]:
+) -> Dict[int, np.ndarray]:
     """Group point coordinates by their region labels.
 
     Parameters
@@ -33,20 +34,20 @@ def create_region_dict(
     Returns
     -------
     dict
-        Keys are unique region labels, values are flattened [x, y, z, ...] coordinates.
+        Keys are unique region labels, values are flattened coordinate arrays.
     """
     region_dict = {
-        region: points[regions == region].flatten().tolist()
+        region: points[regions == region].ravel()
         for region in np.unique(regions)
     }
     return region_dict
 
 
-def _meshview_entry(idx, name, triplets, r, g, b):
+def _meshview_entry(idx, name, triplets, r, g, b, count=None):
     """Build a single MeshView JSON entry dict."""
     return {
         "idx": idx,
-        "count": len(triplets) // 3,
+        "count": len(triplets) // 3 if count is None else count,
         "name": name,
         "triplets": triplets,
         "r": int(r),
@@ -101,8 +102,8 @@ def _write_points(
             )
         )
 
-    with open(filename, "w") as f:
-        f.write(json.dumps(meshview))
+    with open(filename, "wb") as f:
+        f.write(orjson.dumps(meshview, option=orjson.OPT_SERIALIZE_NUMPY))
 
 
 def write_hemi_points_to_meshview(
@@ -240,18 +241,18 @@ def _write_rgb_meshview(
         bin_points = points[mask]
         if len(bin_points) > 0:
             r, g, b = color
-            triplets = bin_points.flatten().tolist()
             meshview.append(_meshview_entry(
                 i,
                 f"Color {r},{g},{b}",
-                triplets,
+                bin_points.ravel(),
                 r,
                 g,
                 b,
+                count=len(bin_points),
             ))
 
-    with open(filename, "w") as f:
-        f.write(json.dumps(meshview))
+    with open(filename, "wb") as f:
+        f.write(orjson.dumps(meshview, option=orjson.OPT_SERIALIZE_NUMPY))
 
 
 def _write_scalar_meshview(
@@ -282,16 +283,15 @@ def _write_scalar_meshview(
         bin_points = points[mask]
         if len(bin_points) > 0:
             r, g, b = colors[i]
-            triplets = bin_points.flatten().tolist()
             meshview.append({
                 "idx": int(val),
                 "count": len(bin_points),
                 "name": f"Intensity {val}",
-                "triplets": triplets,
+                "triplets": bin_points.ravel(),
                 "r": int(r),
                 "g": int(g),
                 "b": int(b),
             })
 
-    with open(filename, "w") as f:
-        f.write(json.dumps(meshview))
+    with open(filename, "wb") as f:
+        f.write(orjson.dumps(meshview, option=orjson.OPT_SERIALIZE_NUMPY))
