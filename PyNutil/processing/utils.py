@@ -228,11 +228,6 @@ def discover_image_files(folder):
     return paths
 
 
-# Backward-compatible alias
-get_segmentations = discover_image_files
-
-
-# Re-exported from io.loaders for backward compatibility
 from ..io.loaders import (  # noqa: E402, F401
     number_sections,
     get_flat_files,

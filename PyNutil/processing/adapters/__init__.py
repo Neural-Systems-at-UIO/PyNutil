@@ -39,7 +39,6 @@ from .base import (
 # Anchoring loaders
 from .anchoring import (
     QuintAnchoringLoader,
-    QuintAdapter,  # Backwards compatibility alias
 )
 
 # Deformation providers
@@ -57,8 +56,6 @@ from .damage import (
 from .registry import (
     AnchoringLoaderRegistry,
     load_registration,
-    RegistrationAdapter,
-    RegistrationAdapterRegistry,
 )
 
 # Segmentation adapters
@@ -87,7 +84,6 @@ __all__ = [
     "DamageProvider",
     # Anchoring
     "QuintAnchoringLoader",
-    "QuintAdapter",
     # Deformation
     "VisuAlignDeformationProvider",
     "DisplacementFieldProvider",
@@ -96,8 +92,6 @@ __all__ = [
     # Registry
     "AnchoringLoaderRegistry",
     "load_registration",
-    "RegistrationAdapter",
-    "RegistrationAdapterRegistry",
     # Segmentation
     "ObjectInfo",
     "SegmentationAdapter",

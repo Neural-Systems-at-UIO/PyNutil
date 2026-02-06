@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
-from .results import PerPointArrays, PerCentroidArrays
+from .results import PerEntityArrays
 from .processing.analysis.data_analysis import (
     quantify_labeled_points,
     quantify_intensity,
@@ -79,13 +79,13 @@ class _BinaryMode:
             raise ValueError(
                 "Please run get_coordinates before running quantify_coordinates."
             )
-        points = PerPointArrays(
+        points = PerEntityArrays(
             labels=ctx.points_labels,
             hemi_labels=ctx.points_hemi_labels,
             undamaged=ctx.per_point_undamaged,
             section_lengths=ctx.total_points_len,
         )
-        centroids = PerCentroidArrays(
+        centroids = PerEntityArrays(
             labels=ctx.centroids_labels,
             hemi_labels=ctx.centroids_hemi_labels,
             undamaged=ctx.per_centroid_undamaged,
@@ -596,30 +596,6 @@ class PyNutil:
                 sep=";",
                 index=False,
             )
-        elif hasattr(self, "atlas_labels") and (
-            "original_idx" in self.atlas_labels.columns
-        ):
-            self._remap_via_atlas_labels(output_folder)
-
-    def _remap_via_atlas_labels(self, output_folder):
-        """Back-compat remap when original_idx lives on atlas_labels."""
-        mapping = self.atlas_labels[["idx", "original_idx"]].dropna()
-        mapping["idx"] = mapping["idx"].astype(int)
-        mapping["original_idx"] = mapping["original_idx"].astype(int)
-        if not (hasattr(self, "label_df") and "idx" in self.label_df.columns):
-            return
-        self.label_df = self.label_df.merge(mapping, on="idx", how="left")
-        if "original_idx" not in self.label_df.columns:
-            return
-        self.label_df["idx"] = (
-            self.label_df["original_idx"].fillna(self.label_df["idx"]).astype(int)
-        )
-        self.label_df = self.label_df.drop(columns=["original_idx"])
-        self.label_df.to_csv(
-            f"{output_folder}/whole_series_report/counts.csv",
-            sep=";",
-            index=False,
-        )
 
     def _create_visualisations(self, output_folder):
         """Create section visualisation PNGs."""

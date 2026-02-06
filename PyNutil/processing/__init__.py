@@ -62,10 +62,6 @@ from .adapters import (
     AnchoringLoaderRegistry,
     # Main entry point
     load_registration,
-    # Legacy compatibility
-    RegistrationAdapter,
-    RegistrationAdapterRegistry,
-    QuintAdapter,
 )
 
 __all__ = [
@@ -94,10 +90,7 @@ __all__ = [
     "BinaryAdapter",
     "CellposeAdapter",
     # registration_adapters
-    "RegistrationAdapter",
-    "RegistrationAdapterRegistry",
     "RegistrationData",
     "SliceInfo",
-    "QuintAdapter",
     "load_registration",
 ]

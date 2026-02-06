@@ -61,7 +61,3 @@ class QuintAnchoringLoader(AnchoringLoader):
                 "_raw_data": data,  # Keep for providers
             },
         )
-
-
-# Backwards compatibility alias
-QuintAdapter = QuintAnchoringLoader

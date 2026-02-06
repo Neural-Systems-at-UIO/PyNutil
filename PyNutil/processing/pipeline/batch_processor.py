@@ -19,8 +19,8 @@ from .section_processor import (
     segmentation_to_atlas_space_intensity,
 )
 from ..utils import (
+    discover_image_files,
     get_flat_files,
-    get_segmentations,
     number_sections,
     get_current_flat_file,
 )
@@ -99,7 +99,7 @@ def _run_batch_with_context(
     )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
-    segmentations = get_segmentations(folder)
+    segmentations = discover_image_files(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, pipeline_ctx.use_flat)
 
     results = [empty_result_factory() for _ in range(len(segmentations))]

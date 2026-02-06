@@ -11,7 +11,7 @@ Public API
 import numpy as np
 import pandas as pd
 
-from ...results import PerPointArrays, PerCentroidArrays
+from ...results import PerEntityArrays
 from .region_counting import pixel_count_per_region
 from ..utils import (
     AREA_FRACTION_PAIRS,
@@ -155,8 +155,8 @@ def _apply_rgb_mapping(temp_df, id_mapping, rgb_mapping):
 
 
 def quantify_labeled_points(
-    points: PerPointArrays,
-    centroids: PerCentroidArrays,
+    points: PerEntityArrays,
+    centroids: PerEntityArrays,
     region_areas_list,
     atlas_labels,
     apply_damage_mask,
@@ -191,8 +191,8 @@ def quantify_labeled_points(
 
 
 def _quantify_per_section(
-    points: PerPointArrays,
-    centroids: PerCentroidArrays,
+    points: PerEntityArrays,
+    centroids: PerEntityArrays,
     region_areas_list,
     atlas_labels,
     with_damage=False,

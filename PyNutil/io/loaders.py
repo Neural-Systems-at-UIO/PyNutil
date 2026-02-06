@@ -254,12 +254,11 @@ def load_quint_json(
 # ---------------------------------------------------------------------------
 
 
-def number_sections(filenames, legacy=False):
+def number_sections(filenames):
     """Extract section numbers from a list of filenames.
 
     Args:
         filenames (list): List of file paths.
-        legacy (bool, optional): Use a legacy extraction mode if True. Defaults to False.
 
     Returns:
         list: List of section numbers as integers.
@@ -267,22 +266,18 @@ def number_sections(filenames, legacy=False):
     filenames = [os.path.basename(filename) for filename in filenames]
     section_numbers = []
     for filename in filenames:
-        if not legacy:
-            # Try _s### first (standard PyNutil/QUINT format)
-            match = re.findall(r"\_s(\d+)", filename)
-            if len(match) == 0:
-                # Try _### (common alternative)
-                match = re.findall(r"\_(\d+)", filename)
+        # Try _s### first (standard PyNutil/QUINT format)
+        match = re.findall(r"\_s(\d+)", filename)
+        if len(match) == 0:
+            # Try _### (common alternative)
+            match = re.findall(r"\_(\d+)", filename)
 
-            if len(match) == 0:
-                raise ValueError(
-                    f"No section number found in filename: {filename}. Expected format like '_s001' or '_001'."
-                )
+        if len(match) == 0:
+            raise ValueError(
+                f"No section number found in filename: {filename}. Expected format like '_s001' or '_001'."
+            )
 
-            section_numbers.append(int(match[-1]))
-        else:
-            match = re.sub("[^0-9]", "", filename)
-            section_numbers.append(int(match[-3:]))
+        section_numbers.append(int(match[-1]))
     if len(section_numbers) == 0:
         raise ValueError("No section numbers found in filenames")
     return section_numbers

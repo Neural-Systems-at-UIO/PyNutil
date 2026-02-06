@@ -78,8 +78,7 @@ class PerEntityArrays:
 
         Uses offset-based slicing rather than ``np.split`` so that arrays
         whose total length exceeds ``sum(section_lengths)`` are handled
-        gracefully (the trailing elements are simply ignored, matching the
-        legacy behaviour).
+        gracefully (trailing elements are simply ignored).
         """
         offset = 0
         for n in self.section_lengths:
@@ -126,8 +125,3 @@ class IntensitySectionResult:
             point_intensities=None,
             num_points=0,
         )
-
-
-# Backward-compatible aliases
-PerPointArrays = PerEntityArrays
-PerCentroidArrays = PerEntityArrays

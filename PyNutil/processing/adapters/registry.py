@@ -125,32 +125,3 @@ def load_registration(
             data = QCAlignDamageProvider().apply(data)
 
     return data
-
-
-# =============================================================================
-# Legacy Compatibility
-# =============================================================================
-
-
-class RegistrationAdapter(AnchoringLoader):
-    """Alias for AnchoringLoader (backwards compatibility)."""
-
-    pass
-
-
-class RegistrationAdapterRegistry:
-    """Backwards-compatible registry wrapping the new system."""
-
-    _adapters = AnchoringLoaderRegistry._loaders
-
-    @classmethod
-    def register(cls, adapter_class: Type[AnchoringLoader]) -> None:
-        AnchoringLoaderRegistry.register(adapter_class)
-
-    @classmethod
-    def get(cls, name: str) -> AnchoringLoader:
-        return AnchoringLoaderRegistry.get(name)
-
-    @classmethod
-    def load(cls, path: str, format_name: Optional[str] = None) -> RegistrationData:
-        return load_registration(path, loader_name=format_name)
