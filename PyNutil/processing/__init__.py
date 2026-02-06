@@ -1,25 +1,26 @@
 """PyNutil processing subpackage.
 
 This package contains modules for data processing and analysis:
-- batch_processor: Folder-level batch processing with threading
-- section_processor: Single section transformation to atlas space
-- connected_components: Connected component analysis and region assignment
+
+Subpackages
+-----------
+- analysis: Quantification, counting, and intensity aggregation
+- pipeline: Batch processing, section transformation, connected components
 - adapters: Plugin system for segmentation and registration formats
-- counting_and_load: Region counting and image loading
-- data_analysis: Quantification and aggregation
+
+Top-level modules
+-----------------
 - transforms: Coordinate transformation functions
-- utils: Utility functions
+- utils: Shared utility functions
 - section_volume: 3D volume projection/interpolation
-- aggregator: Intensity aggregation per region
 - generate_target_slice: Atlas slice extraction
-- image_loaders: Pixel ID detection
 """
 
-from .batch_processor import (
+from .pipeline import (
     folder_to_atlas_space,
     folder_to_atlas_space_intensity,
 )
-from .data_analysis import (
+from .analysis import (
     apply_custom_regions,
     map_to_custom_regions,
     quantify_intensity,

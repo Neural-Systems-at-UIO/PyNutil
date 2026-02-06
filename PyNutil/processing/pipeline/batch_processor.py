@@ -5,22 +5,21 @@ in a folder, mapping each one to atlas space using parallel execution.
 """
 
 import os
-import threading
 
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
-from .adapters import load_registration
+from ...results import SectionResult
+from ..adapters import load_registration
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
 )
-from .utils import (
+from ..utils import (
     get_flat_files,
     get_segmentations,
     number_sections,
-    process_results,
     get_current_flat_file,
 )
 
@@ -69,40 +68,15 @@ def folder_to_atlas_space(
 
     segmentations = get_segmentations(folder)
     flat_files, flat_file_nrs = get_flat_files(folder, use_flat)
-    region_areas_list = [
-        pd.DataFrame(
-            {
-                "idx": [],
-                "name": [],
-                "r": [],
-                "g": [],
-                "b": [],
-                "region_area": [],
-                "pixel_count": [],
-                "object_count": [],
-                "area_fraction": [],
-            }
-        )
-        for _ in range(len(segmentations))
-    ]
-    points_list = [np.array([], dtype=np.float64) for _ in range(len(segmentations))]
-    points_labels = [np.array([], dtype=np.int64) for _ in range(len(segmentations))]
-    centroids_list = [np.array([], dtype=np.float64) for _ in range(len(segmentations))]
-    centroids_labels = [np.array([], dtype=np.int64) for _ in range(len(segmentations))]
-    per_point_undamaged_list = [np.array([], dtype=bool) for _ in range(len(segmentations))]
-    per_centroid_undamaged_list = [
-        np.array([], dtype=bool) for _ in range(len(segmentations))
-    ]
-    points_hemi_labels = [np.array([], dtype=np.int64) for _ in range(len(segmentations))]
-    centroids_hemi_labels = [
-        np.array([], dtype=np.int64) for _ in range(len(segmentations))
-    ]
+
+    # One SectionResult per segmentation file, defaulting to empty.
+    results = [SectionResult.empty() for _ in range(len(segmentations))]
 
     if len(segmentations) > 0:
         max_workers = min(32, len(segmentations), (os.cpu_count() or 1) + 4)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
-            for segmentation_path, index in zip(segmentations, range(len(segmentations))):
+            for index, segmentation_path in enumerate(segmentations):
                 seg_nr = int(number_sections([segmentation_path])[0])
                 slice_info = slices_by_nr.get(seg_nr)
                 if slice_info is None:
@@ -118,56 +92,54 @@ def folder_to_atlas_space(
                 )
 
                 futures.append(
-                    executor.submit(
-                        segmentation_to_atlas_space,
-                        slice_info,
-                        segmentation_path,
-                        atlas_labels,
-                        current_flat,
-                        pixel_id,
-                        non_linear,
-                        points_list,
-                        centroids_list,
-                        points_labels,
-                        centroids_labels,
-                        region_areas_list,
-                        per_point_undamaged_list,
-                        per_centroid_undamaged_list,
-                        points_hemi_labels,
-                        centroids_hemi_labels,
+                    (
                         index,
-                        object_cutoff,
-                        atlas_volume,
-                        hemi_map,
-                        use_flat,
-                        segmentation_format=segmentation_format,
+                        executor.submit(
+                            segmentation_to_atlas_space,
+                            slice_info,
+                            segmentation_path,
+                            atlas_labels,
+                            current_flat,
+                            pixel_id,
+                            non_linear,
+                            object_cutoff,
+                            atlas_volume,
+                            hemi_map,
+                            use_flat,
+                            segmentation_format=segmentation_format,
+                        ),
                     )
                 )
 
-            # Ensure exceptions from worker threads get raised here.
-            for f in futures:
-                f.result()
-    (
-        points,
-        centroids,
-        points_labels,
-        centroids_labels,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        points_len,
-        centroids_len,
-        per_point_undamaged_list,
-        per_centroid_undamaged_list,
-    ) = process_results(
-        points_list,
-        centroids_list,
-        points_labels,
-        centroids_labels,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        per_point_undamaged_list,
-        per_centroid_undamaged_list,
-    )
+            for idx, future in futures:
+                results[idx] = future.result()
+
+    # ── Concatenate SectionResults ────────────────────────────────────
+    def _concat(arrays):
+        non_empty = [a for a in arrays if a is not None and len(a) > 0]
+        return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.float64)
+
+    def _concat_int(arrays):
+        non_empty = [a for a in arrays if a is not None and len(a) > 0]
+        return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.int64)
+
+    def _concat_bool(arrays):
+        non_empty = [a for a in arrays if a is not None and len(a) > 0]
+        return np.concatenate(non_empty) if non_empty else np.array([], dtype=bool)
+
+    points = _concat([r.points for r in results])
+    centroids = _concat([r.centroids for r in results])
+    points_labels = _concat_int([r.points_labels for r in results])
+    centroids_labels = _concat_int([r.centroids_labels for r in results])
+    points_hemi_labels = _concat_int([r.points_hemi_labels for r in results])
+    centroids_hemi_labels = _concat_int([r.centroids_hemi_labels for r in results])
+    per_point_undamaged = _concat_bool([r.per_point_undamaged for r in results])
+    per_centroid_undamaged = _concat_bool([r.per_centroid_undamaged for r in results])
+
+    points_len = [len(r.points) if r.points is not None else 0 for r in results]
+    centroids_len = [len(r.centroids) if r.centroids is not None else 0 for r in results]
+    region_areas_list = [r.region_areas for r in results]
+
     return (
         points,
         centroids,
@@ -179,8 +151,8 @@ def folder_to_atlas_space(
         points_len,
         centroids_len,
         segmentations,
-        per_point_undamaged_list,
-        per_centroid_undamaged_list,
+        per_point_undamaged,
+        per_centroid_undamaged,
     )
 
 
@@ -295,105 +267,3 @@ def folder_to_atlas_space_intensity(
         centroids_len,
         all_intensities,
     )
-
-
-def create_threads(
-    segmentations,
-    slices,
-    flat_files,
-    flat_file_nrs,
-    atlas_labels,
-    pixel_id,
-    non_linear,
-    points_list,
-    centroids_list,
-    centroids_labels,
-    points_labels,
-    region_areas_list,
-    per_point_undamaged_list,
-    per_centroid_undamaged_list,
-    point_hemi_labels,
-    centroid_hemi_labels,
-    object_cutoff,
-    atlas_volume,
-    hemi_map,
-    use_flat,
-    gridspacing,
-    segmentation_format="binary",
-):
-    """Create threads to transform each segmentation into atlas space.
-
-    Note: This function is deprecated. Use folder_to_atlas_space with
-    ThreadPoolExecutor instead.
-
-    Args:
-        segmentations: Paths to segmentation files.
-        slices: Slice metadata from alignment JSON.
-        flat_files: Flat file paths for optional flat maps.
-        flat_file_nrs: Numeric indices for flat files.
-        atlas_labels: Atlas labels DataFrame.
-        pixel_id: Pixel color [R, G, B].
-        non_linear: Enable non-linear transformation.
-        points_list: Stores point coordinates per segmentation.
-        centroids_list: Stores centroid coordinates per segmentation.
-        centroids_labels: Stores labels for each centroid array.
-        points_labels: Stores labels for each point array.
-        region_areas_list: Stores region area data per segmentation.
-        per_point_undamaged_list: Track undamaged points.
-        per_centroid_undamaged_list: Track undamaged centroids.
-        point_hemi_labels: Hemisphere labels for points.
-        centroid_hemi_labels: Hemisphere labels for centroids.
-        object_cutoff: Minimum object size threshold.
-        atlas_volume: 3D atlas volume.
-        hemi_map: Hemisphere mask.
-        use_flat: Use flat files if True.
-        gridspacing: Spacing value from alignment data.
-        segmentation_format: Format name ("binary" or "cellpose").
-
-    Returns:
-        list: A list of threads for parallel execution.
-    """
-    threads = []
-    for segmentation_path, index in zip(segmentations, range(len(segmentations))):
-        seg_nr = int(number_sections([segmentation_path])[0])
-        current_slice_index = np.where([s["nr"] == seg_nr for s in slices])
-        if len(current_slice_index[0]) == 0:
-            print("segmentation file does not exist in alignment json:")
-            print(segmentation_path)
-            continue
-        current_slice = slices[current_slice_index[0][0]]
-        if current_slice["anchoring"] == []:
-            continue
-        current_flat = get_current_flat_file(
-            seg_nr, flat_files, flat_file_nrs, use_flat
-        )
-
-        x = threading.Thread(
-            target=segmentation_to_atlas_space,
-            args=(
-                current_slice,
-                segmentation_path,
-                atlas_labels,
-                current_flat,
-                pixel_id,
-                non_linear,
-                points_list,
-                centroids_list,
-                points_labels,
-                centroids_labels,
-                region_areas_list,
-                per_point_undamaged_list,
-                per_centroid_undamaged_list,
-                point_hemi_labels,
-                centroid_hemi_labels,
-                index,
-                object_cutoff,
-                atlas_volume,
-                hemi_map,
-                use_flat,
-                gridspacing,
-                segmentation_format,
-            ),
-        )
-        threads.append(x)
-    return threads

@@ -8,170 +8,88 @@ They replace scattered instance attributes with clear, documented structures.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 
 
-@dataclass
-class CoordinateResults:
-    """Results from coordinate extraction (get_coordinates).
-
-    Contains transformed pixel/centroid coordinates and their atlas region assignments.
-    """
-
-    # Transformed 3D coordinates (N, 3) arrays
-    pixel_points: Optional[np.ndarray] = None
-    centroids: Optional[np.ndarray] = None
-
-    # Region labels for each point/centroid
-    points_labels: Optional[np.ndarray] = None
-    centroids_labels: Optional[np.ndarray] = None
-
-    # Hemisphere labels for each point/centroid
-    points_hemi_labels: Optional[np.ndarray] = None
-    centroids_hemi_labels: Optional[np.ndarray] = None
-
-    # Per-section counts (number of points/centroids per section)
-    points_len: Optional[List[int]] = None
-    centroids_len: Optional[List[int]] = None
-
-    # Source filenames for each section
-    segmentation_filenames: Optional[List[str]] = None
-
-    # Region areas per section (for density calculations)
-    region_areas_list: Optional[List[pd.DataFrame]] = None
-
-    # Damage mask flags per point/centroid
-    per_point_undamaged: Optional[np.ndarray] = None
-    per_centroid_undamaged: Optional[np.ndarray] = None
-
-    # Custom region labels (if custom_region_path was specified)
-    points_custom_labels: Optional[np.ndarray] = None
-    centroids_custom_labels: Optional[np.ndarray] = None
+# ── Single-section result (returned by section_processor) ───────────
 
 
 @dataclass
-class IntensityCoordinateResults:
-    """Results from intensity-mode coordinate extraction.
+class SectionResult:
+    """Result from processing a single section through atlas space.
 
-    Similar to CoordinateResults but includes intensity values instead of centroids.
+    Replaces the mutable-list-slot pattern where ``segmentation_to_atlas_space``
+    wrote into nine pre-allocated shared lists by index.
     """
 
-    # Transformed 3D coordinates (N, 3) array
-    pixel_points: Optional[np.ndarray] = None
+    points: np.ndarray
+    centroids: np.ndarray
+    region_areas: pd.DataFrame
+    points_labels: np.ndarray
+    centroids_labels: np.ndarray
+    per_point_undamaged: np.ndarray
+    per_centroid_undamaged: np.ndarray
+    points_hemi_labels: np.ndarray
+    centroids_hemi_labels: np.ndarray
 
-    # Region labels and hemisphere labels
-    points_labels: Optional[np.ndarray] = None
-    points_hemi_labels: Optional[np.ndarray] = None
-
-    # Per-section counts
-    points_len: Optional[List[int]] = None
-
-    # Source filenames
-    segmentation_filenames: Optional[List[str]] = None
-
-    # Intensity values per point
-    point_intensities: Optional[np.ndarray] = None
-
-    # Region-level intensity aggregations per section
-    region_intensities_list: Optional[List[pd.DataFrame]] = None
-
-
-@dataclass
-class QuantificationResults:
-    """Results from quantification (quantify_coordinates).
-
-    Contains aggregated counts and statistics by atlas region.
-    """
-
-    # Whole-series aggregated DataFrame with columns:
-    # idx, name, r, g, b, pixel_count, centroid_count, area_um2, etc.
-    label_df: Optional[pd.DataFrame] = None
-
-    # List of per-section DataFrames with the same structure
-    per_section_df: Optional[List[pd.DataFrame]] = None
-
-    # Custom region results (if custom_region_path was specified)
-    custom_label_df: Optional[pd.DataFrame] = None
-    custom_per_section_df: Optional[List[pd.DataFrame]] = None
-
-
-@dataclass
-class VolumeResults:
-    """Results from volume interpolation (interpolate_volume).
-
-    Contains 3D volumes projected from section data.
-    """
-
-    # Interpolated signal volume (float32)
-    # Values represent mean/count depending on value_mode parameter
-    interpolated_volume: Optional[np.ndarray] = None
-
-    # Frequency volume (uint32)
-    # Number of section pixels contributing to each voxel
-    frequency_volume: Optional[np.ndarray] = None
-
-    # Damage volume (float32)
-    # Accumulated damage mask projected to 3D
-    damage_volume: Optional[np.ndarray] = None
-
-
-@dataclass
-class AnalysisState:
-    """Complete state of a PyNutil analysis.
-
-    This dataclass aggregates all results from the analysis pipeline,
-    providing a single container for the entire analysis state.
-    """
-
-    # Configuration
-    segmentation_folder: Optional[str] = None
-    image_folder: Optional[str] = None
-    alignment_json: Optional[str] = None
-    colour: Optional[List[int]] = None
-    intensity_channel: Optional[str] = None
-    atlas_name: Optional[str] = None
-    voxel_size_um: Optional[float] = None
-
-    # Atlas data
-    atlas_volume: Optional[np.ndarray] = None
-    hemi_map: Optional[np.ndarray] = None
-    atlas_labels: Optional[pd.DataFrame] = None
-
-    # Custom regions
-    custom_regions_dict: Optional[Dict[str, Any]] = None
-    custom_atlas_labels: Optional[pd.DataFrame] = None
-
-    # Pipeline results
-    coordinate_results: Optional[CoordinateResults] = None
-    intensity_results: Optional[IntensityCoordinateResults] = None
-    quantification_results: Optional[QuantificationResults] = None
-    volume_results: Optional[VolumeResults] = None
-
-    # Processing flags
-    apply_damage_mask: bool = True
-
-    @property
-    def is_intensity_mode(self) -> bool:
-        """Check if running in intensity measurement mode."""
-        return self.image_folder is not None and self.segmentation_folder is None
-
-    @property
-    def has_coordinates(self) -> bool:
-        """Check if coordinates have been extracted."""
-        return (
-            self.coordinate_results is not None
-            or self.intensity_results is not None
+    @classmethod
+    def empty(cls, region_areas: pd.DataFrame | None = None) -> SectionResult:
+        """Create an empty result for skipped or empty sections."""
+        return cls(
+            points=np.array([], dtype=np.float64),
+            centroids=np.array([], dtype=np.float64),
+            region_areas=region_areas if region_areas is not None else pd.DataFrame(),
+            points_labels=np.array([], dtype=np.int64),
+            centroids_labels=np.array([], dtype=np.int64),
+            per_point_undamaged=np.array([], dtype=bool),
+            per_centroid_undamaged=np.array([], dtype=bool),
+            points_hemi_labels=np.array([], dtype=np.int64),
+            centroids_hemi_labels=np.array([], dtype=np.int64),
         )
 
-    @property
-    def has_quantification(self) -> bool:
-        """Check if quantification has been performed."""
-        return self.quantification_results is not None
 
-    @property
-    def has_volumes(self) -> bool:
-        """Check if volume interpolation has been performed."""
-        return self.volume_results is not None
+# ── Per-section array bundles (used by quantification pipeline) ──────────
+
+
+@dataclass
+class PerEntityArrays:
+    """Concatenated per-entity arrays across all sections.
+
+    Groups the four parallel arrays that are always sliced / iterated
+    together, replacing four positional parameters with one.
+    Works for both pixel-points and object-centroids.
+    """
+
+    labels: np.ndarray
+    """Atlas-region label for each entity."""
+    hemi_labels: np.ndarray
+    """Hemisphere label for each entity (1 = left, 2 = right, or ``None`` sentinel)."""
+    undamaged: np.ndarray
+    """Boolean flag: ``True`` if the entity is in an undamaged area."""
+    section_lengths: List[int]
+    """Number of entities contributed by each section (used for splitting)."""
+
+    # ── convenience ──────────────────────────────────────────────────
+    def split(self):
+        """Yield per-section slices as ``(labels, hemi, undamaged)`` tuples.
+
+        Uses offset-based slicing rather than ``np.split`` so that arrays
+        whose total length exceeds ``sum(section_lengths)`` are handled
+        gracefully (the trailing elements are simply ignored, matching the
+        legacy behaviour).
+        """
+        offset = 0
+        for n in self.section_lengths:
+            lab = self.labels[offset : offset + n]
+            hemi = self.hemi_labels[offset : offset + n]
+            und = self.undamaged[offset : offset + n]
+            yield lab, hemi, und
+            offset += n
+
+
+# Backward-compatible aliases
+PerPointArrays = PerEntityArrays
+PerCentroidArrays = PerEntityArrays

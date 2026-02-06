@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from . import counting_and_load
+from .analysis import counting_and_load
 
 
 # -----------------------------------------------------------------------------

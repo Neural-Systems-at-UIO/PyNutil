@@ -8,7 +8,53 @@ and region assignment.
 import numpy as np
 import cv2
 
-from .utils import scale_positions
+from ..utils import scale_positions, assign_labels_at_coordinates
+
+
+# ── Shared pixel-grouping helper ─────────────────────────────────────────
+
+
+def _group_pixels_by_label(ys, xs, labels, *, compute_centroid=True):
+    """Group pixel coordinates by their label ID.
+
+    Shared implementation used by both :func:`connected_components_props`
+    (OpenCV labels) and :func:`labeled_image_props` (pre-labelled images).
+
+    Args:
+        ys: 1-D array of Y coordinates.
+        xs: 1-D array of X coordinates.
+        labels: 1-D array of integer label IDs (same length as *ys*).
+        compute_centroid: If ``True`` compute the mean centroid; if ``False``
+            the ``centroid`` key in each dict will be ``None``.
+
+    Returns:
+        list[dict]: One dict per unique label with keys ``area``, ``centroid``
+        (y, x) and ``coords`` (N × 2 ndarray).
+    """
+    if ys.size == 0:
+        return []
+
+    order = np.argsort(labels, kind="stable")
+    ys = ys[order]
+    xs = xs[order]
+    labels = labels[order]
+
+    unique_ids, start_idx = np.unique(labels, return_index=True)
+    end_idx = np.r_[start_idx[1:], labels.size]
+
+    props = []
+    for label_id, start, end in zip(unique_ids, start_idx, end_idx):
+        comp_ys = ys[start:end]
+        comp_xs = xs[start:end]
+        area = int(end - start)
+        centroid = (
+            (float(np.mean(comp_ys)), float(np.mean(comp_xs)))
+            if compute_centroid
+            else None
+        )
+        coords = np.column_stack((comp_ys, comp_xs))
+        props.append({"area": area, "centroid": centroid, "coords": coords})
+    return props
 
 
 def connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 4):
@@ -40,23 +86,17 @@ def connected_components_props(binary_mask: np.ndarray, *, connectivity: int = 4
     if ys.size == 0:
         return []
     comp_ids = labels[ys, xs]
+
+    # Use shared grouping; override centroids with OpenCV's sub-pixel values
+    props = _group_pixels_by_label(ys, xs, comp_ids, compute_centroid=False)
+
+    # Map grouped label IDs back to OpenCV stats/centroids
     order = np.argsort(comp_ids, kind="stable")
-    ys = ys[order]
-    xs = xs[order]
-    comp_ids = comp_ids[order]
-
-    unique_ids, start_idx = np.unique(comp_ids, return_index=True)
-    end_idx = np.r_[start_idx[1:], comp_ids.size]
-
-    props = []
-    for comp_id, start, end in zip(unique_ids, start_idx, end_idx):
-        # comp_id is >= 1 (0 is background)
-        area = int(stats[comp_id, cv2.CC_STAT_AREA])
+    unique_ids = np.unique(comp_ids[order])
+    for prop, comp_id in zip(props, unique_ids):
         cx, cy = centroids_xy[comp_id]
-        coords = np.column_stack((ys[start:end], xs[start:end]))
-        props.append(
-            {"area": area, "centroid": (float(cy), float(cx)), "coords": coords}
-        )
+        prop["centroid"] = (float(cy), float(cx))
+        prop["area"] = int(stats[comp_id, cv2.CC_STAT_AREA])
     return props
 
 
@@ -72,28 +112,8 @@ def labeled_image_props(label_image: np.ndarray):
     ys, xs = np.nonzero(label_image)
     if ys.size == 0:
         return []
-
     labels = label_image[ys, xs]
-
-    # Sort by label ID to group pixels of the same object
-    order = np.argsort(labels, kind="stable")
-    ys = ys[order]
-    xs = xs[order]
-    labels = labels[order]
-
-    # Find boundaries of each label group
-    unique_ids, start_idx = np.unique(labels, return_index=True)
-    end_idx = np.r_[start_idx[1:], labels.size]
-
-    props = []
-    for label_id, start, end in zip(unique_ids, start_idx, end_idx):
-        comp_ys = ys[start:end]
-        comp_xs = xs[start:end]
-        area = len(comp_ys)
-        centroid = (np.mean(comp_ys), np.mean(comp_xs))
-        coords = np.column_stack((comp_ys, comp_xs))
-        props.append({"area": area, "centroid": centroid, "coords": coords})
-    return props
+    return _group_pixels_by_label(ys, xs, labels)
 
 
 def get_centroids_and_area(segmentation, pixel_cut_off=0):
@@ -146,7 +166,7 @@ def get_objects_and_assign_regions(
         tuple: (centroids, scaled_centroidsX, scaled_centroidsY,
                 scaled_y, scaled_x, per_centroid_labels)
     """
-    from .adapters import SegmentationAdapterRegistry
+    from ..adapters import SegmentationAdapterRegistry
 
     adapter = SegmentationAdapterRegistry.get(segmentation_format)
 
@@ -181,35 +201,26 @@ def get_objects_and_assign_regions(
 
         # Handle resolution scaling strategy
         if atlas_at_original_resolution:
-            # Scale COORDINATES down to atlas size, instead of scaling atlas up
             atlas_height, atlas_width = atlas_map.shape
             assignment_y = scaled_obj_y * (atlas_height / reg_height)
             assignment_x = scaled_obj_x * (atlas_width / reg_width)
-            atlas_bounds_height, atlas_bounds_width = atlas_height, atlas_width
         else:
             assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
-            atlas_bounds_height, atlas_bounds_width = (
-                atlas_map.shape[0],
-                atlas_map.shape[1],
-            )
 
         # Check bounds
+        iy = np.round(assignment_y).astype(int)
+        ix = np.round(assignment_x).astype(int)
         valid_mask = (
-            (np.round(assignment_y).astype(int) >= 0)
-            & (np.round(assignment_y).astype(int) < atlas_bounds_height)
-            & (np.round(assignment_x).astype(int) >= 0)
-            & (np.round(assignment_x).astype(int) < atlas_bounds_width)
+            (iy >= 0) & (iy < atlas_map.shape[0])
+            & (ix >= 0) & (ix < atlas_map.shape[1])
         )
 
         if not np.any(valid_mask):
             per_centroid_labels.append(0)
             continue
 
-        # Assign Region based on majority vote of pixels in object
-        pixel_labels = atlas_map[
-            np.round(assignment_y[valid_mask]).astype(int),
-            np.round(assignment_x[valid_mask]).astype(int),
-        ]
+        # Assign region based on majority vote of pixels in object
+        pixel_labels = atlas_map[iy[valid_mask], ix[valid_mask]]
         unique_labels, counts = np.unique(pixel_labels, return_counts=True)
         per_centroid_labels.append(unique_labels[np.argmax(counts)])
 

@@ -13,7 +13,7 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from PyNutil.processing.section_processor import segmentation_to_atlas_space
+from PyNutil.processing.pipeline.section_processor import segmentation_to_atlas_space
 from PyNutil.processing.transforms import get_region_areas
 from PyNutil.processing.adapters import SliceInfo
 
@@ -56,16 +56,7 @@ class TestCoordinateScaling(TimedTestCase):
             atlas_map = np.ones((reg_h, reg_w), dtype=np.int32)
             atlas_map[:, reg_w // 2 :] = 2
 
-            # Storage arrays expected by segmentation_to_atlas_space
-            points_list = [None]
-            centroids_list = [None]
-            points_labels = [None]
-            centroids_labels = [None]
-            region_areas_list = [None]
-            per_point_undamaged_list = [None]
-            per_centroid_undamaged_list = [None]
-            points_hemi_labels = [None]
-            centroids_hemi_labels = [None]
+            # Storage arrays no longer needed – function returns SectionResult
 
             expected_y_scale = reg_h / seg_h
             expected_x_scale = reg_w / seg_w
@@ -103,31 +94,21 @@ class TestCoordinateScaling(TimedTestCase):
 
             with (
                 patch(
-                    "PyNutil.processing.section_processor.get_region_areas",
+                    "PyNutil.processing.pipeline.section_processor.get_region_areas",
                     side_effect=_fake_get_region_areas,
                 ),
                 patch(
-                    "PyNutil.processing.section_processor.get_objects_and_assign_regions",
+                    "PyNutil.processing.pipeline.section_processor.get_objects_and_assign_regions",
                     side_effect=_fake_get_objects,
                 ),
             ):
-                segmentation_to_atlas_space(
+                result = segmentation_to_atlas_space(
                     slice_info=slice_info,
                     segmentation_path=seg_path,
                     atlas_labels=pd.DataFrame(),
                     flat_file_atlas=None,
                     pixel_id="auto",
                     non_linear=False,
-                    points_list=points_list,
-                    centroids_list=centroids_list,
-                    points_labels=points_labels,
-                    centroids_labels=centroids_labels,
-                    region_areas_list=region_areas_list,
-                    per_point_undamaged_list=per_point_undamaged_list,
-                    per_centroid_undamaged_list=per_centroid_undamaged_list,
-                    points_hemi_labels=points_hemi_labels,
-                    centroids_hemi_labels=centroids_hemi_labels,
-                    index=0,
                     object_cutoff=0,
                     atlas_volume=None,
                     hemi_map=None,
@@ -135,8 +116,8 @@ class TestCoordinateScaling(TimedTestCase):
                 )
 
             # The single pixel at x=25 should land in the left half (label 1).
-            self.assertIsNotNone(points_labels[0])
-            self.assertEqual(int(points_labels[0][0]), 1)
+            self.assertIsNotNone(result.points_labels)
+            self.assertEqual(int(result.points_labels[0]), 1)
 
         finally:
             shutil.rmtree(tmpdir)
@@ -176,15 +157,15 @@ class TestCoordinateScaling(TimedTestCase):
 
         with (
             patch(
-                "PyNutil.processing.counting_and_load.generate_target_slice",
+                "PyNutil.processing.analysis.counting_and_load.generate_target_slice",
                 side_effect=_fake_generate_target_slice,
             ),
             patch(
-                "PyNutil.processing.counting_and_load.warp_image",
+                "PyNutil.processing.analysis.counting_and_load.warp_image",
                 side_effect=_fake_warp_image,
             ),
             patch(
-                "PyNutil.processing.counting_and_load.flat_to_dataframe",
+                "PyNutil.processing.analysis.counting_and_load.flat_to_dataframe",
                 side_effect=_fake_flat_to_dataframe,
             ),
         ):

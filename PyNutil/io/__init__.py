@@ -18,7 +18,7 @@ from .atlas_loader import (
     load_custom_atlas,
     process_atlas_volume,
 )
-from .file_operations import save_analysis_output
+from .file_operations import save_analysis_output, SaveContext
 from .loaders import (
     load_quint_json,
     load_segmentation,
@@ -42,6 +42,7 @@ __all__ = [
     "process_atlas_volume",
     # file_operations
     "save_analysis_output",
+    "SaveContext",
     # loaders
     "load_quint_json",
     "load_segmentation",

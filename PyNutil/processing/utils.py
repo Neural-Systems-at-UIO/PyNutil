@@ -1,9 +1,165 @@
 import numpy as np
+import pandas as pd
 
 import re
 import os
 from glob import glob
 import cv2
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+#: Standard regex for extracting section numbers from filenames (e.g. "_s001").
+SECTION_NUMBER_PATTERN = re.compile(r"\_s(\d+)")
+#: Fallback regex when the standard pattern is absent (e.g. "_001").
+SECTION_NUMBER_FALLBACK = re.compile(r"\_(\d+)")
+
+
+def safe_area_fraction(df, numerator_col, denominator_col, result_col):
+    """Compute *numerator / denominator* with zero-division protection.
+
+    If either column is missing from *df* the function silently does nothing,
+    making it safe to call unconditionally for optional column pairs.
+
+    Args:
+        df: pandas DataFrame (modified **in-place**).
+        numerator_col: Column name for the numerator.
+        denominator_col: Column name for the denominator.
+        result_col: Column name to write the result into.
+    """
+    if numerator_col not in df.columns or denominator_col not in df.columns:
+        return
+    mask = df[denominator_col] != 0
+    df[result_col] = 0.0
+    df.loc[mask, result_col] = (
+        df.loc[mask, numerator_col] / df.loc[mask, denominator_col]
+    )
+
+
+def safe_mean_ratio(df, numerator_col, denominator_col, result_col):
+    """Compute *numerator / denominator* where denominator > 0.
+
+    Same contract as :func:`safe_area_fraction` but uses ``> 0`` rather than
+    ``!= 0`` as the guard — appropriate for count-based denominators (e.g.
+    mean intensity = sum / pixel_count).
+    """
+    if numerator_col not in df.columns or denominator_col not in df.columns:
+        return
+    mask = df[denominator_col] > 0
+    df[result_col] = 0.0
+    df.loc[mask, result_col] = (
+        df.loc[mask, numerator_col] / df.loc[mask, denominator_col]
+    )
+
+
+def assign_labels_at_coordinates(coords_y, coords_x, source_map, reg_height, reg_width):
+    """Look up values in *source_map* for coordinates scaled to atlas resolution.
+
+    Coordinates are assumed to be in **registration space** (i.e. within
+    ``[0, reg_height)`` × ``[0, reg_width)``).  They are scaled down to the
+    (potentially smaller) *source_map* resolution, rounded, bounds-checked,
+    and used to index *source_map*.
+
+    Args:
+        coords_y: 1-D array of Y coordinates in registration space.
+        coords_x: 1-D array of X coordinates in registration space.
+        source_map: 2-D array to sample from (e.g. atlas_map or hemi_mask).
+        reg_height: Registration image height.
+        reg_width: Registration image width.
+
+    Returns:
+        labels: 1-D array of looked-up values (same length as *coords_y*).
+               Out-of-bounds coordinates receive 0.
+    """
+    map_h, map_w = source_map.shape
+    scaled_y = coords_y * (map_h / reg_height)
+    scaled_x = coords_x * (map_w / reg_width)
+    iy = np.round(scaled_y).astype(int)
+    ix = np.round(scaled_x).astype(int)
+    valid = (iy >= 0) & (iy < map_h) & (ix >= 0) & (ix < map_w)
+    labels = np.zeros(len(coords_y), dtype=source_map.dtype)
+    if np.any(valid):
+        labels[valid] = source_map[iy[valid], ix[valid]]
+    return labels
+
+
+def resize_mask_nearest(mask, width, height):
+    """Resize a mask to (*height*, *width*) using nearest-neighbour interpolation.
+
+    Args:
+        mask: 2-D numpy array.
+        width: Target width (columns).
+        height: Target height (rows).
+
+    Returns:
+        Resized array with the same dtype as *mask* (bool masks are preserved).
+    """
+    is_bool = mask.dtype == bool
+    resized = cv2.resize(
+        mask.astype(np.uint8),
+        (width, height),
+        interpolation=cv2.INTER_NEAREST,
+    )
+    return resized.astype(bool) if is_bool else resized
+
+
+def reindex_to_atlas(df, atlas_labels):
+    """Reindex a DataFrame so it contains one row per atlas region.
+
+    Rows not present in *df* are filled with NaN (typically followed by
+    ``fillna(0)`` by the caller).
+
+    Args:
+        df: DataFrame with an ``"idx"`` column.
+        atlas_labels: Atlas labels DataFrame with an ``"idx"`` column.
+
+    Returns:
+        DataFrame reindexed to match *atlas_labels["idx"]*.
+    """
+    df = df.set_index("idx")
+    df = df.reindex(index=atlas_labels["idx"])
+    df = df.reset_index()
+    return df
+
+
+# Standard area-fraction column pairs used across the pipeline.
+AREA_FRACTION_PAIRS = [
+    ("pixel_count", "region_area", "area_fraction"),
+    ("left_hemi_pixel_count", "left_hemi_region_area", "left_hemi_area_fraction"),
+    ("right_hemi_pixel_count", "right_hemi_region_area", "right_hemi_area_fraction"),
+    ("undamaged_pixel_count", "undamaged_region_area", "undamaged_area_fraction"),
+    (
+        "left_hemi_undamaged_pixel_count",
+        "left_hemi_undamaged_region_area",
+        "left_hemi_undamaged_area_fraction",
+    ),
+    (
+        "right_hemi_undamaged_pixel_count",
+        "right_hemi_undamaged_region_area",
+        "right_hemi_undamaged_area_fraction",
+    ),
+]
+
+# Standard mean-intensity column pairs used in the intensity pipeline.
+MEAN_INTENSITY_PAIRS = [
+    ("sum_intensity", "pixel_count", "mean_intensity"),
+    ("left_hemi_sum_intensity", "left_hemi_pixel_count", "left_hemi_mean_intensity"),
+    ("right_hemi_sum_intensity", "right_hemi_pixel_count", "right_hemi_mean_intensity"),
+]
+
+
+def apply_area_fractions(df):
+    """Add all standard area-fraction columns to *df* (in-place)."""
+    for num, den, res in AREA_FRACTION_PAIRS:
+        safe_area_fraction(df, num, den, res)
+
+
+def apply_mean_intensities(df):
+    """Add all standard mean-intensity columns to *df* (in-place)."""
+    for num, den, res in MEAN_INTENSITY_PAIRS:
+        safe_mean_ratio(df, num, den, res)
 
 
 def convert_to_intensity(image, channel):
@@ -227,97 +383,3 @@ def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
         current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
         return flat_files[current_flat_file_index[0][0]]
     return None
-
-
-def process_results(
-    points_list,
-    centroids_list,
-    points_labels,
-    centroids_labels,
-    points_hemi_labels,
-    centroids_hemi_labels,
-    points_undamaged_list,
-    centroids_undamaged_list,
-):
-    """
-    Consolidates and organizes results from multiple segmentations.
-
-    Args:
-        points_list (list): A list of arrays containing point coordinates.
-        centroids_list (list): A list of arrays containing centroid coordinates.
-        points_labels (list): A list of arrays with labels for each point.
-        centroids_labels (list): A list of arrays with labels for each centroid.
-        points_hemi_labels (list): A list of arrays storing hemisphere info per point.
-        centroids_hemi_labels (list): A list of arrays storing hemisphere info per centroid.
-        points_undamaged_list (list): Tracks undamaged status of each point.
-        centroids_undamaged_list (list): Tracks undamaged status of each centroid.
-
-    Returns:
-        points (ndarray): Consolidated point coordinates.
-        centroids (ndarray): Consolidated centroid coordinates.
-        points_labels (ndarray): Combined labels for points.
-        centroids_labels (ndarray): Combined labels for centroids.
-        points_hemi_labels (ndarray): Combined hemisphere info for points.
-        centroids_hemi_labels (ndarray): Combined hemisphere info for centroids.
-        points_len (int): Total number of points.
-        centroids_len (int): Total number of centroids.
-        points_undamaged (ndarray): Updated track of undamaged status for points.
-        centroids_undamaged (ndarray): Updated track of undamaged status for centroids.
-    """
-    points_len = [len(points) if None not in points else 0 for points in points_list]
-    centroids_len = [
-        len(centroids) if None not in centroids else 0 for centroids in centroids_list
-    ]
-    points_list = [
-        points for points in points_list if (None not in points) and (len(points) != 0)
-    ]
-    centroids_list = [
-        centroids
-        for centroids in centroids_list
-        if (None not in centroids) and (len(centroids != 0))
-    ]
-    points_labels = [pl for pl in points_labels if (None not in pl) and len(pl) != 0]
-    centroids_labels = [
-        cl for cl in centroids_labels if (None not in cl) and len(cl) != 0
-    ]
-    points_undamaged_list = [
-        pul for pul in points_undamaged_list if (None not in pul) and len(pul) != 0
-    ]
-    centroids_undamaged_list = [
-        cul for cul in centroids_undamaged_list if (None not in cul) and len(cul) != 0
-    ]
-
-    if len(points_list) == 0:
-        points = np.array([], dtype=np.float64)
-        points_labels = np.array([], dtype=np.int64)
-        points_undamaged = np.array([], dtype=bool)
-        points_hemi_labels = np.array([], dtype=np.int64)
-    else:
-        points = np.concatenate(points_list)
-        points_labels = np.concatenate(points_labels)
-        points_undamaged = np.concatenate(points_undamaged_list)
-        points_hemi_labels = np.concatenate(points_hemi_labels)
-
-    if len(centroids_list) == 0:
-        centroids = np.array([], dtype=np.float64)
-        centroids_labels = np.array([], dtype=np.int64)
-        centroids_undamaged = np.array([], dtype=bool)
-        centroids_hemi_labels = np.array([], dtype=np.int64)
-    else:
-        centroids = np.concatenate(centroids_list)
-        centroids_labels = np.concatenate(centroids_labels)
-        centroids_undamaged = np.concatenate(centroids_undamaged_list)
-        centroids_hemi_labels = np.concatenate(centroids_hemi_labels)
-
-    return (
-        points,
-        centroids,
-        points_labels,
-        centroids_labels,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        points_len,
-        centroids_len,
-        points_undamaged,
-        centroids_undamaged,
-    )

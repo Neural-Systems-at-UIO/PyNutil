@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 
 import cv2
-from .generate_target_slice import generate_target_slice
-from ..io.loaders import read_flat_file, read_seg_file
+from ..generate_target_slice import generate_target_slice
+from ...io.loaders import read_flat_file, read_seg_file
 
 
 def create_base_counts_dict(with_hemisphere=False, with_damage=False):
@@ -133,182 +133,76 @@ def pixel_count_per_region(
                 out[out_idx] = counts[pos_v[found]]
         return out
 
-    # Compute all the count series we need, then build a sparse dataframe by
-    # selecting only regions with any non-zero count.
-    if with_hemi and with_damage:
-        lh_pu_idx, lh_pu = _counts_for(
-            current_points_undamaged & (current_points_hemi == 1), labels_dict_points
-        )
-        lh_pd_idx, lh_pd = _counts_for(
-            (~current_points_undamaged) & (current_points_hemi == 1), labels_dict_points
-        )
-        rh_pu_idx, rh_pu = _counts_for(
-            current_points_undamaged & (current_points_hemi == 2), labels_dict_points
-        )
-        rh_pd_idx, rh_pd = _counts_for(
-            (~current_points_undamaged) & (current_points_hemi == 2), labels_dict_points
-        )
+    # ── Build leaf count specs ───────────────────────────────────────
+    # Iterate over the cross-product of (hemi, damage) dimensions.
+    # Each iteration produces one (mask, source_array, column) pair for
+    # pixels and one for centroids.  This replaces the four copy-pasted
+    # branches that existed previously.
+    hemi_iter = [(1, "left_hemi_"), (2, "right_hemi_")] if with_hemi else [(None, "")]
+    dmg_iter = [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
 
-        lh_cu_idx, lh_cu = _counts_for(
-            current_centroids_undamaged & (current_centroids_hemi == 1),
-            labeled_dict_centroids,
-        )
-        lh_cd_idx, lh_cd = _counts_for(
-            (~current_centroids_undamaged) & (current_centroids_hemi == 1),
-            labeled_dict_centroids,
-        )
-        rh_cu_idx, rh_cu = _counts_for(
-            current_centroids_undamaged & (current_centroids_hemi == 2),
-            labeled_dict_centroids,
-        )
-        rh_cd_idx, rh_cd = _counts_for(
-            (~current_centroids_undamaged) & (current_centroids_hemi == 2),
-            labeled_dict_centroids,
-        )
+    def _build_mask(hemi_arr, undamaged_arr, hemi_val, dmg_val):
+        mask = None
+        if hemi_val is not None:
+            mask = hemi_arr == hemi_val
+        if dmg_val is not None:
+            dmg_mask = undamaged_arr if dmg_val else ~undamaged_arr
+            mask = dmg_mask if mask is None else (mask & dmg_mask)
+        return mask
 
-        all_idx = np.unique(
-            np.concatenate(
-                [
-                    lh_pu_idx,
-                    lh_pd_idx,
-                    rh_pu_idx,
-                    rh_pd_idx,
-                    lh_cu_idx,
-                    lh_cd_idx,
-                    rh_cu_idx,
-                    rh_cd_idx,
-                ]
-            )
-        )
-        if all_idx.size == 0:
-            return pd.DataFrame(
-                columns=list(
-                    create_base_counts_dict(
-                        with_hemisphere=True, with_damage=True
-                    ).keys()
-                )
-            )
+    computed = {}  # col_name -> (idx_array, count_array)
+    all_indices = []
 
-        base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-        idx = base["idx"].to_numpy().astype(np.int64, copy=False)
+    for hemi_val, hemi_pfx in hemi_iter:
+        for dmg_val, dmg_pfx in dmg_iter:
+            p_mask = _build_mask(current_points_hemi, current_points_undamaged, hemi_val, dmg_val)
+            c_mask = _build_mask(current_centroids_hemi, current_centroids_undamaged, hemi_val, dmg_val)
 
-        l_pu = _lookup_counts(idx, lh_pu_idx, lh_pu)
-        l_pd = _lookup_counts(idx, lh_pd_idx, lh_pd)
-        r_pu = _lookup_counts(idx, rh_pu_idx, rh_pu)
-        r_pd = _lookup_counts(idx, rh_pd_idx, rh_pd)
-        l_cu = _lookup_counts(idx, lh_cu_idx, lh_cu)
-        l_cd = _lookup_counts(idx, lh_cd_idx, lh_cd)
-        r_cu = _lookup_counts(idx, rh_cu_idx, rh_cu)
-        r_cd = _lookup_counts(idx, rh_cd_idx, rh_cd)
+            px_col = f"{hemi_pfx}{dmg_pfx}pixel_count"
+            obj_col = f"{hemi_pfx}{dmg_pfx}object_count"
 
-        base["pixel_count"] = l_pu + l_pd + r_pu + r_pd
-        base["undamaged_pixel_count"] = l_pu + r_pu
-        base["damaged_pixel_counts"] = l_pd + r_pd
-        base["object_count"] = l_cu + l_cd + r_cu + r_cd
-        base["undamaged_object_count"] = l_cu + r_cu
-        base["damaged_object_count"] = l_cd + r_cd
+            p_idx, p_cnt = _counts_for(p_mask, labels_dict_points)
+            c_idx, c_cnt = _counts_for(c_mask, labeled_dict_centroids)
 
-        base["left_hemi_pixel_count"] = l_pu + l_pd
-        base["left_hemi_undamaged_pixel_count"] = l_pu
-        base["left_hemi_damaged_pixel_count"] = l_pd
-        base["left_hemi_object_count"] = l_cu + l_cd
-        base["left_hemi_undamaged_object_count"] = l_cu
-        base["left_hemi_damaged_object_count"] = l_cd
+            computed[px_col] = (p_idx, p_cnt)
+            computed[obj_col] = (c_idx, c_cnt)
+            all_indices.extend([p_idx, c_idx])
 
-        base["right_hemi_pixel_count"] = r_pu + r_pd
-        base["right_hemi_undamaged_pixel_count"] = r_pu
-        base["right_hemi_damaged_pixel_count"] = r_pd
-        base["right_hemi_object_count"] = r_cu + r_cd
-        base["right_hemi_undamaged_object_count"] = r_cu
-        base["right_hemi_damaged_object_count"] = r_cd
-
-        # Keep existing naming convention for damaged pixel counts column
-        # (already set as damaged_pixel_counts above).
-        return base
-
-    if with_damage and (not with_hemi):
-        pu_idx, pu = _counts_for(current_points_undamaged, labels_dict_points)
-        pdmg_idx, pdmg = _counts_for(~current_points_undamaged, labels_dict_points)
-        cu_idx, cu = _counts_for(current_centroids_undamaged, labeled_dict_centroids)
-        cd_idx, cd = _counts_for(~current_centroids_undamaged, labeled_dict_centroids)
-
-        all_idx = np.unique(np.concatenate([pu_idx, pdmg_idx, cu_idx, cd_idx]))
-        if all_idx.size == 0:
-            return pd.DataFrame(
-                columns=list(
-                    create_base_counts_dict(
-                        with_hemisphere=False, with_damage=True
-                    ).keys()
-                )
-            )
-
-        base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-        idx = base["idx"].to_numpy().astype(np.int64, copy=False)
-
-        p_u = _lookup_counts(idx, pu_idx, pu)
-        p_d = _lookup_counts(idx, pdmg_idx, pdmg)
-        c_u = _lookup_counts(idx, cu_idx, cu)
-        c_d = _lookup_counts(idx, cd_idx, cd)
-
-        base["pixel_count"] = p_u + p_d
-        base["undamaged_pixel_count"] = p_u
-        base["damaged_pixel_counts"] = p_d
-        base["object_count"] = c_u + c_d
-        base["undamaged_object_count"] = c_u
-        base["damaged_object_count"] = c_d
-        return base
-
-    if with_hemi and (not with_damage):
-        lh_p_idx, lh_p = _counts_for(current_points_hemi == 1, labels_dict_points)
-        rh_p_idx, rh_p = _counts_for(current_points_hemi == 2, labels_dict_points)
-        lh_c_idx, lh_c = _counts_for(
-            current_centroids_hemi == 1, labeled_dict_centroids
-        )
-        rh_c_idx, rh_c = _counts_for(
-            current_centroids_hemi == 2, labeled_dict_centroids
-        )
-
-        all_idx = np.unique(np.concatenate([lh_p_idx, rh_p_idx, lh_c_idx, rh_c_idx]))
-        if all_idx.size == 0:
-            return pd.DataFrame(
-                columns=list(
-                    create_base_counts_dict(
-                        with_hemisphere=True, with_damage=False
-                    ).keys()
-                )
-            )
-
-        base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
-        idx = base["idx"].to_numpy().astype(np.int64, copy=False)
-
-        l_p = _lookup_counts(idx, lh_p_idx, lh_p)
-        r_p = _lookup_counts(idx, rh_p_idx, rh_p)
-        l_c = _lookup_counts(idx, lh_c_idx, lh_c)
-        r_c = _lookup_counts(idx, rh_c_idx, rh_c)
-
-        base["pixel_count"] = l_p + r_p
-        base["object_count"] = l_c + r_c
-        base["left_hemi_pixel_count"] = l_p
-        base["right_hemi_pixel_count"] = r_p
-        base["left_hemi_object_count"] = l_c
-        base["right_hemi_object_count"] = r_c
-        return base
-
-    # No damage, no hemisphere
-    p_idx, p = _counts_for(None, labels_dict_points)
-    c_idx, c = _counts_for(None, labeled_dict_centroids)
-    all_idx = np.unique(np.concatenate([p_idx, c_idx]))
+    # ── Build sparse DataFrame ────────────────────────────────────────
+    all_idx = np.unique(np.concatenate(all_indices)) if all_indices else np.array([], dtype=np.int64)
     if all_idx.size == 0:
         return pd.DataFrame(
             columns=list(
-                create_base_counts_dict(with_hemisphere=False, with_damage=False).keys()
+                create_base_counts_dict(with_hemisphere=with_hemi, with_damage=with_damage).keys()
             )
         )
 
     base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
     idx = base["idx"].to_numpy().astype(np.int64, copy=False)
-    base["pixel_count"] = _lookup_counts(idx, p_idx, p)
-    base["object_count"] = _lookup_counts(idx, c_idx, c)
+
+    for col, (c_idx, c_cnt) in computed.items():
+        base[col] = _lookup_counts(idx, c_idx, c_cnt)
+
+    # ── Derive aggregate columns from leaves ──────────────────────────
+    if with_hemi and with_damage:
+        for entity in ("pixel_count", "object_count"):
+            base[f"left_hemi_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"left_hemi_damaged_{entity}"]
+            base[f"right_hemi_{entity}"] = base[f"right_hemi_undamaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
+            base[f"undamaged_{entity}"] = base[f"left_hemi_undamaged_{entity}"] + base[f"right_hemi_undamaged_{entity}"]
+            base[f"damaged_{entity}"] = base[f"left_hemi_damaged_{entity}"] + base[f"right_hemi_damaged_{entity}"]
+            base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
+    elif with_hemi:
+        for entity in ("pixel_count", "object_count"):
+            base[entity] = base[f"left_hemi_{entity}"] + base[f"right_hemi_{entity}"]
+    elif with_damage:
+        for entity in ("pixel_count", "object_count"):
+            base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
+    # else: leaves are already named 'pixel_count' / 'object_count'
+
+    # Legacy naming: "damaged_pixel_counts" (trailing 's')
+    if "damaged_pixel_count" in base.columns:
+        base.rename(columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True)
+
     return base
 
 
