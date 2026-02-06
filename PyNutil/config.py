@@ -5,13 +5,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 
-def _unwrap_singleton_list(value: Any) -> Any:
-    """Unwrap legacy settings fields like [null] -> None, ["x"] -> "x"."""
-    if isinstance(value, list) and len(value) == 1:
-        return value[0]
-    return value
-
-
 @dataclass
 class PyNutilConfig:
     segmentation_folder: Optional[str] = None
@@ -27,7 +20,7 @@ class PyNutilConfig:
     voxel_size_um: Optional[float] = None
     min_intensity: Optional[int] = None
     max_intensity: Optional[int] = None
-    cellpose: bool = False
+    segmentation_format: str = "binary"  # "binary" or "cellpose"
 
     @classmethod
     def from_settings_file(cls, settings_file: str) -> "PyNutilConfig":
@@ -37,10 +30,6 @@ class PyNutilConfig:
 
     @classmethod
     def from_settings_dict(cls, settings: Dict[str, Any]) -> "PyNutilConfig":
-        # Be tolerant of legacy settings saved as singleton lists.
-        def g(key: str, default: Any = None) -> Any:
-            return _unwrap_singleton_list(settings.get(key, default))
-
         # alignment_json is required in settings files.
         if "alignment_json" not in settings:
             raise KeyError(
@@ -48,20 +37,20 @@ class PyNutilConfig:
             )
 
         cfg = cls(
-            segmentation_folder=g("segmentation_folder"),
-            image_folder=g("image_folder"),
+            segmentation_folder=settings.get("segmentation_folder"),
+            image_folder=settings.get("image_folder"),
             alignment_json=settings["alignment_json"],
-            colour=g("colour"),
-            intensity_channel=g("intensity_channel"),
-            atlas_name=g("atlas_name"),
-            atlas_path=g("atlas_path"),
-            label_path=g("label_path"),
-            hemi_path=g("hemi_path"),
-            custom_region_path=g("custom_region_path"),
-            voxel_size_um=g("voxel_size_um"),
-            min_intensity=g("min_intensity"),
-            max_intensity=g("max_intensity"),
-            cellpose=bool(g("cellpose", False)),
+            colour=settings.get("colour"),
+            intensity_channel=settings.get("intensity_channel"),
+            atlas_name=settings.get("atlas_name"),
+            atlas_path=settings.get("atlas_path"),
+            label_path=settings.get("label_path"),
+            hemi_path=settings.get("hemi_path"),
+            custom_region_path=settings.get("custom_region_path"),
+            voxel_size_um=settings.get("voxel_size_um"),
+            min_intensity=settings.get("min_intensity"),
+            max_intensity=settings.get("max_intensity"),
+            segmentation_format=settings.get("segmentation_format", "binary"),
         )
 
         # If atlas_path/label_path are present but empty/null, treat as not provided.
@@ -84,6 +73,10 @@ class PyNutilConfig:
         return self
 
     def validate(self) -> None:
+        self._validate_folders()
+        self._validate_atlas()
+
+    def _validate_folders(self) -> None:
         if self.segmentation_folder and self.image_folder:
             raise ValueError(
                 "Please specify either segmentation_folder or image_folder, not both."
@@ -101,6 +94,7 @@ class PyNutilConfig:
                 "You can't specify both colour and image_folder since there are no segmentations"
             )
 
+    def _validate_atlas(self) -> None:
         if (self.atlas_path or self.label_path) and self.atlas_name:
             raise ValueError(
                 "Please specify either atlas_path and label_path or atlas_name. Atlas and label paths are only used for loading custom atlases."

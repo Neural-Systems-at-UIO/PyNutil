@@ -43,7 +43,7 @@ class TestVisualisations(TimedTestCase):
 
             pnt = PyNutil(settings_file=self.settings_path)
 
-            from PyNutil.io.read_and_write import load_quint_json
+            from PyNutil.io.loaders import load_quint_json
             from PyNutil.io.section_visualisation import create_section_visualisations
 
             alignment_data = load_quint_json(pnt.alignment_json)

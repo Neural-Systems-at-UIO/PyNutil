@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from PyNutil.processing.transformations import transform_to_atlas_space
+from PyNutil.processing.transforms import transform_to_atlas_space
 
 
 class TestTransformations(unittest.TestCase):

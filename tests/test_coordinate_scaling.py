@@ -13,8 +13,11 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from PyNutil.processing.coordinate_extraction import segmentation_to_atlas_space
-from PyNutil.processing.transform import get_region_areas
+from PyNutil.processing.pipeline.section_processor import segmentation_to_atlas_space
+from PyNutil.processing.transforms import get_region_areas
+from PyNutil.processing.adapters import SliceInfo
+from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
+from PyNutil.context import PipelineContext, SectionContext
 
 
 class TestCoordinateScaling(TimedTestCase):
@@ -38,27 +41,24 @@ class TestCoordinateScaling(TimedTestCase):
 
             # Alignment JSON (registration space) is (height=200, width=400)
             reg_h, reg_w = 200, 400
-            slice_dict = {
-                "width": reg_w,
-                "height": reg_h,
-                # Anchoring is not relevant for this test (we patch atlas generation).
-                "anchoring": [0, 0, 0, reg_w, 0, 0, 0, reg_h, 0],
-            }
+            anchoring = [0, 0, 0, reg_w, 0, 0, 0, reg_h, 0]
+
+            # Create SliceInfo object
+            slice_info = SliceInfo(
+                section_id="seg.png",
+                section_number=1,
+                width=reg_w,
+                height=reg_h,
+                anchoring=anchoring,
+                deformation=None,
+                damage_mask=None,
+            )
 
             # Dummy atlas map: left half = 1, right half = 2
             atlas_map = np.ones((reg_h, reg_w), dtype=np.int32)
             atlas_map[:, reg_w // 2 :] = 2
 
-            # Storage arrays expected by segmentation_to_atlas_space
-            points_list = [None]
-            centroids_list = [None]
-            points_labels = [None]
-            centroids_labels = [None]
-            region_areas_list = [None]
-            per_point_undamaged_list = [None]
-            per_centroid_undamaged_list = [None]
-            points_hemi_labels = [None]
-            centroids_hemi_labels = [None]
+            # Storage arrays no longer needed – function returns SectionResult
 
             expected_y_scale = reg_h / seg_h
             expected_x_scale = reg_w / seg_w
@@ -96,41 +96,37 @@ class TestCoordinateScaling(TimedTestCase):
 
             with (
                 patch(
-                    "PyNutil.processing.coordinate_extraction.get_region_areas",
+                    "PyNutil.processing.pipeline.section_processor.get_region_areas",
                     side_effect=_fake_get_region_areas,
                 ),
                 patch(
-                    "PyNutil.processing.coordinate_extraction.get_objects_and_assign_regions_optimized",
+                    "PyNutil.processing.pipeline.section_processor.get_objects_and_assign_regions",
                     side_effect=_fake_get_objects,
                 ),
             ):
-                segmentation_to_atlas_space(
-                    slice_dict=slice_dict,
-                    segmentation_path=seg_path,
+                adapter = SegmentationAdapterRegistry.get("binary")
+                p_ctx = PipelineContext(
                     atlas_labels=pd.DataFrame(),
-                    flat_file_atlas=None,
-                    pixel_id="auto",
-                    non_linear=False,
-                    points_list=points_list,
-                    centroids_list=centroids_list,
-                    points_labels=points_labels,
-                    centroids_labels=centroids_labels,
-                    region_areas_list=region_areas_list,
-                    per_point_undamaged_list=per_point_undamaged_list,
-                    per_centroid_undamaged_list=per_centroid_undamaged_list,
-                    points_hemi_labels=points_hemi_labels,
-                    centroids_hemi_labels=centroids_hemi_labels,
-                    index=0,
-                    object_cutoff=0,
                     atlas_volume=None,
                     hemi_map=None,
+                    segmentation_adapter=adapter,
+                    non_linear=False,
+                    object_cutoff=0,
                     use_flat=False,
-                    grid_spacing=None,
+                    pixel_id="auto",
+                    apply_damage_mask=True,
                 )
+                s_ctx = SectionContext(
+                    section_number=1,
+                    slice_info=slice_info,
+                    segmentation_path=seg_path,
+                    flat_file_path=None,
+                )
+                result = segmentation_to_atlas_space(p_ctx, s_ctx)
 
             # The single pixel at x=25 should land in the left half (label 1).
-            self.assertIsNotNone(points_labels[0])
-            self.assertEqual(int(points_labels[0][0]), 1)
+            self.assertIsNotNone(result.points_labels)
+            self.assertEqual(int(result.points_labels[0]), 1)
 
         finally:
             shutil.rmtree(tmpdir)
@@ -144,11 +140,7 @@ class TestCoordinateScaling(TimedTestCase):
 
         seg_w, seg_h = 100, 50
         reg_w, reg_h = 400, 200
-        slice_dict = {
-            "width": reg_w,
-            "height": reg_h,
-            "anchoring": [0, 0, 0, reg_w, 0, 0, 0, reg_h, 0],
-        }
+        anchoring = [0, 0, 0, reg_w, 0, 0, 0, reg_h, 0]
 
         atlas_labels = pd.DataFrame(
             {"idx": [0], "name": ["root"], "r": [0], "g": [0], "b": [0]}
@@ -160,7 +152,7 @@ class TestCoordinateScaling(TimedTestCase):
             # Return a dummy slice in registration shape
             return np.zeros((reg_h, reg_w), dtype=np.uint32)
 
-        def _fake_warp_image(image, triangulation, rescaleXY):
+        def _fake_warp_image(image, deformation, rescaleXY):
             called["warp_rescaleXY"] = rescaleXY
             return image
 
@@ -168,31 +160,36 @@ class TestCoordinateScaling(TimedTestCase):
             called["area_rescaleXY"] = rescaleXY
             return pd.DataFrame({"idx": [0], "region_area": [0]})
 
+        # Create a deformation function to force the warp path
+        def fake_deformation(x, y):
+            return x, y
+
         with (
             patch(
-                "PyNutil.processing.counting_and_load.generate_target_slice",
+                "PyNutil.processing.atlas_map.generate_target_slice",
                 side_effect=_fake_generate_target_slice,
             ),
             patch(
-                "PyNutil.processing.counting_and_load.warp_image",
+                "PyNutil.processing.atlas_map.warp_image",
                 side_effect=_fake_warp_image,
             ),
             patch(
-                "PyNutil.processing.counting_and_load.flat_to_dataframe",
+                "PyNutil.processing.atlas_map.flat_to_dataframe",
                 side_effect=_fake_flat_to_dataframe,
             ),
         ):
-            # Provide a non-None triangulation to force warp path
             get_region_areas(
                 use_flat=False,
                 atlas_labels=atlas_labels,
                 flat_file_atlas=None,
                 seg_width=seg_w,
                 seg_height=seg_h,
-                slice_dict=slice_dict,
+                anchoring=anchoring,
+                reg_width=reg_w,
+                reg_height=reg_h,
                 atlas_volume=np.zeros((2, 2, 2), dtype=np.uint32),
                 hemi_mask=None,
-                triangulation=object(),
+                deformation=fake_deformation,
                 damage_mask=None,
             )
 

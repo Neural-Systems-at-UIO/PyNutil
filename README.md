@@ -64,7 +64,7 @@ pnt = PyNutil(
     colour=[0, 0, 0],
     atlas_name='allen_mouse_25um'
     #If you would like to use cellpose segmentations add:
-    #cellpose = True
+    #segmentation_format = 'cellpose'
 )
 
 #optionally, if you want to generate a 3D heatmap

@@ -89,7 +89,3 @@ def save_volume_niftis(
 
     if damage_volume is not None:
         _save_one(damage_volume, name="damage_volume")
-
-
-# Backwards-compatible alias (internal name used by earlier refactor iterations).
-save_interpolated_volumes = save_volume_niftis

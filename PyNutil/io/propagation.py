@@ -24,48 +24,63 @@ def propagate(arr):
             count += 1
 
     if count >= 2:
-        l = len(arr)
-        if not "anchoring" in arr[0]:
-            nr = arr[0]["nr"]
-            a = [linreg.get(nr) for linreg in linregs]
-            orthonormalize(a)
-            arr[0]["anchoring"] = a
-            count += 1
-        if not "anchoring" in arr[l - 1]:
-            nr = arr[l - 1]["nr"]
-            a = [linreg.get(nr) for linreg in linregs]
-            orthonormalize(a)
-            arr[l - 1]["anchoring"] = a
-            count += 1
-
-        start = 1
-        while count < l:
-            while "anchoring" in arr[start]:
-                start += 1
-            next = start + 1
-            while not "anchoring" in arr[next]:
-                next += 1
-            pnr = arr[start - 1]["nr"]
-            nnr = arr[next]["nr"]
-            panch = arr[start - 1]["anchoring"]
-            nanch = arr[next]["anchoring"]
-            linints = [LinInt(pnr, panch[i], nnr, nanch[i]) for i in range(len(panch))]
-            for i in range(start, next):
-                nr = arr[i]["nr"]
-                arr[i]["anchoring"] = [linint.get(nr) for linint in linints]
-                count += 1
-            start = next + 1
-
-        for slice in arr:
-            a = slice["anchoring"]
-            orthonormalize(a)
-            v = a.pop()
-            u = a.pop()
-            for i in range(3):
-                a[i + 3] *= u * slice["width"]
-                a[i + 6] *= v * slice["height"]
-                a[i] -= (a[i + 3] + a[i + 6]) / 2
+        count = _propagate_endpoints(arr, linregs, count)
+        _interpolate_gaps(arr, count)
+        _finalize_anchorings(arr)
     return arr
+
+
+def _propagate_endpoints(arr, linregs, count):
+    """Fill in missing anchorings at the first and last slices via linear regression."""
+    l = len(arr)
+    if "anchoring" not in arr[0]:
+        nr = arr[0]["nr"]
+        a = [linreg.get(nr) for linreg in linregs]
+        orthonormalize(a)
+        arr[0]["anchoring"] = a
+        count += 1
+    if "anchoring" not in arr[l - 1]:
+        nr = arr[l - 1]["nr"]
+        a = [linreg.get(nr) for linreg in linregs]
+        orthonormalize(a)
+        arr[l - 1]["anchoring"] = a
+        count += 1
+    return count
+
+
+def _interpolate_gaps(arr, count):
+    """Fill gaps between anchored slices by linear interpolation."""
+    l = len(arr)
+    start = 1
+    while count < l:
+        while "anchoring" in arr[start]:
+            start += 1
+        next = start + 1
+        while "anchoring" not in arr[next]:
+            next += 1
+        pnr = arr[start - 1]["nr"]
+        nnr = arr[next]["nr"]
+        panch = arr[start - 1]["anchoring"]
+        nanch = arr[next]["anchoring"]
+        linints = [LinInt(pnr, panch[i], nnr, nanch[i]) for i in range(len(panch))]
+        for i in range(start, next):
+            nr = arr[i]["nr"]
+            arr[i]["anchoring"] = [linint.get(nr) for linint in linints]
+            count += 1
+        start = next + 1
+
+
+def _finalize_anchorings(arr):
+    """Orthonormalize anchorings and restore width/height scaling."""
+    for slice in arr:
+        a = slice["anchoring"]
+        orthonormalize(a)
+        v = a.pop()
+        u = a.pop()
+        for i in range(3):
+            a[i + 3] *= u * slice["width"]
+            a[i + 6] *= v * slice["height"]
+            a[i] -= (a[i + 3] + a[i + 6]) / 2
 
 
 class LinInt:
@@ -104,10 +119,7 @@ class LinReg:
 
 
 def normalize(arr, idx):
-    l = 0
-    for i in range(3):
-        l += arr[idx + i] * arr[idx + i]
-    l = math.sqrt(l)
+    l = math.sqrt(sum(arr[idx + i] ** 2 for i in range(3)))
     for i in range(3):
         arr[idx + i] /= l
     return l
@@ -115,9 +127,7 @@ def normalize(arr, idx):
 
 def orthonormalize(arr):
     normalize(arr, 3)
-    dot = 0
-    for i in range(3):
-        dot += arr[i + 3] * arr[i + 6]
+    dot = sum(arr[i + 3] * arr[i + 6] for i in range(3))
     for i in range(3):
         arr[i + 6] -= arr[i + 3] * dot
     normalize(arr, 6)

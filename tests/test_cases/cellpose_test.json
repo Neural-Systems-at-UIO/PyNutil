@@ -2,6 +2,6 @@
     "segmentation_folder": "tests/test_data/cellpose/segmentations",
     "alignment_json": "tests/test_data/cellpose/mouse6_nonlinear_lz.json",
     "atlas_name": "allen_mouse_25um",
-    "cellpose": true,
+    "segmentation_format": "cellpose",
     "expected_output_folder": "expected_outputs/cellpose"
 }
