@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QButtonGroup,
     QGroupBox,
     QSizePolicy,
+    QStackedWidget,
 )
 from PyQt6.QtGui import QAction,  QIcon
 
@@ -154,7 +155,7 @@ class PyNutilGUI(QMainWindow):
         self.img_radio.toggled.connect(self.set_input_mode_image)
         left_layout.addWidget(mode_group)
 
-        # Segmentation directory selection (visible when segmentation mode selected)
+        # Segmentation directory selection (page 0 of stack)
         segmentation_layout, self.segmentation_dir_dropdown, self.segmentation_dir_button = (
             create_path_selection_section(
                 parent=self,
@@ -167,9 +168,8 @@ class PyNutilGUI(QMainWindow):
         )
         self.segmentation_widget = QWidget()
         self.segmentation_widget.setLayout(segmentation_layout)
-        left_layout.addWidget(self.segmentation_widget)
 
-        # Image directory selection (visible when image mode selected)
+        # Image directory selection (page 1 of stack)
         image_layout, self.image_dir_dropdown, self.image_dir_button = (
             create_path_selection_section(
                 parent=self,
@@ -182,11 +182,13 @@ class PyNutilGUI(QMainWindow):
         )
         self.image_widget = QWidget()
         self.image_widget.setLayout(image_layout)
-        left_layout.addWidget(self.image_widget)
 
-        # By default show segmentation widget and hide image widget
-        self.segmentation_widget.setVisible(True)
-        self.image_widget.setVisible(False)
+        # Stack: index 0 = segmentation, index 1 = image
+        self.input_stack = QStackedWidget()
+        self.input_stack.addWidget(self.segmentation_widget)
+        self.input_stack.addWidget(self.image_widget)
+        self.input_stack.setCurrentIndex(0)
+        left_layout.addWidget(self.input_stack)
 
         # Cellpose checkbox
         cellpose_layout = QHBoxLayout()
@@ -310,7 +312,7 @@ class PyNutilGUI(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # Reduce strict minimum size to allow resizing on Windows without overlap
-        self.setMinimumSize(800, 500)
+        self.setMinimumSize(900, 700)
 
         # Initialize log storage variables
         self.log_collection = ""
@@ -366,32 +368,26 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
         self.arguments["value_mode"] = text
 
     def set_input_mode_segmentation(self, checked: bool):
-        # When segmentation mode is selected, show segmentation widget and hide image widget
         if checked:
-            try:
-                self.segmentation_widget.setVisible(True)
-            except Exception:
-                pass
-            try:
-                self.image_widget.setVisible(False)
-            except Exception:
-                pass
-            # clear any image_dir argument
+            self.input_stack.setCurrentIndex(0)
             self.arguments["image_dir"] = None
+            # Re-enable colour and cellpose controls
+            is_cellpose = self.cellpose_checkbox.isChecked()
+            self.colour_dropdown.setEnabled(not is_cellpose)
+            self.colour_button.setEnabled(not is_cellpose)
+            self.cellpose_checkbox.setEnabled(True)
+            self.set_colour(self.colour_dropdown.currentIndex())
 
     def set_input_mode_image(self, checked: bool):
-        # When image mode is selected, show image widget and hide segmentation widget
         if checked:
-            try:
-                self.image_widget.setVisible(True)
-            except Exception:
-                pass
-            try:
-                self.segmentation_widget.setVisible(False)
-            except Exception:
-                pass
-            # clear any segmentation_dir argument
+            self.input_stack.setCurrentIndex(1)
             self.arguments["segmentation_dir"] = None
+            # Object colour and cellpose are irrelevant in intensity mode
+            self.colour_dropdown.setEnabled(False)
+            self.colour_button.setEnabled(False)
+            self.cellpose_checkbox.setEnabled(False)
+            self.arguments["object_colour"] = None
+            self.arguments["cellpose"] = False
 
     def set_output_dir(self, index):
         if index >= 0:

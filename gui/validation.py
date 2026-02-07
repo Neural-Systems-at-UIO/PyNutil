@@ -44,13 +44,14 @@ def validate_analysis_inputs(
         missing.append("Specify only one of Segmentation Folder or Image Folder (not both)")
 
     colour = arguments.get("object_colour")
-    # Treat 'auto' as not specifying an explicit colour
-    explicit_colour = bool(colour) and not (isinstance(colour, str) and colour.strip().lower() == "auto")
-    # If using cellpose, object colour must not be set
-    if arguments.get("cellpose") and explicit_colour:
-        missing.append("Cellpose and Object Color cannot both be selected")
-    elif not arguments.get("cellpose"):
-        if not explicit_colour:
+    is_intensity_mode = bool(arguments.get("image_dir"))
+    # Object colour is only relevant in segmentation mode
+    if not is_intensity_mode:
+        has_colour = colour is not None and colour != ""
+        # If using cellpose, object colour must not be set
+        if arguments.get("cellpose") and has_colour:
+            missing.append("Cellpose and Object Color cannot both be selected")
+        elif not arguments.get("cellpose") and not has_colour:
             missing.append("Object Color")
 
     if not arguments.get("output_dir"):
