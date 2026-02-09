@@ -525,7 +525,23 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             self.cancel_download()
 
     def append_text_to_output(self, text):
-        self.log_manager.append(text)
+        if "\r" in text:
+            parts = text.split("\r")
+            for part in parts[:-1]:
+                if part.strip():
+                    self.log_manager.append(part)
+            tail = parts[-1]
+            if tail.endswith("\n"):
+                cleaned = tail.rstrip("\n")
+                if cleaned.strip():
+                    self.log_manager.append(cleaned)
+                self.log_manager.set_progress("")
+            elif tail.strip():
+                self.log_manager.set_progress(tail)
+            return
+
+        if text.strip():
+            self.log_manager.append(text)
 
     def load_settings_from_file(self):
         file_path, _ = QFileDialog.getOpenFileName(

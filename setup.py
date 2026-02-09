@@ -26,6 +26,7 @@ setup(
         "opencv-python",
         "scipy",
         "nibabel",
-        "orjson"
+        "orjson",
+        "tqdm"
     ],
 )

@@ -17,6 +17,7 @@ class AnalysisWorker(QThread):
 
     def run(self):
         sys.stdout = TextRedirector()
+        sys.stderr = sys.stdout
         sys.stdout.text_written.connect(self.log_signal.emit)
         try:
             print("Starting analysis... This may take a moment")
@@ -80,6 +81,7 @@ class AnalysisWorker(QThread):
             print(f"Error: {e}")
         finally:
             sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
     def cancel(self):
         self.cancelled = True
@@ -99,6 +101,7 @@ class AtlasInstallWorker(QThread):
 
     def run(self):
         sys.stdout = TextRedirector()
+        sys.stderr = sys.stdout
         sys.stdout.text_written.connect(self.progress_signal.emit)
 
         try:
@@ -121,6 +124,7 @@ class AtlasInstallWorker(QThread):
             self.finished_signal.emit(False, error_msg)
         finally:
             sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
     def cancel(self):
         self.cancelled = True

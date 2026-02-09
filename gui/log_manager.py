@@ -9,7 +9,9 @@ class TextRedirector(QObject):
     text_written = pyqtSignal(str)
 
     def write(self, text):
-        if text.strip():  # Only emit non-empty texts
+        if not text:
+            return
+        if text.strip() or "\r" in text:
             self.text_written.emit(text)
 
     def flush(self):

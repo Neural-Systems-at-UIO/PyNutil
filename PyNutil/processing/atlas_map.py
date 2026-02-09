@@ -295,9 +295,12 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
         df_area_per_label = combo_dfs[0]
         for cdf in combo_dfs[1:]:
             df_area_per_label = df_area_per_label.join(cdf, how="outer")
-        df_area_per_label = (
-            df_area_per_label.fillna(0).infer_objects(copy=False).reset_index()
-        )
+        for col in df_area_per_label.columns:
+            if col != "idx":
+                df_area_per_label[col] = pd.to_numeric(
+                    df_area_per_label[col], errors="coerce"
+                )
+        df_area_per_label = df_area_per_label.fillna(0).reset_index()
     else:
         df_area_per_label = pd.DataFrame(columns=["idx"])
 

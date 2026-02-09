@@ -5,7 +5,7 @@ Generates colored atlas slice PNGs and optionally overlays segmentation pixels.
 
 import os
 from typing import Dict, List, Tuple, Optional, Union
-
+from tqdm import tqdm
 import cv2
 import numpy as np
 import pandas as pd
@@ -283,7 +283,7 @@ def create_section_visualisations(
     color_lookup = _build_color_lookup(atlas_labels)
 
     slices = alignment_json.get("slices", [])
-    for i, slice_dict in enumerate(slices):
+    for i, slice_dict in tqdm(enumerate(slices), total = len(slices), desc="saving atlas images"):
         try:
             filename = slice_dict.get("filename", "")
             base_name = os.path.splitext(filename)[0] if filename else f"slice_{i:03d}"
@@ -314,6 +314,5 @@ def create_section_visualisations(
                 _color_lookup=color_lookup,
             )
 
-            print(f"Created visualisation: {output_filename}")
         except Exception as e:
             print(f"Error creating visualisation for slice {i}: {e}")
