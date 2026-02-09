@@ -282,7 +282,15 @@ def _backfill_label_info(label_df, atlas_labels):
 
 def _prepare_combined_df(per_section_df, available_group_cols):
     """Concat per-section DataFrames and coerce non-group columns to numeric."""
-    non_empty = [df for df in per_section_df if not df.empty]
+    non_empty = []
+    for df in per_section_df:
+        if df is None or df.empty:
+            continue
+        non_na = df.dropna(how="all")
+        non_na = non_na.dropna(how="all", axis=1)
+        if non_na.empty:
+            continue
+        non_empty.append(df)
     combined = pd.concat(non_empty) if non_empty else pd.DataFrame()
     for col in combined.columns:
         if col not in available_group_cols:
