@@ -39,6 +39,7 @@ from .base import (
 # Anchoring loaders
 from .anchoring import (
     QuintAnchoringLoader,
+    BrainGlobeRegistrationLoader,
 )
 
 # Deformation providers
@@ -84,6 +85,7 @@ __all__ = [
     "DamageProvider",
     # Anchoring
     "QuintAnchoringLoader",
+    "BrainGlobeRegistrationLoader",
     # Deformation
     "VisuAlignDeformationProvider",
     "DisplacementFieldProvider",

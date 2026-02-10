@@ -15,7 +15,7 @@ from .base import (
     DamageProvider,
     RegistrationData,
 )
-from .anchoring import QuintAnchoringLoader
+from .anchoring import BrainGlobeRegistrationLoader, QuintAnchoringLoader
 from .deformation import VisuAlignDeformationProvider
 from .damage import QCAlignDamageProvider
 
@@ -47,6 +47,7 @@ class AnchoringLoaderRegistry:
 
 
 # Register built-in loaders
+AnchoringLoaderRegistry.register(BrainGlobeRegistrationLoader)
 AnchoringLoaderRegistry.register(QuintAnchoringLoader)
 
 
