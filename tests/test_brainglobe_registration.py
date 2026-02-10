@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 import pathlib
 import sys
@@ -64,6 +65,10 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         self.registration_json = os.path.join(
             self.base_dir, "brainglobe-registration.json"
         )
+        self.manual_output_dir = os.path.join(
+            os.path.dirname(__file__), "..", "demo_data", "outputs", "brainglobe_registration"
+        )
+        os.makedirs(self.manual_output_dir, exist_ok=True)
         self.registry = _load_registry_module()
 
     def test_loads_brainglobe_registration_as_single_slice(self):
@@ -88,6 +93,23 @@ class TestBrainGlobeRegistration(unittest.TestCase):
             atol=1e-6,
         )
 
+        with open(
+            os.path.join(self.manual_output_dir, "anchoring_validation.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                {
+                    "registration_json": self.registration_json,
+                    "width": int(section.width),
+                    "height": int(section.height),
+                    "computed_anchoring": [float(v) for v in section.anchoring],
+                    "expected_anchoring": [float(v) for v in expected_anchoring],
+                },
+                f,
+                indent=2,
+            )
+
     def test_registered_intensity_is_mostly_within_registered_atlas_mask(self):
         image = tifffile.imread(os.path.join(self.base_dir, "downsampled.tiff"))
         hemispheres = tifffile.imread(
@@ -99,6 +121,22 @@ class TestBrainGlobeRegistration(unittest.TestCase):
 
         coverage = float(np.mean(inside_mask[foreground]))
         self.assertGreaterEqual(coverage, 0.98)
+
+        with open(
+            os.path.join(self.manual_output_dir, "coverage_validation.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                {
+                    "foreground_threshold": 10,
+                    "foreground_pixel_count": int(np.sum(foreground)),
+                    "inside_mask_pixel_count": int(np.sum(inside_mask)),
+                    "coverage": coverage,
+                },
+                f,
+                indent=2,
+            )
 
     def test_nonlinear_deformation_fields_are_present_and_match_registration_shape(self):
         field0 = tifffile.imread(os.path.join(self.base_dir, "deformation_field_0.tiff"))
