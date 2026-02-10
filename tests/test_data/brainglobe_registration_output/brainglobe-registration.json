@@ -40,6 +40,11 @@
         -20.115468861080046
     ],
     "atlas_2d_slice_index": 311,
+    "atlas_shape": [
+        528,
+        320,
+        456
+    ],
     "atlas_slice_corners": [
         [
             8000.0,

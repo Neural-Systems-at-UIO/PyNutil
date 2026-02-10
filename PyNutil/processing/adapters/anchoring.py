@@ -104,6 +104,46 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
         return float(match.group(1))
 
     @staticmethod
+    def _atlas_shape_voxels(data: dict, atlas_name: str) -> tuple[int, int, int]:
+        """Return atlas shape in voxels as (z, y, x)."""
+        shape = data.get("atlas_shape")
+        if shape is not None:
+            if len(shape) != 3:
+                raise ValueError(
+                    "Expected atlas_shape to have three elements (z, y, x)."
+                )
+            return tuple(int(v) for v in shape)
+
+        try:
+            import brainglobe_atlasapi
+
+            atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
+            return tuple(int(v) for v in atlas.annotation.shape)
+        except Exception as exc:
+            raise ValueError(
+                "Could not determine atlas shape. Provide atlas_shape in the "
+                "BrainGlobe registration JSON or ensure the atlas is available "
+                "via brainglobe_atlasapi."
+            ) from exc
+
+    @staticmethod
+    def _reorient_corners(
+        corners_px: np.ndarray, atlas_shape_zyx: tuple[int, int, int]
+    ) -> np.ndarray:
+        """Map BrainGlobe atlas coords into PyNutil atlas volume coords."""
+        # atlas_shape_zyx is the raw atlas annotation shape as stored by
+        # brainglobe-atlasapi: (axis0, axis1, axis2).
+        axis0, axis1, axis2 = atlas_shape_zyx
+        c0 = corners_px[:, 0]
+        c1 = corners_px[:, 1]
+        c2 = corners_px[:, 2]
+        # process_atlas_volume: transpose [2,0,1] and flip all axes
+        x_p = (axis2 - 1) - c2
+        y_p = (axis0 - 1) - c0
+        z_p = (axis1 - 1) - c1
+        return np.stack([x_p, y_p, z_p], axis=1)
+
+    @staticmethod
     def _find_image_shape(registration_path: str) -> tuple[int, int]:
         """Find registration-space image dimensions from nearby TIFF outputs."""
         import tifffile
@@ -143,6 +183,8 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
         atlas_name = data["atlas"]
         resolution_um = self._atlas_resolution_um(atlas_name)
         corners_px = corners_um / resolution_um
+        atlas_shape = self._atlas_shape_voxels(data, atlas_name)
+        corners_px = self._reorient_corners(corners_px, atlas_shape)
 
         # BrainGlobe corner order: TL, TR, BL, BR
         top_left, top_right, bottom_left, _ = corners_px
@@ -167,6 +209,7 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
             metadata={
                 "atlas": atlas_name,
                 "atlas_resolution_um": resolution_um,
+                "atlas_shape": atlas_shape,
                 "registration_dir": str(Path(path).parent),
                 "_raw_data": data,
             },

@@ -46,6 +46,7 @@ from .anchoring import (
 from .deformation import (
     VisuAlignDeformationProvider,
     DisplacementFieldProvider,
+    BrainGlobeDeformationProvider,
 )
 
 # Damage providers
@@ -89,6 +90,7 @@ __all__ = [
     # Deformation
     "VisuAlignDeformationProvider",
     "DisplacementFieldProvider",
+    "BrainGlobeDeformationProvider",
     # Damage
     "QCAlignDamageProvider",
     # Registry

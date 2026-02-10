@@ -16,7 +16,7 @@ from .base import (
     RegistrationData,
 )
 from .anchoring import BrainGlobeRegistrationLoader, QuintAnchoringLoader
-from .deformation import VisuAlignDeformationProvider
+from .deformation import BrainGlobeDeformationProvider, VisuAlignDeformationProvider
 from .damage import QCAlignDamageProvider
 
 
@@ -114,8 +114,11 @@ def load_registration(
         if deformation_provider:
             data = deformation_provider.apply(data)
         else:
-            # Default: VisuAlign for QUINT files
-            data = VisuAlignDeformationProvider().apply(data)
+            if isinstance(loader, BrainGlobeRegistrationLoader):
+                data = BrainGlobeDeformationProvider(path).apply(data)
+            else:
+                # Default: VisuAlign for QUINT files
+                data = VisuAlignDeformationProvider().apply(data)
 
     # 3. Apply damage
     if apply_damage:

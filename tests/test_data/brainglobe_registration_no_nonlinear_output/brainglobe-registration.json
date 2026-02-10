@@ -1,0 +1,182 @@
+{
+    "atlas": "allen_mouse_25um",
+    "atlas_transform_matrix": [
+        [
+            0.9873498844688824,
+            -0.15643446504023087,
+            -0.02585466663604793
+        ],
+        [
+            0.1563808588560995,
+            0.9876883405951377,
+            -0.004094976904927913
+        ],
+        [
+            0.026176948307873153,
+            0.0,
+            0.9996573249755571
+        ]
+    ],
+    "atlas_offset": [
+        12.99128350340169,
+        -81.7426676736005,
+        -15.062968937642665
+    ],
+    "atlas_2d_slice_index": 295,
+    "atlas_slice_corners": [
+        [
+            7600.0,
+            -875.0,
+            -175.0
+        ],
+        [
+            7300.0,
+            -925.0,
+            11575.0
+        ],
+        [
+            6025.0,
+            8950.0,
+            -175.0
+        ],
+        [
+            5725.0,
+            8900.0,
+            11575.0
+        ]
+    ],
+    "atlas_data_layer": "allen_mouse_25um",
+    "atlas_annotations_layer": "Annotations",
+    "moving_image": "2D coronal mouse brain section",
+    "adjust_moving_image_widget": {
+        "pixel_size_x": 0.0,
+        "pixel_size_y": 0.0,
+        "pixel_size_z": 0.0,
+        "atlas_pitch": -9.0,
+        "atlas_yaw": 1.5,
+        "atlas_roll": 0.0
+    },
+    "transform_selections": [
+        [
+            "affine",
+            {
+                "FixedInternalImagePixelType": [
+                    "float"
+                ],
+                "MovingInternalImagePixelType": [
+                    "float"
+                ],
+                "Registration": [
+                    "MultiResolutionRegistration"
+                ],
+                "FixedImagePyramid": [
+                    "FixedRecursiveImagePyramid"
+                ],
+                "MovingImagePyramid": [
+                    "MovingRecursiveImagePyramid"
+                ],
+                "Interpolator": [
+                    "LinearInterpolator"
+                ],
+                "Metric": [
+                    "AdvancedMattesMutualInformation"
+                ],
+                "Optimizer": [
+                    "AdaptiveStochasticGradientDescent"
+                ],
+                "ResampleInterpolator": [
+                    "FinalBSplineInterpolator"
+                ],
+                "Resampler": [
+                    "DefaultResampler"
+                ],
+                "Transform": [
+                    "AffineTransform"
+                ],
+                "ErodeMask": [
+                    "false"
+                ],
+                "NumberOfResolutions": [
+                    "3"
+                ],
+                "HowToCombineTransforms": [
+                    "Compose"
+                ],
+                "AutomaticTransformInitialization": [
+                    "true"
+                ],
+                "AutomaticScalesEstimation": [
+                    "true"
+                ],
+                "WriteTransformParametersEachIteration": [
+                    "false"
+                ],
+                "WriteResultImage": [
+                    "true"
+                ],
+                "ResultImageFormat": [
+                    "tiff"
+                ],
+                "CompressResultImage": [
+                    "false"
+                ],
+                "WriteResultImageAfterEachResolution": [
+                    "false"
+                ],
+                "ShowExactMetricValue": [
+                    "false"
+                ],
+                "MaximumNumberOfIterations": [
+                    "500"
+                ],
+                "NumberOfHistogramBins": [
+                    "32"
+                ],
+                "FixedLimitRangeRatio": [
+                    "0.0"
+                ],
+                "MovingLimitRangeRatio": [
+                    "0.0"
+                ],
+                "FixedKernelBSplineOrder": [
+                    "3"
+                ],
+                "MovingKernelBSplineOrder": [
+                    "3"
+                ],
+                "ImageSampler": [
+                    "RandomCoordinate"
+                ],
+                "UseRandomSampleRegion": [
+                    "false"
+                ],
+                "NumberOfSpatialSamples": [
+                    "3000"
+                ],
+                "NewSamplesEveryIteration": [
+                    "true"
+                ],
+                "CheckNumberOfSamples": [
+                    "true"
+                ],
+                "MaximumNumberOfSamplingAttempts": [
+                    "10"
+                ],
+                "FinalBSplineInterpolationOrder": [
+                    "3"
+                ],
+                "DefaultPixelValue": [
+                    "0"
+                ],
+                "FixedImageDimension": [
+                    "2"
+                ],
+                "MovingImageDimension": [
+                    "2"
+                ]
+            }
+        ]
+    ],
+    "filter": false,
+    "output_directory": "/home/harryc/Downloads/brainglobe-registration-no-output"
+}

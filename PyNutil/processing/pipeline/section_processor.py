@@ -15,7 +15,7 @@ from ...results import SectionResult, IntensitySectionResult
 from .connected_components import (
     get_objects_and_assign_regions,
 )
-from ..atlas_map import generate_target_slice, get_region_areas
+from ..atlas_map import generate_target_slice, get_region_areas, warp_image
 from ..transforms import (
     transform_points_to_atlas_space,
     transform_to_registration,
@@ -45,9 +45,10 @@ def _prepare_section(
     """Shared setup for both segmentation and intensity section processors.
 
     Returns:
-        (atlas_map, region_areas, hemi_mask, damage_mask, deformation)
+        (atlas_map, region_areas, hemi_mask, damage_mask, deformation, forward_deformation)
     """
     deformation = slice_info.deformation if non_linear else None
+    forward_deformation = slice_info.forward_deformation if non_linear else None
     damage_mask = slice_info.damage_mask
     reg_height, reg_width = slice_info.height, slice_info.width
 
@@ -70,7 +71,81 @@ def _prepare_section(
         deformation,
         damage_mask,
     )
-    return atlas_map, region_areas, hemi_mask, damage_mask, deformation
+
+    if non_linear and forward_deformation is None:
+        field = slice_info.metadata.get("brainglobe_field")
+        registration_dir = slice_info.metadata.get("registration_dir")
+        if field is not None and registration_dir:
+            from pathlib import Path
+            import tifffile
+
+            reg_atlas_path = Path(registration_dir) / "registered_atlas.tiff"
+            if reg_atlas_path.exists():
+                registered_atlas = tifffile.imread(reg_atlas_path)
+                reg_h, reg_w = registered_atlas.shape
+                mask_expected = registered_atlas > 0
+
+                def _warp_iou(mode: str) -> float:
+                    if mode == "xy":
+                        dx = field[..., 1]
+                        dy = field[..., 0]
+                        sign = 1.0
+                    elif mode == "xy_inv":
+                        dx = field[..., 1]
+                        dy = field[..., 0]
+                        sign = -1.0
+                    elif mode == "yx":
+                        dx = field[..., 0]
+                        dy = field[..., 1]
+                        sign = 1.0
+                    else:
+                        dx = field[..., 0]
+                        dy = field[..., 1]
+                        sign = -1.0
+
+                    def deform(x, y):
+                        h, w = field.shape[:2]
+                        xi = np.clip(x.astype(np.int32), 0, w - 1)
+                        yi = np.clip(y.astype(np.int32), 0, h - 1)
+                        return x + sign * dx[yi, xi], y + sign * dy[yi, xi]
+
+                    warped = warp_image(atlas_map.astype(np.float32), deform, (reg_w, reg_h))
+                    if warped.shape != (reg_h, reg_w):
+                        warped = cv2.resize(
+                            warped.astype(np.float32),
+                            (reg_w, reg_h),
+                            interpolation=cv2.INTER_NEAREST,
+                        )
+                    mask_actual = warped > 0
+                    intersection = np.logical_and(mask_actual, mask_expected).sum()
+                    union = np.logical_or(mask_actual, mask_expected).sum()
+                    return float(intersection / union) if union else 0.0
+
+                candidates = ["xy", "xy_inv", "yx", "yx_inv"]
+                scores = {mode: _warp_iou(mode) for mode in candidates}
+                best_mode = max(scores, key=scores.get)
+
+                from ..adapters.deformation import BrainGlobeDeformationProvider
+
+                forward_deformation = BrainGlobeDeformationProvider._create_deformation(
+                    field, best_mode
+                )
+                slice_info.forward_deformation = forward_deformation
+                slice_info.metadata["deformation_type"] = "brainglobe_displacement"
+                slice_info.metadata["deformation_mode"] = best_mode
+                slice_info.metadata["deformation_iou_scores"] = scores
+            else:
+                # Fallback: apply default component order (xy)
+                from ..adapters.deformation import BrainGlobeDeformationProvider
+
+                forward_deformation = BrainGlobeDeformationProvider._create_deformation(
+                    field, "xy"
+                )
+                slice_info.forward_deformation = forward_deformation
+                slice_info.metadata["deformation_type"] = "brainglobe_displacement"
+                slice_info.metadata["deformation_mode"] = "xy"
+
+    return atlas_map, region_areas, hemi_mask, damage_mask, deformation, forward_deformation
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +326,14 @@ def segmentation_to_atlas_space(
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_info.height, slice_info.width
 
-    atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
+    (
+        atlas_map,
+        region_areas,
+        hemi_mask,
+        damage_mask,
+        deformation,
+        forward_deformation,
+    ) = _prepare_section(
         slice_info,
         seg_width,
         seg_height,
@@ -321,7 +403,7 @@ def segmentation_to_atlas_space(
         scaled_y[per_point_undamaged],
         _safe_index(scaled_centroidsX, per_centroid_undamaged),
         _safe_index(scaled_centroidsY, per_centroid_undamaged),
-        deformation,
+        forward_deformation or deformation,
     )
     points, centroids = transform_points_to_atlas_space(
         slice_info.anchoring,
@@ -379,7 +461,14 @@ def segmentation_to_atlas_space_intensity(
 
     reg_height, reg_width = slice_info.height, slice_info.width
 
-    atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
+    (
+        atlas_map,
+        region_areas,
+        hemi_mask,
+        damage_mask,
+        deformation,
+        forward_deformation,
+    ) = _prepare_section(
         slice_info,
         image.shape[1],
         image.shape[0],
@@ -457,6 +546,7 @@ def segmentation_to_atlas_space_intensity(
         hemi_mask,
         reg_height,
         reg_width,
+        forward_deformation or deformation,
     )
 
     return result
@@ -472,6 +562,7 @@ def _build_intensity_result(
     hemi_mask,
     reg_height,
     reg_width,
+    deformation,
 ):
     """Construct an IntensitySectionResult from extracted signal pixels."""
     if len(sig_y) == 0:
@@ -484,6 +575,9 @@ def _build_intensity_result(
             num_points=0,
         )
 
+    if deformation is not None:
+        sig_x, sig_y = deformation(sig_x, sig_y)
+
     sig_points_3d = transform_to_atlas_space(
         slice_info.anchoring,
         sig_y,
@@ -491,9 +585,11 @@ def _build_intensity_result(
         reg_height,
         reg_width,
     )
-    sig_labels = atlas_map[sig_y, sig_x]
+    sig_labels = assign_labels_at_coordinates(
+        sig_y, sig_x, atlas_map, reg_height, reg_width
+    )
     sig_hemi = (
-        hemi_mask[sig_y, sig_x]
+        assign_labels_at_coordinates(sig_y, sig_x, hemi_mask, reg_height, reg_width)
         if hemi_mask is not None
         else np.zeros(len(sig_y), dtype=int)
     )

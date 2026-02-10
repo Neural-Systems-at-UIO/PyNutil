@@ -182,3 +182,84 @@ class DisplacementFieldProvider(DeformationProvider):
                 s.metadata["deformation_type"] = "displacement_field"
 
         return data
+
+
+class BrainGlobeDeformationProvider(DeformationProvider):
+    """Adds deformation from BrainGlobe deformation_field_0/1.tiff outputs."""
+
+    name: str = "brainglobe"
+
+    def __init__(self, registration_path: Optional[str] = None):
+        """Initialize provider.
+
+        Args:
+            registration_path: Optional path to the BrainGlobe registration JSON.
+                If omitted, uses slice metadata 'registration_dir'.
+        """
+        self.registration_path = registration_path
+
+    @staticmethod
+    def _load_field(registration_dir: str) -> Optional[np.ndarray]:
+        import tifffile
+        from pathlib import Path
+
+        folder = Path(registration_dir)
+        field0_path = folder / "deformation_field_0.tiff"
+        field1_path = folder / "deformation_field_1.tiff"
+        if not field0_path.exists() or not field1_path.exists():
+            return None
+
+        field0 = tifffile.imread(field0_path)
+        field1 = tifffile.imread(field1_path)
+        if field0.shape != field1.shape:
+            raise ValueError(
+                "BrainGlobe deformation fields have mismatched shapes: "
+                f"{field0.shape} vs {field1.shape}"
+            )
+        return np.stack([field0, field1], axis=-1)
+
+    @staticmethod
+    def _create_deformation(field: np.ndarray, mode: str) -> DeformationFunction:
+        """Create a deformation function from a displacement field."""
+        if mode not in {"xy", "xy_inv", "yx", "yx_inv"}:
+            raise ValueError(f"Unknown BrainGlobe deformation mode '{mode}'.")
+
+        def deform(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+            h, w = field.shape[:2]
+            xi = np.clip(x.astype(np.int32), 0, w - 1)
+            yi = np.clip(y.astype(np.int32), 0, h - 1)
+            # BrainGlobe stores deformation_field_0/1 after reversing component
+            # order (see brainglobe_registration.elastix.register), so
+            # field[..., 0] corresponds to Y displacement.
+            dy = field[yi, xi, 0]
+            dx = field[yi, xi, 1]
+            if mode == "xy":
+                return x + dx, y + dy
+            if mode == "xy_inv":
+                return x - dx, y - dy
+            if mode == "yx":
+                return x + dy, y + dx
+            return x - dy, y - dx
+
+        return deform
+
+    def apply(self, data: RegistrationData) -> RegistrationData:
+        """Attach BrainGlobe deformation field to slices (forward only)."""
+        registration_dir = None
+        if self.registration_path:
+            from pathlib import Path
+
+            registration_dir = str(Path(self.registration_path).parent)
+
+        for s in data.slices:
+            folder = registration_dir or s.metadata.get("registration_dir")
+            if not folder:
+                continue
+            field = self._load_field(folder)
+            if field is None:
+                continue
+            # Store raw field; selection happens later with access to atlas_map.
+            s.metadata["brainglobe_field"] = field
+            s.metadata["deformation_type"] = "brainglobe_displacement_pending"
+
+        return data
