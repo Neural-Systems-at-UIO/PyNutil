@@ -343,10 +343,26 @@ def _process_one_section(
         )
     )
 
-    # Transform flat grid to atlas-space 3-D coordinates
-    coords = transform_to_atlas_space(
-        slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
-    )
+    # For brainglobe registration, apply the deformation to correct the
+    # atlas-slice positions before 3D transformation.  The brain section has
+    # different dimensions than the atlas slice; without this correction
+    # pixels are placed at linearly-scaled positions that can be tens of
+    # voxels off (typically pushing edges outside the brain).
+    if (
+        non_linear
+        and slice_info.deformation is not None
+        and slice_info.metadata.get("registration_type") == "brainglobe"
+    ):
+        corrected_x, corrected_y = slice_info.deformation(
+            flat_x.astype(np.float64), flat_y.astype(np.float64)
+        )
+        coords = transform_to_atlas_space(
+            slice_info.anchoring, corrected_y, corrected_x, reg_height, reg_width
+        )
+    else:
+        coords = transform_to_atlas_space(
+            slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
+        )
     if scale != 1.0:
         coords = coords * float(scale)
 
