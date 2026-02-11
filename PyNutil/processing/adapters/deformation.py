@@ -7,6 +7,7 @@ functions to each slice.
 
 from __future__ import annotations
 
+import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -180,5 +181,98 @@ class DisplacementFieldProvider(DeformationProvider):
             if field is not None:
                 s.deformation = self._create_deformation(field)
                 s.metadata["deformation_type"] = "displacement_field"
+
+        return data
+
+
+class BrainGlobeDeformationProvider(DeformationProvider):
+    """Adds deformation from brainglobe-registration displacement field TIFFs.
+
+    Loads ``deformation_field_0.tiff`` (y-displacement) and
+    ``deformation_field_1.tiff`` (x-displacement) from the registration
+    output directory.  These displacement fields map from the brain section
+    pixel space to the atlas slice pixel space::
+
+        atlas_x = brain_x + field_1[brain_y, brain_x]
+        atlas_y = brain_y + field_0[brain_y, brain_x]
+
+    The deformation function accepts coordinates in the registration space
+    (which equals the atlas-slice dimensions from ``|U|`` and ``|V|``),
+    internally scales them to brain-section pixel space for the field lookup,
+    and returns atlas-slice coordinates.
+    """
+
+    name: str = "brainglobe"
+
+    def __init__(self, reg_dir: Optional[str] = None):
+        """Initialize provider.
+
+        Args:
+            reg_dir: Directory containing deformation field TIFFs.
+                     If None, the directory is taken from SliceInfo metadata.
+        """
+        self.reg_dir = reg_dir
+
+    def _load_fields(self, reg_dir: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Load deformation field TIFFs from *reg_dir*."""
+        import tifffile
+
+        f0_path = os.path.join(reg_dir, "deformation_field_0.tiff")
+        f1_path = os.path.join(reg_dir, "deformation_field_1.tiff")
+
+        if not os.path.isfile(f0_path) or not os.path.isfile(f1_path):
+            return None, None
+
+        field_0 = tifffile.imread(f0_path).astype(np.float32)  # y-displacement
+        field_1 = tifffile.imread(f1_path).astype(np.float32)  # x-displacement
+        return field_0, field_1
+
+    @staticmethod
+    def _create_deformation(
+        field_0: np.ndarray,
+        field_1: np.ndarray,
+        atlas_w: int,
+        atlas_h: int,
+    ) -> DeformationFunction:
+        """Create a deformation function from displacement fields.
+
+        The returned function maps registration-space (atlas-slice) coordinates
+        to atlas-slice coordinates via the brain-section displacement lookup.
+        """
+        brain_h, brain_w = field_0.shape
+
+        def deform(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+            # Scale from reg / atlas-slice space to brain-section pixel space
+            x_brain = x * (brain_w / atlas_w)
+            y_brain = y * (brain_h / atlas_h)
+
+            xi = np.clip(np.round(x_brain).astype(np.int32), 0, brain_w - 1)
+            yi = np.clip(np.round(y_brain).astype(np.int32), 0, brain_h - 1)
+
+            dx = field_1[yi, xi]
+            dy = field_0[yi, xi]
+
+            return x_brain + dx, y_brain + dy
+
+        return deform
+
+    def apply(self, data: RegistrationData) -> RegistrationData:
+        """Add brainglobe deformation to slices."""
+        for s in data.slices:
+            if s.metadata.get("registration_type") != "brainglobe":
+                continue
+
+            reg_dir = self.reg_dir or s.metadata.get("registration_dir")
+            if not reg_dir:
+                continue
+
+            field_0, field_1 = self._load_fields(reg_dir)
+            if field_0 is None:
+                continue
+
+            s.deformation = self._create_deformation(
+                field_0, field_1, s.width, s.height
+            )
+            s.metadata["deformation_type"] = "brainglobe"
 
         return data
