@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
-
+from tqdm import tqdm
 from .adapters import load_registration
 from .transforms import transform_to_atlas_space
 from .utils import number_sections, convert_to_intensity, discover_image_files
@@ -27,7 +27,7 @@ def derive_shape_from_atlas(
 def _knn_batch_query(tree, fit_vals, query_pts, k, batch_size, mode):
     """Query *tree* in batches and return interpolated values."""
     out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
-    for start in range(0, query_pts.shape[0], batch_size):
+    for start in tqdm(range(0, query_pts.shape[0], batch_size), desc="filling volume"):
         end = min(start + batch_size, query_pts.shape[0])
         _, ind = tree.query(query_pts[start:end], k=k)
         if k == 1:
