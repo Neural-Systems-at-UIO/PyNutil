@@ -19,7 +19,7 @@ import numpy as np
 import tifffile
 
 TEST_DIR = os.path.dirname(__file__)
-BG_DATA = os.path.join(TEST_DIR, "test_data", "brainglobe_registration_output")
+BG_DATA = os.path.join(TEST_DIR, "test_data", "brainglobe_registration")
 BG_JSON = os.path.join(BG_DATA, "brainglobe-registration.json")
 
 
@@ -106,6 +106,43 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         iou = np.sum(both_nonzero) / np.sum(either_nonzero)
         self.assertGreater(iou, 0.98, f"IoU between warped atlas and registered_atlas is {iou:.3f}")
 
+
+    def test_downsampled_mostly_in_atlas(self):
+        """``downsampled.tiff`` (the registered brain section) should have
+        almost all of its nonzero pixels within the atlas brain mask.
+
+        Uses ``registered_hemispheres.tiff`` as the brain mask (hemisphere
+        labels 1/2 cover the full brain extent, unlike the annotation which
+        has ID 0 for fiber tracts and ventricles).
+        """
+        downsampled = tifffile.imread(os.path.join(BG_DATA, "downsampled.tiff"))
+        hemi = tifffile.imread(os.path.join(BG_DATA, "registered_hemispheres.tiff"))
+
+        tissue_mask = downsampled > 0
+        brain_mask = hemi > 0
+        tissue_in_brain = np.sum(tissue_mask & brain_mask)
+        total_tissue = np.sum(tissue_mask)
+        fraction = tissue_in_brain / total_tissue if total_tissue > 0 else 0.0
+        self.assertGreater(
+            fraction, 0.95,
+            f"Only {fraction*100:.1f}% of tissue pixels are within the brain mask",
+        )
+
+    def test_atlas_covers_tissue(self):
+        """Almost all annotated atlas pixels should overlap with the tissue
+        in ``downsampled.tiff``, confirming registration alignment."""
+        downsampled = tifffile.imread(os.path.join(BG_DATA, "downsampled.tiff"))
+        reg_atlas = tifffile.imread(os.path.join(BG_DATA, "registered_atlas.tiff"))
+
+        tissue_mask = downsampled > 0
+        atlas_mask = reg_atlas > 0
+        atlas_in_tissue = np.sum(tissue_mask & atlas_mask)
+        total_atlas = np.sum(atlas_mask)
+        fraction = atlas_in_tissue / total_atlas if total_atlas > 0 else 0.0
+        self.assertGreater(
+            fraction, 0.99,
+            f"Only {fraction*100:.1f}% of atlas pixels are within tissue",
+        )
 
     def test_load_registration_end_to_end(self):
         """``load_registration`` should auto-detect brainglobe format and
