@@ -17,6 +17,7 @@ from .io.loaders import open_custom_region_file
 from .processing.pipeline.batch_processor import (
     folder_to_atlas_space,
     folder_to_atlas_space_intensity,
+    file_to_atlas_space_coordinates,
 )
 from .io.volume_nifti import save_volume_niftis
 from .processing.section_volume import (
@@ -142,6 +143,71 @@ class _IntensityMode:
         return quantify_intensity(ctx.region_intensities_list, ctx.atlas_labels)
 
 
+class _CoordinateMode:
+    """Pre-extracted coordinate data pipeline."""
+
+    @staticmethod
+    def get_coordinates(ctx, *, non_linear, object_cutoff, use_flat, apply_damage_mask):
+        (
+            ctx.pixel_points,
+            ctx.centroids,
+            ctx.points_labels,
+            ctx.centroids_labels,
+            ctx.points_hemi_labels,
+            ctx.centroids_hemi_labels,
+            ctx.region_areas_list,
+            ctx.points_len,
+            ctx.centroids_len,
+            ctx.per_point_undamaged,
+            ctx.per_centroid_undamaged,
+            ctx.total_points_len,
+            ctx.total_centroids_len,
+        ) = file_to_atlas_space_coordinates(
+            ctx.coordinate_file,
+            ctx.alignment_json,
+            ctx.atlas_labels,
+            non_linear,
+            ctx.atlas_volume,
+            ctx.hemi_map,
+            apply_damage_mask,
+        )
+        ctx.segmentation_filenames = []
+        ctx.apply_damage_mask = apply_damage_mask
+        if ctx.custom_regions_dict is not None:
+            ctx.points_custom_labels = map_to_custom_regions(
+                ctx.custom_regions_dict, ctx.points_labels
+            )
+            ctx.centroids_custom_labels = map_to_custom_regions(
+                ctx.custom_regions_dict, ctx.centroids_labels
+            )
+
+    @staticmethod
+    def quantify(ctx):
+        if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
+            raise ValueError(
+                "Please run get_coordinates before running quantify_coordinates."
+            )
+        points = PerEntityArrays(
+            labels=ctx.points_labels,
+            hemi_labels=ctx.points_hemi_labels,
+            undamaged=ctx.per_point_undamaged,
+            section_lengths=ctx.total_points_len,
+        )
+        centroids = PerEntityArrays(
+            labels=ctx.centroids_labels,
+            hemi_labels=ctx.centroids_hemi_labels,
+            undamaged=ctx.per_centroid_undamaged,
+            section_lengths=ctx.total_centroids_len,
+        )
+        return quantify_labeled_points(
+            points,
+            centroids,
+            ctx.region_areas_list,
+            ctx.atlas_labels,
+            ctx.apply_damage_mask,
+        )
+
+
 def _apply_custom_regions_to_quantification(ctx):
     """Shared post-quantification step: remap to custom regions if configured."""
     if ctx.custom_regions_dict is not None:
@@ -176,6 +242,7 @@ class PyNutil:
         self,
         segmentation_folder=None,
         image_folder=None,
+        coordinate_file=None,
         alignment_json=None,
         colour=None,
         intensity_channel=None,
@@ -243,6 +310,7 @@ class PyNutil:
             cfg = PyNutilConfig(
                 segmentation_folder=segmentation_folder,
                 image_folder=image_folder,
+                coordinate_file=coordinate_file,
                 alignment_json=alignment_json,
                 colour=colour,
                 intensity_channel=intensity_channel,
@@ -262,6 +330,7 @@ class PyNutil:
 
         self.segmentation_folder = cfg.segmentation_folder
         self.image_folder = cfg.image_folder
+        self.coordinate_file = cfg.coordinate_file
         self.alignment_json = cfg.alignment_json
         self.colour = cfg.colour
         self.intensity_channel = cfg.intensity_channel
@@ -290,7 +359,12 @@ class PyNutil:
         self.point_intensities = None
 
         # Select the quantification strategy based on the input mode (OCP)
-        self._mode = _IntensityMode() if self.image_folder else _BinaryMode()
+        if self.coordinate_file:
+            self._mode = _CoordinateMode()
+        elif self.image_folder:
+            self._mode = _IntensityMode()
+        else:
+            self._mode = _BinaryMode()
 
     def _load_atlas_data(self, cfg):
         """Load atlas volume, hemisphere map, and labels from config."""

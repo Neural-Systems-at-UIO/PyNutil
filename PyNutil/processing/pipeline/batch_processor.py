@@ -17,6 +17,7 @@ from ..adapters.segmentation import SegmentationAdapterRegistry
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
+    coordinates_to_atlas_space,
 )
 from ..utils import (
     discover_image_files,
@@ -417,4 +418,123 @@ def folder_to_atlas_space_intensity(
         all_hemi,
         centroids_len,
         all_intensities,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Coordinate pipeline
+# ---------------------------------------------------------------------------
+
+
+def file_to_atlas_space_coordinates(
+    coordinate_file,
+    quint_alignment,
+    atlas_labels,
+    non_linear=True,
+    atlas_volume=None,
+    hemi_map=None,
+    apply_damage_mask=True,
+):
+    """Process a coordinate CSV file, transforming points to atlas space.
+
+    Loads coordinates from a CSV, groups by section number, and applies
+    the full transformation pipeline (scaling, deformation, anchoring)
+    to each section's coordinates.
+
+    Args:
+        coordinate_file: Path to the coordinate CSV file.
+        quint_alignment: Path to alignment JSON.
+        atlas_labels: DataFrame with atlas labels.
+        non_linear: Apply non-linear transform.
+        atlas_volume: Atlas volume data.
+        hemi_map: Hemisphere mask data.
+        apply_damage_mask: If True, apply damage mask.
+
+    Returns:
+        Same tuple shape as folder_to_atlas_space() for pipeline compatibility.
+    """
+    from ...io.loaders import load_coordinate_file
+
+    coord_df = load_coordinate_file(coordinate_file)
+
+    registration = load_registration(
+        quint_alignment,
+        apply_deformation=non_linear,
+        apply_damage=apply_damage_mask,
+    )
+    slices_by_nr = {s.section_number: s for s in registration.slices}
+
+    # Build a minimal PipelineContext (no segmentation adapter needed)
+    pipeline_ctx = PipelineContext(
+        atlas_labels=atlas_labels,
+        atlas_volume=atlas_volume,
+        hemi_map=hemi_map,
+        segmentation_adapter=SegmentationAdapterRegistry.get("binary"),
+        non_linear=non_linear,
+        object_cutoff=0,
+        use_flat=False,
+        pixel_id=[0, 0, 0],
+        apply_damage_mask=apply_damage_mask,
+    )
+
+    results = []
+    for section_nr, group in coord_df.groupby("section number"):
+        section_nr = int(section_nr)
+        slice_info = slices_by_nr.get(section_nr)
+        if slice_info is None:
+            print(
+                f"Section {section_nr} from coordinate file not found in alignment JSON"
+            )
+            continue
+        if not slice_info.anchoring:
+            continue
+
+        coords_x = group["X"].values
+        coords_y = group["Y"].values
+        image_width = int(group["image_width"].iloc[0])
+        image_height = int(group["image_height"].iloc[0])
+
+        result = coordinates_to_atlas_space(
+            pipeline_ctx,
+            slice_info,
+            coords_x,
+            coords_y,
+            image_width,
+            image_height,
+        )
+        results.append(result)
+
+    if not results:
+        results = [SectionResult.empty()]
+
+    (
+        points,
+        centroids,
+        points_labels,
+        centroids_labels,
+        points_hemi_labels,
+        centroids_hemi_labels,
+        region_areas_list,
+        points_len,
+        centroids_len,
+        per_point_undamaged,
+        per_centroid_undamaged,
+        total_points_len,
+        total_centroids_len,
+    ) = _collect_section_results(results)
+
+    return (
+        points,
+        centroids,
+        points_labels,
+        centroids_labels,
+        points_hemi_labels,
+        centroids_hemi_labels,
+        region_areas_list,
+        points_len,
+        centroids_len,
+        per_point_undamaged,
+        per_centroid_undamaged,
+        total_points_len,
+        total_centroids_len,
     )

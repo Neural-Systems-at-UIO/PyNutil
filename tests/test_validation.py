@@ -21,7 +21,7 @@ class TestValidation(unittest.TestCase):
                 alignment_json=self.alignment_json,
                 atlas_name=self.atlas_name
             )
-        self.assertIn("not both", str(cm.exception))
+        self.assertIn("only one of", str(cm.exception))
 
     def test_intensity_filter_with_segmentation_raises_error(self):
         with self.assertRaises(ValueError) as cm:
