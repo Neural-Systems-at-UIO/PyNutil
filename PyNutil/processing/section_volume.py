@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
-from tqdm import tqdm
+
 from .adapters import load_registration
 from .transforms import transform_to_atlas_space
 from .utils import number_sections, convert_to_intensity, discover_image_files
@@ -27,7 +27,7 @@ def derive_shape_from_atlas(
 def _knn_batch_query(tree, fit_vals, query_pts, k, batch_size, mode):
     """Query *tree* in batches and return interpolated values."""
     out_vals = np.empty((query_pts.shape[0],), dtype=np.float32)
-    for start in tqdm(range(0, query_pts.shape[0], batch_size), desc="filling volume"):
+    for start in range(0, query_pts.shape[0], batch_size):
         end = min(start + batch_size, query_pts.shape[0])
         _, ind = tree.query(query_pts[start:end], k=k)
         if k == 1:
@@ -343,26 +343,10 @@ def _process_one_section(
         )
     )
 
-    # For brainglobe registration, apply the deformation to correct the
-    # atlas-slice positions before 3D transformation.  The brain section has
-    # different dimensions than the atlas slice; without this correction
-    # pixels are placed at linearly-scaled positions that can be tens of
-    # voxels off (typically pushing edges outside the brain).
-    if (
-        non_linear
-        and slice_info.deformation is not None
-        and slice_info.metadata.get("registration_type") == "brainglobe"
-    ):
-        corrected_x, corrected_y = slice_info.deformation(
-            flat_x.astype(np.float64), flat_y.astype(np.float64)
-        )
-        coords = transform_to_atlas_space(
-            slice_info.anchoring, corrected_y, corrected_x, reg_height, reg_width
-        )
-    else:
-        coords = transform_to_atlas_space(
-            slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
-        )
+    # Transform flat grid to atlas-space 3-D coordinates
+    coords = transform_to_atlas_space(
+        slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
+    )
     if scale != 1.0:
         coords = coords * float(scale)
 

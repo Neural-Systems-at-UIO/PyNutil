@@ -457,7 +457,6 @@ def segmentation_to_atlas_space_intensity(
         hemi_mask,
         reg_height,
         reg_width,
-        deformation=deformation,
     )
 
     return result
@@ -473,7 +472,6 @@ def _build_intensity_result(
     hemi_mask,
     reg_height,
     reg_width,
-    deformation=None,
 ):
     """Construct an IntensitySectionResult from extracted signal pixels."""
     if len(sig_y) == 0:
@@ -486,22 +484,10 @@ def _build_intensity_result(
             num_points=0,
         )
 
-    # Apply non-linear deformation to get corrected atlas-slice positions.
-    # This is critical for brainglobe registration where brain-section pixel
-    # dimensions differ from atlas-slice dimensions; without correction,
-    # pixels end up at wrong 3D locations (often outside the brain).
-    if deformation is not None:
-        corrected_x, corrected_y = deformation(
-            sig_x.astype(np.float64), sig_y.astype(np.float64)
-        )
-    else:
-        corrected_x = sig_x
-        corrected_y = sig_y
-
     sig_points_3d = transform_to_atlas_space(
         slice_info.anchoring,
-        corrected_y,
-        corrected_x,
+        sig_y,
+        sig_x,
         reg_height,
         reg_width,
     )
