@@ -86,13 +86,6 @@ def load_registration(
         # Linear only (no VisuAlign deformation)
         data = load_registration("alignment.json", apply_deformation=False)
 
-        # QuickNII with custom displacement field
-        from .deformation import DisplacementFieldProvider
-        data = load_registration(
-            "quicknii.json",
-            deformation_provider=DisplacementFieldProvider("my_field.npy")
-        )
-
         # Separate anchoring and damage files
         from .damage import QCAlignDamageProvider
         data = load_registration(
