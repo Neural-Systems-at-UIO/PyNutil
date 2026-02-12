@@ -1,6 +1,6 @@
 {
     "segmentation_folder": null,
-    "image_folder": "tests/test_data/brainglobe_registration",
+    "image_folder": "tests/test_data/brainglobe_test_image",
     "alignment_json": "tests/test_data/brainglobe_registration/brainglobe-registration.json",
     "colour": null,
     "intensity_channel": "grayscale",
