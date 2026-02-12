@@ -108,6 +108,7 @@ def load_registration(
         if deformation_provider:
             data = deformation_provider.apply(data)
         elif data.metadata.get("registration_type") == "brainglobe":
+            print("brainglobe detected")
             data = BrainGlobeDeformationProvider().apply(data)
         else:
             # Default: VisuAlign for QUINT files

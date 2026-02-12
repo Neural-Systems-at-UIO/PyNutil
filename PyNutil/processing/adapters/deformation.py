@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from scipy import ndimage
 import numpy as np
 
 from .base import DeformationFunction, DeformationProvider, RegistrationData
@@ -106,7 +106,6 @@ class VisuAlignDeformationProvider(DeformationProvider):
         return data
 
 
-
 class BrainGlobeDeformationProvider(DeformationProvider):
     """Adds deformation from brainglobe-registration displacement field TIFFs.
 
@@ -118,10 +117,14 @@ class BrainGlobeDeformationProvider(DeformationProvider):
         atlas_x = brain_x + field_1[brain_y, brain_x]
         atlas_y = brain_y + field_0[brain_y, brain_x]
 
-    The deformation function accepts coordinates in the registration space
-    (which equals the atlas-slice dimensions from ``|U|`` and ``|V|``),
-    internally scales them to brain-section pixel space for the field lookup,
-    and returns atlas-slice coordinates.
+    This provider builds both deformation directions:
+    - ``deformation`` (inverse): deformed -> original
+    - ``forward_deformation``: original -> deformed
+
+    The TIFF displacement fields define one direction only. The opposite
+    direction is approximated by inverting the displacement field via
+    self-warp-and-negate (sample displacement at displaced coordinates and
+    multiply by ``-1``).
     """
 
     name: str = "brainglobe"
@@ -135,7 +138,9 @@ class BrainGlobeDeformationProvider(DeformationProvider):
         """
         self.reg_dir = reg_dir
 
-    def _load_fields(self, reg_dir: str) -> Tuple[np.ndarray, np.ndarray]:
+    def _load_fields(
+        self, reg_dir: str
+    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """Load deformation field TIFFs from *reg_dir*."""
         import tifffile
 
@@ -150,20 +155,67 @@ class BrainGlobeDeformationProvider(DeformationProvider):
         return field_0, field_1
 
     @staticmethod
+    def _create_displacement_deformation(
+        disp_x: np.ndarray,
+        disp_y: np.ndarray,
+    ) -> DeformationFunction:
+        """Create a callable from displacement fields in atlas registration space."""
+        field_h, field_w = disp_x.shape
+
+        def deform(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+            x_arr = np.asarray(x, dtype=np.float32)
+            y_arr = np.asarray(y, dtype=np.float32)
+
+            xi = np.clip(np.round(x_arr).astype(np.int32), 0, field_w - 1)
+            yi = np.clip(np.round(y_arr).astype(np.int32), 0, field_h - 1)
+            return x_arr + disp_x[yi, xi], y_arr + disp_y[yi, xi]
+
+        return deform
+
+    @staticmethod
+    def _invert_displacement_field(
+        disp_x: np.ndarray,
+        disp_y: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Approximate inverse displacement via nearest-neighbor fill."""
+        field_h, field_w = disp_x.shape
+        yy, xx = np.indices((field_h, field_w), dtype=np.intp)
+
+        # Initialize inverse fields with NaNs
+        inv_x = np.full_like(disp_x, np.nan, dtype=np.float32)
+        inv_y = np.full_like(disp_y, np.nan, dtype=np.float32)
+
+        # Populate known samples
+        inv_x[yy, xx] = disp_x[yy, xx]
+        inv_y[yy, xx] = disp_y[yy, xx]
+
+        # Nearest-neighbor NaN fill via distance transform
+        mask = np.isnan(inv_x)
+
+        indices = ndimage.distance_transform_edt(
+            mask,
+            return_distances=False,
+            return_indices=True,
+        )
+
+        inv_x_filled = inv_x[tuple(indices)]
+        inv_y_filled = inv_y[tuple(indices)]
+
+        return (
+            inv_x_filled.astype(np.float32, copy=False),
+            inv_y_filled.astype(np.float32, copy=False),
+        )
+    @staticmethod
     def _create_deformation(
         field_0: np.ndarray,
         field_1: np.ndarray,
         atlas_w: int,
         atlas_h: int,
-    ) -> DeformationFunction:
-        """Create a deformation function from displacement fields.
-
-        The returned function maps registration-space (atlas-slice) coordinates
-        to atlas-slice coordinates via the brain-section displacement lookup.
-        """
+    ) -> Tuple[DeformationFunction, DeformationFunction]:
+        """Create inverse + forward deformation functions from displacement fields."""
         brain_h, brain_w = field_0.shape
 
-        def deform(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        def deform_inverse(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
             # Scale from reg / atlas-slice space to brain-section pixel space
             x_brain = x * (brain_w / atlas_w)
             y_brain = y * (brain_h / atlas_h)
@@ -176,7 +228,24 @@ class BrainGlobeDeformationProvider(DeformationProvider):
 
             return x_brain + dx, y_brain + dy
 
-        return deform
+        # Build dense displacement in atlas registration space from the
+        # provided (inverse) deformation, then invert that displacement.
+        yy, xx = np.indices((atlas_h, atlas_w), dtype=np.float32)
+        flat_x = xx.ravel()
+        flat_y = yy.ravel()
+        warped_x, warped_y = deform_inverse(flat_x, flat_y)
+        inverse_disp_x = (warped_x - flat_x).reshape(atlas_h, atlas_w).astype(np.float32)
+        inverse_disp_y = (warped_y - flat_y).reshape(atlas_h, atlas_w).astype(np.float32)
+        forward_disp_x, forward_disp_y = (
+            BrainGlobeDeformationProvider._invert_displacement_field(
+                inverse_disp_x, inverse_disp_y
+            )
+        )
+        deform_forward = BrainGlobeDeformationProvider._create_displacement_deformation(
+            forward_disp_x, forward_disp_y
+        )
+
+        return deform_inverse, deform_forward
 
     def apply(self, data: RegistrationData) -> RegistrationData:
         """Add brainglobe deformation to slices."""
@@ -192,9 +261,11 @@ class BrainGlobeDeformationProvider(DeformationProvider):
             if field_0 is None:
                 continue
 
-            s.deformation = self._create_deformation(
+            inverse_deform, forward_deform = self._create_deformation(
                 field_0, field_1, s.width, s.height
             )
+            s.deformation = inverse_deform
+            s.forward_deformation = forward_deform
             s.metadata["deformation_type"] = "brainglobe"
 
         return data

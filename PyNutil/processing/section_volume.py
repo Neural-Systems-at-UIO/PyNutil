@@ -147,6 +147,7 @@ def _sample_and_deform_plane(
         new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
         map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
+
     else:
         map_x = reg_x.astype(np.float32, copy=False)
         map_y = reg_y.astype(np.float32, copy=False)

@@ -87,6 +87,7 @@ class TestBrainGlobeRegistration(unittest.TestCase):
 
         s = data.slices[0]
         self.assertIsNotNone(s.deformation)
+        self.assertIsNotNone(s.forward_deformation)
 
         atlas_volume, _, _ = load_atlas_data("allen_mouse_25um")
         atlas_slice = generate_target_slice(s.anchoring, atlas_volume).astype(np.float64)
@@ -104,6 +105,43 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         either_nonzero = (warped_resized > 0) | (reg_atlas > 0)
         iou = np.sum(both_nonzero) / np.sum(either_nonzero)
         self.assertGreater(iou, 0.98, f"IoU between warped atlas and registered_atlas is {iou:.3f}")
+
+    def test_forward_and_inverse_are_consistent(self):
+        """Forward deformation should approximately invert inverse deformation."""
+        from PyNutil.processing.adapters.anchoring import BrainGlobeRegistrationLoader
+        from PyNutil.processing.adapters.deformation import BrainGlobeDeformationProvider
+
+        loader = BrainGlobeRegistrationLoader()
+        data = loader.load(BG_JSON)
+
+        provider = BrainGlobeDeformationProvider()
+        data = provider.apply(data)
+        s = data.slices[0]
+
+        self.assertIsNotNone(s.deformation)
+        self.assertIsNotNone(s.forward_deformation)
+
+        # Sample a regular grid in registration space.
+        xx = np.linspace(0, s.width - 1, 40, dtype=np.float32)
+        yy = np.linspace(0, s.height - 1, 35, dtype=np.float32)
+        gx, gy = np.meshgrid(xx, yy)
+        x0 = gx.ravel()
+        y0 = gy.ravel()
+
+        x1, y1 = s.forward_deformation(x0, y0)
+        x2, y2 = s.deformation(x1, y1)
+
+        err = np.sqrt((x2 - x0) ** 2 + (y2 - y0) ** 2)
+        self.assertLess(
+            float(np.median(err)),
+            1.5,
+            f"Median forward->inverse round-trip error too large: {np.median(err):.3f}",
+        )
+        self.assertLess(
+            float(np.percentile(err, 95)),
+            8.0,
+            f"95th percentile round-trip error too large: {np.percentile(err, 95):.3f}",
+        )
 
     def test_downsampled_mostly_in_atlas(self):
         """``downsampled.tiff`` (the registered brain section) should have
@@ -153,6 +191,10 @@ class TestBrainGlobeRegistration(unittest.TestCase):
 
         s = data.slices[0]
         self.assertIsNotNone(s.deformation, "Deformation should be applied")
+        self.assertIsNotNone(
+            s.forward_deformation,
+            "Forward deformation should be applied",
+        )
         self.assertEqual(s.metadata["deformation_type"], "brainglobe")
 
     def test_quint_json_not_detected_as_brainglobe(self):
