@@ -18,11 +18,6 @@ Example:
     # Linear only (no deformation)
     data = load_registration("quicknii.json", apply_deformation=False)
 
-    # Custom deformation
-    from PyNutil.processing.adapters import DisplacementFieldProvider
-    data = load_registration(
-        "quicknii.json",
-        deformation_provider=DisplacementFieldProvider("field.npy")
     )
 """
 
@@ -44,7 +39,6 @@ from .anchoring import (
 # Deformation providers
 from .deformation import (
     VisuAlignDeformationProvider,
-    DisplacementFieldProvider,
 )
 
 # Damage providers
@@ -86,7 +80,6 @@ __all__ = [
     "QuintAnchoringLoader",
     # Deformation
     "VisuAlignDeformationProvider",
-    "DisplacementFieldProvider",
     # Damage
     "QCAlignDamageProvider",
     # Registry

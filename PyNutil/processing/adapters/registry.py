@@ -15,8 +15,8 @@ from .base import (
     DamageProvider,
     RegistrationData,
 )
-from .anchoring import QuintAnchoringLoader
-from .deformation import VisuAlignDeformationProvider
+from .anchoring import QuintAnchoringLoader, BrainGlobeRegistrationLoader
+from .deformation import VisuAlignDeformationProvider, BrainGlobeDeformationProvider
 from .damage import QCAlignDamageProvider
 
 
@@ -46,7 +46,9 @@ class AnchoringLoaderRegistry:
         return None
 
 
-# Register built-in loaders
+# Register built-in loaders — BrainGlobe first because its can_handle
+# inspects JSON content (more specific than QuickNII's extension-only check).
+AnchoringLoaderRegistry.register(BrainGlobeRegistrationLoader)
 AnchoringLoaderRegistry.register(QuintAnchoringLoader)
 
 
@@ -84,13 +86,6 @@ def load_registration(
         # Linear only (no VisuAlign deformation)
         data = load_registration("alignment.json", apply_deformation=False)
 
-        # QuickNII with custom displacement field
-        from .deformation import DisplacementFieldProvider
-        data = load_registration(
-            "quicknii.json",
-            deformation_provider=DisplacementFieldProvider("my_field.npy")
-        )
-
         # Separate anchoring and damage files
         from .damage import QCAlignDamageProvider
         data = load_registration(
@@ -112,6 +107,9 @@ def load_registration(
     if apply_deformation:
         if deformation_provider:
             data = deformation_provider.apply(data)
+        elif data.metadata.get("registration_type") == "brainglobe":
+            print("brainglobe detected")
+            data = BrainGlobeDeformationProvider().apply(data)
         else:
             # Default: VisuAlign for QUINT files
             data = VisuAlignDeformationProvider().apply(data)

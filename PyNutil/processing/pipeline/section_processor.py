@@ -457,6 +457,7 @@ def segmentation_to_atlas_space_intensity(
         hemi_mask,
         reg_height,
         reg_width,
+        deformation,
     )
 
     return result
@@ -472,6 +473,7 @@ def _build_intensity_result(
     hemi_mask,
     reg_height,
     reg_width,
+    deformation=None,
 ):
     """Construct an IntensitySectionResult from extracted signal pixels."""
     if len(sig_y) == 0:
@@ -484,10 +486,19 @@ def _build_intensity_result(
             num_points=0,
         )
 
+    # Apply non-linear deformation before transforming to atlas space
+    if deformation is not None:
+        new_x, new_y = deformation(
+            sig_x.astype(np.float32), sig_y.astype(np.float32)
+        )
+    else:
+        new_x = sig_x.astype(np.float32)
+        new_y = sig_y.astype(np.float32)
+
     sig_points_3d = transform_to_atlas_space(
         slice_info.anchoring,
-        sig_y,
-        sig_x,
+        new_y,
+        new_x,
         reg_height,
         reg_width,
     )

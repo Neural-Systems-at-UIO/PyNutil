@@ -1,0 +1,10 @@
+{
+    "segmentation_folder": null,
+    "image_folder": "tests/test_data/brainglobe_test_image",
+    "alignment_json": "tests/test_data/brainglobe_registration/brainglobe-registration.json",
+    "colour": null,
+    "intensity_channel": "grayscale",
+    "custom_region_path": null,
+    "atlas_name": "allen_mouse_25um",
+    "expected_output_folder": "expected_outputs/brainglobe_registration_intensity"
+}

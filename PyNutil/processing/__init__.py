@@ -56,8 +56,6 @@ from .adapters import (
     QuintAnchoringLoader,
     VisuAlignDeformationProvider,
     QCAlignDamageProvider,
-    # Custom deformation support
-    DisplacementFieldProvider,
     # Registry
     AnchoringLoaderRegistry,
     # Main entry point
