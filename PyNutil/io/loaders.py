@@ -321,3 +321,37 @@ def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
         current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
         return flat_files[current_flat_file_index[0][0]]
     return None
+
+
+# ---------------------------------------------------------------------------
+# Coordinate file loading
+# ---------------------------------------------------------------------------
+
+_COORDINATE_REQUIRED_COLUMNS = {"X", "Y", "image_width", "image_height", "section number"}
+
+
+def load_coordinate_file(path: str) -> pd.DataFrame:
+    """Load a coordinate CSV file.
+
+    The CSV must contain columns: X, Y, image_width, image_height, section number.
+    Coordinates are in image space and will be transformed to atlas space
+    by the coordinate pipeline.
+
+    Parameters
+    ----------
+    path : str
+        Path to the CSV file.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with coordinate data.
+    """
+    df = pd.read_csv(path)
+    missing = _COORDINATE_REQUIRED_COLUMNS - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Coordinate file is missing required columns: {missing}. "
+            f"Expected: {_COORDINATE_REQUIRED_COLUMNS}"
+        )
+    return df

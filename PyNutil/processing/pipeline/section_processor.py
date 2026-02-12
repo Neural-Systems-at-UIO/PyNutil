@@ -347,6 +347,117 @@ def segmentation_to_atlas_space(
     return result
 
 
+def coordinates_to_atlas_space(
+    p_ctx: PipelineContext,
+    slice_info,
+    coords_x,
+    coords_y,
+    image_width,
+    image_height,
+):
+    """Transform pre-extracted coordinates into atlas space.
+
+    Applies the full pipeline: scaling, label assignment, damage/hemisphere
+    state, non-linear deformation, and linear anchoring.
+
+    Args:
+        p_ctx: Immutable pipeline-wide state (atlas, options).
+        slice_info: Registration data for this section.
+        coords_x: 1-D array of X coordinates in image space.
+        coords_y: 1-D array of Y coordinates in image space.
+        image_width: Width of the source image.
+        image_height: Height of the source image.
+
+    Returns:
+        SectionResult with transformed coordinates, labels, and metadata.
+    """
+    atlas_labels = p_ctx.atlas_labels
+    non_linear = p_ctx.non_linear
+    atlas_volume = p_ctx.atlas_volume
+    hemi_map = p_ctx.hemi_map
+
+    reg_height, reg_width = slice_info.height, slice_info.width
+
+    atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
+        slice_info,
+        image_width,
+        image_height,
+        atlas_labels,
+        None,  # no flat file
+        atlas_volume,
+        hemi_map,
+        non_linear,
+        False,  # use_flat
+    )
+
+    # Scale from image space to registration space
+    y_scale, x_scale = transform_to_registration(
+        image_height, image_width, reg_height, reg_width
+    )
+    scaled_x = coords_x.astype(np.float64) * x_scale
+    scaled_y = coords_y.astype(np.float64) * y_scale
+
+    if len(scaled_x) == 0:
+        return SectionResult.empty(region_areas)
+
+    # Assign labels from 2D atlas map
+    per_point_labels = assign_labels_at_coordinates(
+        scaled_y, scaled_x, atlas_map, reg_height, reg_width
+    )
+
+    # Damage and hemisphere state
+    per_point_undamaged, per_centroid_undamaged = _compute_damage_state(
+        damage_mask,
+        scaled_x,
+        scaled_y,
+        scaled_x,  # centroids = points for coordinate mode
+        scaled_y,
+        reg_width,
+        reg_height,
+    )
+    per_point_hemi, per_centroid_hemi = _compute_hemi_state(
+        hemi_mask,
+        scaled_x,
+        scaled_y,
+        scaled_x,
+        scaled_y,
+        reg_height,
+        reg_width,
+    )
+
+    # Apply non-linear deformation and transform to 3D atlas space
+    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
+        non_linear,
+        None,
+        scaled_x[per_point_undamaged],
+        scaled_y[per_point_undamaged],
+        scaled_x[per_centroid_undamaged],
+        scaled_y[per_centroid_undamaged],
+        deformation,
+    )
+    points, centroids = transform_points_to_atlas_space(
+        slice_info.anchoring,
+        new_x,
+        new_y,
+        centroids_new_x,
+        centroids_new_y,
+        reg_height,
+        reg_width,
+    )
+
+    return SectionResult(
+        points=_to_array(points, points),
+        centroids=_to_array(centroids, centroids),
+        region_areas=region_areas,
+        points_labels=_to_array(per_point_labels, points),
+        centroids_labels=_to_array(per_point_labels, centroids),
+        per_point_undamaged=_to_array(per_point_undamaged, points),
+        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
+        points_hemi_labels=_to_array(per_point_hemi, points),
+        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
+    )
+
+
 def segmentation_to_atlas_space_intensity(
     p_ctx: PipelineContext,
     s_ctx: SectionContext,

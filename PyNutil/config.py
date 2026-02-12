@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 class PyNutilConfig:
     segmentation_folder: Optional[str] = None
     image_folder: Optional[str] = None
+    coordinate_file: Optional[str] = None
     alignment_json: Optional[str] = None
     colour: Optional[list] = None
     intensity_channel: Optional[str] = None
@@ -39,6 +40,7 @@ class PyNutilConfig:
         cfg = cls(
             segmentation_folder=settings.get("segmentation_folder"),
             image_folder=settings.get("image_folder"),
+            coordinate_file=settings.get("coordinate_file"),
             alignment_json=settings["alignment_json"],
             colour=settings.get("colour"),
             intensity_channel=settings.get("intensity_channel"),
@@ -77,9 +79,13 @@ class PyNutilConfig:
         self._validate_atlas()
 
     def _validate_folders(self) -> None:
-        if self.segmentation_folder and self.image_folder:
+        input_count = sum(
+            bool(x)
+            for x in [self.segmentation_folder, self.image_folder, self.coordinate_file]
+        )
+        if input_count > 1:
             raise ValueError(
-                "Please specify either segmentation_folder or image_folder, not both."
+                "Please specify only one of segmentation_folder, image_folder, or coordinate_file."
             )
 
         if self.segmentation_folder and (
