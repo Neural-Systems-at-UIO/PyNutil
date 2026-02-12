@@ -2,7 +2,7 @@ from PyNutil import PyNutil
 
 pnt = PyNutil(
     image_folder="demo_data/brainglobe_registration_intensity_images",
-    alignment_json="tests/test_data/brainglobe_registration_output/brainglobe-registration.json",
+    alignment_json="tests/test_data/brainglobe_registration/brainglobe-registration.json",
     atlas_name="allen_mouse_25um",
     intensity_channel="grayscale",
 )

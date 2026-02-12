@@ -1,7 +1,7 @@
 {
     "segmentation_folder": null,
     "image_folder": "demo_data/brainglobe_registration_intensity_images",
-    "alignment_json": "tests/test_data/brainglobe_registration_output/brainglobe-registration.json",
+    "alignment_json": "tests/test_data/brainglobe_registration/brainglobe-registration.json",
     "colour": null,
     "intensity_channel": "grayscale",
     "custom_region_path": null,
