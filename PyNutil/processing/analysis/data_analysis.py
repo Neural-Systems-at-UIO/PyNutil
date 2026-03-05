@@ -227,6 +227,15 @@ def _merge_dataframes(current_df, ra, atlas_labels):
     result = all_region_df.merge(
         current_df[["idx", *cols_to_use]], on="idx", how="left"
     )
+    # Append rows from current_df not in atlas_labels (e.g. out_of_atlas).
+    extra_idx = set(current_df["idx"]) - set(all_region_df["idx"])
+    if extra_idx:
+        extra = current_df[current_df["idx"].isin(extra_idx)].copy()
+        for col in result.columns:
+            if col not in extra.columns:
+                extra[col] = 0
+        result = pd.concat([result, extra[result.columns]], ignore_index=True)
+
     # Fill numeric columns with 0
     for col in [
         "pixel_count",
