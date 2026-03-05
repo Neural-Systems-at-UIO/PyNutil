@@ -231,6 +231,14 @@ def pixel_count_per_region(
         )
 
     base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
+
+    # Preserve cells on atlas background (label 0) as "out_of_atlas".
+    if 0 in all_idx and (base.empty or 0 not in base["idx"].values):
+        oot_row = pd.DataFrame(
+            {"idx": [0], "name": ["out_of_atlas"], "r": [0], "g": [0], "b": [0]}
+        )
+        base = pd.concat([base, oot_row], ignore_index=True)
+
     idx = base["idx"].to_numpy().astype(np.int64, copy=False)
 
     for col, (c_idx, c_cnt) in computed.items():

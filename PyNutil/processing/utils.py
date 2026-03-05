@@ -111,9 +111,13 @@ def reindex_to_atlas(df, atlas_labels):
     Returns:
         DataFrame reindexed to match *atlas_labels["idx"]*.
     """
+    # Preserve non-atlas rows (e.g. out_of_atlas) before reindexing.
+    extra = df[~df["idx"].isin(atlas_labels["idx"])]
     df = df.set_index("idx")
     df = df.reindex(index=atlas_labels["idx"])
     df = df.reset_index()
+    if not extra.empty:
+        df = pd.concat([df, extra], ignore_index=True)
     return df
 
 
