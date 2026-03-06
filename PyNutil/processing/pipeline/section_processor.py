@@ -41,6 +41,7 @@ def _prepare_section(
     hemi_map,
     non_linear,
     use_flat,
+    flat_label_path,
 ):
     """Shared setup for both segmentation and intensity section processors.
 
@@ -69,6 +70,7 @@ def _prepare_section(
         hemi_mask,
         deformation,
         damage_mask,
+        flat_label_path,
     )
     return atlas_map, region_areas, hemi_mask, damage_mask, deformation
 
@@ -243,6 +245,7 @@ def segmentation_to_atlas_space(
     atlas_volume = p_ctx.atlas_volume
     hemi_map = p_ctx.hemi_map
     use_flat = p_ctx.use_flat
+    flat_label_path = p_ctx.flat_label_path
     adapter = p_ctx.segmentation_adapter
 
     segmentation = load_segmentation(segmentation_path)
@@ -261,6 +264,7 @@ def segmentation_to_atlas_space(
         hemi_map,
         non_linear,
         use_flat,
+        flat_label_path,
     )
     y_scale, x_scale = transform_to_registration(
         seg_height, seg_width, reg_height, reg_width
@@ -375,6 +379,7 @@ def coordinates_to_atlas_space(
     non_linear = p_ctx.non_linear
     atlas_volume = p_ctx.atlas_volume
     hemi_map = p_ctx.hemi_map
+    flat_label_path = p_ctx.flat_label_path
 
     reg_height, reg_width = slice_info.height, slice_info.width
 
@@ -388,6 +393,7 @@ def coordinates_to_atlas_space(
         hemi_map,
         non_linear,
         False,  # use_flat
+        flat_label_path,
     )
 
     # Scale from image space to registration space
@@ -481,6 +487,7 @@ def segmentation_to_atlas_space_intensity(
     atlas_volume = p_ctx.atlas_volume
     hemi_map = p_ctx.hemi_map
     use_flat = p_ctx.use_flat
+    flat_label_path = p_ctx.flat_label_path
     min_intensity = p_ctx.min_intensity
     max_intensity = p_ctx.max_intensity
 
@@ -500,6 +507,7 @@ def segmentation_to_atlas_space_intensity(
         hemi_map,
         non_linear,
         use_flat,
+        flat_label_path,
     )
 
     # Ensure atlas_map and hemi_mask match registration resolution

@@ -57,6 +57,7 @@ class PipelineContext:
     use_flat: bool
     pixel_id: object
     apply_damage_mask: bool
+    flat_label_path: Optional[str] = None
     intensity_channel: Optional[str] = None
     min_intensity: Optional[int] = None
     max_intensity: Optional[int] = None

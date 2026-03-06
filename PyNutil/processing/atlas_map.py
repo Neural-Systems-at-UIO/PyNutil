@@ -20,7 +20,6 @@ Public API
 from __future__ import annotations
 
 import math
-import os
 from typing import Any, Callable, List, Optional, Tuple
 from functools import lru_cache
 
@@ -135,7 +134,15 @@ def assign_labels_to_image(image, labelfile):
 
 @lru_cache(maxsize=8)
 def _read_itksnap_label_lookup(path):
-    """Read ITK-SNAP .label and return ordered atlas IDs by label index."""
+    """Read a label lookup file and return ordered atlas IDs by label index."""
+    if path.lower().endswith(".csv"):
+        df = pd.read_csv(path)
+        if "idx" in df.columns:
+            return df["idx"].to_numpy(dtype=np.int64)
+        return pd.to_numeric(df.iloc[:, 0], errors="coerce").dropna().to_numpy(
+            dtype=np.int64
+        )
+
     ids = []
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
@@ -150,29 +157,8 @@ def _read_itksnap_label_lookup(path):
     return np.asarray(ids, dtype=np.int64)
 
 
-def _find_nearby_label_file(flat_path):
-    """Find a .label file in the flat folder or its parents."""
-    current = os.path.dirname(flat_path)
-    search_dirs = [current]
-    parent = os.path.dirname(current)
-    if parent and parent != current:
-        search_dirs.append(parent)
-    grandparent = os.path.dirname(parent)
-    if grandparent and grandparent != parent:
-        search_dirs.append(grandparent)
-
-    for directory in search_dirs:
-        try:
-            for name in os.listdir(directory):
-                if name.endswith(".label"):
-                    return os.path.join(directory, name)
-        except OSError:
-            continue
-    return None
-
-
 def load_atlas_image(
-    file, image_vector, volume, deformation, rescaleXY, labelfile=None
+    file, image_vector, volume, deformation, rescaleXY, labelfile=None, flat_label_path=None
 ):
     """Load an image from file or generate from atlas volume, optionally warping.
 
@@ -197,11 +183,18 @@ def load_atlas_image(
             image = read_flat_file(file)
             max_value = int(np.max(image)) if image.size else 0
             if max_value >= len(labelfile["idx"].values):
-                label_file = _find_nearby_label_file(file)
-                if label_file is not None:
-                    lookup = _read_itksnap_label_lookup(label_file)
-                    if max_value < len(lookup):
-                        return lookup[image.astype(int)]
+                if not flat_label_path:
+                    raise ValueError(
+                        "Flat map uses indexed labels beyond atlas_labels rows. "
+                        "Provide flat_label_path (.csv or .label) to decode indexed flat files."
+                    )
+                lookup = _read_itksnap_label_lookup(flat_label_path)
+                if max_value >= len(lookup):
+                    raise ValueError(
+                        f"Flat label index {max_value} exceeds lookup size {len(lookup)} "
+                        f"from '{flat_label_path}'."
+                    )
+                return lookup[image.astype(int)]
         if file.endswith(".seg"):
             image = read_seg_file(file)
         image = assign_labels_to_image(image, labelfile)
@@ -392,6 +385,7 @@ def get_region_areas(
         Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
     ],
     damage_mask: Optional[np.ndarray],
+    flat_label_path: Optional[str] = None,
 ) -> Tuple[Any, np.ndarray]:
     """Build the atlas map for a slice and compute region areas.
 
@@ -438,6 +432,7 @@ def get_region_areas(
         deformation,
         (reg_width, reg_height),
         atlas_labels,
+        flat_label_path,
     )
     region_areas = flat_to_dataframe(
         atlas_map, damage_mask, hemi_mask, (seg_width, seg_height)
