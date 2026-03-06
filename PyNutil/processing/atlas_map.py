@@ -50,9 +50,9 @@ def generate_target_slice(ouv, atlas):
     height = int(np.floor(math.hypot(vx, vy, vz))) + 1
     xdim, ydim, zdim = atlas.shape
 
-    # Row/col normalised fractions (float32 saves bandwidth)
-    yf = np.arange(height, dtype=np.float32) / height
-    xf = np.arange(width, dtype=np.float32) / width
+    # Row/col normalised fractions.
+    yf = np.arange(height, dtype=np.float64) / height
+    xf = np.arange(width, dtype=np.float64) / width
 
     lx = np.floor(ox + (vx * yf)[:, None] + ux * xf).astype(np.int32)
     ly = np.floor(oy + (vy * yf)[:, None] + uy * xf).astype(np.int32)

@@ -15,7 +15,7 @@ from ...results import SectionResult, IntensitySectionResult
 from .connected_components import (
     get_objects_and_assign_regions,
 )
-from ..atlas_map import generate_target_slice, get_region_areas
+from ..atlas_map import generate_target_slice, get_region_areas, warp_image
 from ..transforms import (
     transform_points_to_atlas_space,
     transform_to_registration,
@@ -54,6 +54,10 @@ def _prepare_section(
 
     if hemi_map is not None:
         hemi_mask = generate_target_slice(slice_info.anchoring, hemi_map)
+        if deformation is not None:
+            hemi_mask = warp_image(
+                hemi_mask.astype(np.float64), deformation, (reg_width, reg_height)
+            ).astype(hemi_mask.dtype)
     else:
         hemi_mask = None
 
