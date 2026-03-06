@@ -6,18 +6,18 @@ import json
 import pandas as pd
 
 # Add the root directory to sys.path to allow importing PyNutil
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from PyNutil import PyNutil
 from tests.timing_utils import TimedTestCase
 
 class TestIntensityQuantification(TimedTestCase):
     def setUp(self):
-        self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "image_intensity"))
+        self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "test_data", "image_intensity"))
         self.image_folder = os.path.join(self.base_dir, "images")
         self.rgb_image_folder = os.path.join(self.base_dir, "rgb_images")
         self.alignment_json = os.path.join(self.base_dir, "alignment.json")
-        self.output_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "demo_data", "outputs"))
+        self.output_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "demo_data", "outputs"))
         self.atlas_name = "allen_mouse_25um"
 
         if not os.path.exists(self.output_root):

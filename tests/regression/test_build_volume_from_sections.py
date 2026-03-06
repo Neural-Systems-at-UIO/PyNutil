@@ -19,7 +19,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 class TestBuildVolumeFromSections(TimedTestCase):
     def setUp(self):
-        self.tests_dir = os.path.dirname(__file__)
+        self.tests_dir = os.path.dirname(os.path.dirname(__file__))
         self.settings_path = os.path.join(self.tests_dir, "test_cases", "brainglobe_atlas.json")
         self.expected_dir = os.path.join(
             self.tests_dir, "expected_outputs"

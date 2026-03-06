@@ -14,7 +14,7 @@ import warnings
 
 import numpy as np
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from PyNutil import PyNutil
 
@@ -30,7 +30,7 @@ class TestMeshviewRegression(TimedTestCase):
     """
 
     EXPECTED_ROOT = os.path.join(
-        os.path.dirname(__file__), "expected_outputs", "brainglobe_atlas"
+        os.path.dirname(os.path.dirname(__file__)), "expected_outputs", "brainglobe_atlas"
     )
     MESHVIEW_DIR = "whole_series_meshview"
 
@@ -49,7 +49,7 @@ class TestMeshviewRegression(TimedTestCase):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         test_case_path = os.path.join(
-            os.path.dirname(__file__), "test_cases", "brainglobe_atlas.json"
+            os.path.dirname(os.path.dirname(__file__)), "test_cases", "brainglobe_atlas.json"
         )
         cls._tmpdir = tempfile.mkdtemp(prefix="pynutil_meshview_test_")
 

@@ -11,7 +11,7 @@ from timing_utils import TimedTestCase
 
 class TestVisualisations(TimedTestCase):
     def setUp(self):
-        self.tests_dir = os.path.dirname(__file__)
+        self.tests_dir = os.path.dirname(os.path.dirname(__file__))
         self.expected_dir = os.path.join(
             self.tests_dir, "test_data", "nonlinear_allen_mouse", "visualisations"
         )

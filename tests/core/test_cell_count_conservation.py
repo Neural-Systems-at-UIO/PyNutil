@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from PyNutil.processing.analysis.region_counting import (
     _counts_for,

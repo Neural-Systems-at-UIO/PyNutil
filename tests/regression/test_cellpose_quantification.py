@@ -4,7 +4,7 @@ import sys
 import warnings
 
 # Add the project root to the path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,7 @@ from timing_utils import TimedTestCase
 
 class TestCellposeQuantification(TimedTestCase):
     def setUp(self):
-        self.test_case_dir = os.path.dirname(__file__)
+        self.test_case_dir = os.path.dirname(os.path.dirname(__file__))
         # Keep test output readable: ignore noisy dependency deprecation warnings
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 

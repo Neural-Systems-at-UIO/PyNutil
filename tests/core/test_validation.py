@@ -4,11 +4,11 @@ import sys
 from PyNutil import PyNutil
 
 # Add the root directory to sys.path to allow importing PyNutil
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 class TestValidation(unittest.TestCase):
     def setUp(self):
-        self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "image_intensity"))
+        self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "test_data", "image_intensity"))
         self.image_folder = os.path.join(self.base_dir, "images")
         self.alignment_json = os.path.join(self.base_dir, "alignment.json")
         self.atlas_name = "allen_mouse_25um"

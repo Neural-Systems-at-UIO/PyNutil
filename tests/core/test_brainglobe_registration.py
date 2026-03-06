@@ -18,7 +18,7 @@ import cv2
 import numpy as np
 import tifffile
 
-TEST_DIR = os.path.dirname(__file__)
+TEST_DIR = os.path.dirname(os.path.dirname(__file__))
 BG_DATA = os.path.join(TEST_DIR, "test_data", "brainglobe_registration")
 BG_JSON = os.path.join(BG_DATA, "brainglobe-registration.json")
 

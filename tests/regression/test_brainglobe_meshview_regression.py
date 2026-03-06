@@ -15,7 +15,7 @@ import warnings
 
 import numpy as np
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from PyNutil import PyNutil
 
@@ -26,7 +26,7 @@ class TestBrainGlobeMeshviewRegression(TimedTestCase):
     """Verify that brainglobe intensity MeshView JSON output matches reference."""
 
     EXPECTED_ROOT = os.path.join(
-        os.path.dirname(__file__),
+        os.path.dirname(os.path.dirname(__file__)),
         "expected_outputs",
         "brainglobe_registration_intensity",
     )
@@ -44,7 +44,7 @@ class TestBrainGlobeMeshviewRegression(TimedTestCase):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         test_case_path = os.path.join(
-            os.path.dirname(__file__),
+            os.path.dirname(os.path.dirname(__file__)),
             "test_cases",
             "brainglobe_registration_intensity.json",
         )
