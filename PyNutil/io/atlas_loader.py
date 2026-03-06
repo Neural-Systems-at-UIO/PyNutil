@@ -67,7 +67,7 @@ def process_atlas_volume(vol):
     numpy.ndarray
         The processed atlas volume.
     """
-    return np.transpose(vol, [2, 0, 1])[::-1, ::-1, ::-1]
+    return np.transpose(vol, [2, 0, 1])[:, ::-1, ::-1]
 
 
 @lru_cache(maxsize=8)
