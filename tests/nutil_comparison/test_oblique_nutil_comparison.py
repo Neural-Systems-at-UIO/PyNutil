@@ -57,34 +57,6 @@ class TestObliqueNutilComparison(TimedTestCase):
             "whole_series_report",
         )
 
-        # Keep these fixtures present for upcoming validator imports.
-        self.future_atlas_fixtures = [
-            os.path.join(
-                self.tests_dir,
-                "test_data",
-                "allen_mouse_2015_atlas",
-                "labels.nii.gz",
-            ),
-            os.path.join(
-                self.tests_dir,
-                "test_data",
-                "allen_mouse_2015_atlas",
-                "labels.txt",
-            ),
-            os.path.join(
-                self.tests_dir,
-                "test_data",
-                "waxholm_rat_v4_atlas",
-                "labels.nii.gz",
-            ),
-            os.path.join(
-                self.tests_dir,
-                "test_data",
-                "waxholm_rat_v4_atlas",
-                "labels.txt",
-            ),
-        ]
-
     def _run_pynutil_oblique(self):
         pnt = PyNutil(
             segmentation_folder=self.segmentation_folder,
@@ -201,15 +173,6 @@ class TestObliqueNutilComparison(TimedTestCase):
                     section_df,
                     where=f"section s{section_id}",
                 )
-
-    def test_future_nutil_comparison_atlas_fixtures_exist(self):
-        missing = [p for p in self.future_atlas_fixtures if not os.path.exists(p)]
-        self.assertFalse(
-            missing,
-            "Missing atlas fixtures required for upcoming Nutil validator comparisons: "
-            + ", ".join(missing),
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
