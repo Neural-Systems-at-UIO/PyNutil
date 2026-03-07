@@ -12,6 +12,7 @@ demo_data/*
 *.so
 # WSL zone identifiers
 *:Zone.Identifier*
+*:encryptable*
 # Distribution / packaging
 .Python
 build/
