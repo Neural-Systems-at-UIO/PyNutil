@@ -43,6 +43,7 @@ def _build_pipeline_context(
     use_flat,
     pixel_id,
     apply_damage_mask,
+    flat_label_path=None,
     intensity_channel=None,
     min_intensity=None,
     max_intensity=None,
@@ -59,6 +60,7 @@ def _build_pipeline_context(
         use_flat=use_flat,
         pixel_id=pixel_id,
         apply_damage_mask=apply_damage_mask,
+        flat_label_path=flat_label_path,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
         max_intensity=max_intensity,
@@ -269,6 +271,7 @@ def folder_to_atlas_space(
     hemi_map=None,
     use_flat=False,
     apply_damage_mask=True,
+    flat_label_path=None,
     segmentation_format="binary",
 ):
     """Process all segmentation files in a folder, mapping each to atlas space.
@@ -302,6 +305,7 @@ def folder_to_atlas_space(
         use_flat=use_flat,
         pixel_id=pixel_id,
         apply_damage_mask=apply_damage_mask,
+        flat_label_path=flat_label_path,
     )
 
     segmentations, results = _run_batch_with_context(
@@ -356,6 +360,7 @@ def folder_to_atlas_space_intensity(
     hemi_map=None,
     use_flat=False,
     apply_damage_mask=True,
+    flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
 ):
@@ -388,6 +393,7 @@ def folder_to_atlas_space_intensity(
         use_flat=use_flat,
         pixel_id=[0, 0, 0],
         apply_damage_mask=apply_damage_mask,
+        flat_label_path=flat_label_path,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
         max_intensity=max_intensity,

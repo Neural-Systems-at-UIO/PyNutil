@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import math
 from typing import Any, Callable, List, Optional, Tuple
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -49,9 +50,9 @@ def generate_target_slice(ouv, atlas):
     height = int(np.floor(math.hypot(vx, vy, vz))) + 1
     xdim, ydim, zdim = atlas.shape
 
-    # Row/col normalised fractions (float32 saves bandwidth)
-    yf = np.arange(height, dtype=np.float32) / height
-    xf = np.arange(width, dtype=np.float32) / width
+    # Row/col normalised fractions.
+    yf = np.arange(height, dtype=np.float64) / height
+    xf = np.arange(width, dtype=np.float64) / width
 
     lx = np.floor(ox + (vx * yf)[:, None] + ux * xf).astype(np.int32)
     ly = np.floor(oy + (vy * yf)[:, None] + uy * xf).astype(np.int32)
@@ -123,15 +124,41 @@ def assign_labels_to_image(image, labelfile):
     allen_id_image = np.zeros((h, w))
     coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
 
-    values = image[coordsy, coordsx]
+    values = image[coordsy, coordsx].astype(int)
     lbidx = labelfile["idx"].values
 
-    allen_id_image = lbidx[values.astype(int)]
+    valid = (values >= 0) & (values < len(lbidx))
+    allen_id_image[valid] = lbidx[values[valid]]
     return allen_id_image
 
 
+@lru_cache(maxsize=8)
+def _read_itksnap_label_lookup(path):
+    """Read a label lookup file and return ordered atlas IDs by label index."""
+    if path.lower().endswith(".csv"):
+        df = pd.read_csv(path)
+        if "idx" in df.columns:
+            return df["idx"].to_numpy(dtype=np.int64)
+        return pd.to_numeric(df.iloc[:, 0], errors="coerce").dropna().to_numpy(
+            dtype=np.int64
+        )
+
+    ids = []
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            parts = s.split("\t") if "\t" in s else s.split()
+            try:
+                ids.append(int(parts[0]))
+            except (ValueError, IndexError):
+                continue
+    return np.asarray(ids, dtype=np.int64)
+
+
 def load_atlas_image(
-    file, image_vector, volume, deformation, rescaleXY, labelfile=None
+    file, image_vector, volume, deformation, rescaleXY, labelfile=None, flat_label_path=None
 ):
     """Load an image from file or generate from atlas volume, optionally warping.
 
@@ -154,6 +181,20 @@ def load_atlas_image(
     else:
         if file.endswith(".flat"):
             image = read_flat_file(file)
+            max_value = int(np.max(image)) if image.size else 0
+            if max_value >= len(labelfile["idx"].values):
+                if not flat_label_path:
+                    raise ValueError(
+                        "Flat map uses indexed labels beyond atlas_labels rows. "
+                        "Provide flat_label_path (.csv or .label) to decode indexed flat files."
+                    )
+                lookup = _read_itksnap_label_lookup(flat_label_path)
+                if max_value >= len(lookup):
+                    raise ValueError(
+                        f"Flat label index {max_value} exceeds lookup size {len(lookup)} "
+                        f"from '{flat_label_path}'."
+                    )
+                return lookup[image.astype(int)]
         if file.endswith(".seg"):
             image = read_seg_file(file)
         image = assign_labels_to_image(image, labelfile)
@@ -277,6 +318,9 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
         ).astype(bool)
 
     combos = _build_area_combos(hemi_mask, damage_mask)
+    total_area_df = count_pixels_per_label(image, scale_factor).rename(
+        columns={"region_area": "_region_area_total"}
+    )
 
     # Count pixels for each combo and join all at once (avoids repeated pd.merge)
     combo_dfs = []
@@ -305,6 +349,19 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
         df_area_per_label = pd.DataFrame(columns=["idx"])
 
     _derive_area_aggregates(df_area_per_label, hemi_mask, damage_mask)
+
+    # Nutil computes region area from hemi/damage leaf aggregates when masks
+    # are present; only use full-image totals when no masks constrain area.
+    if (hemi_mask is None) and (damage_mask is None) and not total_area_df.empty:
+        df_area_per_label = df_area_per_label.merge(
+            total_area_df,
+            on="idx",
+            how="outer",
+        )
+        df_area_per_label["region_area"] = pd.to_numeric(
+            df_area_per_label["_region_area_total"], errors="coerce"
+        ).fillna(df_area_per_label.get("region_area", 0))
+        df_area_per_label.drop(columns=["_region_area_total"], inplace=True)
     return df_area_per_label
 
 
@@ -328,6 +385,7 @@ def get_region_areas(
         Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
     ],
     damage_mask: Optional[np.ndarray],
+    flat_label_path: Optional[str] = None,
 ) -> Tuple[Any, np.ndarray]:
     """Build the atlas map for a slice and compute region areas.
 
@@ -365,13 +423,16 @@ def get_region_areas(
     atlas_map : np.ndarray
         2D atlas map for the section.
     """
+    image_vector = None if use_flat else anchoring
+    volume = None if use_flat else atlas_volume
     atlas_map = load_atlas_image(
         flat_file_atlas,
-        anchoring,
-        atlas_volume,
+        image_vector,
+        volume,
         deformation,
         (reg_width, reg_height),
         atlas_labels,
+        flat_label_path,
     )
     region_areas = flat_to_dataframe(
         atlas_map, damage_mask, hemi_mask, (seg_width, seg_height)

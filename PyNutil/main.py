@@ -36,7 +36,15 @@ class _BinaryMode:
     """Binary / Cellpose segmentation pipeline."""
 
     @staticmethod
-    def get_coordinates(ctx, *, non_linear, object_cutoff, use_flat, apply_damage_mask):
+    def get_coordinates(
+        ctx,
+        *,
+        non_linear,
+        object_cutoff,
+        use_flat,
+        apply_damage_mask,
+        flat_label_path,
+    ):
         (
             ctx.pixel_points,
             ctx.centroids,
@@ -63,6 +71,7 @@ class _BinaryMode:
             ctx.hemi_map,
             use_flat,
             apply_damage_mask,
+            flat_label_path=flat_label_path,
             segmentation_format=ctx.segmentation_format,
         )
         ctx.apply_damage_mask = apply_damage_mask
@@ -105,7 +114,15 @@ class _IntensityMode:
     """Image intensity quantification pipeline."""
 
     @staticmethod
-    def get_coordinates(ctx, *, non_linear, object_cutoff, use_flat, apply_damage_mask):
+    def get_coordinates(
+        ctx,
+        *,
+        non_linear,
+        object_cutoff,
+        use_flat,
+        apply_damage_mask,
+        flat_label_path,
+    ):
         (
             ctx.region_intensities_list,
             ctx.segmentation_filenames,
@@ -124,6 +141,7 @@ class _IntensityMode:
             ctx.hemi_map,
             use_flat,
             apply_damage_mask,
+            flat_label_path=flat_label_path,
             min_intensity=ctx.min_intensity,
             max_intensity=ctx.max_intensity,
         )
@@ -147,7 +165,15 @@ class _CoordinateMode:
     """Pre-extracted coordinate data pipeline."""
 
     @staticmethod
-    def get_coordinates(ctx, *, non_linear, object_cutoff, use_flat, apply_damage_mask):
+    def get_coordinates(
+        ctx,
+        *,
+        non_linear,
+        object_cutoff,
+        use_flat,
+        apply_damage_mask,
+        flat_label_path,
+    ):
         (
             ctx.pixel_points,
             ctx.centroids,
@@ -404,6 +430,7 @@ class PyNutil:
         object_cutoff=0,
         use_flat=False,
         apply_damage_mask=True,
+        flat_label_path=None,
     ):
         """
         Retrieves pixel and centroid coordinates from segmentation data,
@@ -416,6 +443,8 @@ class PyNutil:
             object_cutoff (int, optional): Minimum object size.
             use_flat (bool, optional): Use flat maps if True.
             apply_damage_mask (bool, optional): Apply damage mask if True.
+            flat_label_path (str, optional): Path to flatmap region-id lookup
+                file (.csv or .label) used when flat files store indexed labels.
 
         Returns:
             None: Results are stored in class attributes.
@@ -426,6 +455,7 @@ class PyNutil:
             object_cutoff=object_cutoff,
             use_flat=use_flat,
             apply_damage_mask=apply_damage_mask,
+            flat_label_path=flat_label_path,
         )
 
     def quantify_coordinates(self):
