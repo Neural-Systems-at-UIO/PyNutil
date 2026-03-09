@@ -35,6 +35,36 @@ from ..io.loaders import read_flat_file, read_seg_file
 # ---------------------------------------------------------------------------
 
 
+def _compute_slice_coordinates(ouv, ref_shape):
+    """Compute 2D-to-3D index arrays for a given anchoring vector.
+
+    Args:
+        ouv (list): Orientation vector [ox, oy, oz, ux, uy, uz, vx, vy, vz].
+        ref_shape (tuple): Shape of the reference 3D volume (xdim, ydim, zdim).
+
+    Returns:
+        (lx, ly, lz, valid, height, width) — index arrays and validity mask.
+    """
+    ox, oy, oz, ux, uy, uz, vx, vy, vz = ouv
+    width = int(np.floor(math.hypot(ux, uy, uz))) + 1
+    height = int(np.floor(math.hypot(vx, vy, vz))) + 1
+    xdim, ydim, zdim = ref_shape
+
+    yf = np.arange(height, dtype=np.float64) / height
+    xf = np.arange(width, dtype=np.float64) / width
+
+    lx = np.floor(ox + (vx * yf)[:, None] + ux * xf).astype(np.int32)
+    ly = np.floor(oy + (vy * yf)[:, None] + uy * xf).astype(np.int32)
+    lz = np.floor(oz + (vz * yf)[:, None] + uz * xf).astype(np.int32)
+
+    valid = (
+        (lx >= 0) & (lx < xdim)
+        & (ly >= 0) & (ly < ydim)
+        & (lz >= 0) & (lz < zdim)
+    )
+    return lx, ly, lz, valid, height, width
+
+
 def generate_target_slice(ouv, atlas):
     """Generate a 2D slice from a 3D atlas based on orientation vectors.
 
@@ -45,35 +75,90 @@ def generate_target_slice(ouv, atlas):
     Returns:
         ndarray: 2D slice extracted from the atlas.
     """
-    ox, oy, oz, ux, uy, uz, vx, vy, vz = ouv
-    width = int(np.floor(math.hypot(ux, uy, uz))) + 1
-    height = int(np.floor(math.hypot(vx, vy, vz))) + 1
-    xdim, ydim, zdim = atlas.shape
-
-    # Row/col normalised fractions.
-    yf = np.arange(height, dtype=np.float64) / height
-    xf = np.arange(width, dtype=np.float64) / width
-
-    lx = np.floor(ox + (vx * yf)[:, None] + ux * xf).astype(np.int32)
-    ly = np.floor(oy + (vy * yf)[:, None] + uy * xf).astype(np.int32)
-    lz = np.floor(oz + (vz * yf)[:, None] + uz * xf).astype(np.int32)
-
-    # Clip to atlas bounds; out-of-bounds pixels will index corner voxels
-    # but are zeroed out below via the valid mask.
-    valid = (
-        (lx >= 0) & (lx < xdim)
-        & (ly >= 0) & (ly < ydim)
-        & (lz >= 0) & (lz < zdim)
-    )
-
+    lx, ly, lz, valid, height, width = _compute_slice_coordinates(ouv, atlas.shape)
     data_im = np.zeros((height, width), dtype=np.uint32)
     data_im[valid] = atlas[lx[valid], ly[valid], lz[valid]]
     return data_im
 
 
+def generate_target_slices(ouv, *volumes):
+    """Extract 2D slices from multiple 3D volumes sharing the same coordinates.
+
+    All volumes must have the same shape. The coordinate arrays are computed
+    once and reused for every volume, saving ~50% of the work compared to
+    calling :func:`generate_target_slice` separately for each volume.
+
+    Args:
+        ouv (list): Orientation vector [ox, oy, oz, ux, uy, uz, vx, vy, vz].
+        *volumes: One or more 3D ndarrays with identical shape.
+
+    Returns:
+        tuple of ndarrays: One 2D slice per input volume.
+    """
+    ref_shape = volumes[0].shape
+    lx, ly, lz, valid, height, width = _compute_slice_coordinates(ouv, ref_shape)
+    lx_v, ly_v, lz_v = lx[valid], ly[valid], lz[valid]
+
+    results = []
+    for vol in volumes:
+        data_im = np.zeros((height, width), dtype=np.uint32)
+        data_im[valid] = vol[lx_v, ly_v, lz_v]
+        results.append(data_im)
+    return tuple(results)
+
+
 # ---------------------------------------------------------------------------
 # Image warping
 # ---------------------------------------------------------------------------
+
+
+def compute_deformation_map(image_shape, deformation, rescaleXY):
+    """Precompute the deformation coordinate map for a given image shape.
+
+    The returned map can be reused to warp multiple images of the same
+    shape with :func:`apply_deformation_map`, avoiding redundant calls
+    to the (expensive) deformation function.
+
+    Args:
+        image_shape (tuple): (height, width) of the source image.
+        deformation (callable): Deformation function (x, y) → (new_x, new_y).
+        rescaleXY (tuple or None): (width, height) for rescaling.
+
+    Returns:
+        tuple: (newY, newX, oob) — int32 index arrays and out-of-bounds mask.
+    """
+    reg_h, reg_w = image_shape
+    if rescaleXY is not None:
+        w, h = rescaleXY
+    else:
+        w, h = reg_w, reg_h
+    oldX, oldY = np.meshgrid(np.arange(reg_w), np.arange(reg_h))
+    w_scale = w / reg_w
+    h_scale = h / reg_h
+    newX, newY = deformation(oldX.ravel() * w_scale, oldY.ravel() * h_scale)
+    newX = (newX / w_scale).reshape(reg_h, reg_w).astype(np.int32)
+    newY = (newY / h_scale).reshape(reg_h, reg_w).astype(np.int32)
+    oob = (newX < 0) | (newX >= reg_w) | (newY < 0) | (newY >= reg_h)
+    # Pre-clip so apply_deformation_map can index directly.
+    np.clip(newX, 0, reg_w - 1, out=newX)
+    np.clip(newY, 0, reg_h - 1, out=newY)
+    return newY, newX, oob
+
+
+def apply_deformation_map(image, deform_map):
+    """Warp *image* using a precomputed deformation map.
+
+    Args:
+        image (ndarray): 2D image to warp (same shape used to create the map).
+        deform_map (tuple): (newY, newX, oob) from :func:`compute_deformation_map`.
+
+    Returns:
+        ndarray: Warped image.
+    """
+    newY, newX, oob = deform_map
+    new_image = image[newY, newX]
+    new_image[oob] = 0
+    return new_image
 
 
 def warp_image(image, deformation, rescaleXY):
@@ -88,21 +173,8 @@ def warp_image(image, deformation, rescaleXY):
     Returns:
         ndarray: The warped image array.
     """
-    if rescaleXY is not None:
-        w, h = rescaleXY
-    else:
-        h, w = image.shape
-    reg_h, reg_w = image.shape
-    oldX, oldY = np.meshgrid(np.arange(reg_w), np.arange(reg_h))
-    w_scale = w / reg_w
-    h_scale = h / reg_h
-    newX, newY = deformation(oldX.ravel() * w_scale, oldY.ravel() * h_scale)
-    newX = (newX / w_scale).reshape(reg_h, reg_w).astype(int)
-    newY = (newY / h_scale).reshape(reg_h, reg_w).astype(int)
-    oob = (newX < 0) | (newX >= reg_w) | (newY < 0) | (newY >= reg_h)
-    new_image = image[np.clip(newY, 0, reg_h - 1), np.clip(newX, 0, reg_w - 1)]
-    new_image[oob] = 0
-    return new_image
+    deform_map = compute_deformation_map(image.shape, deformation, rescaleXY)
+    return apply_deformation_map(image, deform_map)
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +230,8 @@ def _read_itksnap_label_lookup(path):
 
 
 def load_atlas_image(
-    file, image_vector, volume, deformation, rescaleXY, labelfile=None, flat_label_path=None
+    file, image_vector, volume, deformation, rescaleXY, labelfile=None,
+    flat_label_path=None, deform_map=None, precomputed_slice=None,
 ):
     """Load an image from file or generate from atlas volume, optionally warping.
 
@@ -169,15 +242,26 @@ def load_atlas_image(
         deformation (callable or None): Deformation function for warping.
         rescaleXY (tuple): (width, height) for resizing.
         labelfile (DataFrame, optional): Label definitions.
+        flat_label_path (str, optional): Path to flat-file label lookup.
+        deform_map (tuple, optional): Precomputed deformation map from
+            :func:`compute_deformation_map`. If provided, used instead of
+            calling *deformation* again.
+        precomputed_slice (ndarray, optional): Already-extracted 2D slice.
+            Skips :func:`generate_target_slice` when provided.
 
     Returns:
         ndarray: The loaded or transformed image.
     """
     if image_vector is not None and volume is not None:
-        image = generate_target_slice(image_vector, volume)
-        image = np.float64(image)
-        if deformation is not None:
-            image = warp_image(image, deformation, rescaleXY)
+        if precomputed_slice is not None:
+            image = np.float64(precomputed_slice)
+        else:
+            image = np.float64(generate_target_slice(image_vector, volume))
+        if deformation is not None or deform_map is not None:
+            if deform_map is not None:
+                image = apply_deformation_map(image, deform_map)
+            else:
+                image = warp_image(image, deformation, rescaleXY)
     else:
         if file.endswith(".flat"):
             image = read_flat_file(file)
@@ -292,6 +376,10 @@ def _derive_area_aggregates(df, hemi_mask, damage_mask):
 def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """Build a DataFrame from an atlas map, with optional damage/hemisphere masks.
 
+    Uses a single ``np.unique`` / ``np.bincount`` pass to count pixels for
+    all (label × hemi × damage) combinations at once, instead of calling
+    ``np.unique`` separately for each combo.
+
     Args:
         image (ndarray): Source image with label IDs.
         damage_mask (ndarray): Binary mask indicating damaged areas.
@@ -302,7 +390,6 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
         DataFrame: Pixel counts grouped by label.
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
-    df_area_per_label = pd.DataFrame(columns=["idx"])
     if hemi_mask is not None:
         hemi_mask = cv2.resize(
             hemi_mask.astype(np.uint8),
@@ -317,51 +404,37 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
             interpolation=cv2.INTER_NEAREST,
         ).astype(bool)
 
+    # --- single-pass counting via np.unique + np.bincount ---
+    flat_img = image.ravel()
+    unique_ids, inverse = np.unique(flat_img, return_inverse=True)
+
     combos = _build_area_combos(hemi_mask, damage_mask)
-    total_area_df = count_pixels_per_label(image, scale_factor).rename(
-        columns={"region_area": "_region_area_total"}
-    )
+    data = {"idx": unique_ids}
 
-    # Count pixels for each combo and join all at once (avoids repeated pd.merge)
-    combo_dfs = []
     for hemi_val, damage_val, col_name in combos:
-        mask = np.ones_like(image, dtype=bool)
+        mask = np.ones(flat_img.size, dtype=bool)
         if hemi_mask is not None:
-            mask &= hemi_mask == hemi_val
+            mask &= hemi_mask.ravel() == hemi_val
         if damage_mask is not None:
-            mask &= damage_mask == damage_val
-        combo_df = count_pixels_per_label(image[mask], scale_factor)
-        combo_df = combo_df.rename(columns={"region_area": col_name}).set_index("idx")
-        combo_dfs.append(combo_df)
+            mask &= damage_mask.ravel() == damage_val
+        # bincount with the inverse mapping; only count where mask is True
+        counts = np.bincount(inverse[mask], minlength=len(unique_ids))
+        if scale_factor:
+            data[col_name] = counts.astype(np.float64) * scale_factor
+        else:
+            data[col_name] = counts.astype(np.float64)
 
-    if combo_dfs:
-        # Use outer join to preserve all region IDs from any combo
-        df_area_per_label = combo_dfs[0]
-        for cdf in combo_dfs[1:]:
-            df_area_per_label = df_area_per_label.join(cdf, how="outer")
-        for col in df_area_per_label.columns:
-            if col != "idx":
-                df_area_per_label[col] = pd.to_numeric(
-                    df_area_per_label[col], errors="coerce"
-                )
-        df_area_per_label = df_area_per_label.fillna(0).reset_index()
-    else:
-        df_area_per_label = pd.DataFrame(columns=["idx"])
+    df_area_per_label = pd.DataFrame(data)
 
     _derive_area_aggregates(df_area_per_label, hemi_mask, damage_mask)
 
-    # Nutil computes region area from hemi/damage leaf aggregates when masks
-    # are present; only use full-image totals when no masks constrain area.
-    if (hemi_mask is None) and (damage_mask is None) and not total_area_df.empty:
-        df_area_per_label = df_area_per_label.merge(
-            total_area_df,
-            on="idx",
-            how="outer",
-        )
-        df_area_per_label["region_area"] = pd.to_numeric(
-            df_area_per_label["_region_area_total"], errors="coerce"
-        ).fillna(df_area_per_label.get("region_area", 0))
-        df_area_per_label.drop(columns=["_region_area_total"], inplace=True)
+    # When no masks are present, add the total region_area column.
+    if (hemi_mask is None) and (damage_mask is None):
+        total_counts = np.bincount(inverse, minlength=len(unique_ids))
+        if scale_factor:
+            total_counts = total_counts.astype(np.float64) * scale_factor
+        df_area_per_label["region_area"] = total_counts.astype(np.float64)
+
     return df_area_per_label
 
 
@@ -386,6 +459,8 @@ def get_region_areas(
     ],
     damage_mask: Optional[np.ndarray],
     flat_label_path: Optional[str] = None,
+    deform_map: Optional[Tuple] = None,
+    precomputed_atlas_slice: Optional[np.ndarray] = None,
 ) -> Tuple[Any, np.ndarray]:
     """Build the atlas map for a slice and compute region areas.
 
@@ -415,6 +490,10 @@ def get_region_areas(
         Deformation function for non-linear transformation.
     damage_mask : np.ndarray or None
         Damage mask for the section.
+    deform_map : tuple or None
+        Precomputed deformation map to avoid redundant deformation calls.
+    precomputed_atlas_slice : ndarray or None
+        Already-extracted 2D atlas slice to skip slice extraction.
 
     Returns
     -------
@@ -433,6 +512,8 @@ def get_region_areas(
         (reg_width, reg_height),
         atlas_labels,
         flat_label_path,
+        deform_map=deform_map,
+        precomputed_slice=precomputed_atlas_slice,
     )
     region_areas = flat_to_dataframe(
         atlas_map, damage_mask, hemi_mask, (seg_width, seg_height)
