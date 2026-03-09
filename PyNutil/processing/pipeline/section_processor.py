@@ -15,7 +15,14 @@ from ...results import SectionResult, IntensitySectionResult
 from .connected_components import (
     get_objects_and_assign_regions,
 )
-from ..atlas_map import generate_target_slice, get_region_areas, warp_image
+from ..atlas_map import (
+    generate_target_slice,
+    generate_target_slices,
+    get_region_areas,
+    warp_image,
+    compute_deformation_map,
+    apply_deformation_map,
+)
 from ..transforms import (
     transform_points_to_atlas_space,
     transform_to_registration,
@@ -45,6 +52,11 @@ def _prepare_section(
 ):
     """Shared setup for both segmentation and intensity section processors.
 
+    When both *atlas_volume* and *hemi_map* are available (and we are not
+    using flat files), this function extracts both 2D slices in a single
+    coordinate-computation pass and shares the deformation map between
+    them, roughly halving the cost of these operations.
+
     Returns:
         (atlas_map, region_areas, hemi_mask, damage_mask, deformation)
     """
@@ -52,7 +64,35 @@ def _prepare_section(
     damage_mask = slice_info.damage_mask
     reg_height, reg_width = slice_info.height, slice_info.width
 
-    if hemi_map is not None:
+    # Precomputed data to pass to get_region_areas so it can skip
+    # redundant slice extraction and deformation calls.
+    precomputed_atlas_slice = None
+    deform_map = None
+
+    can_combine = (
+        not use_flat
+        and atlas_volume is not None
+        and hemi_map is not None
+    )
+
+    if can_combine:
+        # Extract both slices with one coordinate computation.
+        atlas_slice, hemi_slice = generate_target_slices(
+            slice_info.anchoring, atlas_volume, hemi_map
+        )
+        precomputed_atlas_slice = atlas_slice
+
+        if deformation is not None:
+            # Compute the deformation coordinate map once, apply to both.
+            deform_map = compute_deformation_map(
+                atlas_slice.shape, deformation, (reg_width, reg_height)
+            )
+            hemi_mask = apply_deformation_map(
+                hemi_slice.astype(np.float64), deform_map
+            ).astype(hemi_slice.dtype)
+        else:
+            hemi_mask = hemi_slice
+    elif hemi_map is not None:
         hemi_mask = generate_target_slice(slice_info.anchoring, hemi_map)
         if deformation is not None:
             hemi_mask = warp_image(
@@ -75,6 +115,8 @@ def _prepare_section(
         deformation,
         damage_mask,
         flat_label_path,
+        deform_map=deform_map,
+        precomputed_atlas_slice=precomputed_atlas_slice,
     )
     return atlas_map, region_areas, hemi_mask, damage_mask, deformation
 
@@ -155,7 +197,7 @@ def _safe_index(arr, mask):
 def _to_array(val, gate):
     """Return ``np.array(val)`` when *gate* is not None, else empty array."""
     if gate is not None:
-        return np.array(val)
+        return np.asarray(val)
     return np.array([])
 
 

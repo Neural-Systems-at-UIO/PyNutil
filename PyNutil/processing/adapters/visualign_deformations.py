@@ -77,10 +77,24 @@ def transform_vec(triangulation, x, y):
     Returns:
         tuple: Transformed coordinates.
     """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
     xPrime = np.zeros(x.shape, np.float64)
     yPrime = np.zeros(y.shape, np.float64)
+    if x.size == 0:
+        return (xPrime, yPrime)
+
+    remaining = np.ones(x.shape, dtype=bool)
     for triangle in triangulation:
-        triangle.intriangle_vec(x, y, xPrime, yPrime)
+        if not np.any(remaining):
+            break
+        rem_idx = np.nonzero(remaining)[0]
+        ok, x_ok, y_ok = triangle.intriangle_subset(x[rem_idx], y[rem_idx])
+        if np.any(ok):
+            hit_idx = rem_idx[ok]
+            xPrime[hit_idx] = x_ok
+            yPrime[hit_idx] = y_ok
+            remaining[hit_idx] = False
     return (xPrime, yPrime)
 
 
@@ -96,10 +110,24 @@ def forwardtransform_vec(triangulation, x, y):
     Returns:
         tuple: Transformed coordinates.
     """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
     xPrime = np.zeros(x.shape, np.float64)
     yPrime = np.zeros(y.shape, np.float64)
+    if x.size == 0:
+        return (xPrime, yPrime)
+
+    remaining = np.ones(x.shape, dtype=bool)
     for triangle in triangulation:
-        triangle.inforward_vec(x, y, xPrime, yPrime)
+        if not np.any(remaining):
+            break
+        rem_idx = np.nonzero(remaining)[0]
+        ok, x_ok, y_ok = triangle.inforward_subset(x[rem_idx], y[rem_idx])
+        if np.any(ok):
+            hit_idx = rem_idx[ok]
+            xPrime[hit_idx] = x_ok
+            yPrime[hit_idx] = y_ok
+            remaining[hit_idx] = False
     return (xPrime, yPrime)
 
 
@@ -131,7 +159,10 @@ def rowmul3_vec(x, y, m):
     Returns:
         ndarray: Resulting coordinates.
     """
-    return np.outer(x, m[0]) + np.outer(y, m[1]) + m[2]
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    m = np.asarray(m, dtype=np.float64)
+    return (x[:, None] * m[0]) + (y[:, None] * m[1]) + m[2]
 
 
 def distsquare(ax, ay, bx, by):
@@ -193,8 +224,12 @@ class Triangle:
         self.edges = [edgeindex(a, b), edgeindex(a, c), edgeindex(b, c)]
         for edge in self.edges:
             elist[edge] += 1
-        self.forwarddecomp = _build_decomp(self.A, self.B, self.C, 0, 1)
-        self.decomp = _build_decomp(self.A, self.B, self.C, 2, 3)
+        self.forwarddecomp = np.asarray(
+            _build_decomp(self.A, self.B, self.C, 0, 1), dtype=np.float64
+        )
+        self.decomp = np.asarray(
+            _build_decomp(self.A, self.B, self.C, 2, 3), dtype=np.float64
+        )
         self._compute_circumcircle()
 
     def _compute_circumcircle(self):
@@ -252,26 +287,43 @@ class Triangle:
         if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
             return uv1
 
+    def _barycentric_transform(self, x, y, decomp, xi, yi):
+        """Return transformed coordinates for points that lie inside triangle."""
+        u = x * decomp[0, 0] + y * decomp[1, 0] + decomp[2, 0]
+        v = x * decomp[0, 1] + y * decomp[1, 1] + decomp[2, 1]
+
+        ok = (u >= 0) & (u <= 1) & (v >= 0) & (v <= 1) & (u + v <= 1)
+        if not np.any(ok):
+            return ok, np.empty(0, dtype=np.float64), np.empty(0, dtype=np.float64)
+
+        u_ok = u[ok]
+        v_ok = v[ok]
+        x_prime = (
+            self.A[xi]
+            + (self.B[xi] - self.A[xi]) * u_ok
+            + (self.C[xi] - self.A[xi]) * v_ok
+        )
+        y_prime = (
+            self.A[yi]
+            + (self.B[yi] - self.A[yi]) * u_ok
+            + (self.C[yi] - self.A[yi]) * v_ok
+        )
+        return ok, x_prime, y_prime
+
     def _barycentric_transform_vec(self, x, y, xPrime, yPrime, decomp, xi, yi):
         """Shared barycentric interpolation for vectorised triangle transforms."""
-        uv1 = rowmul3_vec(x, y, decomp)
-        ok = (
-            (uv1[:, 0] >= 0)
-            & (uv1[:, 0] <= 1)
-            & (uv1[:, 1] >= 0)
-            & (uv1[:, 1] <= 1)
-            & (uv1[:, 0] + uv1[:, 1] <= 1)
-        )
-        xPrime[ok] = (
-            self.A[xi]
-            + (self.B[xi] - self.A[xi]) * uv1[ok, 0]
-            + (self.C[xi] - self.A[xi]) * uv1[ok, 1]
-        )
-        yPrime[ok] = (
-            self.A[yi]
-            + (self.B[yi] - self.A[yi]) * uv1[ok, 0]
-            + (self.C[yi] - self.A[yi]) * uv1[ok, 1]
-        )
+        ok, x_ok, y_ok = self._barycentric_transform(x, y, decomp, xi, yi)
+        if np.any(ok):
+            xPrime[ok] = x_ok
+            yPrime[ok] = y_ok
+
+    def intriangle_subset(self, x, y):
+        """Transform subset points that lie inside this triangle (backward map)."""
+        return self._barycentric_transform(x, y, self.decomp, 0, 1)
+
+    def inforward_subset(self, x, y):
+        """Transform subset points that lie inside this triangle (forward map)."""
+        return self._barycentric_transform(x, y, self.forwarddecomp, 2, 3)
 
     def inforward_vec(self, x, y, xPrime, yPrime):
         """Apply forward barycentric transform to points inside this triangle."""

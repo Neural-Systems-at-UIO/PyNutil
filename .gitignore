@@ -171,3 +171,7 @@ cython_debug/
 
 #outputs
 test_result/
+
+# Benchmark generated data
+benchmarks/results.json
+benchmarks/results.md
