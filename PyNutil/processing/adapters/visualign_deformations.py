@@ -77,6 +77,8 @@ def transform_vec(triangulation, x, y):
     Returns:
         tuple: Transformed coordinates.
     """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
     xPrime = np.zeros(x.shape, np.float64)
     yPrime = np.zeros(y.shape, np.float64)
     for triangle in triangulation:
@@ -96,6 +98,8 @@ def forwardtransform_vec(triangulation, x, y):
     Returns:
         tuple: Transformed coordinates.
     """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
     xPrime = np.zeros(x.shape, np.float64)
     yPrime = np.zeros(y.shape, np.float64)
     for triangle in triangulation:
@@ -196,8 +200,12 @@ class Triangle:
         self.edges = [edgeindex(a, b), edgeindex(a, c), edgeindex(b, c)]
         for edge in self.edges:
             elist[edge] += 1
-        self.forwarddecomp = _build_decomp(self.A, self.B, self.C, 0, 1)
-        self.decomp = _build_decomp(self.A, self.B, self.C, 2, 3)
+        self.forwarddecomp = np.asarray(
+            _build_decomp(self.A, self.B, self.C, 0, 1), dtype=np.float64
+        )
+        self.decomp = np.asarray(
+            _build_decomp(self.A, self.B, self.C, 2, 3), dtype=np.float64
+        )
         self._compute_circumcircle()
 
     def _compute_circumcircle(self):
@@ -257,28 +265,19 @@ class Triangle:
 
     def _barycentric_transform_vec(self, x, y, xPrime, yPrime, decomp, xi, yi):
         """Shared barycentric interpolation for vectorised triangle transforms."""
-        d = np.asarray(decomp, dtype=np.float64)
-        x = np.asarray(x, dtype=np.float64)
-        y = np.asarray(y, dtype=np.float64)
-
-        u = x * d[0, 0] + y * d[1, 0] + d[2, 0]
-        v = x * d[0, 1] + y * d[1, 1] + d[2, 1]
+        u = x * decomp[0, 0] + y * decomp[1, 0] + decomp[2, 0]
+        v = x * decomp[0, 1] + y * decomp[1, 1] + decomp[2, 1]
 
         ok = (u >= 0) & (u <= 1) & (v >= 0) & (v <= 1) & (u + v <= 1)
-        if not np.any(ok):
-            return
-
-        u_ok = u[ok]
-        v_ok = v[ok]
         xPrime[ok] = (
             self.A[xi]
-            + (self.B[xi] - self.A[xi]) * u_ok
-            + (self.C[xi] - self.A[xi]) * v_ok
+            + (self.B[xi] - self.A[xi]) * u[ok]
+            + (self.C[xi] - self.A[xi]) * v[ok]
         )
         yPrime[ok] = (
             self.A[yi]
-            + (self.B[yi] - self.A[yi]) * u_ok
-            + (self.C[yi] - self.A[yi]) * v_ok
+            + (self.B[yi] - self.A[yi]) * u[ok]
+            + (self.C[yi] - self.A[yi]) * v[ok]
         )
 
     def inforward_vec(self, x, y, xPrime, yPrime):

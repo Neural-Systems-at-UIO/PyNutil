@@ -173,6 +173,11 @@ def get_objects_and_assign_regions(
 
     centroids = []
     per_centroid_labels = []
+    atlas_h, atlas_w = atlas_map.shape
+
+    if atlas_at_original_resolution:
+        scale_to_atlas_y = atlas_h / reg_height
+        scale_to_atlas_x = atlas_w / reg_width
 
     for obj in objects_info:
         centroids.append(obj.centroid)
@@ -183,20 +188,19 @@ def get_objects_and_assign_regions(
 
         # Handle resolution scaling strategy
         if atlas_at_original_resolution:
-            atlas_height, atlas_width = atlas_map.shape
-            assignment_y = scaled_obj_y * (atlas_height / reg_height)
-            assignment_x = scaled_obj_x * (atlas_width / reg_width)
+            assignment_y = scaled_obj_y * scale_to_atlas_y
+            assignment_x = scaled_obj_x * scale_to_atlas_x
         else:
             assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
 
         # Check bounds
-        iy = np.round(assignment_y).astype(int)
-        ix = np.round(assignment_x).astype(int)
+        iy = np.rint(assignment_y).astype(np.int32, copy=False)
+        ix = np.rint(assignment_x).astype(np.int32, copy=False)
         valid_mask = (
             (iy >= 0)
-            & (iy < atlas_map.shape[0])
+            & (iy < atlas_h)
             & (ix >= 0)
-            & (ix < atlas_map.shape[1])
+            & (ix < atlas_w)
         )
 
         if not np.any(valid_mask):
@@ -205,8 +209,16 @@ def get_objects_and_assign_regions(
 
         # Assign region based on majority vote of pixels in object
         pixel_labels = atlas_map[iy[valid_mask], ix[valid_mask]]
-        unique_labels, counts = np.unique(pixel_labels, return_counts=True)
-        per_centroid_labels.append(unique_labels[np.argmax(counts)])
+        pixel_labels = np.asarray(pixel_labels, dtype=np.int64)
+        if pixel_labels.size == 0:
+            per_centroid_labels.append(0)
+            continue
+        pixel_labels = pixel_labels[pixel_labels >= 0]
+        if pixel_labels.size == 0:
+            per_centroid_labels.append(0)
+            continue
+        counts = np.bincount(pixel_labels)
+        per_centroid_labels.append(int(np.argmax(counts)))
 
     centroids = np.array(centroids)
     scaled_centroidsY, scaled_centroidsX = scale_positions(
