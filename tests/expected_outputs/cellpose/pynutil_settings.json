@@ -1,0 +1,9 @@
+{
+    "segmentation_folder": "tests/test_data/cellpose/segmentations",
+    "image_folder": null,
+    "alignment_json": "tests/test_data/cellpose/mouse6_nonlinear_lz.json",
+    "colour": null,
+    "intensity_channel": null,
+    "custom_region_path": null,
+    "atlas_name": "allen_mouse_25um"
+}

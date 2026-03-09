@@ -123,7 +123,13 @@ def _build_count_mask(hemi_arr, undamaged_arr, hemi_val, dmg_val):
 
 
 def _derive_count_aggregates(base, with_hemi, with_damage):
-    """Derive aggregate columns (totals) from leaf-level count columns."""
+    """Derive aggregate columns (totals) from leaf-level count columns.
+
+    When hemisphere data is present, grand totals are taken from the
+    unfiltered ``_total_*`` columns (which include hemi=0 points) rather
+    than summing left + right, so that points outside the hemisphere mask
+    are not silently dropped.
+    """
     if with_hemi and with_damage:
         for entity in ("pixel_count", "object_count"):
             base[f"left_hemi_{entity}"] = (
@@ -134,18 +140,20 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
                 base[f"right_hemi_undamaged_{entity}"]
                 + base[f"right_hemi_damaged_{entity}"]
             )
-            base[f"undamaged_{entity}"] = (
-                base[f"left_hemi_undamaged_{entity}"]
-                + base[f"right_hemi_undamaged_{entity}"]
-            )
-            base[f"damaged_{entity}"] = (
-                base[f"left_hemi_damaged_{entity}"]
-                + base[f"right_hemi_damaged_{entity}"]
-            )
+            base[f"undamaged_{entity}"] = base[f"_total_undamaged_{entity}"]
+            base[f"damaged_{entity}"] = base[f"_total_damaged_{entity}"]
             base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
+        base.drop(
+            columns=[c for c in base.columns if c.startswith("_total_")],
+            inplace=True,
+        )
     elif with_hemi:
         for entity in ("pixel_count", "object_count"):
-            base[entity] = base[f"left_hemi_{entity}"] + base[f"right_hemi_{entity}"]
+            base[entity] = base[f"_total_{entity}"]
+        base.drop(
+            columns=[c for c in base.columns if c.startswith("_total_")],
+            inplace=True,
+        )
     elif with_damage:
         for entity in ("pixel_count", "object_count"):
             base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
@@ -192,6 +200,9 @@ def pixel_count_per_region(
     dmg_iter = (
         [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
     )
+    # Always compute unfiltered totals so points outside the hemisphere mask
+    # (hemi=0) are not silently dropped when deriving aggregate counts.
+    total_iter = [(None, "")]
 
     computed = {}  # col_name -> (idx_array, count_array)
     all_indices = []
@@ -213,6 +224,22 @@ def pixel_count_per_region(
 
             computed[px_col] = (p_idx, p_cnt)
             computed[obj_col] = (c_idx, c_cnt)
+            all_indices.extend([p_idx, c_idx])
+
+    # Compute unfiltered totals (no hemisphere filter) so that points with
+    # hemi=0 (outside the hemisphere mask) are included in the grand totals.
+    if with_hemi:
+        for dmg_val, dmg_pfx in dmg_iter:
+            p_mask = _build_count_mask(
+                current_points_hemi, current_points_undamaged, None, dmg_val
+            )
+            c_mask = _build_count_mask(
+                current_centroids_hemi, current_centroids_undamaged, None, dmg_val
+            )
+            p_idx, p_cnt = _counts_for(p_mask, labels_dict_points)
+            c_idx, c_cnt = _counts_for(c_mask, labeled_dict_centroids)
+            computed[f"_total_{dmg_pfx}pixel_count"] = (p_idx, p_cnt)
+            computed[f"_total_{dmg_pfx}object_count"] = (c_idx, c_cnt)
             all_indices.extend([p_idx, c_idx])
 
     # ── Build sparse DataFrame ────────────────────────────────────────
