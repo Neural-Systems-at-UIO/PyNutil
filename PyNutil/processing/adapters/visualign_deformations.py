@@ -269,15 +269,17 @@ class Triangle:
         v = x * decomp[0, 1] + y * decomp[1, 1] + decomp[2, 1]
 
         ok = (u >= 0) & (u <= 1) & (v >= 0) & (v <= 1) & (u + v <= 1)
+        u_ok = u[ok]
+        v_ok = v[ok]
         xPrime[ok] = (
             self.A[xi]
-            + (self.B[xi] - self.A[xi]) * u[ok]
-            + (self.C[xi] - self.A[xi]) * v[ok]
+            + (self.B[xi] - self.A[xi]) * u_ok
+            + (self.C[xi] - self.A[xi]) * v_ok
         )
         yPrime[ok] = (
             self.A[yi]
-            + (self.B[yi] - self.A[yi]) * u[ok]
-            + (self.C[yi] - self.A[yi]) * v[ok]
+            + (self.B[yi] - self.A[yi]) * u_ok
+            + (self.C[yi] - self.A[yi]) * v_ok
         )
 
     def inforward_vec(self, x, y, xPrime, yPrime):
