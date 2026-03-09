@@ -11,100 +11,6 @@ import cv2
 from ..utils import scale_positions, assign_labels_at_coordinates
 
 
-def _majority_label_per_component(component_ids, labels, object_ids):
-    """Return majority atlas label for each object id in *object_ids*."""
-    if component_ids.size == 0 or labels.size == 0:
-        return np.zeros(object_ids.shape, dtype=np.int64)
-
-    labels = labels.astype(np.int64, copy=False)
-    labels = labels[labels >= 0]
-    if labels.size == 0:
-        return np.zeros(object_ids.shape, dtype=np.int64)
-
-    max_label = int(labels.max())
-    if max_label <= 2_000_000:
-        out = np.zeros(object_ids.shape, dtype=np.int64)
-        for i, obj_id in enumerate(object_ids):
-            obj_labels = labels[component_ids == obj_id]
-            if obj_labels.size == 0:
-                continue
-            out[i] = int(np.argmax(np.bincount(obj_labels)))
-        return out
-
-    out = np.zeros(object_ids.shape, dtype=np.int64)
-    for i, obj_id in enumerate(object_ids):
-        obj_labels = labels[component_ids == obj_id]
-        if obj_labels.size == 0:
-            continue
-        unique_labels, counts = np.unique(obj_labels, return_counts=True)
-        out[i] = int(unique_labels[np.argmax(counts)])
-    return out
-
-
-def _binary_objects_fast_path(
-    binary_seg,
-    atlas_map,
-    pixel_y,
-    pixel_x,
-    scaled_y,
-    scaled_x,
-    object_cutoff,
-    atlas_at_original_resolution,
-    reg_height,
-    reg_width,
-):
-    """Fast object extraction/label assignment for binary masks via OpenCV CCL."""
-    num_labels, labels_img, stats, centroids_xy = cv2.connectedComponentsWithStats(
-        binary_seg.astype(np.uint8, copy=False),
-        connectivity=4,
-    )
-
-    if num_labels <= 1:
-        return None, None, None
-
-    object_ids = np.arange(1, num_labels, dtype=np.int32)
-    if object_cutoff > 0:
-        areas = stats[1:, cv2.CC_STAT_AREA]
-        object_ids = object_ids[areas > object_cutoff]
-    if object_ids.size == 0:
-        return None, None, None
-
-    atlas_h, atlas_w = atlas_map.shape
-    if atlas_at_original_resolution:
-        assignment_y = scaled_y * (atlas_h / reg_height)
-        assignment_x = scaled_x * (atlas_w / reg_width)
-    else:
-        assignment_y = scaled_y
-        assignment_x = scaled_x
-
-    iy = np.rint(assignment_y).astype(np.int32, copy=False)
-    ix = np.rint(assignment_x).astype(np.int32, copy=False)
-    in_bounds = (iy >= 0) & (iy < atlas_h) & (ix >= 0) & (ix < atlas_w)
-
-    if np.any(in_bounds):
-        component_ids = labels_img[pixel_y[in_bounds], pixel_x[in_bounds]].astype(
-            np.int32, copy=False
-        )
-        atlas_labels = atlas_map[iy[in_bounds], ix[in_bounds]].astype(
-            np.int64, copy=False
-        )
-        valid_components = component_ids > 0
-        component_ids = component_ids[valid_components]
-        atlas_labels = atlas_labels[valid_components]
-    else:
-        component_ids = np.array([], dtype=np.int32)
-        atlas_labels = np.array([], dtype=np.int64)
-
-    centroids_xy = centroids_xy[object_ids]
-    centroids = np.column_stack((centroids_xy[:, 1], centroids_xy[:, 0]))
-    per_centroid_labels = _majority_label_per_component(
-        component_ids,
-        atlas_labels,
-        object_ids,
-    )
-    return centroids, per_centroid_labels, object_ids
-
-
 # ── Shared pixel-grouping helper ─────────────────────────────────────────
 
 
@@ -257,81 +163,62 @@ def get_objects_and_assign_regions(
     # Scale pixel coordinates to registration space
     scaled_y, scaled_x = scale_positions(pixel_y, pixel_x, y_scale, x_scale)
 
-    if adapter.name == "binary":
-        centroids, per_centroid_labels, _ = _binary_objects_fast_path(
-            binary_seg,
-            atlas_map,
-            pixel_y,
-            pixel_x,
-            scaled_y,
-            scaled_x,
-            object_cutoff,
-            atlas_at_original_resolution,
-            reg_height,
-            reg_width,
+    objects_info = adapter.extract_objects(segmentation, binary_seg, min_area=object_cutoff)
+
+    if len(objects_info) == 0:
+        return None, None, None, scaled_y, scaled_x, None
+
+    centroids = []
+    per_centroid_labels = []
+    atlas_h, atlas_w = atlas_map.shape
+
+    if atlas_at_original_resolution:
+        scale_to_atlas_y = atlas_h / reg_height
+        scale_to_atlas_x = atlas_w / reg_width
+
+    for obj in objects_info:
+        centroids.append(obj.centroid)
+        # Scale object coords
+        scaled_obj_y, scaled_obj_x = scale_positions(
+            obj.coords[:, 0], obj.coords[:, 1], y_scale, x_scale
         )
-        if centroids is None:
-            return None, None, None, scaled_y, scaled_x, None
-    else:
-        # Extract objects using the adapter (e.g. Cellpose labeled masks)
-        objects_info = adapter.extract_objects(
-            segmentation, binary_seg, min_area=object_cutoff
-        )
 
-        if len(objects_info) == 0:
-            return None, None, None, scaled_y, scaled_x, None
-
-        centroids = []
-        per_centroid_labels = []
-        atlas_h, atlas_w = atlas_map.shape
-
+        # Handle resolution scaling strategy
         if atlas_at_original_resolution:
-            scale_to_atlas_y = atlas_h / reg_height
-            scale_to_atlas_x = atlas_w / reg_width
+            assignment_y = scaled_obj_y * scale_to_atlas_y
+            assignment_x = scaled_obj_x * scale_to_atlas_x
+        else:
+            assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
 
-        for obj in objects_info:
-            centroids.append(obj.centroid)
-            # Scale object coords
-            scaled_obj_y, scaled_obj_x = scale_positions(
-                obj.coords[:, 0], obj.coords[:, 1], y_scale, x_scale
-            )
+        # Check bounds
+        iy = np.rint(assignment_y).astype(np.int32, copy=False)
+        ix = np.rint(assignment_x).astype(np.int32, copy=False)
+        valid_mask = (
+            (iy >= 0)
+            & (iy < atlas_h)
+            & (ix >= 0)
+            & (ix < atlas_w)
+        )
 
-            # Handle resolution scaling strategy
-            if atlas_at_original_resolution:
-                assignment_y = scaled_obj_y * scale_to_atlas_y
-                assignment_x = scaled_obj_x * scale_to_atlas_x
-            else:
-                assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
+        if not np.any(valid_mask):
+            per_centroid_labels.append(0)
+            continue
 
-            # Check bounds
-            iy = np.rint(assignment_y).astype(np.int32, copy=False)
-            ix = np.rint(assignment_x).astype(np.int32, copy=False)
-            valid_mask = (
-                (iy >= 0)
-                & (iy < atlas_h)
-                & (ix >= 0)
-                & (ix < atlas_w)
-            )
+        # Assign region based on majority vote of pixels in object
+        pixel_labels = atlas_map[iy[valid_mask], ix[valid_mask]]
+        pixel_labels = np.asarray(pixel_labels, dtype=np.int64)
+        if pixel_labels.size == 0:
+            per_centroid_labels.append(0)
+            continue
+        pixel_labels = pixel_labels[pixel_labels >= 0]
+        if pixel_labels.size == 0:
+            per_centroid_labels.append(0)
+            continue
+        counts = np.bincount(pixel_labels)
+        per_centroid_labels.append(int(np.argmax(counts)))
 
-            if not np.any(valid_mask):
-                per_centroid_labels.append(0)
-                continue
-
-            # Assign region based on majority vote of pixels in object
-            pixel_labels = atlas_map[iy[valid_mask], ix[valid_mask]]
-            pixel_labels = np.asarray(pixel_labels, dtype=np.int64)
-            if pixel_labels.size == 0:
-                per_centroid_labels.append(0)
-                continue
-            pixel_labels = pixel_labels[pixel_labels >= 0]
-            if pixel_labels.size == 0:
-                per_centroid_labels.append(0)
-                continue
-            counts = np.bincount(pixel_labels)
-            per_centroid_labels.append(int(np.argmax(counts)))
-
-        centroids = np.array(centroids)
-        per_centroid_labels = np.array(per_centroid_labels, dtype=np.int64)
+    centroids = np.array(centroids)
+    per_centroid_labels = np.array(per_centroid_labels, dtype=np.int64)
 
     scaled_centroidsY, scaled_centroidsX = scale_positions(
         centroids[:, 0], centroids[:, 1], y_scale, x_scale

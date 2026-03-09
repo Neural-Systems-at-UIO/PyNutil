@@ -8,7 +8,7 @@ and peak memory usage.
 Each scenario runs in a **subprocess** so that peak-RSS is measured per
 scenario rather than cumulatively across the whole process.
 
-Scenarios: 1 / 5 / 10 images at 500x500, 1000x1000, 2000x2000 resolution.
+Scenarios: 1 / 5 / 10 images at 500x500 and 1000x1000 resolution.
 
 Usage:
     python benchmarks/benchmark.py              # Markdown table to stdout
@@ -41,9 +41,10 @@ import pandas as pd
 ATLAS_SHAPE = (200, 230, 160)  # (x, y, z) - small synthetic atlas
 N_REGIONS = 20
 IMAGE_COUNTS = [1, 5, 10]
-RESOLUTIONS = [500, 1000, 2000]
+RESOLUTIONS = [500, 1000]
+CELLPOSE_EXTRA_SCENARIOS = [(5, 1000)]
 WARMUP_RUNS = 1
-TIMED_RUNS = 3
+TIMED_RUNS = 5
 COLOUR = [0, 0, 0]
 
 
@@ -98,6 +99,18 @@ def _make_segmentation(height, width, colour, seed=0):
     return img
 
 
+def _make_cellpose_segmentation(height, width, seed=0):
+    """Synthetic Cellpose-like labeled image with integer object IDs."""
+    rng = np.random.RandomState(seed)
+    seg = np.zeros((height, width), dtype=np.uint16)
+    n_objs = max(1, int(height * width * 0.02 / 500))
+    for obj_id in range(1, n_objs + 1):
+        cy, cx = rng.randint(0, height), rng.randint(0, width)
+        radius = rng.randint(3, max(4, min(height, width) // 20))
+        cv2.circle(seg, (cx, cy), radius, int(obj_id), -1)
+    return seg
+
+
 def _make_anchoring(section_idx, n_sections, atlas_shape):
     """Coronal-like anchoring vector spread along the Y axis."""
     sx, sy, sz = atlas_shape
@@ -118,7 +131,7 @@ def _make_markers(reg_width, reg_height, seed=0):
     return markers
 
 
-def _write_scenario(tmpdir, n_images, resolution):
+def _write_scenario(tmpdir, n_images, resolution, segmentation_format="binary"):
     """Write all synthetic files for one benchmark scenario.
 
     Returns:
@@ -137,7 +150,10 @@ def _write_scenario(tmpdir, n_images, resolution):
     seg_folder = os.path.join(tmpdir, "segmentations")
     os.makedirs(seg_folder, exist_ok=True)
     for i in range(n_images):
-        img = _make_segmentation(resolution, resolution, COLOUR, seed=i)
+        if segmentation_format == "cellpose":
+            img = _make_cellpose_segmentation(resolution, resolution, seed=i)
+        else:
+            img = _make_segmentation(resolution, resolution, COLOUR, seed=i)
         cv2.imwrite(os.path.join(seg_folder, f"bench_s{i + 1:03d}.png"), img)
 
     anchoring_0 = _make_anchoring(0, max(n_images, 1), ATLAS_SHAPE)
@@ -169,6 +185,7 @@ def _write_scenario(tmpdir, n_images, resolution):
 
     # Write scenario metadata so the subprocess knows the parameters.
     meta = {
+        "mode": segmentation_format,
         "n_images": n_images,
         "resolution": resolution,
         "atlas_path": atlas_path,
@@ -227,6 +244,7 @@ def _run_scenario_in_process(tmpdir):
                 atlas_path=meta["atlas_path"],
                 label_path=meta["label_path"],
                 hemi_path=meta["hemi_path"],
+                segmentation_format=meta.get("mode", "binary"),
             )
             pn.get_coordinates(non_linear=True)
             pn.quantify_coordinates()
@@ -253,13 +271,14 @@ def _run_scenario_in_process(tmpdir):
     else:
         peak_mb = usage.ru_maxrss / 1024
 
-    best = min(times)
+    avg = float(np.mean(times))
     n_images = meta["n_images"]
     return {
+        "mode": meta.get("mode", "binary"),
         "n_images": n_images,
         "resolution": f"{meta['resolution']}x{meta['resolution']}",
-        "total_s": round(best, 4),
-        "per_section_s": round(best / n_images, 4),
+        "total_s": round(avg, 4),
+        "per_section_s": round(avg / n_images, 4),
         "peak_mem_mb": round(peak_mb, 1),
     }
 
@@ -270,12 +289,15 @@ def _run_scenario_in_process(tmpdir):
 def _format_markdown(results):
     """Return the Markdown table as a string."""
     lines = []
+    binary_results = [r for r in results if r.get("mode", "binary") == "binary"]
+    cellpose_results = [r for r in results if r.get("mode") == "cellpose"]
+
     resolutions = sorted(
-        set(r["resolution"] for r in results),
+        set(r["resolution"] for r in binary_results),
         key=lambda s: int(s.split("x")[0]),
     )
-    n_images_list = sorted(set(r["n_images"] for r in results))
-    lookup = {(r["n_images"], r["resolution"]): r for r in results}
+    n_images_list = sorted(set(r["n_images"] for r in binary_results))
+    lookup = {(r["n_images"], r["resolution"]): r for r in binary_results}
 
     lines.append("## Benchmark Results\n")
 
@@ -300,6 +322,20 @@ def _format_markdown(results):
         lines.append(
             f"| {res:>10} | " + " | ".join(f"{c:>12}" for c in cells) + " |"
         )
+
+    if cellpose_results:
+        lines.append("\n## Additional Cellpose Benchmark\n")
+        lines.append("| Resolution | Images | total | per section | peak mem |")
+        lines.append("|------------|--------|-------|-------------|----------|")
+        for r in sorted(
+            cellpose_results,
+            key=lambda x: (int(x["resolution"].split("x")[0]), x["n_images"]),
+        ):
+            lines.append(
+                f"| {r['resolution']:>10} | {r['n_images']:>6} | "
+                f"{r['total_s']:.3f}s | {r['per_section_s']:.3f}s | {r['peak_mem_mb']:.0f}MB |"
+            )
+
     return "\n".join(lines) + "\n"
 
 
@@ -330,12 +366,25 @@ def main():
             )
             tmpdir = tempfile.mkdtemp(prefix="pynutil_bench_")
             try:
-                _write_scenario(tmpdir, n_images, resolution)
+                _write_scenario(tmpdir, n_images, resolution, segmentation_format="binary")
                 row = _run_scenario_subprocess(tmpdir)
                 if row:
                     results.append(row)
             finally:
                 shutil.rmtree(tmpdir, ignore_errors=True)
+
+    for n_images, resolution in CELLPOSE_EXTRA_SCENARIOS:
+        sys.stderr.write(
+            f"  benchmarking cellpose {n_images} images @ {resolution}x{resolution}...\n"
+        )
+        tmpdir = tempfile.mkdtemp(prefix="pynutil_bench_cellpose_")
+        try:
+            _write_scenario(tmpdir, n_images, resolution, segmentation_format="cellpose")
+            row = _run_scenario_subprocess(tmpdir)
+            if row:
+                results.append(row)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     if args.json:
         print(json.dumps(results, indent=2))
