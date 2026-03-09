@@ -131,7 +131,10 @@ def rowmul3_vec(x, y, m):
     Returns:
         ndarray: Resulting coordinates.
     """
-    return np.outer(x, m[0]) + np.outer(y, m[1]) + m[2]
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    m = np.asarray(m, dtype=np.float64)
+    return (x[:, None] * m[0]) + (y[:, None] * m[1]) + m[2]
 
 
 def distsquare(ax, ay, bx, by):
@@ -254,23 +257,28 @@ class Triangle:
 
     def _barycentric_transform_vec(self, x, y, xPrime, yPrime, decomp, xi, yi):
         """Shared barycentric interpolation for vectorised triangle transforms."""
-        uv1 = rowmul3_vec(x, y, decomp)
-        ok = (
-            (uv1[:, 0] >= 0)
-            & (uv1[:, 0] <= 1)
-            & (uv1[:, 1] >= 0)
-            & (uv1[:, 1] <= 1)
-            & (uv1[:, 0] + uv1[:, 1] <= 1)
-        )
+        d = np.asarray(decomp, dtype=np.float64)
+        x = np.asarray(x, dtype=np.float64)
+        y = np.asarray(y, dtype=np.float64)
+
+        u = x * d[0, 0] + y * d[1, 0] + d[2, 0]
+        v = x * d[0, 1] + y * d[1, 1] + d[2, 1]
+
+        ok = (u >= 0) & (u <= 1) & (v >= 0) & (v <= 1) & (u + v <= 1)
+        if not np.any(ok):
+            return
+
+        u_ok = u[ok]
+        v_ok = v[ok]
         xPrime[ok] = (
             self.A[xi]
-            + (self.B[xi] - self.A[xi]) * uv1[ok, 0]
-            + (self.C[xi] - self.A[xi]) * uv1[ok, 1]
+            + (self.B[xi] - self.A[xi]) * u_ok
+            + (self.C[xi] - self.A[xi]) * v_ok
         )
         yPrime[ok] = (
             self.A[yi]
-            + (self.B[yi] - self.A[yi]) * uv1[ok, 0]
-            + (self.C[yi] - self.A[yi]) * uv1[ok, 1]
+            + (self.B[yi] - self.A[yi]) * u_ok
+            + (self.C[yi] - self.A[yi]) * v_ok
         )
 
     def inforward_vec(self, x, y, xPrime, yPrime):

@@ -197,7 +197,7 @@ def _safe_index(arr, mask):
 def _to_array(val, gate):
     """Return ``np.array(val)`` when *gate* is not None, else empty array."""
     if gate is not None:
-        return np.array(val)
+        return np.asarray(val)
     return np.array([])
 
 
