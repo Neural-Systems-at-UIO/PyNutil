@@ -67,12 +67,14 @@ pnt = PyNutil(
     #segmentation_format = 'cellpose'
 )
 
-#optionally, if you want to generate a 3D heatmap
-pnt.interpolate_volume()
+
 
 pnt.get_coordinates(object_cutoff=0)
 
 pnt.quantify_coordinates()
+
+#optionally, if you want to generate a 3D heatmap
+pnt.interpolate_volume()
 
 pnt.save_analysis("PyNutil/test_result/myResults")
 ```
