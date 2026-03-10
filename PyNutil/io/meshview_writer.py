@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from .atlas_loader import load_atlas_labels
-from .colormap import get_colormap_color, get_colormap_colors
+from .colormap import get_colormap_colors
 
 
 def create_region_dict(
@@ -58,6 +58,12 @@ def _meshview_entry(idx, name, triplets, r, g, b, count=None):
         "g": int(g),
         "b": int(b),
     }
+
+
+def _write_meshview_json(filename: str, payload) -> None:
+    """Write MeshView payload to disk with NumPy serialization enabled."""
+    with open(filename, "wb") as f:
+        f.write(orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY))
 
 
 def _write_points(
@@ -106,8 +112,7 @@ def _write_points(
             )
         )
 
-    with open(filename, "wb") as f:
-        f.write(orjson.dumps(meshview, option=orjson.OPT_SERIALIZE_NUMPY))
+    _write_meshview_json(filename, meshview)
 
 
 def write_hemi_points_to_meshview(
@@ -146,9 +151,10 @@ def write_hemi_points_to_meshview(
 
     if hemi_label is not None and not (hemi_label == None).all():
         for hval, prefix in ((1, "left_hemisphere_"), (2, "right_hemisphere_")):
-            parts = filename.split("/")
-            parts[-1] = prefix + parts[-1]
-            hemi_path = os.sep.join(parts)
+            hemi_path = os.path.join(
+                os.path.dirname(filename),
+                f"{prefix}{os.path.basename(filename)}",
+            )
             mask = hemi_label == hval
             write_points_to_meshview(
                 points[mask],
@@ -261,8 +267,7 @@ def _write_rgb_meshview(
                 count=len(group),
             ))
 
-    with open(filename, "wb") as f:
-        f.write(orjson.dumps(meshview, option=orjson.OPT_SERIALIZE_NUMPY))
+    _write_meshview_json(filename, meshview)
 
 
 def _write_scalar_meshview(
@@ -273,8 +278,7 @@ def _write_scalar_meshview(
 ) -> None:
     """Write grayscale/colormap point cloud to MeshView JSON."""
     if len(intensities) == 0:
-        with open(filename, "wb") as f:
-            f.write(orjson.dumps([]))
+        _write_meshview_json(filename, [])
         return
 
     if intensities.ndim == 2 and intensities.shape[1] == 3:
@@ -299,18 +303,18 @@ def _write_scalar_meshview(
     colors = get_colormap_colors(unique_intensities, colormap)
 
     meshview = []
-    for i, (val, group) in enumerate(zip(unique_intensities, point_groups)):
+    for val, group, (r, g, b) in zip(unique_intensities, point_groups, colors):
         if len(group) > 0:
-            r, g, b = colors[i]
-            meshview.append({
-                "idx": int(val),
-                "count": len(group),
-                "name": f"Intensity {val}",
-                "triplets": group.ravel(),
-                "r": int(r),
-                "g": int(g),
-                "b": int(b),
-            })
+            meshview.append(
+                _meshview_entry(
+                    int(val),
+                    f"Intensity {val}",
+                    group.ravel(),
+                    r,
+                    g,
+                    b,
+                    count=len(group),
+                )
+            )
 
-    with open(filename, "wb") as f:
-        f.write(orjson.dumps(meshview, option=orjson.OPT_SERIALIZE_NUMPY))
+    _write_meshview_json(filename, meshview)

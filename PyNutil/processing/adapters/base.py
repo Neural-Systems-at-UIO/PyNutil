@@ -8,10 +8,11 @@ This module contains the core abstractions that all adapters share:
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -19,6 +20,12 @@ import numpy as np
 # =============================================================================
 # Type Aliases
 # =============================================================================
+
+
+def load_json_file(path: str) -> Any:
+    """Load and return JSON content from *path*."""
+    with open(path, "r") as f:
+        return json.load(f)
 
 # Takes (x_coords, y_coords) arrays and returns (x_warped, y_warped)
 DeformationFunction = Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]

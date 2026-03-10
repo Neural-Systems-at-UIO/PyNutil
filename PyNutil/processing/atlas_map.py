@@ -308,25 +308,6 @@ def calculate_scale_factor(image, rescaleXY):
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
 
-
-def count_pixels_per_label(image, scale_factor=False):
-    """Count the pixels associated with each label in an image.
-
-    Args:
-        image (ndarray): Image array containing labels.
-        scale_factor (bool, optional): Apply scaling if True.
-
-    Returns:
-        DataFrame: Table of label IDs and pixel counts.
-    """
-    unique_ids, counts = np.unique(image, return_counts=True)
-    if scale_factor:
-        counts = counts * scale_factor
-    area_per_label = list(zip(unique_ids, counts))
-    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
-    return df_area_per_label
-
-
 def _build_area_combos(hemi_mask, damage_mask):
     """Return list of (hemi_val, damage_val, column_name) for area counting."""
     if (hemi_mask is not None) and (damage_mask is not None):

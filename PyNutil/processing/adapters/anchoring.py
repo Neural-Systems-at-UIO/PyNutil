@@ -13,7 +13,7 @@ from typing import List
 
 import numpy as np
 
-from .base import AnchoringLoader, RegistrationData, SliceInfo
+from .base import AnchoringLoader, RegistrationData, SliceInfo, load_json_file
 
 
 class QuintAnchoringLoader(AnchoringLoader):
@@ -32,10 +32,7 @@ class QuintAnchoringLoader(AnchoringLoader):
 
     def load(self, path: str) -> RegistrationData:
         """Load anchoring from a QUINT JSON file."""
-        import json
-
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = load_json_file(path)
 
         # .waln/.wwrp files use "sections" with "ouv" instead of
         # "slices" with "anchoring"
@@ -101,13 +98,10 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
     @classmethod
     def can_handle(cls, path: str) -> bool:
         """Detect brainglobe-registration JSON by looking for atlas_slice_corners."""
-        import json
-
         if not path.endswith(".json"):
             return False
         try:
-            with open(path, "r") as f:
-                data = json.load(f)
+            data = load_json_file(path)
             return "atlas_slice_corners" in data
         except Exception:
             return False
@@ -162,10 +156,7 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
 
     def load(self, path: str) -> RegistrationData:
         """Load anchoring from a brainglobe-registration JSON."""
-        import json
-
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = load_json_file(path)
 
         atlas_name = data["atlas"]
         corners_um = np.array(data["atlas_slice_corners"], dtype=np.float64)

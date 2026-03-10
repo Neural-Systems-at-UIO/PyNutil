@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from .base import DamageProvider, RegistrationData
+from .base import DamageProvider, RegistrationData, load_json_file
 
 
 # ---------------------------------------------------------------------------
@@ -96,10 +96,7 @@ class QCAlignDamageProvider(DamageProvider):
 
     def _load_grids(self, path: str) -> Tuple[Dict[int, Dict[str, Any]], Optional[int]]:
         """Load grid data from a QCAlign JSON file."""
-        import json
-
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = load_json_file(path)
 
         grids = {}
         for s in data.get("slices", []):
