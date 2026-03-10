@@ -199,6 +199,63 @@ def _to_array(val, gate):
     return np.array([])
 
 
+def _deform_and_build_result(
+    *,
+    slice_info,
+    reg_height,
+    reg_width,
+    non_linear,
+    deformation,
+    scaled_x,
+    scaled_y,
+    centroidsX,
+    centroidsY,
+    per_point_undamaged,
+    per_centroid_undamaged,
+    per_point_labels,
+    per_centroid_labels,
+    per_point_hemi,
+    per_centroid_hemi,
+    region_areas,
+):
+    """Apply deformation, transform to atlas space, and assemble a SectionResult.
+
+    Consolidates the final ~30 lines shared by segmentation_to_atlas_space
+    and coordinates_to_atlas_space.
+    """
+    cx_filtered = _safe_index(centroidsX, per_centroid_undamaged)
+    cy_filtered = _safe_index(centroidsY, per_centroid_undamaged)
+
+    new_x, new_y, cx_new, cy_new = get_transformed_coordinates(
+        non_linear,
+        scaled_x[per_point_undamaged],
+        scaled_y[per_point_undamaged],
+        cx_filtered,
+        cy_filtered,
+        deformation,
+    )
+    points, centroids = transform_points_to_atlas_space(
+        slice_info.anchoring,
+        new_x,
+        new_y,
+        cx_new,
+        cy_new,
+        reg_height,
+        reg_width,
+    )
+    return SectionResult(
+        points=_to_array(points, points),
+        centroids=_to_array(centroids, centroids),
+        region_areas=region_areas,
+        points_labels=_to_array(per_point_labels, points),
+        centroids_labels=_to_array(per_centroid_labels, centroids),
+        per_point_undamaged=_to_array(per_point_undamaged, points),
+        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
+        points_hemi_labels=_to_array(per_point_hemi, points),
+        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Helpers for segmentation_to_atlas_space_intensity
 # ---------------------------------------------------------------------------
@@ -362,37 +419,24 @@ def segmentation_to_atlas_space(
     if per_centroid_labels is None:
         per_centroid_labels = np.array([], dtype=per_point_labels.dtype)
 
-    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
-        non_linear,
-        None,
-        scaled_x[per_point_undamaged],
-        scaled_y[per_point_undamaged],
-        _safe_index(scaled_centroidsX, per_centroid_undamaged),
-        _safe_index(scaled_centroidsY, per_centroid_undamaged),
-        deformation,
-    )
-    points, centroids = transform_points_to_atlas_space(
-        slice_info.anchoring,
-        new_x,
-        new_y,
-        centroids_new_x,
-        centroids_new_y,
-        reg_height,
-        reg_width,
-    )
-    result = SectionResult(
-        points=_to_array(points, points),
-        centroids=_to_array(centroids, centroids),
+    return _deform_and_build_result(
+        slice_info=slice_info,
+        reg_height=reg_height,
+        reg_width=reg_width,
+        non_linear=non_linear,
+        deformation=deformation,
+        scaled_x=scaled_x,
+        scaled_y=scaled_y,
+        centroidsX=scaled_centroidsX,
+        centroidsY=scaled_centroidsY,
+        per_point_undamaged=per_point_undamaged,
+        per_centroid_undamaged=per_centroid_undamaged,
+        per_point_labels=per_point_labels,
+        per_centroid_labels=per_centroid_labels,
+        per_point_hemi=per_point_hemi,
+        per_centroid_hemi=per_centroid_hemi,
         region_areas=region_areas,
-        points_labels=_to_array(per_point_labels, points),
-        centroids_labels=_to_array(per_centroid_labels, centroids),
-        per_point_undamaged=_to_array(per_point_undamaged, points),
-        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
-        points_hemi_labels=_to_array(per_point_hemi, points),
-        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
     )
-
-    return result
 
 
 def coordinates_to_atlas_space(
@@ -476,35 +520,23 @@ def coordinates_to_atlas_space(
     )
 
     # Apply non-linear deformation and transform to 3D atlas space
-    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
-        non_linear,
-        None,
-        scaled_x[per_point_undamaged],
-        scaled_y[per_point_undamaged],
-        scaled_x[per_centroid_undamaged],
-        scaled_y[per_centroid_undamaged],
-        deformation,
-    )
-    points, centroids = transform_points_to_atlas_space(
-        slice_info.anchoring,
-        new_x,
-        new_y,
-        centroids_new_x,
-        centroids_new_y,
-        reg_height,
-        reg_width,
-    )
-
-    return SectionResult(
-        points=_to_array(points, points),
-        centroids=_to_array(centroids, centroids),
+    return _deform_and_build_result(
+        slice_info=slice_info,
+        reg_height=reg_height,
+        reg_width=reg_width,
+        non_linear=non_linear,
+        deformation=deformation,
+        scaled_x=scaled_x,
+        scaled_y=scaled_y,
+        centroidsX=scaled_x,  # coordinates mode: centroids == points
+        centroidsY=scaled_y,
+        per_point_undamaged=per_point_undamaged,
+        per_centroid_undamaged=per_centroid_undamaged,
+        per_point_labels=per_point_labels,
+        per_centroid_labels=per_point_labels,  # same labels for both
+        per_point_hemi=per_point_hemi,
+        per_centroid_hemi=per_centroid_hemi,
         region_areas=region_areas,
-        points_labels=_to_array(per_point_labels, points),
-        centroids_labels=_to_array(per_point_labels, centroids),
-        per_point_undamaged=_to_array(per_point_undamaged, points),
-        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
-        points_hemi_labels=_to_array(per_point_hemi, points),
-        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
     )
 
 

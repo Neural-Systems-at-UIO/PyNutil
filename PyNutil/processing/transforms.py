@@ -9,7 +9,7 @@ This module consolidates all coordinate transformation functions:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 
@@ -111,7 +111,6 @@ def transform_to_atlas_space(
 
 def get_transformed_coordinates(
     non_linear: bool,
-    slice_dict: Dict[str, Any],
     scaled_x: Optional[np.ndarray],
     scaled_y: Optional[np.ndarray],
     scaled_centroidsX: Optional[np.ndarray],
@@ -134,8 +133,6 @@ def get_transformed_coordinates(
     ----------
     non_linear : bool
         Whether to apply non-linear transformation.
-    slice_dict : dict
-        Slice metadata (kept for compatibility, not used for markers).
     scaled_x : ndarray or None
         Scaled x coordinates for points.
     scaled_y : ndarray or None

@@ -12,7 +12,6 @@ Public API
 - :func:`warp_image` — apply non-linear deformation to an image.
 - :func:`load_atlas_image` — load / generate an atlas map for a section.
 - :func:`assign_labels_to_image` — replace flat-file pixel values with atlas IDs.
-- :func:`calculate_scale_factor` — compute a resize scale factor.
 - :func:`flat_to_dataframe` — count region pixels with optional damage/hemi masks.
 - :func:`get_region_areas` — build atlas map and compute region areas for a section.
 """
@@ -287,24 +286,6 @@ def load_atlas_image(
     return image
 
 
-def calculate_scale_factor(image, rescaleXY):
-    """Compute a resize scale factor.
-
-    Args:
-        image (ndarray): Original image array.
-        rescaleXY (tuple): (width, height) for potential resizing.
-
-    Returns:
-        float or bool: Scale factor or False if not applicable.
-    """
-    if rescaleXY:
-        image_shapeY, image_shapeX = image.shape[0], image.shape[1]
-        image_pixels = image_shapeY * image_shapeX
-        seg_pixels = rescaleXY[0] * rescaleXY[1]
-        return seg_pixels / image_pixels
-    return False
-
-
 # ---------------------------------------------------------------------------
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
@@ -371,7 +352,11 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     Returns:
         DataFrame: Pixel counts grouped by label.
     """
-    scale_factor = calculate_scale_factor(image, rescaleXY)
+    scale_factor = (
+        (rescaleXY[0] * rescaleXY[1]) / (image.shape[0] * image.shape[1])
+        if rescaleXY
+        else None
+    )
     if hemi_mask is not None:
         hemi_mask = resize_mask_nearest(
             hemi_mask.astype(np.uint8), image.shape[1], image.shape[0]

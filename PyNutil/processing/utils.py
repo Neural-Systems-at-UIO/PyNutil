@@ -184,25 +184,6 @@ def convert_to_intensity(image, channel):
 
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
-
-def scale_positions(id_y, id_x, y_scale, x_scale):
-    """
-    Scales the Y and X coordinates to the registration space.
-
-    Args:
-        id_y (ndarray): Y coordinates.
-        id_x (ndarray): X coordinates.
-        y_scale (float): Y scaling factor.
-        x_scale (float): X scaling factor.
-
-    Returns:
-        tuple: Scaled Y and X coordinates.
-    """
-    id_y = id_y * y_scale
-    id_x = id_x * x_scale
-    return id_y, id_x
-
-
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".dzip"}
 
 
