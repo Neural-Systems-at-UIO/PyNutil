@@ -43,10 +43,24 @@ class TestVisualisations(TimedTestCase):
 
             pnt = PyNutil(settings_file=self.settings_path)
 
-            from PyNutil.io.loaders import load_quint_json
+            from PyNutil.processing.adapters.registry import load_registration
             from PyNutil.io.section_visualisation import create_section_visualisations
 
-            alignment_data = load_quint_json(pnt.alignment_json)
+            reg_data = load_registration(
+                pnt.alignment_json, apply_deformation=False, apply_damage=False
+            )
+            alignment_data = {
+                "slices": [
+                    {
+                        "filename": s.section_id,
+                        "nr": s.section_number,
+                        "anchoring": s.anchoring,
+                        "width": s.width,
+                        "height": s.height,
+                    }
+                    for s in reg_data.slices
+                ]
+            }
 
             create_section_visualisations(
                 pnt.segmentation_folder,

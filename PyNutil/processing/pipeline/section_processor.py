@@ -9,7 +9,6 @@ from __future__ import annotations
 import numpy as np
 import cv2
 
-from ...io.loaders import load_segmentation
 from ...context import PipelineContext, SectionContext
 from ...results import SectionResult, IntensitySectionResult
 from .connected_components import (
@@ -29,7 +28,6 @@ from ..transforms import (
     get_transformed_coordinates,
     transform_to_atlas_space,
 )
-from ..adapters.segmentation import detect_pixel_id
 from ..analysis.aggregator import build_region_intensity_dataframe
 from ..utils import (
     convert_to_intensity,
@@ -294,9 +292,9 @@ def segmentation_to_atlas_space(
     flat_label_path = p_ctx.flat_label_path
     adapter = p_ctx.segmentation_adapter
 
-    segmentation = load_segmentation(segmentation_path)
-    if pixel_id == "auto" and adapter.name == "binary":
-        pixel_id = detect_pixel_id(segmentation)
+    segmentation = adapter.load(segmentation_path)
+    if pixel_id == "auto":
+        pixel_id = adapter.detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
     reg_height, reg_width = slice_info.height, slice_info.width
 
@@ -536,8 +534,9 @@ def segmentation_to_atlas_space_intensity(
     flat_label_path = p_ctx.flat_label_path
     min_intensity = p_ctx.min_intensity
     max_intensity = p_ctx.max_intensity
+    adapter = p_ctx.segmentation_adapter
 
-    image = load_segmentation(image_path)
+    image = adapter.load(image_path)
     intensity = convert_to_intensity(image, intensity_channel)
     _apply_intensity_bounds(intensity, min_intensity, max_intensity)
 

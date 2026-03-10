@@ -15,10 +15,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Type
 
+import cv2
 import numpy as np
 
 
-def detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
+def _detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
     """Infer the foreground pixel id from the first non-background region."""
     if segmentation.ndim == 2:
         non_zero = segmentation[segmentation != 0]
@@ -49,12 +50,35 @@ class SegmentationAdapter(ABC):
     """Abstract base class for segmentation format adapters.
 
     Each adapter knows how to:
-    1. Create a binary mask from its format
-    2. Extract individual objects with their properties
-    3. Detect the foreground pixel ID (if applicable)
+    1. Load a segmentation image from disk
+    2. Create a binary mask from its format
+    3. Extract individual objects with their properties
+    4. Detect the foreground pixel ID (if applicable)
     """
 
     name: str = "base"
+
+    def load(self, path: str) -> np.ndarray:
+        """Load a segmentation image from disk.
+
+        Supports standard image formats (PNG, TIFF, etc.) and .dzip files.
+        Subclasses can override this to support additional formats.
+
+        Parameters
+        ----------
+        path : str
+            Path to the segmentation file.
+
+        Returns
+        -------
+        np.ndarray
+            The loaded segmentation image.
+        """
+        if path.endswith(".dzip"):
+            from ...io.reconstruct_dzi import reconstruct_dzi
+
+            return reconstruct_dzi(path)
+        return cv2.imread(path, cv2.IMREAD_UNCHANGED)
 
     @abstractmethod
     def create_binary_mask(
@@ -151,7 +175,7 @@ class BinaryAdapter(SegmentationAdapter):
 
     def detect_pixel_id(self, segmentation: np.ndarray) -> Optional[List[int]]:
         """Detect the most common non-black pixel color."""
-        return detect_pixel_id(segmentation)
+        return _detect_pixel_id(segmentation)
 
 
 class CellposeAdapter(SegmentationAdapter):

@@ -5,23 +5,18 @@ This module contains functions for reading various file formats:
 - Flat files (custom binary format)
 - Seg files (SegRLEv1 format)
 - Segmentation images (PNG, DZIP)
-- VisuAlign JSON files
+- Coordinate CSV files
 """
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import struct
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
-import cv2
 import numpy as np
 import pandas as pd
-
-from .propagation import propagate
-from .reconstruct_dzi import reconstruct_dzi
 
 
 def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
@@ -183,70 +178,6 @@ def read_seg_file(file: str) -> np.ndarray:
     image_data = np.array(data)
     image = np.reshape(image_data, (h, w))
     return image
-
-
-def load_segmentation(segmentation_path: str) -> np.ndarray:
-    """Load segmentation data from a file.
-
-    Supports '.dzip' files (processed as DZI) and standard image formats.
-
-    Parameters
-    ----------
-    segmentation_path : str
-        Path to the segmentation file.
-
-    Returns
-    -------
-    np.ndarray
-        A 2D or 3D segmentation array.
-    """
-    if segmentation_path.endswith(".dzip"):
-        return reconstruct_dzi(segmentation_path)
-    else:
-        return cv2.imread(segmentation_path, cv2.IMREAD_UNCHANGED)
-
-
-def load_quint_json(
-    filename: str,
-    propagate_missing_values: bool = True,
-) -> Dict[str, Any]:
-    """Read a VisuAlign JSON file (.waln or .wwrp).
-
-    Extracts slice information including anchoring, grid spacing,
-    and other image metadata.
-
-    Parameters
-    ----------
-    filename : str
-        Path to the VisuAlign JSON file.
-    propagate_missing_values : bool, optional
-        If True, propagates anchoring values to slices without them.
-
-    Returns
-    -------
-    dict
-        Parsed VisuAlign data with 'slices' key containing slice list.
-    """
-    with open(filename) as f:
-        vafile = json.load(f)
-
-    if filename.endswith(".waln") or filename.endswith("wwrp"):
-        slices = vafile["sections"]
-        vafile["slices"] = slices
-        for slice_data in slices:
-            slice_data["nr"] = int(
-                re.search(r"_s(\d+)", slice_data["filename"]).group(1)
-            )
-            if "ouv" in slice_data:
-                slice_data["anchoring"] = slice_data["ouv"]
-    else:
-        slices = vafile["slices"]
-
-    if (len(slices) > 1) and propagate_missing_values:
-        slices = propagate(slices)
-
-    vafile["slices"] = slices
-    return vafile
 
 
 # ---------------------------------------------------------------------------

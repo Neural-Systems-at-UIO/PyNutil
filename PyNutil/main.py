@@ -706,6 +706,7 @@ class PyNutil:
         try:
             from .io.section_visualisation import create_section_visualisations
             from .processing.adapters.registry import load_registration
+            from .processing.adapters.segmentation import SegmentationAdapterRegistry
 
             reg_data = load_registration(
                 self.alignment_json, apply_deformation=False, apply_damage=False
@@ -723,6 +724,8 @@ class PyNutil:
                 ]
             }
 
+            adapter = SegmentationAdapterRegistry.get(self.segmentation_format)
+
             logger.info("Creating section visualisations...")
             create_section_visualisations(
                 self.segmentation_folder or self.image_folder,
@@ -730,6 +733,7 @@ class PyNutil:
                 self.atlas_volume,
                 self.atlas_labels,
                 output_folder,
+                adapter=adapter,
             )
         except Exception as e:
             logger.error(f"visualisation failed: {e}")
