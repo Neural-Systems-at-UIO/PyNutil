@@ -139,9 +139,11 @@ def _sample_and_deform_plane(
 
     Returns (sampled_2d, vals_flat, damage_vals, flat_x, flat_y, plane_h, plane_w).
     """
-    physical_w, physical_h = slice_info.physical_dimensions
-    plane_w = max(1, int(round(float(physical_w) * float(scale))))
-    plane_h = max(1, int(round(float(physical_h) * float(scale))))
+    anch = slice_info.anchoring
+    u = np.asarray(anch[3:6], dtype=np.float32)
+    v = np.asarray(anch[6:9], dtype=np.float32)
+    plane_w = max(1, int(round(float(np.linalg.norm(u)) * float(scale))))
+    plane_h = max(1, int(round(float(np.linalg.norm(v)) * float(scale))))
 
     yy, xx = np.indices((plane_h, plane_w), dtype=np.float32)
     reg_x = (xx + 0.5) * (float(reg_width) / float(plane_w))
