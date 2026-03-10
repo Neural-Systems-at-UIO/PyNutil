@@ -2,6 +2,18 @@ import json
 import os
 from typing import Dict, Any
 
+from PyNutil.io.loaders import load_json_file
+
+
+_RECENT_KEYS = (
+    "registration_json",
+    "segmentation_dir",
+    "image_dir",
+    "output_dir",
+    "custom_region",
+)
+_ALL_SETTINGS_KEYS = (*_RECENT_KEYS, "object_colour", "custom_atlases")
+
 
 class SettingsManager:
     """Manages application settings and recent files."""
@@ -20,30 +32,18 @@ class SettingsManager:
         """Load settings from file."""
         if os.path.exists(self.settings_path):
             try:
-                with open(self.settings_path, "r") as file:
-                    data = json.load(file)
-                    # Ensure all required keys exist
-                    for key in ["registration_json", "segmentation_dir", "image_dir", "output_dir", "custom_region"]:
-                        if not isinstance(data.get(key, []), list):
-                            data[key] = [data.get(key)] if data.get(key) else []
-                    if "object_colour" not in data:
-                        data["object_colour"] = []
-                    if "custom_atlases" not in data:
-                        data["custom_atlases"] = []
-                    return data
+                data = load_json_file(self.settings_path)
+                for key in _RECENT_KEYS:
+                    value = data.get(key)
+                    data[key] = value if isinstance(value, list) else ([value] if value else [])
+                for key in _ALL_SETTINGS_KEYS:
+                    data.setdefault(key, [])
+                return data
             except Exception as e:
                 print(f"Error loading settings: {e}")
 
         # Return default settings if file doesn't exist or has errors
-        return {
-            "registration_json": [],
-            "segmentation_dir": [],
-            "image_dir": [],
-            "output_dir": [],
-            "custom_region": [],
-            "object_colour": [],
-            "custom_atlases": [],
-        }
+        return {key: [] for key in _ALL_SETTINGS_KEYS}
 
     def save_settings(self) -> None:
         """Save settings to file."""

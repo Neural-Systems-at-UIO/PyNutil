@@ -48,6 +48,52 @@ class SaveContext:
     colormap: str = "gray"
 
 
+@dataclass
+class _SectionWindow:
+    """Per-section slicing window for report and meshview outputs."""
+
+    stem: str
+    points_start: int
+    points_end: int
+    centroids_start: int
+    centroids_end: int
+    df: pd.DataFrame
+
+
+def _slice_or_none(arr, start: int, end: int):
+    """Slice *arr* if present, otherwise return None."""
+    return arr[start:end] if arr is not None else None
+
+
+def _iter_section_windows(ctx: SaveContext):
+    """Yield section-aligned slicing windows for per-section outputs."""
+    if ctx.segmentation_filenames is None or ctx.per_section_df is None:
+        return
+
+    points_len = ctx.points_len or [0] * len(ctx.segmentation_filenames)
+    centroids_len = ctx.centroids_len or [0] * len(ctx.segmentation_filenames)
+
+    points_offset = 0
+    centroids_offset = 0
+    for pl, cl, fn, df in zip(
+        points_len,
+        centroids_len,
+        ctx.segmentation_filenames,
+        ctx.per_section_df,
+    ):
+        stem = os.path.basename(fn).split(".")[0]
+        yield _SectionWindow(
+            stem=stem,
+            points_start=points_offset,
+            points_end=points_offset + pl,
+            centroids_start=centroids_offset,
+            centroids_end=centroids_offset + cl,
+            df=df,
+        )
+        points_offset += pl
+        centroids_offset += cl
+
+
 def _ensure_analysis_output_dirs(output_folder: str) -> None:
     os.makedirs(output_folder, exist_ok=True)
     for subdir in (
@@ -122,78 +168,65 @@ def _save_settings_json(ctx: SaveContext, output_folder: str) -> None:
 
 def _save_per_section_reports(ctx: SaveContext, output_folder: str):
     """Write per-section CSVs and MeshView JSONs."""
-    prev_pl = 0
-    prev_cl = 0
-
-    # Handle None for points_len and centroids_len (e.g. in intensity mode)
-    points_len = ctx.points_len or [0] * len(ctx.segmentation_filenames)
-    centroids_len = ctx.centroids_len or [0] * len(ctx.segmentation_filenames)
-
-    for pl, cl, fn, df in zip(
-        points_len,
-        centroids_len,
-        ctx.segmentation_filenames,
-        ctx.per_section_df,
-    ):
-        split_fn = fn.split(os.sep)[-1].split(".")[0]
-        df.to_csv(
-            f"{output_folder}/per_section_reports/{ctx.prepend}{split_fn}.csv",
+    for window in _iter_section_windows(ctx):
+        window.df.to_csv(
+            f"{output_folder}/per_section_reports/{ctx.prepend}{window.stem}.csv",
             sep=";",
             na_rep="",
             index=False,
         )
         if ctx.pixel_points is not None or ctx.centroids is not None:
             section_intensities = (
-                ctx.point_intensities[prev_pl : pl + prev_pl]
+                _slice_or_none(ctx.point_intensities, window.points_start, window.points_end)
                 if ctx.point_intensities is not None
                 else None
             )
             _save_per_section_meshview(
                 ctx,
                 output_folder,
-                split_fn,
-                pl,
-                cl,
-                prev_pl,
-                prev_cl,
+                window,
                 section_intensities,
             )
-        prev_cl += cl
-        prev_pl += pl
 
 
 def _save_per_section_meshview(
     ctx: SaveContext,
     output_folder: str,
-    split_fn: str,
-    pl: int,
-    cl: int,
-    prev_pl: int,
-    prev_cl: int,
+    window: _SectionWindow,
     section_intensities=None,
 ):
     """Write per-section MeshView JSONs for pixels and centroids."""
     write_hemi_points_to_meshview(
-        ctx.pixel_points[prev_pl : pl + prev_pl]
-        if ctx.pixel_points is not None
-        else None,
-        ctx.labeled_points[prev_pl : pl + prev_pl]
-        if ctx.labeled_points is not None
-        else None,
-        ctx.points_hemi_labels[prev_pl : pl + prev_pl]
-        if ctx.points_hemi_labels is not None
-        else None,
-        f"{output_folder}/per_section_meshview/{ctx.prepend}{split_fn}_pixels.json",
+        _slice_or_none(ctx.pixel_points, window.points_start, window.points_end),
+        _slice_or_none(ctx.labeled_points, window.points_start, window.points_end),
+        _slice_or_none(
+            ctx.points_hemi_labels,
+            window.points_start,
+            window.points_end,
+        ),
+        f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_pixels.json",
         ctx.atlas_labels,
         section_intensities,
         colormap=ctx.colormap,
     )
     if ctx.centroids is not None:
         write_hemi_points_to_meshview(
-            ctx.centroids[prev_cl : cl + prev_cl],
-            ctx.labeled_points_centroids[prev_cl : cl + prev_cl],
-            ctx.centroids_hemi_labels[prev_cl : cl + prev_cl],
-            f"{output_folder}/per_section_meshview/{ctx.prepend}{split_fn}_centroids.json",
+            _slice_or_none(
+                ctx.centroids,
+                window.centroids_start,
+                window.centroids_end,
+            ),
+            _slice_or_none(
+                ctx.labeled_points_centroids,
+                window.centroids_start,
+                window.centroids_end,
+            ),
+            _slice_or_none(
+                ctx.centroids_hemi_labels,
+                window.centroids_start,
+                window.centroids_end,
+            ),
+            f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_centroids.json",
             ctx.atlas_labels,
             colormap=ctx.colormap,
         )

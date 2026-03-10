@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from ..io.loaders import read_flat_file, read_seg_file
+from .utils import resize_mask_nearest
 
 
 # ---------------------------------------------------------------------------
@@ -308,25 +309,6 @@ def calculate_scale_factor(image, rescaleXY):
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
 
-
-def count_pixels_per_label(image, scale_factor=False):
-    """Count the pixels associated with each label in an image.
-
-    Args:
-        image (ndarray): Image array containing labels.
-        scale_factor (bool, optional): Apply scaling if True.
-
-    Returns:
-        DataFrame: Table of label IDs and pixel counts.
-    """
-    unique_ids, counts = np.unique(image, return_counts=True)
-    if scale_factor:
-        counts = counts * scale_factor
-    area_per_label = list(zip(unique_ids, counts))
-    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
-    return df_area_per_label
-
-
 def _build_area_combos(hemi_mask, damage_mask):
     """Return list of (hemi_val, damage_val, column_name) for area counting."""
     if (hemi_mask is not None) and (damage_mask is not None):
@@ -391,17 +373,13 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
     if hemi_mask is not None:
-        hemi_mask = cv2.resize(
-            hemi_mask.astype(np.uint8),
-            (image.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
+        hemi_mask = resize_mask_nearest(
+            hemi_mask.astype(np.uint8), image.shape[1], image.shape[0]
         )
 
     if damage_mask is not None:
-        damage_mask = cv2.resize(
-            damage_mask.astype(np.uint8),
-            (image.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
+        damage_mask = resize_mask_nearest(
+            damage_mask.astype(np.uint8), image.shape[1], image.shape[0]
         ).astype(bool)
 
     # --- single-pass counting via np.unique + np.bincount ---

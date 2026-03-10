@@ -32,206 +32,51 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class _BinaryMode:
-    """Binary / Cellpose segmentation pipeline."""
+def _assign_custom_region_labels(ctx):
+    """Populate custom region labels for points/centroids when configured."""
+    if ctx.custom_regions_dict is None:
+        return
+    ctx.points_custom_labels = map_to_custom_regions(
+        ctx.custom_regions_dict, ctx.points_labels
+    )
+    ctx.centroids_custom_labels = map_to_custom_regions(
+        ctx.custom_regions_dict, ctx.centroids_labels
+    )
 
-    @staticmethod
-    def get_coordinates(
-        ctx,
-        *,
-        non_linear,
-        object_cutoff,
-        use_flat,
-        apply_damage_mask,
-        flat_label_path,
-    ):
-        (
-            ctx.pixel_points,
-            ctx.centroids,
-            ctx.points_labels,
-            ctx.centroids_labels,
-            ctx.points_hemi_labels,
-            ctx.centroids_hemi_labels,
-            ctx.region_areas_list,
-            ctx.points_len,
-            ctx.centroids_len,
-            ctx.segmentation_filenames,
-            ctx.per_point_undamaged,
-            ctx.per_centroid_undamaged,
-            ctx.total_points_len,
-            ctx.total_centroids_len,
-        ) = folder_to_atlas_space(
-            ctx.segmentation_folder,
-            ctx.alignment_json,
-            ctx.atlas_labels,
-            ctx.colour,
-            non_linear,
-            object_cutoff,
-            ctx.atlas_volume,
-            ctx.hemi_map,
-            use_flat,
-            apply_damage_mask,
-            flat_label_path=flat_label_path,
-            segmentation_format=ctx.segmentation_format,
+
+def _quantify_coordinate_entities(ctx):
+    """Shared quantification for coordinate-based (pixel/centroid) modes."""
+    if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
+        raise ValueError(
+            "Please run get_coordinates before running quantify_coordinates."
         )
-        ctx.apply_damage_mask = apply_damage_mask
-        if ctx.custom_regions_dict is not None:
-            ctx.points_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.points_labels
-            )
-            ctx.centroids_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.centroids_labels
-            )
-
-    @staticmethod
-    def quantify(ctx):
-        if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
-            raise ValueError(
-                "Please run get_coordinates before running quantify_coordinates."
-            )
-        points = PerEntityArrays(
-            labels=ctx.points_labels,
-            hemi_labels=ctx.points_hemi_labels,
-            undamaged=ctx.per_point_undamaged,
-            section_lengths=ctx.total_points_len,
-        )
-        centroids = PerEntityArrays(
-            labels=ctx.centroids_labels,
-            hemi_labels=ctx.centroids_hemi_labels,
-            undamaged=ctx.per_centroid_undamaged,
-            section_lengths=ctx.total_centroids_len,
-        )
-        return quantify_labeled_points(
-            points,
-            centroids,
-            ctx.region_areas_list,
-            ctx.atlas_labels,
-            ctx.apply_damage_mask,
-        )
+    points = PerEntityArrays(
+        labels=ctx.points_labels,
+        hemi_labels=ctx.points_hemi_labels,
+        undamaged=ctx.per_point_undamaged,
+        section_lengths=ctx.total_points_len,
+    )
+    centroids = PerEntityArrays(
+        labels=ctx.centroids_labels,
+        hemi_labels=ctx.centroids_hemi_labels,
+        undamaged=ctx.per_centroid_undamaged,
+        section_lengths=ctx.total_centroids_len,
+    )
+    return quantify_labeled_points(
+        points,
+        centroids,
+        ctx.region_areas_list,
+        ctx.atlas_labels,
+        ctx.apply_damage_mask,
+    )
 
 
-class _IntensityMode:
-    """Image intensity quantification pipeline."""
-
-    @staticmethod
-    def get_coordinates(
-        ctx,
-        *,
-        non_linear,
-        object_cutoff,
-        use_flat,
-        apply_damage_mask,
-        flat_label_path,
-    ):
-        (
-            ctx.region_intensities_list,
-            ctx.segmentation_filenames,
-            ctx.pixel_points,
-            ctx.points_labels,
-            ctx.points_hemi_labels,
-            ctx.points_len,
-            ctx.point_intensities,
-        ) = folder_to_atlas_space_intensity(
-            ctx.image_folder,
-            ctx.alignment_json,
-            ctx.atlas_labels,
-            ctx.intensity_channel,
-            non_linear,
-            ctx.atlas_volume,
-            ctx.hemi_map,
-            use_flat,
-            apply_damage_mask,
-            flat_label_path=flat_label_path,
-            min_intensity=ctx.min_intensity,
-            max_intensity=ctx.max_intensity,
-        )
-        # In intensity mode, we don't have separate centroids
-        ctx.centroids = None
-        ctx.labeled_points_centroids = None
-        ctx.centroids_hemi_labels = None
-        ctx.centroids_len = None
-        ctx.apply_damage_mask = apply_damage_mask
-
-    @staticmethod
-    def quantify(ctx):
-        if not hasattr(ctx, "region_intensities_list"):
-            raise ValueError(
-                "Please run get_coordinates before running quantify_coordinates."
-            )
-        return quantify_intensity(ctx.region_intensities_list, ctx.atlas_labels)
-
-
-class _CoordinateMode:
-    """Pre-extracted coordinate data pipeline."""
-
-    @staticmethod
-    def get_coordinates(
-        ctx,
-        *,
-        non_linear,
-        object_cutoff,
-        use_flat,
-        apply_damage_mask,
-        flat_label_path,
-    ):
-        (
-            ctx.pixel_points,
-            ctx.centroids,
-            ctx.points_labels,
-            ctx.centroids_labels,
-            ctx.points_hemi_labels,
-            ctx.centroids_hemi_labels,
-            ctx.region_areas_list,
-            ctx.points_len,
-            ctx.centroids_len,
-            ctx.per_point_undamaged,
-            ctx.per_centroid_undamaged,
-            ctx.total_points_len,
-            ctx.total_centroids_len,
-        ) = file_to_atlas_space_coordinates(
-            ctx.coordinate_file,
-            ctx.alignment_json,
-            ctx.atlas_labels,
-            non_linear,
-            ctx.atlas_volume,
-            ctx.hemi_map,
-            apply_damage_mask,
-        )
-        ctx.segmentation_filenames = []
-        ctx.apply_damage_mask = apply_damage_mask
-        if ctx.custom_regions_dict is not None:
-            ctx.points_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.points_labels
-            )
-            ctx.centroids_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.centroids_labels
-            )
-
-    @staticmethod
-    def quantify(ctx):
-        if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
-            raise ValueError(
-                "Please run get_coordinates before running quantify_coordinates."
-            )
-        points = PerEntityArrays(
-            labels=ctx.points_labels,
-            hemi_labels=ctx.points_hemi_labels,
-            undamaged=ctx.per_point_undamaged,
-            section_lengths=ctx.total_points_len,
-        )
-        centroids = PerEntityArrays(
-            labels=ctx.centroids_labels,
-            hemi_labels=ctx.centroids_hemi_labels,
-            undamaged=ctx.per_centroid_undamaged,
-            section_lengths=ctx.total_centroids_len,
-        )
-        return quantify_labeled_points(
-            points,
-            centroids,
-            ctx.region_areas_list,
-            ctx.atlas_labels,
-            ctx.apply_damage_mask,
-        )
+def _apply_extraction_result(ctx, result, *, apply_damage_mask, map_custom_regions):
+    """Apply standardized extraction-result fields directly to context."""
+    ctx.__dict__.update(vars(result))
+    ctx.apply_damage_mask = apply_damage_mask
+    if map_custom_regions:
+        _assign_custom_region_labels(ctx)
 
 
 def _apply_custom_regions_to_quantification(ctx):
@@ -384,14 +229,6 @@ class PyNutil:
 
         self.point_intensities = None
 
-        # Select the quantification strategy based on the input mode (OCP)
-        if self.coordinate_file:
-            self._mode = _CoordinateMode()
-        elif self.image_folder:
-            self._mode = _IntensityMode()
-        else:
-            self._mode = _BinaryMode()
-
     def _load_atlas_data(self, cfg):
         """Load atlas volume, hemisphere map, and labels from config."""
         if cfg.atlas_path and cfg.label_path:
@@ -449,13 +286,55 @@ class PyNutil:
         Returns:
             None: Results are stored in class attributes.
         """
-        self._mode.get_coordinates(
+        if self.coordinate_file:
+            result = file_to_atlas_space_coordinates(
+                self.coordinate_file,
+                self.alignment_json,
+                self.atlas_labels,
+                non_linear,
+                self.atlas_volume,
+                self.hemi_map,
+                apply_damage_mask,
+            )
+            map_custom_regions = True
+        elif self.image_folder:
+            result = folder_to_atlas_space_intensity(
+                self.image_folder,
+                self.alignment_json,
+                self.atlas_labels,
+                self.intensity_channel,
+                non_linear,
+                self.atlas_volume,
+                self.hemi_map,
+                use_flat,
+                apply_damage_mask,
+                flat_label_path=flat_label_path,
+                min_intensity=self.min_intensity,
+                max_intensity=self.max_intensity,
+            )
+            map_custom_regions = False
+        else:
+            result = folder_to_atlas_space(
+                self.segmentation_folder,
+                self.alignment_json,
+                self.atlas_labels,
+                self.colour,
+                non_linear,
+                object_cutoff,
+                self.atlas_volume,
+                self.hemi_map,
+                use_flat,
+                apply_damage_mask,
+                flat_label_path=flat_label_path,
+                segmentation_format=self.segmentation_format,
+            )
+            map_custom_regions = True
+
+        _apply_extraction_result(
             self,
-            non_linear=non_linear,
-            object_cutoff=object_cutoff,
-            use_flat=use_flat,
+            result,
             apply_damage_mask=apply_damage_mask,
-            flat_label_path=flat_label_path,
+            map_custom_regions=map_custom_regions,
         )
 
     def quantify_coordinates(self):
@@ -476,7 +355,16 @@ class PyNutil:
         Returns:
             None
         """
-        self.label_df, self.per_section_df = self._mode.quantify(self)
+        if self.image_folder:
+            if not hasattr(self, "region_intensities_list"):
+                raise ValueError(
+                    "Please run get_coordinates before running quantify_coordinates."
+                )
+            self.label_df, self.per_section_df = quantify_intensity(
+                self.region_intensities_list, self.atlas_labels
+            )
+        else:
+            self.label_df, self.per_section_df = _quantify_coordinate_entities(self)
         _apply_custom_regions_to_quantification(self)
 
     def interpolate_volume(
@@ -529,7 +417,11 @@ class PyNutil:
             )
         if not self.alignment_json:
             raise ValueError("alignment_json is required")
-        if self.segmentation_folder and self.colour is None:
+        if (
+            self.segmentation_folder
+            and self.segmentation_format != "cellpose"
+            and self.colour is None
+        ):
             raise ValueError(
                 "colour must be set to interpolate_volume when using segmentation_folder"
             )
@@ -560,6 +452,8 @@ class PyNutil:
             use_atlas_mask=use_atlas_mask,
             non_linear=non_linear,
             value_mode=value_mode,
+            segmentation_format=self.segmentation_format,
+            segmentation_mode=bool(self.segmentation_folder),
             intensity_channel=self.intensity_channel,
             min_intensity=self.min_intensity,
             max_intensity=self.max_intensity,
@@ -589,11 +483,30 @@ class PyNutil:
         """
         base_ctx = self._build_save_context(colormap)
 
-        self._save_primary(base_ctx, output_folder)
+        self._save_analysis_variant(
+            base_ctx,
+            output_folder,
+            label_df_attr="label_df",
+            per_section_df_attr="per_section_df",
+            points_labels_attr="points_labels",
+            centroids_labels_attr="centroids_labels",
+            atlas_labels=self.atlas_labels,
+            prepend="",
+        )
         self._save_volumes(output_folder)
 
         if self.custom_regions_dict is not None:
-            self._save_custom_regions(base_ctx, output_folder)
+            self._save_analysis_variant(
+                base_ctx,
+                output_folder,
+                label_df_attr="custom_label_df",
+                per_section_df_attr="custom_per_section_df",
+                points_labels_attr="points_custom_labels",
+                centroids_labels_attr="centroids_custom_labels",
+                atlas_labels=self.custom_atlas_labels,
+                prepend="custom_",
+                colormap="gray",
+            )
 
         self._remap_compressed_ids(output_folder)
 
@@ -642,20 +555,34 @@ class PyNutil:
             colormap=colormap,
         )
 
-    def _save_primary(self, base_ctx, output_folder):
-        """Save primary (non-custom) analysis output."""
+    def _save_analysis_variant(
+        self,
+        base_ctx,
+        output_folder,
+        *,
+        label_df_attr,
+        per_section_df_attr,
+        points_labels_attr,
+        centroids_labels_attr,
+        atlas_labels,
+        prepend,
+        colormap=None,
+    ):
+        """Save one analysis variant (primary or custom-region) to output files."""
         _und_p = getattr(self, "per_point_undamaged", None)
         _und_c = getattr(self, "per_centroid_undamaged", None)
-        base_ctx.label_df = getattr(self, "label_df", None)
-        base_ctx.per_section_df = getattr(self, "per_section_df", None)
+        base_ctx.label_df = getattr(self, label_df_attr, None)
+        base_ctx.per_section_df = getattr(self, per_section_df_attr, None)
         base_ctx.labeled_points = self._filter_undamaged(
-            getattr(self, "points_labels", None), _und_p
+            getattr(self, points_labels_attr, None), _und_p
         )
         base_ctx.labeled_points_centroids = self._filter_undamaged(
-            getattr(self, "centroids_labels", None), _und_c
+            getattr(self, centroids_labels_attr, None), _und_c
         )
-        base_ctx.atlas_labels = self.atlas_labels
-        base_ctx.prepend = ""
+        base_ctx.atlas_labels = atlas_labels
+        base_ctx.prepend = prepend
+        if colormap is not None:
+            base_ctx.colormap = colormap
         save_analysis_output(base_ctx, output_folder)
 
     def _save_volumes(self, output_folder):
@@ -672,23 +599,6 @@ class PyNutil:
             )
         except Exception as e:
             logger.error(f"Saving NIfTI volumes failed: {e}")
-
-    def _save_custom_regions(self, base_ctx, output_folder):
-        """Save custom-region analysis output."""
-        _und_p = getattr(self, "per_point_undamaged", None)
-        _und_c = getattr(self, "per_centroid_undamaged", None)
-        base_ctx.label_df = getattr(self, "custom_label_df", None)
-        base_ctx.per_section_df = getattr(self, "custom_per_section_df", None)
-        base_ctx.labeled_points = self._filter_undamaged(
-            getattr(self, "points_custom_labels", None), _und_p
-        )
-        base_ctx.labeled_points_centroids = self._filter_undamaged(
-            getattr(self, "centroids_custom_labels", None), _und_c
-        )
-        base_ctx.atlas_labels = self.custom_atlas_labels
-        base_ctx.prepend = "custom_"
-        base_ctx.colormap = "gray"
-        save_analysis_output(base_ctx, output_folder)
 
     def _remap_compressed_ids(self, output_folder):
         """Restore original atlas IDs if they were compressed during loading."""

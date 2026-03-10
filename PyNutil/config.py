@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
+
+from .io.loaders import load_json_file
 
 
 @dataclass
@@ -25,8 +26,7 @@ class PyNutilConfig:
 
     @classmethod
     def from_settings_file(cls, settings_file: str) -> "PyNutilConfig":
-        with open(settings_file, "r") as f:
-            settings = json.load(f)
+        settings = load_json_file(settings_file)
         return cls.from_settings_dict(settings)
 
     @classmethod

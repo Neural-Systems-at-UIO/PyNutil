@@ -11,7 +11,11 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 from ...context import PipelineContext, SectionContext
-from ...results import SectionResult, IntensitySectionResult
+from ...results import (
+    SectionResult,
+    IntensitySectionResult,
+    ExtractionResult,
+)
 from ..adapters import load_registration
 from ..adapters.segmentation import SegmentationAdapterRegistry
 from .section_processor import (
@@ -149,37 +153,18 @@ def _run_batch_with_context(
 # ---------------------------------------------------------------------------
 
 
-def _concat_float(arrays):
-    """Concatenate arrays, returning empty float64 array if all empty."""
+def _concat(arrays, *, dtype=None, none_if_empty=False):
+    """Concatenate arrays with configurable dtype and empty-result behavior."""
     non_empty = [a for a in arrays if a is not None and len(a) > 0]
-    return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.float64)
+    if non_empty:
+        return np.concatenate(non_empty)
+    if none_if_empty:
+        return None
+    return np.array([], dtype=dtype)
 
 
-def _concat_int(arrays):
-    """Concatenate arrays, returning empty int64 array if all empty."""
-    non_empty = [a for a in arrays if a is not None and len(a) > 0]
-    return np.concatenate(non_empty) if non_empty else np.array([], dtype=np.int64)
-
-
-def _concat_bool(arrays):
-    """Concatenate arrays, returning empty bool array if all empty."""
-    non_empty = [a for a in arrays if a is not None and len(a) > 0]
-    return np.concatenate(non_empty) if non_empty else np.array([], dtype=bool)
-
-
-def _concat_or_none(arrays):
-    """Concatenate arrays, returning None if all empty (for intensity pipeline)."""
-    non_empty = [a for a in arrays if a is not None and len(a) > 0]
-    return np.concatenate(non_empty) if non_empty else None
-
-
-def _safe_len(arr):
-    """Return len(arr) if arr is not None, else 0."""
-    return len(arr) if arr is not None else 0
-
-
-def _unzip_section_results(results):
-    """Unzip a list of SectionResults into per-field lists (single pass)."""
+def _collect_section_results(results):
+    """Reduce section results into concatenated arrays and per-section lengths."""
     pts, ctrs = [], []
     pts_lbl, ctrs_lbl = [], []
     pts_hemi, ctrs_hemi = [], []
@@ -197,59 +182,30 @@ def _unzip_section_results(results):
         ctrs_hemi.append(r.centroids_hemi_labels)
         pt_undam.append(r.per_point_undamaged)
         ct_undam.append(r.per_centroid_undamaged)
-        pts_len.append(_safe_len(r.points))
-        ctrs_len.append(_safe_len(r.centroids))
-        tot_pts_len.append(_safe_len(r.per_point_undamaged))
-        tot_ctrs_len.append(_safe_len(r.per_centroid_undamaged))
+        pts_len.append(len(r.points) if r.points is not None else 0)
+        ctrs_len.append(len(r.centroids) if r.centroids is not None else 0)
+        tot_pts_len.append(
+            len(r.per_point_undamaged) if r.per_point_undamaged is not None else 0
+        )
+        tot_ctrs_len.append(
+            len(r.per_centroid_undamaged)
+            if r.per_centroid_undamaged is not None
+            else 0
+        )
         areas.append(r.region_areas)
 
     return (
-        pts,
-        ctrs,
-        pts_lbl,
-        ctrs_lbl,
-        pts_hemi,
-        ctrs_hemi,
-        pt_undam,
-        ct_undam,
-        pts_len,
-        ctrs_len,
-        tot_pts_len,
-        tot_ctrs_len,
-        areas,
-    )
-
-
-def _collect_section_results(results):
-    """Concatenate a list of SectionResults into flat arrays and length lists."""
-    (
-        pts,
-        ctrs,
-        pts_lbl,
-        ctrs_lbl,
-        pts_hemi,
-        ctrs_hemi,
-        pt_undam,
-        ct_undam,
-        pts_len,
-        ctrs_len,
-        tot_pts_len,
-        tot_ctrs_len,
-        areas,
-    ) = _unzip_section_results(results)
-
-    return (
-        _concat_float(pts),
-        _concat_float(ctrs),
-        _concat_int(pts_lbl),
-        _concat_int(ctrs_lbl),
-        _concat_int(pts_hemi),
-        _concat_int(ctrs_hemi),
+        _concat(pts, dtype=np.float64),
+        _concat(ctrs, dtype=np.float64),
+        _concat(pts_lbl, dtype=np.int64),
+        _concat(ctrs_lbl, dtype=np.int64),
+        _concat(pts_hemi, dtype=np.int64),
+        _concat(ctrs_hemi, dtype=np.int64),
         areas,
         pts_len,
         ctrs_len,
-        _concat_bool(pt_undam),
-        _concat_bool(ct_undam),
+        _concat(pt_undam, dtype=bool),
+        _concat(ct_undam, dtype=bool),
         tot_pts_len,
         tot_ctrs_len,
     )
@@ -290,10 +246,7 @@ def folder_to_atlas_space(
         segmentation_format: Format name ("binary" or "cellpose").
 
     Returns:
-        tuple: (points, centroids, points_labels, centroids_labels,
-                points_hemi_labels, centroids_hemi_labels, region_areas_list,
-                points_len, centroids_len, segmentations,
-                per_point_undamaged_list, per_centroid_undamaged_list)
+        ExtractionResult: Structured extraction output.
     """
     pipeline_ctx = _build_pipeline_context(
         atlas_labels=atlas_labels,
@@ -332,21 +285,21 @@ def folder_to_atlas_space(
         total_centroids_len,
     ) = _collect_section_results(results)
 
-    return (
-        points,
-        centroids,
-        points_labels,
-        centroids_labels,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        region_areas_list,
-        points_len,
-        centroids_len,
-        segmentations,
-        per_point_undamaged,
-        per_centroid_undamaged,
-        total_points_len,
-        total_centroids_len,
+    return ExtractionResult(
+        pixel_points=points,
+        centroids=centroids,
+        points_labels=points_labels,
+        centroids_labels=centroids_labels,
+        points_hemi_labels=points_hemi_labels,
+        centroids_hemi_labels=centroids_hemi_labels,
+        region_areas_list=region_areas_list,
+        points_len=points_len,
+        centroids_len=centroids_len,
+        segmentation_filenames=segmentations,
+        per_point_undamaged=per_point_undamaged,
+        per_centroid_undamaged=per_centroid_undamaged,
+        total_points_len=total_points_len,
+        total_centroids_len=total_centroids_len,
     )
 
 
@@ -380,8 +333,7 @@ def folder_to_atlas_space_intensity(
         max_intensity: Maximum intensity value to include.
 
     Returns:
-        tuple: (region_intensities_list, images, centroids, centroids_labels,
-                centroids_hemi_labels, centroids_len, centroids_intensities)
+        ExtractionResult: Structured extraction output.
     """
     pipeline_ctx = _build_pipeline_context(
         atlas_labels=atlas_labels,
@@ -410,20 +362,31 @@ def folder_to_atlas_space_intensity(
     # ── Concatenate IntensitySectionResults ────────────────────────────
     region_intensities_list = [r.region_intensities for r in results]
 
-    all_centroids = _concat_or_none([r.points for r in results])
-    all_labels = _concat_or_none([r.points_labels for r in results])
-    all_hemi = _concat_or_none([r.points_hemi_labels for r in results])
-    all_intensities = _concat_or_none([r.point_intensities for r in results])
+    all_centroids = _concat([r.points for r in results], none_if_empty=True)
+    all_labels = _concat([r.points_labels for r in results], none_if_empty=True)
+    all_hemi = _concat([r.points_hemi_labels for r in results], none_if_empty=True)
+    all_intensities = _concat(
+        [r.point_intensities for r in results], none_if_empty=True
+    )
     centroids_len = [r.num_points for r in results]
 
-    return (
-        region_intensities_list,
-        images,
-        all_centroids,
-        all_labels,
-        all_hemi,
-        centroids_len,
-        all_intensities,
+    return ExtractionResult(
+        pixel_points=all_centroids,
+        centroids=None,
+        points_labels=all_labels,
+        centroids_labels=None,
+        points_hemi_labels=all_hemi,
+        centroids_hemi_labels=None,
+        region_areas_list=[],
+        points_len=centroids_len,
+        centroids_len=None,
+        segmentation_filenames=images,
+        per_point_undamaged=None,
+        per_centroid_undamaged=None,
+        total_points_len=centroids_len,
+        total_centroids_len=None,
+        region_intensities_list=region_intensities_list,
+        point_intensities=all_intensities,
     )
 
 
@@ -457,7 +420,7 @@ def file_to_atlas_space_coordinates(
         apply_damage_mask: If True, apply damage mask.
 
     Returns:
-        Same tuple shape as folder_to_atlas_space() for pipeline compatibility.
+        ExtractionResult: Structured extraction output.
     """
     from ...io.loaders import load_coordinate_file
 
@@ -529,18 +492,19 @@ def file_to_atlas_space_coordinates(
         total_centroids_len,
     ) = _collect_section_results(results)
 
-    return (
-        points,
-        centroids,
-        points_labels,
-        centroids_labels,
-        points_hemi_labels,
-        centroids_hemi_labels,
-        region_areas_list,
-        points_len,
-        centroids_len,
-        per_point_undamaged,
-        per_centroid_undamaged,
-        total_points_len,
-        total_centroids_len,
+    return ExtractionResult(
+        pixel_points=points,
+        centroids=centroids,
+        points_labels=points_labels,
+        centroids_labels=centroids_labels,
+        points_hemi_labels=points_hemi_labels,
+        centroids_hemi_labels=centroids_hemi_labels,
+        region_areas_list=region_areas_list,
+        points_len=points_len,
+        centroids_len=centroids_len,
+        segmentation_filenames=[],
+        per_point_undamaged=per_point_undamaged,
+        per_centroid_undamaged=per_centroid_undamaged,
+        total_points_len=total_points_len,
+        total_centroids_len=total_centroids_len,
     )

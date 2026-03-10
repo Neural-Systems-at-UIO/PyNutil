@@ -10,13 +10,20 @@ This module contains functions for reading various file formats:
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import struct
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
+
+
+def load_json_file(path: str) -> Any:
+    """Load and return JSON content from *path*."""
+    with open(path, "r") as f:
+        return json.load(f)
 
 
 def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
