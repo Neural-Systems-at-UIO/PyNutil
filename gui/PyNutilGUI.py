@@ -44,6 +44,7 @@ from ui_components import (
 
 from settings_manager import SettingsManager
 from log_manager import LogManager
+from PyNutil.config import PyNutilConfig
 
 
 class PyNutilGUI(QMainWindow):
@@ -555,21 +556,30 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             with open(file_path, "r") as file:
                 settings = json.load(file)
 
-            if settings.get("segmentation_folder"):
-                self.arguments["segmentation_dir"] = settings["segmentation_folder"]
-                self.update_recent("segmentation_dir", settings["segmentation_folder"])
-                populate_dropdown(self.segmentation_dir_dropdown, self.recent_files["segmentation_dir"])
+            config = PyNutilConfig.from_settings_file(file_path)
+            config.normalize()
+
+            if config.segmentation_folder:
+                self.arguments["segmentation_dir"] = config.segmentation_folder
+                self.update_recent("segmentation_dir", config.segmentation_folder)
+                populate_dropdown(
+                    self.segmentation_dir_dropdown,
+                    self.recent_files.get("segmentation_dir", []),
+                )
                 self.segmentation_dir_dropdown.setCurrentIndex(0)
 
-            if settings.get("image_folder"):
-                self.arguments["image_dir"] = settings["image_folder"]
-                self.update_recent("image_dir", settings["image_folder"])
-                populate_dropdown(self.image_dir_dropdown, self.recent_files["image_dir"])
+            if config.image_folder:
+                self.arguments["image_dir"] = config.image_folder
+                self.update_recent("image_dir", config.image_folder)
+                populate_dropdown(
+                    self.image_dir_dropdown,
+                    self.recent_files.get("image_dir", []),
+                )
                 self.image_dir_dropdown.setCurrentIndex(0)
 
-            # Set input mode radio and visibility based on loaded settings
-            seg_set = bool(settings.get("segmentation_folder"))
-            img_set = bool(settings.get("image_folder"))
+            # Set input mode radio and visibility based on loaded config
+            seg_set = bool(config.segmentation_folder)
+            img_set = bool(config.image_folder)
             if seg_set and not img_set:
                 self.seg_radio.setChecked(True)
                 try:
@@ -594,15 +604,18 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                     pass
                 self.log_manager.append("Warning: both segmentation and image folders present in settings; using segmentation folder.")
 
-            if settings.get("alignment_json"):
-                self.arguments["registration_json"] = settings["alignment_json"]
-                self.update_recent("registration_json", settings["alignment_json"])
-                populate_dropdown(self.registration_json_dropdown, self.recent_files["registration_json"])
+            if config.alignment_json:
+                self.arguments["registration_json"] = config.alignment_json
+                self.update_recent("registration_json", config.alignment_json)
+                populate_dropdown(
+                    self.registration_json_dropdown,
+                    self.recent_files.get("registration_json", []),
+                )
                 self.registration_json_dropdown.setCurrentIndex(0)
 
-            if settings.get("colour") is not None:
-                self.arguments["object_colour"] = settings["colour"]
-                rgb_str = str(settings["colour"])
+            if config.colour is not None:
+                self.arguments["object_colour"] = config.colour
+                rgb_str = str(config.colour)
                 self.update_recent("object_colour", rgb_str)
                 populate_dropdown(self.colour_dropdown, self.recent_files.get("object_colour", []))
                 try:
@@ -617,14 +630,14 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 else:
                     self.colour_dropdown.setCurrentIndex(0)
 
-            if settings.get("custom_region"):
-                self.arguments["custom_region_path"] = settings["custom_region"]
-                self.update_recent("custom_region", settings["custom_region"])
+            if config.custom_region_path:
+                self.arguments["custom_region_path"] = config.custom_region_path
+                self.update_recent("custom_region", config.custom_region_path)
                 populate_dropdown(self.custom_region_dropdown, self.recent_files.get("custom_region", []))
-                self.custom_region_dropdown.setCurrentIndex(1)
+                self.custom_region_dropdown.setCurrentIndex(0)
 
-            if settings.get("atlas_name"):
-                index = self.atlas_combo.findText(settings["atlas_name"])
+            if config.atlas_name:
+                index = self.atlas_combo.findText(config.atlas_name)
                 if index >= 0:
                     self.atlas_combo.setCurrentIndex(index)
 
@@ -635,6 +648,8 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
 
             if "cellpose" in settings:
                 self.cellpose_checkbox.setChecked(bool(settings["cellpose"]))
+            else:
+                self.cellpose_checkbox.setChecked(config.segmentation_format == "cellpose")
 
             if "interpolate_volume" in settings:
                 self.interpolate_checkbox.setChecked(bool(settings["interpolate_volume"]))
@@ -645,7 +660,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                     self.value_mode_combo.setCurrentIndex(index)
 
             # If both cellpose and colour were present in settings, prefer cellpose and clear colour
-            if settings.get("cellpose") and settings.get("colour"):
+            if settings.get("cellpose") and config.colour:
                 self.arguments["object_colour"] = None
                 try:
                     self.colour_dropdown.setCurrentIndex(0)

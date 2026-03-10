@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from ..io.loaders import read_flat_file, read_seg_file
+from .utils import resize_mask_nearest
 
 
 # ---------------------------------------------------------------------------
@@ -372,17 +373,13 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """
     scale_factor = calculate_scale_factor(image, rescaleXY)
     if hemi_mask is not None:
-        hemi_mask = cv2.resize(
-            hemi_mask.astype(np.uint8),
-            (image.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
+        hemi_mask = resize_mask_nearest(
+            hemi_mask.astype(np.uint8), image.shape[1], image.shape[0]
         )
 
     if damage_mask is not None:
-        damage_mask = cv2.resize(
-            damage_mask.astype(np.uint8),
-            (image.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
+        damage_mask = resize_mask_nearest(
+            damage_mask.astype(np.uint8), image.shape[1], image.shape[0]
         ).astype(bool)
 
     # --- single-pass counting via np.unique + np.bincount ---

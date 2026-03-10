@@ -81,6 +81,25 @@ def _write_meshview_json(filename: str, payload) -> None:
         f.write(orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY))
 
 
+def _write_grouped_meshview(
+    *,
+    points: np.ndarray,
+    key_columns: dict[str, np.ndarray],
+    group_cols: list[str],
+    filename: str,
+    entry_builder,
+) -> None:
+    """Group points and write MeshView entries via a supplied entry builder."""
+    meshview = []
+    for entry_idx, (key, triplets, count) in enumerate(
+        _group_triplets(points, key_columns, group_cols)
+    ):
+        entry = entry_builder(entry_idx, key, triplets, count)
+        if entry is not None:
+            meshview.append(entry)
+    _write_meshview_json(filename, meshview)
+
+
 def _write_region_meshview(
     points: np.ndarray,
     point_ids: np.ndarray,
@@ -89,27 +108,29 @@ def _write_region_meshview(
 ) -> None:
     """Write atlas-region grouped points to MeshView JSON."""
     info_index = info_file.set_index("idx", drop=False)
-    meshview = []
-    for entry_idx, (region_id, triplets, count) in enumerate(
-        _group_triplets(points, {"region": point_ids}, ["region"])
-    ):
+
+    def _build_entry(entry_idx, region_id, triplets, count):
         region_id = int(region_id)
         if region_id not in info_index.index:
-            continue
+            return None
         region_row = info_index.loc[region_id]
-        meshview.append(
-            _meshview_entry(
-                entry_idx,
-                str(region_row["name"]),
-                triplets,
-                int(region_row["r"]),
-                int(region_row["g"]),
-                int(region_row["b"]),
-                count=count,
-            )
+        return _meshview_entry(
+            entry_idx,
+            str(region_row["name"]),
+            triplets,
+            int(region_row["r"]),
+            int(region_row["g"]),
+            int(region_row["b"]),
+            count=count,
         )
 
-    _write_meshview_json(filename, meshview)
+    _write_grouped_meshview(
+        points=points,
+        key_columns={"region": point_ids},
+        group_cols=["region"],
+        filename=filename,
+        entry_builder=_build_entry,
+    )
 
 
 def write_hemi_points_to_meshview(
@@ -241,24 +262,28 @@ def _write_rgb_meshview(
             rgb_data, axis=0, return_inverse=True
         )
 
-    meshview = []
     rgb_by_gid = {idx: unique_colors[idx] for idx in range(len(unique_colors))}
-    for gid, triplets, count in _group_triplets(points, {"gid": inverse_indices}, ["gid"]):
+
+    def _build_entry(_entry_idx, gid, triplets, count):
         gid = int(gid)
         r, g, b = rgb_by_gid[gid]
-        meshview.append(
-            _meshview_entry(
-                gid,
-                f"Color {r},{g},{b}",
-                triplets,
-                r,
-                g,
-                b,
-                count=count,
-            )
+        return _meshview_entry(
+            gid,
+            f"Color {r},{g},{b}",
+            triplets,
+            r,
+            g,
+            b,
+            count=count,
         )
 
-    _write_meshview_json(filename, meshview)
+    _write_grouped_meshview(
+        points=points,
+        key_columns={"gid": inverse_indices},
+        group_cols=["gid"],
+        filename=filename,
+        entry_builder=_build_entry,
+    )
 
 
 def _write_scalar_meshview(
@@ -289,24 +314,23 @@ def _write_scalar_meshview(
         for val, (r, g, b) in zip(unique_intensities, colors)
     }
 
-    meshview = []
-    for val, triplets, count in _group_triplets(
-        points,
-        {"intensity": intensities},
-        ["intensity"],
-    ):
+    def _build_entry(_entry_idx, val, triplets, count):
         val = int(val)
         r, g, b = color_by_intensity[val]
-        meshview.append(
-            _meshview_entry(
-                val,
-                f"Intensity {val}",
-                triplets,
-                r,
-                g,
-                b,
-                count=count,
-            )
+        return _meshview_entry(
+            val,
+            f"Intensity {val}",
+            triplets,
+            r,
+            g,
+            b,
+            count=count,
         )
 
-    _write_meshview_json(filename, meshview)
+    _write_grouped_meshview(
+        points=points,
+        key_columns={"intensity": intensities},
+        group_cols=["intensity"],
+        filename=filename,
+        entry_builder=_build_entry,
+    )

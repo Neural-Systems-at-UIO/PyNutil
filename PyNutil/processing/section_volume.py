@@ -8,7 +8,12 @@ import numpy as np
 from tqdm import tqdm
 from .adapters import load_registration
 from .transforms import transform_to_atlas_space
-from .utils import number_sections, convert_to_intensity, discover_image_files
+from .utils import (
+    number_sections,
+    convert_to_intensity,
+    discover_image_files,
+    resize_mask_nearest,
+)
 
 
 def derive_shape_from_atlas(
@@ -323,7 +328,15 @@ def _process_one_section(
     reg_height, reg_width = slice_info.height, slice_info.width
 
     # Prepare damage mask in registration space
-    damage_reg = _resize_damage_mask(slice_info.damage_mask, reg_width, reg_height)
+    damage_reg = (
+        None
+        if slice_info.damage_mask is None
+        else resize_mask_nearest(
+            slice_info.damage_mask.astype(np.uint8),
+            reg_width,
+            reg_height,
+        ).astype(np.uint8)
+    )
 
     # Resample segmentation values into registration space
     src = seg_values if value_mode == "mean" else mask
@@ -366,19 +379,6 @@ def _process_one_section(
 
     if ov_flat is not None:
         _accumulate_object_counts(sampled_2d, inb, x, y, z, seg_nr, out_shape, ov_flat)
-
-
-def _resize_damage_mask(damage_mask, reg_width, reg_height):
-    """Resize a damage mask to registration resolution, or return None."""
-    if damage_mask is None:
-        return None
-    if damage_mask.shape != (reg_height, reg_width):
-        return cv2.resize(
-            damage_mask.astype(np.uint8),
-            (reg_width, reg_height),
-            interpolation=cv2.INTER_NEAREST,
-        )
-    return damage_mask.astype(np.uint8)
 
 
 def project_sections_to_volume(
