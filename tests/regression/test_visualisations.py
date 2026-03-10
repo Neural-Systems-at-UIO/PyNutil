@@ -43,10 +43,27 @@ class TestVisualisations(TimedTestCase):
 
             pnt = PyNutil(settings_file=self.settings_path)
 
-            from PyNutil.io.loaders import load_quint_json
+            from PyNutil.processing.adapters.registry import load_registration
+            from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
             from PyNutil.io.section_visualisation import create_section_visualisations
 
-            alignment_data = load_quint_json(pnt.alignment_json)
+            reg_data = load_registration(
+                pnt.alignment_json, apply_deformation=False, apply_damage=False
+            )
+            alignment_data = {
+                "slices": [
+                    {
+                        "filename": s.section_id,
+                        "nr": s.section_number,
+                        "anchoring": s.anchoring,
+                        "width": s.width,
+                        "height": s.height,
+                    }
+                    for s in reg_data.slices
+                ]
+            }
+
+            adapter = SegmentationAdapterRegistry.get(pnt.segmentation_format)
 
             create_section_visualisations(
                 pnt.segmentation_folder,
@@ -54,6 +71,8 @@ class TestVisualisations(TimedTestCase):
                 pnt.atlas_volume,
                 pnt.atlas_labels,
                 output_root,
+                adapter=adapter,
+                pixel_id=pnt.colour,
             )
 
             generated_dir = os.path.join(output_root, "visualisations")

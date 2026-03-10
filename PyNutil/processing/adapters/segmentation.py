@@ -15,24 +15,38 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Type
 
+import cv2
 import numpy as np
 
 
-def detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
-    """Infer the foreground pixel id from the first non-background region."""
+def _detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
+    """Infer the foreground pixel id as the second most common value.
+
+    This is robust to any background colour (black, white, or other)
+    by finding the most common value (background) and returning the
+    next most common value (foreground).
+    """
     if segmentation.ndim == 2:
-        non_zero = segmentation[segmentation != 0]
-        if non_zero.size > 0:
-            pixel_id = [int(non_zero[0])]
-        else:
-            pixel_id = [255]
+        flat = segmentation.ravel()
+        values, counts = np.unique(flat, return_counts=True)
+        if len(values) < 2:
+            return np.asarray([255])
+        # Second most common value is the foreground
+        order = np.argsort(-counts)
+        pixel_id = [int(values[order[1]])]
     else:
-        mask = ~np.all(segmentation == 0, axis=2)
-        segmentation_no_background = segmentation[mask]
-        if segmentation_no_background.size > 0:
-            pixel_id = segmentation_no_background[0]
-        else:
-            pixel_id = [255, 255, 255]
+        # Treat each pixel as a tuple; find second most common colour
+        h, w, c = segmentation.shape
+        flat = segmentation.reshape(-1, c)
+        # Use structured array for unique colour detection
+        dt = np.dtype([("c" + str(i), np.uint8) for i in range(c)])
+        structured = np.frombuffer(flat.tobytes(), dtype=dt)
+        unique_vals, counts = np.unique(structured, return_counts=True)
+        if len(unique_vals) < 2:
+            return np.asarray([255] * c)
+        order = np.argsort(-counts)
+        fg = unique_vals[order[1]]
+        pixel_id = [int(fg[f"c{i}"]) for i in range(c)]
     return np.asarray(pixel_id)
 
 
@@ -49,12 +63,35 @@ class SegmentationAdapter(ABC):
     """Abstract base class for segmentation format adapters.
 
     Each adapter knows how to:
-    1. Create a binary mask from its format
-    2. Extract individual objects with their properties
-    3. Detect the foreground pixel ID (if applicable)
+    1. Load a segmentation image from disk
+    2. Create a binary mask from its format
+    3. Extract individual objects with their properties
+    4. Detect the foreground pixel ID (if applicable)
     """
 
     name: str = "base"
+
+    def load(self, path: str) -> np.ndarray:
+        """Load a segmentation image from disk.
+
+        Supports standard image formats (PNG, TIFF, etc.) and .dzip files.
+        Subclasses can override this to support additional formats.
+
+        Parameters
+        ----------
+        path : str
+            Path to the segmentation file.
+
+        Returns
+        -------
+        np.ndarray
+            The loaded segmentation image.
+        """
+        if path.endswith(".dzip"):
+            from ...io.reconstruct_dzi import reconstruct_dzi
+
+            return reconstruct_dzi(path)
+        return cv2.imread(path, cv2.IMREAD_UNCHANGED)
 
     @abstractmethod
     def create_binary_mask(
@@ -107,6 +144,8 @@ class SegmentationAdapter(ABC):
         return None
 
 
+
+
 class BinaryAdapter(SegmentationAdapter):
     """Adapter for binary/color-based segmentation masks (ilastik format).
 
@@ -151,7 +190,7 @@ class BinaryAdapter(SegmentationAdapter):
 
     def detect_pixel_id(self, segmentation: np.ndarray) -> Optional[List[int]]:
         """Detect the most common non-black pixel color."""
-        return detect_pixel_id(segmentation)
+        return _detect_pixel_id(segmentation)
 
 
 class CellposeAdapter(SegmentationAdapter):

@@ -20,8 +20,6 @@ from .atlas_loader import (
 )
 from .file_operations import save_analysis_output, SaveContext
 from .loaders import (
-    load_quint_json,
-    load_segmentation,
     number_sections,
     get_flat_files,
     get_current_flat_file,
@@ -47,8 +45,6 @@ __all__ = [
     "save_analysis_output",
     "SaveContext",
     # loaders
-    "load_quint_json",
-    "load_segmentation",
     "open_custom_region_file",
     "read_flat_file",
     "read_seg_file",

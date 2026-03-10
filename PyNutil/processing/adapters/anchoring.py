@@ -19,12 +19,16 @@ from .base import AnchoringLoader, RegistrationData, SliceInfo
 class QuintAnchoringLoader(AnchoringLoader):
     """Loads anchoring from QUINT JSON files (QuickNII, DeepSlice, VisuAlign).
 
+    Supports standard QuickNII JSON (.json) as well as VisuAlign
+    workspace formats (.waln, .wwrp) which use ``"sections"`` instead
+    of ``"slices"`` and ``"ouv"`` instead of ``"anchoring"``.
+
     This loader extracts only the linear registration (anchoring).
     Non-linear deformation and damage are handled by separate providers.
     """
 
     name: str = "quint"
-    file_extensions: List[str] = [".json"]
+    file_extensions: List[str] = [".json", ".waln", ".wwrp"]
 
     def load(self, path: str) -> RegistrationData:
         """Load anchoring from a QUINT JSON file."""
@@ -33,23 +37,35 @@ class QuintAnchoringLoader(AnchoringLoader):
         with open(path, "r") as f:
             data = json.load(f)
 
+        # .waln/.wwrp files use "sections" with "ouv" instead of
+        # "slices" with "anchoring"
+        is_workspace = path.endswith(".waln") or path.endswith(".wwrp")
+        raw_slices = data.get("sections" if is_workspace else "slices", [])
+
         slices = []
-        for s in data.get("slices", []):
-            anchoring = s.get("anchoring", [])
+        for s in raw_slices:
+            anchoring = s.get("ouv" if is_workspace else "anchoring", [])
             if not anchoring:
                 continue
 
+            filename = s.get("filename", "")
+            nr = s.get("nr", 0)
+            if not nr and filename:
+                m = re.search(r"_s(\d+)", filename)
+                if m:
+                    nr = int(m.group(1))
+
             slices.append(
                 SliceInfo(
-                    section_id=s.get("filename", str(s.get("nr", 0))),
-                    section_number=s.get("nr", 0),
+                    section_id=filename or str(nr),
+                    section_number=nr,
                     width=s.get("width", 0),
                     height=s.get("height", 0),
                     anchoring=anchoring,
                     deformation=None,  # Added by DeformationProvider
                     damage_mask=None,  # Added by DamageProvider
                     metadata={
-                        "filename": s.get("filename"),
+                        "filename": filename,
                         # Store raw data for providers to use
                         "_raw_slice": s,
                     },

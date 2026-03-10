@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from ..processing.atlas_map import generate_target_slice
-from ..io.loaders import load_segmentation
+from ..processing.adapters.segmentation import SegmentationAdapter, SegmentationAdapterRegistry
 
 
 def _build_color_lookup(
@@ -89,6 +89,8 @@ def overlay_segmentation_on_rgb(
     segmentation_path: str,
     *,
     segmentation: Optional[np.ndarray] = None,
+    adapter: Optional[SegmentationAdapter] = None,
+    pixel_id: Optional[List[int]] = None,
 ) -> np.ndarray:
     """Overlay segmentation on an RGB NumPy image.
 
@@ -97,22 +99,16 @@ def overlay_segmentation_on_rgb(
     """
     try:
         if segmentation is None:
-            segmentation = load_segmentation(segmentation_path)
+            if adapter is None:
+                adapter = SegmentationAdapterRegistry.get("binary")
+            segmentation = adapter.load(segmentation_path)
 
         height, width = rgb_image.shape[:2]
         segmentation = cv2.resize(
             segmentation, (width, height), interpolation=cv2.INTER_NEAREST
         )
 
-        if segmentation.ndim == 3:
-            seg_grey = cv2.cvtColor(segmentation, cv2.COLOR_BGR2GRAY)
-        else:
-            seg_grey = segmentation
-
-        seg_u8 = seg_grey.astype(np.uint8, copy=False)
-        hist = np.bincount(seg_u8.reshape(-1), minlength=256)
-        background_val = int(hist.argmax())
-        mask = seg_u8 != background_val
+        mask = adapter.create_binary_mask(segmentation, pixel_id=pixel_id)
         if not np.any(mask):
             return rgb_image
 
@@ -155,6 +151,8 @@ def create_colored_atlas_slice(
             str, Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], Tuple[int, int, int]
         ]
     ] = None,
+    adapter: Optional[SegmentationAdapter] = None,
+    pixel_id: Optional[List[int]] = None,
 ) -> None:
     """Create a coloured atlas slice and optionally overlay segmentation pixels."""
     atlas_slice = generate_target_slice(slice_dict["anchoring"], atlas_volume)
@@ -169,11 +167,14 @@ def create_colored_atlas_slice(
         default_colour,
     )
 
+    if adapter is None:
+        adapter = SegmentationAdapterRegistry.get("binary")
+
     segmentation_img = None
     seg_available = segmentation_path and os.path.exists(segmentation_path)
     if seg_available:
         try:
-            segmentation_img = load_segmentation(segmentation_path)
+            segmentation_img = adapter.load(segmentation_path)
             target_width, target_height = (
                 segmentation_img.shape[1],
                 segmentation_img.shape[0],
@@ -208,7 +209,8 @@ def create_colored_atlas_slice(
 
     if seg_available:
         coloured_slice = overlay_segmentation_on_rgb(
-            coloured_slice, segmentation_path, segmentation=segmentation_img
+            coloured_slice, segmentation_path, segmentation=segmentation_img,
+            adapter=adapter, pixel_id=pixel_id,
         )
 
     _ = objects_data
@@ -247,7 +249,7 @@ def _resolve_segmentation_path(
     segmentation_folder: str,
 ) -> Optional[str]:
     """Resolve the segmentation file path for a given slice filename."""
-    if not filename:
+    if not filename or not segmentation_folder:
         return None
     base_name = os.path.splitext(filename)[0]
     if seg_index:
@@ -274,6 +276,8 @@ def create_section_visualisations(
     output_folder: str,
     objects_per_section: Optional[List[List[Dict]]] = None,
     scale_factor: float = 0.5,
+    adapter: Optional[SegmentationAdapter] = None,
+    pixel_id: Optional[List[int]] = None,
 ):
     """Create visualisation images for all sections in the analysis."""
     viz_dir = os.path.join(output_folder, "visualisations")
@@ -312,6 +316,8 @@ def create_section_visualisations(
                 objects_data=section_objects,
                 scale_factor=scale_factor,
                 _color_lookup=color_lookup,
+                adapter=adapter,
+                pixel_id=pixel_id,
             )
 
         except Exception as e:
