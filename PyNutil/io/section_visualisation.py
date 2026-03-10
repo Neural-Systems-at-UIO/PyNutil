@@ -247,7 +247,7 @@ def _resolve_segmentation_path(
     segmentation_folder: str,
 ) -> Optional[str]:
     """Resolve the segmentation file path for a given slice filename."""
-    if not filename:
+    if not filename or not segmentation_folder:
         return None
     base_name = os.path.splitext(filename)[0]
     if seg_index:

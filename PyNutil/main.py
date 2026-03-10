@@ -705,9 +705,24 @@ class PyNutil:
         """Create section visualisation PNGs."""
         try:
             from .io.section_visualisation import create_section_visualisations
-            from .io.loaders import load_quint_json
+            from .processing.adapters.registry import load_registration
 
-            alignment_data = load_quint_json(self.alignment_json)
+            reg_data = load_registration(
+                self.alignment_json, apply_deformation=False, apply_damage=False
+            )
+            alignment_data = {
+                "slices": [
+                    {
+                        "filename": s.section_id,
+                        "nr": s.section_number,
+                        "anchoring": s.anchoring,
+                        "width": s.width,
+                        "height": s.height,
+                    }
+                    for s in reg_data.slices
+                ]
+            }
+
             logger.info("Creating section visualisations...")
             create_section_visualisations(
                 self.segmentation_folder or self.image_folder,
