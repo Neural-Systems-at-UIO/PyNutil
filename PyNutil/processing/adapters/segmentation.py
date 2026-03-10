@@ -20,20 +20,33 @@ import numpy as np
 
 
 def _detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
-    """Infer the foreground pixel id from the first non-background region."""
+    """Infer the foreground pixel id as the second most common value.
+
+    This is robust to any background colour (black, white, or other)
+    by finding the most common value (background) and returning the
+    next most common value (foreground).
+    """
     if segmentation.ndim == 2:
-        non_zero = segmentation[segmentation != 0]
-        if non_zero.size > 0:
-            pixel_id = [int(non_zero[0])]
-        else:
-            pixel_id = [255]
+        flat = segmentation.ravel()
+        values, counts = np.unique(flat, return_counts=True)
+        if len(values) < 2:
+            return np.asarray([255])
+        # Second most common value is the foreground
+        order = np.argsort(-counts)
+        pixel_id = [int(values[order[1]])]
     else:
-        mask = ~np.all(segmentation == 0, axis=2)
-        segmentation_no_background = segmentation[mask]
-        if segmentation_no_background.size > 0:
-            pixel_id = segmentation_no_background[0]
-        else:
-            pixel_id = [255, 255, 255]
+        # Treat each pixel as a tuple; find second most common colour
+        h, w, c = segmentation.shape
+        flat = segmentation.reshape(-1, c)
+        # Use structured array for unique colour detection
+        dt = np.dtype([("c" + str(i), np.uint8) for i in range(c)])
+        structured = np.frombuffer(flat.tobytes(), dtype=dt)
+        unique_vals, counts = np.unique(structured, return_counts=True)
+        if len(unique_vals) < 2:
+            return np.asarray([255] * c)
+        order = np.argsort(-counts)
+        fg = unique_vals[order[1]]
+        pixel_id = [int(fg[f"c{i}"]) for i in range(c)]
     return np.asarray(pixel_id)
 
 
@@ -129,6 +142,8 @@ class SegmentationAdapter(ABC):
             List of [R, G, B] values or None if not applicable.
         """
         return None
+
+
 
 
 class BinaryAdapter(SegmentationAdapter):
