@@ -200,9 +200,6 @@ def pixel_count_per_region(
     dmg_iter = (
         [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
     )
-    # Always compute unfiltered totals so points outside the hemisphere mask
-    # (hemi=0) are not silently dropped when deriving aggregate counts.
-    total_iter = [(None, "")]
 
     computed = {}  # col_name -> (idx_array, count_array)
     all_indices = []

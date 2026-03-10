@@ -7,7 +7,7 @@ supporting both atlas-region-based and intensity-based point clouds.
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 import orjson
 
@@ -18,33 +18,48 @@ from .atlas_loader import load_atlas_labels
 from .colormap import get_colormap_colors
 
 
+def _group_triplets(
+    points: np.ndarray,
+    key_columns: dict[str, np.ndarray],
+    group_cols: list[str],
+):
+    """Yield grouped triplets from points using a common pandas groupby path."""
+    if points is None or len(points) == 0:
+        return
+
+    data = {
+        "x": points[:, 0],
+        "y": points[:, 1],
+        "z": points[:, 2],
+    }
+    data.update(key_columns)
+    df = pd.DataFrame(data)
+
+    for key, grp in df.groupby(group_cols, sort=True, dropna=False):
+        if isinstance(key, tuple) and len(key) == 1:
+            key = key[0]
+        triplets = grp[["x", "y", "z"]].to_numpy().ravel()
+        yield key, triplets, len(grp)
+
+
 def create_region_dict(
     points: np.ndarray,
     regions: np.ndarray,
-) -> Dict[int, np.ndarray]:
-    """Group point coordinates by their region labels.
+):
+    """Group points by region label into flattened triplet arrays.
 
-    Parameters
-    ----------
-    points : np.ndarray
-        A (N, 3) array of 3D coordinates for all points.
-    regions : np.ndarray
-        A 1D array of integer region labels for each point.
-
-    Returns
-    -------
-    dict
-        Keys are unique region labels, values are flattened coordinate arrays.
+    Kept as a public compatibility API.
     """
-    if len(regions) == 0:
+    if points is None or regions is None or len(regions) == 0:
         return {}
-    order = np.argsort(regions, kind="stable")
-    sorted_regions = regions[order]
-    sorted_points = points[order]
-    split_indices = np.flatnonzero(np.diff(sorted_regions)) + 1
-    point_groups = np.split(sorted_points, split_indices)
-    unique_regions = sorted_regions[np.r_[0, split_indices]]
-    return {r: g.ravel() for r, g in zip(unique_regions, point_groups)}
+    return {
+        int(region): triplets
+        for region, triplets, _ in _group_triplets(
+            points,
+            {"region": regions},
+            ["region"],
+        )
+    }
 
 
 def _meshview_entry(idx, name, triplets, r, g, b, count=None):
@@ -66,49 +81,31 @@ def _write_meshview_json(filename: str, payload) -> None:
         f.write(orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY))
 
 
-def _write_points(
-    points_dict: Dict[int, List[float]],
+def _write_region_meshview(
+    points: np.ndarray,
+    point_ids: np.ndarray,
     filename: str,
     info_file: pd.DataFrame,
-    colors_dict: Optional[Dict[int, tuple]] = None,
 ) -> None:
-    """Save a region-based point dictionary to MeshView JSON.
-
-    Each region is recorded with: index (idx), name, color components (r, g, b),
-    and a count of how many points belong to that region.
-
-    Parameters
-    ----------
-    points_dict : dict
-        Keys are region IDs, values are flattened 3D coordinates.
-    filename : str
-        Destination JSON file to be written.
-    info_file : pd.DataFrame
-        A table with region IDs, names, and color data (r, g, b).
-    colors_dict : dict, optional
-        Keys are region IDs, values are (r, g, b) tuples to override atlas colors.
-    """
+    """Write atlas-region grouped points to MeshView JSON."""
+    info_index = info_file.set_index("idx", drop=False)
     meshview = []
-    for name, idx in zip(points_dict.keys(), range(len(points_dict.keys()))):
-        region_info = info_file[info_file["idx"] == name]
-        if len(region_info) == 0:
+    for entry_idx, (region_id, triplets, count) in enumerate(
+        _group_triplets(points, {"region": point_ids}, ["region"])
+    ):
+        region_id = int(region_id)
+        if region_id not in info_index.index:
             continue
-
-        r = int(region_info["r"].values[0])
-        g = int(region_info["g"].values[0])
-        b = int(region_info["b"].values[0])
-
-        if colors_dict is not None and name in colors_dict:
-            r, g, b = colors_dict[name]
-
+        region_row = info_index.loc[region_id]
         meshview.append(
             _meshview_entry(
-                idx,
-                str(region_info["name"].values[0]),
-                points_dict[name],
-                r,
-                g,
-                b,
+                entry_idx,
+                str(region_row["name"]),
+                triplets,
+                int(region_row["r"]),
+                int(region_row["g"]),
+                int(region_row["b"]),
+                count=count,
             )
         )
 
@@ -202,8 +199,7 @@ def write_points_to_meshview(
         _write_intensity_meshview(points, intensities, filename, colormap)
         return
 
-    region_dict = create_region_dict(points, point_ids)
-    _write_points(region_dict, filename, info_file)
+    _write_region_meshview(points, point_ids, filename, info_file)
 
 
 def _write_intensity_meshview(
@@ -245,27 +241,22 @@ def _write_rgb_meshview(
             rgb_data, axis=0, return_inverse=True
         )
 
-    # Sort once, split by group boundaries
-    order = np.argsort(inverse_indices, kind="stable")
-    sorted_points = points[order]
-    sorted_indices = inverse_indices[order]
-    split_indices = np.flatnonzero(np.diff(sorted_indices)) + 1
-    point_groups = np.split(sorted_points, split_indices)
-    group_ids = sorted_indices[np.r_[0, split_indices]]
-
     meshview = []
-    for gid, group in zip(group_ids, point_groups):
-        if len(group) > 0:
-            r, g, b = unique_colors[gid]
-            meshview.append(_meshview_entry(
-                int(gid),
+    rgb_by_gid = {idx: unique_colors[idx] for idx in range(len(unique_colors))}
+    for gid, triplets, count in _group_triplets(points, {"gid": inverse_indices}, ["gid"]):
+        gid = int(gid)
+        r, g, b = rgb_by_gid[gid]
+        meshview.append(
+            _meshview_entry(
+                gid,
                 f"Color {r},{g},{b}",
-                group.ravel(),
+                triplets,
                 r,
                 g,
                 b,
-                count=len(group),
-            ))
+                count=count,
+            )
+        )
 
     _write_meshview_json(filename, meshview)
 
@@ -291,30 +282,31 @@ def _write_scalar_meshview(
     else:
         intensities = intensities.astype(int)
 
-    # Sort once, split by group boundaries — O(N log N) instead of O(N×K)
-    order = np.argsort(intensities, kind="stable")
-    sorted_intensities = intensities[order]
-    sorted_points = points[order]
-    split_indices = np.flatnonzero(np.diff(sorted_intensities)) + 1
-    point_groups = np.split(sorted_points, split_indices)
-    unique_intensities = sorted_intensities[np.r_[0, split_indices]]
-
-    # Vectorised colormap lookup for all unique values at once
+    unique_intensities = np.unique(intensities)
     colors = get_colormap_colors(unique_intensities, colormap)
+    color_by_intensity = {
+        int(val): (int(r), int(g), int(b))
+        for val, (r, g, b) in zip(unique_intensities, colors)
+    }
 
     meshview = []
-    for val, group, (r, g, b) in zip(unique_intensities, point_groups, colors):
-        if len(group) > 0:
-            meshview.append(
-                _meshview_entry(
-                    int(val),
-                    f"Intensity {val}",
-                    group.ravel(),
-                    r,
-                    g,
-                    b,
-                    count=len(group),
-                )
+    for val, triplets, count in _group_triplets(
+        points,
+        {"intensity": intensities},
+        ["intensity"],
+    ):
+        val = int(val)
+        r, g, b = color_by_intensity[val]
+        meshview.append(
+            _meshview_entry(
+                val,
+                f"Intensity {val}",
+                triplets,
+                r,
+                g,
+                b,
+                count=count,
             )
+        )
 
     _write_meshview_json(filename, meshview)

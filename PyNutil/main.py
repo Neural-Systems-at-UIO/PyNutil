@@ -32,6 +32,53 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+def _assign_custom_region_labels(ctx):
+    """Populate custom region labels for points/centroids when configured."""
+    if ctx.custom_regions_dict is None:
+        return
+    ctx.points_custom_labels = map_to_custom_regions(
+        ctx.custom_regions_dict, ctx.points_labels
+    )
+    ctx.centroids_custom_labels = map_to_custom_regions(
+        ctx.custom_regions_dict, ctx.centroids_labels
+    )
+
+
+def _quantify_coordinate_entities(ctx):
+    """Shared quantification for coordinate-based (pixel/centroid) modes."""
+    if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
+        raise ValueError(
+            "Please run get_coordinates before running quantify_coordinates."
+        )
+    points = PerEntityArrays(
+        labels=ctx.points_labels,
+        hemi_labels=ctx.points_hemi_labels,
+        undamaged=ctx.per_point_undamaged,
+        section_lengths=ctx.total_points_len,
+    )
+    centroids = PerEntityArrays(
+        labels=ctx.centroids_labels,
+        hemi_labels=ctx.centroids_hemi_labels,
+        undamaged=ctx.per_centroid_undamaged,
+        section_lengths=ctx.total_centroids_len,
+    )
+    return quantify_labeled_points(
+        points,
+        centroids,
+        ctx.region_areas_list,
+        ctx.atlas_labels,
+        ctx.apply_damage_mask,
+    )
+
+
+def _apply_extraction_result(ctx, result, *, apply_damage_mask, map_custom_regions):
+    """Apply standardized extraction-result fields directly to context."""
+    ctx.__dict__.update(vars(result))
+    ctx.apply_damage_mask = apply_damage_mask
+    if map_custom_regions:
+        _assign_custom_region_labels(ctx)
+
+
 class _BinaryMode:
     """Binary / Cellpose segmentation pipeline."""
 
@@ -45,22 +92,7 @@ class _BinaryMode:
         apply_damage_mask,
         flat_label_path,
     ):
-        (
-            ctx.pixel_points,
-            ctx.centroids,
-            ctx.points_labels,
-            ctx.centroids_labels,
-            ctx.points_hemi_labels,
-            ctx.centroids_hemi_labels,
-            ctx.region_areas_list,
-            ctx.points_len,
-            ctx.centroids_len,
-            ctx.segmentation_filenames,
-            ctx.per_point_undamaged,
-            ctx.per_centroid_undamaged,
-            ctx.total_points_len,
-            ctx.total_centroids_len,
-        ) = folder_to_atlas_space(
+        result = folder_to_atlas_space(
             ctx.segmentation_folder,
             ctx.alignment_json,
             ctx.atlas_labels,
@@ -74,40 +106,16 @@ class _BinaryMode:
             flat_label_path=flat_label_path,
             segmentation_format=ctx.segmentation_format,
         )
-        ctx.apply_damage_mask = apply_damage_mask
-        if ctx.custom_regions_dict is not None:
-            ctx.points_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.points_labels
-            )
-            ctx.centroids_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.centroids_labels
-            )
+        _apply_extraction_result(
+            ctx,
+            result,
+            apply_damage_mask=apply_damage_mask,
+            map_custom_regions=True,
+        )
 
     @staticmethod
     def quantify(ctx):
-        if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
-            raise ValueError(
-                "Please run get_coordinates before running quantify_coordinates."
-            )
-        points = PerEntityArrays(
-            labels=ctx.points_labels,
-            hemi_labels=ctx.points_hemi_labels,
-            undamaged=ctx.per_point_undamaged,
-            section_lengths=ctx.total_points_len,
-        )
-        centroids = PerEntityArrays(
-            labels=ctx.centroids_labels,
-            hemi_labels=ctx.centroids_hemi_labels,
-            undamaged=ctx.per_centroid_undamaged,
-            section_lengths=ctx.total_centroids_len,
-        )
-        return quantify_labeled_points(
-            points,
-            centroids,
-            ctx.region_areas_list,
-            ctx.atlas_labels,
-            ctx.apply_damage_mask,
-        )
+        return _quantify_coordinate_entities(ctx)
 
 
 class _IntensityMode:
@@ -123,15 +131,7 @@ class _IntensityMode:
         apply_damage_mask,
         flat_label_path,
     ):
-        (
-            ctx.region_intensities_list,
-            ctx.segmentation_filenames,
-            ctx.pixel_points,
-            ctx.points_labels,
-            ctx.points_hemi_labels,
-            ctx.points_len,
-            ctx.point_intensities,
-        ) = folder_to_atlas_space_intensity(
+        result = folder_to_atlas_space_intensity(
             ctx.image_folder,
             ctx.alignment_json,
             ctx.atlas_labels,
@@ -144,6 +144,12 @@ class _IntensityMode:
             flat_label_path=flat_label_path,
             min_intensity=ctx.min_intensity,
             max_intensity=ctx.max_intensity,
+        )
+        _apply_extraction_result(
+            ctx,
+            result,
+            apply_damage_mask=apply_damage_mask,
+            map_custom_regions=False,
         )
         # In intensity mode, we don't have separate centroids
         ctx.centroids = None
@@ -174,21 +180,7 @@ class _CoordinateMode:
         apply_damage_mask,
         flat_label_path,
     ):
-        (
-            ctx.pixel_points,
-            ctx.centroids,
-            ctx.points_labels,
-            ctx.centroids_labels,
-            ctx.points_hemi_labels,
-            ctx.centroids_hemi_labels,
-            ctx.region_areas_list,
-            ctx.points_len,
-            ctx.centroids_len,
-            ctx.per_point_undamaged,
-            ctx.per_centroid_undamaged,
-            ctx.total_points_len,
-            ctx.total_centroids_len,
-        ) = file_to_atlas_space_coordinates(
+        result = file_to_atlas_space_coordinates(
             ctx.coordinate_file,
             ctx.alignment_json,
             ctx.atlas_labels,
@@ -197,41 +189,16 @@ class _CoordinateMode:
             ctx.hemi_map,
             apply_damage_mask,
         )
-        ctx.segmentation_filenames = []
-        ctx.apply_damage_mask = apply_damage_mask
-        if ctx.custom_regions_dict is not None:
-            ctx.points_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.points_labels
-            )
-            ctx.centroids_custom_labels = map_to_custom_regions(
-                ctx.custom_regions_dict, ctx.centroids_labels
-            )
+        _apply_extraction_result(
+            ctx,
+            result,
+            apply_damage_mask=apply_damage_mask,
+            map_custom_regions=True,
+        )
 
     @staticmethod
     def quantify(ctx):
-        if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
-            raise ValueError(
-                "Please run get_coordinates before running quantify_coordinates."
-            )
-        points = PerEntityArrays(
-            labels=ctx.points_labels,
-            hemi_labels=ctx.points_hemi_labels,
-            undamaged=ctx.per_point_undamaged,
-            section_lengths=ctx.total_points_len,
-        )
-        centroids = PerEntityArrays(
-            labels=ctx.centroids_labels,
-            hemi_labels=ctx.centroids_hemi_labels,
-            undamaged=ctx.per_centroid_undamaged,
-            section_lengths=ctx.total_centroids_len,
-        )
-        return quantify_labeled_points(
-            points,
-            centroids,
-            ctx.region_areas_list,
-            ctx.atlas_labels,
-            ctx.apply_damage_mask,
-        )
+        return _quantify_coordinate_entities(ctx)
 
 
 def _apply_custom_regions_to_quantification(ctx):
@@ -589,11 +556,30 @@ class PyNutil:
         """
         base_ctx = self._build_save_context(colormap)
 
-        self._save_primary(base_ctx, output_folder)
+        self._save_analysis_variant(
+            base_ctx,
+            output_folder,
+            label_df_attr="label_df",
+            per_section_df_attr="per_section_df",
+            points_labels_attr="points_labels",
+            centroids_labels_attr="centroids_labels",
+            atlas_labels=self.atlas_labels,
+            prepend="",
+        )
         self._save_volumes(output_folder)
 
         if self.custom_regions_dict is not None:
-            self._save_custom_regions(base_ctx, output_folder)
+            self._save_analysis_variant(
+                base_ctx,
+                output_folder,
+                label_df_attr="custom_label_df",
+                per_section_df_attr="custom_per_section_df",
+                points_labels_attr="points_custom_labels",
+                centroids_labels_attr="centroids_custom_labels",
+                atlas_labels=self.custom_atlas_labels,
+                prepend="custom_",
+                colormap="gray",
+            )
 
         self._remap_compressed_ids(output_folder)
 
@@ -642,20 +628,34 @@ class PyNutil:
             colormap=colormap,
         )
 
-    def _save_primary(self, base_ctx, output_folder):
-        """Save primary (non-custom) analysis output."""
+    def _save_analysis_variant(
+        self,
+        base_ctx,
+        output_folder,
+        *,
+        label_df_attr,
+        per_section_df_attr,
+        points_labels_attr,
+        centroids_labels_attr,
+        atlas_labels,
+        prepend,
+        colormap=None,
+    ):
+        """Save one analysis variant (primary or custom-region) to output files."""
         _und_p = getattr(self, "per_point_undamaged", None)
         _und_c = getattr(self, "per_centroid_undamaged", None)
-        base_ctx.label_df = getattr(self, "label_df", None)
-        base_ctx.per_section_df = getattr(self, "per_section_df", None)
+        base_ctx.label_df = getattr(self, label_df_attr, None)
+        base_ctx.per_section_df = getattr(self, per_section_df_attr, None)
         base_ctx.labeled_points = self._filter_undamaged(
-            getattr(self, "points_labels", None), _und_p
+            getattr(self, points_labels_attr, None), _und_p
         )
         base_ctx.labeled_points_centroids = self._filter_undamaged(
-            getattr(self, "centroids_labels", None), _und_c
+            getattr(self, centroids_labels_attr, None), _und_c
         )
-        base_ctx.atlas_labels = self.atlas_labels
-        base_ctx.prepend = ""
+        base_ctx.atlas_labels = atlas_labels
+        base_ctx.prepend = prepend
+        if colormap is not None:
+            base_ctx.colormap = colormap
         save_analysis_output(base_ctx, output_folder)
 
     def _save_volumes(self, output_folder):
@@ -672,23 +672,6 @@ class PyNutil:
             )
         except Exception as e:
             logger.error(f"Saving NIfTI volumes failed: {e}")
-
-    def _save_custom_regions(self, base_ctx, output_folder):
-        """Save custom-region analysis output."""
-        _und_p = getattr(self, "per_point_undamaged", None)
-        _und_c = getattr(self, "per_centroid_undamaged", None)
-        base_ctx.label_df = getattr(self, "custom_label_df", None)
-        base_ctx.per_section_df = getattr(self, "custom_per_section_df", None)
-        base_ctx.labeled_points = self._filter_undamaged(
-            getattr(self, "points_custom_labels", None), _und_p
-        )
-        base_ctx.labeled_points_centroids = self._filter_undamaged(
-            getattr(self, "centroids_custom_labels", None), _und_c
-        )
-        base_ctx.atlas_labels = self.custom_atlas_labels
-        base_ctx.prepend = "custom_"
-        base_ctx.colormap = "gray"
-        save_analysis_output(base_ctx, output_folder)
 
     def _remap_compressed_ids(self, output_folder):
         """Restore original atlas IDs if they were compressed during loading."""
