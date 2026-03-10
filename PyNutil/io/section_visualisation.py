@@ -280,7 +280,7 @@ def create_section_visualisations(
 
     for i, slice_info in tqdm(enumerate(slices), total=len(slices), desc="saving atlas images"):
         try:
-            filename = slice_info.section_id
+            filename = slice_info.section_id or ""
             base_name = os.path.splitext(filename)[0] if filename else f"slice_{i:03d}"
             segmentation_path = _resolve_segmentation_path(
                 filename,

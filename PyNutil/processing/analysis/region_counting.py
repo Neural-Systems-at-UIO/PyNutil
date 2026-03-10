@@ -225,7 +225,9 @@ def pixel_count_per_region(
         else np.array([], dtype=np.int64)
     )
     if all_idx.size == 0:
-        return pd.DataFrame(columns=_empty_count_columns(with_hemisphere=with_hemi, with_damage=with_damage))
+        return pd.DataFrame(
+            columns=_empty_count_columns(with_hemisphere=with_hemi, with_damage=with_damage)
+        )
 
     base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()
 
