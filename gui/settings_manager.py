@@ -2,6 +2,8 @@ import json
 import os
 from typing import Dict, Any
 
+from PyNutil.io.loaders import load_json_file
+
 
 _RECENT_KEYS = (
     "registration_json",
@@ -30,14 +32,13 @@ class SettingsManager:
         """Load settings from file."""
         if os.path.exists(self.settings_path):
             try:
-                with open(self.settings_path, "r") as file:
-                    data = json.load(file)
-                    for key in _RECENT_KEYS:
-                        value = data.get(key)
-                        data[key] = value if isinstance(value, list) else ([value] if value else [])
-                    for key in _ALL_SETTINGS_KEYS:
-                        data.setdefault(key, [])
-                    return data
+                data = load_json_file(self.settings_path)
+                for key in _RECENT_KEYS:
+                    value = data.get(key)
+                    data[key] = value if isinstance(value, list) else ([value] if value else [])
+                for key in _ALL_SETTINGS_KEYS:
+                    data.setdefault(key, [])
+                return data
             except Exception as e:
                 print(f"Error loading settings: {e}")
 

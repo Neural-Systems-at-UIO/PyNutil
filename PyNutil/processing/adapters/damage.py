@@ -10,7 +10,8 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from .base import DamageProvider, RegistrationData, load_json_file
+from .base import DamageProvider, RegistrationData
+from ...io.loaders import load_json_file
 
 
 # ---------------------------------------------------------------------------

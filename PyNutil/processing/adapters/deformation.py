@@ -16,8 +16,8 @@ from .base import (
     DeformationFunction,
     DeformationProvider,
     RegistrationData,
-    load_json_file,
 )
+from ...io.loaders import load_json_file
 
 
 class VisuAlignDeformationProvider(DeformationProvider):

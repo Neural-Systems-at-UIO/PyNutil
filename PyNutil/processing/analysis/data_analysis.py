@@ -236,15 +236,9 @@ def _merge_dataframes(current_df, ra, atlas_labels):
                 extra[col] = 0
         result = pd.concat([result, extra[result.columns]], ignore_index=True)
 
-    # Fill numeric columns with 0
-    for col in [
-        "pixel_count",
-        "region_area",
-        "left_hemi_pixel_count",
-        "left_hemi_region_area",
-        "right_hemi_pixel_count",
-        "right_hemi_region_area",
-    ]:
+    # Fill count/area numeric columns with 0 using shared area-fraction specs.
+    base_numeric_cols = sorted({c for num, den, _ in AREA_FRACTION_PAIRS for c in (num, den)})
+    for col in base_numeric_cols:
         if col in result.columns:
             result[col] = pd.to_numeric(result[col]).fillna(0)
 

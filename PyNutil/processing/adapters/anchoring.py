@@ -12,8 +12,8 @@ from typing import List
 
 import numpy as np
 
-from .base import AnchoringLoader, RegistrationData, SliceInfo, load_json_file
-from ...io.loaders import number_sections
+from .base import AnchoringLoader, RegistrationData, SliceInfo
+from ...io.loaders import number_sections, load_json_file
 
 
 class QuintAnchoringLoader(AnchoringLoader):

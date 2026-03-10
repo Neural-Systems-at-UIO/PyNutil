@@ -1,6 +1,5 @@
 # Import restructuring
 import sys
-import json
 import os
 
 from PyQt6.QtWidgets import (
@@ -45,6 +44,7 @@ from ui_components import (
 from settings_manager import SettingsManager
 from log_manager import LogManager
 from PyNutil.config import PyNutilConfig
+from PyNutil.io.loaders import load_json_file
 
 
 class PyNutilGUI(QMainWindow):
@@ -553,8 +553,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
             return
 
         try:
-            with open(file_path, "r") as file:
-                settings = json.load(file)
+            settings = load_json_file(file_path)
 
             config = PyNutilConfig.from_settings_file(file_path)
             config.normalize()
