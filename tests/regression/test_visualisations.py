@@ -50,24 +50,11 @@ class TestVisualisations(TimedTestCase):
             reg_data = load_registration(
                 pnt.alignment_json, apply_deformation=False, apply_damage=False
             )
-            alignment_data = {
-                "slices": [
-                    {
-                        "filename": s.section_id,
-                        "nr": s.section_number,
-                        "anchoring": s.anchoring,
-                        "width": s.width,
-                        "height": s.height,
-                    }
-                    for s in reg_data.slices
-                ]
-            }
-
             adapter = SegmentationAdapterRegistry.get(pnt.segmentation_format)
 
             create_section_visualisations(
                 pnt.segmentation_folder,
-                alignment_data,
+                reg_data.slices,
                 pnt.atlas_volume,
                 pnt.atlas_labels,
                 output_root,

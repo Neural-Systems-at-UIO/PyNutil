@@ -621,25 +621,12 @@ class PyNutil:
             reg_data = load_registration(
                 self.alignment_json, apply_deformation=False, apply_damage=False
             )
-            alignment_data = {
-                "slices": [
-                    {
-                        "filename": s.section_id,
-                        "nr": s.section_number,
-                        "anchoring": s.anchoring,
-                        "width": s.width,
-                        "height": s.height,
-                    }
-                    for s in reg_data.slices
-                ]
-            }
-
             adapter = SegmentationAdapterRegistry.get(self.segmentation_format)
 
             logger.info("Creating section visualisations...")
             create_section_visualisations(
                 self.segmentation_folder or self.image_folder,
-                alignment_data,
+                reg_data.slices,
                 self.atlas_volume,
                 self.atlas_labels,
                 output_folder,
