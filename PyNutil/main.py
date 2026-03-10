@@ -417,7 +417,11 @@ class PyNutil:
             )
         if not self.alignment_json:
             raise ValueError("alignment_json is required")
-        if self.segmentation_folder and self.colour is None:
+        if (
+            self.segmentation_folder
+            and self.segmentation_format != "cellpose"
+            and self.colour is None
+        ):
             raise ValueError(
                 "colour must be set to interpolate_volume when using segmentation_folder"
             )
@@ -448,6 +452,8 @@ class PyNutil:
             use_atlas_mask=use_atlas_mask,
             non_linear=non_linear,
             value_mode=value_mode,
+            segmentation_format=self.segmentation_format,
+            segmentation_mode=bool(self.segmentation_folder),
             intensity_channel=self.intensity_channel,
             min_intensity=self.min_intensity,
             max_intensity=self.max_intensity,

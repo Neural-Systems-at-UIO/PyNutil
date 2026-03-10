@@ -9,7 +9,7 @@ def _classify_triangles(x, y, triangles):
     keep = []
     remove = []
     for triangle in triangles:
-        if not found and triangle.intriangle(x, y):
+        if not found and triangle.contains_point(x, y):
             found = True
         if triangle.incircle(x, y):
             remove.append(triangle)
@@ -142,11 +142,6 @@ def inv3x3(m):
         return None
 
 
-def rowmul3(v, m):
-    """Multiply a 1x3 row vector by a 3x3 matrix."""
-    return (np.asarray(v, dtype=np.float64) @ np.asarray(m, dtype=np.float64)).tolist()
-
-
 def distsquare(ax, ay, bx, by):
     """
     Calculates the squared distance between two points.
@@ -254,20 +249,13 @@ class Triangle:
             distsquare(x * self.den, y * self.den, self.Mdenx, self.Mdeny) < self.r2den
         )
 
-    def intriangle(self, x, y):
-        """
-        Checks if a point is inside the triangle.
-
-        Args:
-            x (float): X coordinate of the point.
-            y (float): Y coordinate of the point.
-
-        Returns:
-            list: Barycentric coordinates of the point if inside, None otherwise.
-        """
-        uv1 = rowmul3([x, y, 1], self.decomp)
-        if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
-            return uv1
+    def contains_point(self, x, y):
+        """Return True if scalar point (x, y) lies inside this triangle."""
+        ok, _, _ = self.intriangle_subset(
+            np.asarray([x], dtype=np.float64),
+            np.asarray([y], dtype=np.float64),
+        )
+        return bool(ok[0])
 
     def _barycentric_transform(self, x, y, decomp, xi, yi):
         """Return transformed coordinates for points that lie inside triangle."""

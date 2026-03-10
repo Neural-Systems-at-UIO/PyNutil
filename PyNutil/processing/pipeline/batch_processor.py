@@ -163,13 +163,8 @@ def _concat(arrays, *, dtype=None, none_if_empty=False):
     return np.array([], dtype=dtype)
 
 
-def _safe_len(arr):
-    """Return len(arr) if arr is not None, else 0."""
-    return len(arr) if arr is not None else 0
-
-
-def _unzip_section_results(results):
-    """Unzip a list of SectionResults into per-field lists (single pass)."""
+def _collect_section_results(results):
+    """Reduce section results into concatenated arrays and per-section lengths."""
     pts, ctrs = [], []
     pts_lbl, ctrs_lbl = [], []
     pts_hemi, ctrs_hemi = [], []
@@ -187,46 +182,17 @@ def _unzip_section_results(results):
         ctrs_hemi.append(r.centroids_hemi_labels)
         pt_undam.append(r.per_point_undamaged)
         ct_undam.append(r.per_centroid_undamaged)
-        pts_len.append(_safe_len(r.points))
-        ctrs_len.append(_safe_len(r.centroids))
-        tot_pts_len.append(_safe_len(r.per_point_undamaged))
-        tot_ctrs_len.append(_safe_len(r.per_centroid_undamaged))
+        pts_len.append(len(r.points) if r.points is not None else 0)
+        ctrs_len.append(len(r.centroids) if r.centroids is not None else 0)
+        tot_pts_len.append(
+            len(r.per_point_undamaged) if r.per_point_undamaged is not None else 0
+        )
+        tot_ctrs_len.append(
+            len(r.per_centroid_undamaged)
+            if r.per_centroid_undamaged is not None
+            else 0
+        )
         areas.append(r.region_areas)
-
-    return (
-        pts,
-        ctrs,
-        pts_lbl,
-        ctrs_lbl,
-        pts_hemi,
-        ctrs_hemi,
-        pt_undam,
-        ct_undam,
-        pts_len,
-        ctrs_len,
-        tot_pts_len,
-        tot_ctrs_len,
-        areas,
-    )
-
-
-def _collect_section_results(results):
-    """Concatenate a list of SectionResults into flat arrays and length lists."""
-    (
-        pts,
-        ctrs,
-        pts_lbl,
-        ctrs_lbl,
-        pts_hemi,
-        ctrs_hemi,
-        pt_undam,
-        ct_undam,
-        pts_len,
-        ctrs_len,
-        tot_pts_len,
-        tot_ctrs_len,
-        areas,
-    ) = _unzip_section_results(results)
 
     return (
         _concat(pts, dtype=np.float64),

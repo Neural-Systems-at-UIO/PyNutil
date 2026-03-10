@@ -1,11 +1,13 @@
-import math, re
+import math
+
+from .loaders import number_sections
 
 
 def propagate(arr):
     arr = arr.copy()
     for slice in arr:
         if "nr" not in slice:
-            slice["nr"] = int(re.search(r"_s(\d+)", slice["filename"]).group(1))
+            slice["nr"] = int(number_sections([slice["filename"]])[0])
 
     arr.sort(key=lambda slice: slice["nr"])
 

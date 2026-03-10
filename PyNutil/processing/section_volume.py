@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 from .adapters import load_registration
+from .adapters.segmentation import SegmentationAdapterRegistry
 from .transforms import transform_to_atlas_space
 from .utils import (
     number_sections,
@@ -90,17 +91,22 @@ def _knn_interpolate_generic(
 
 def _read_section_signal(
     seg_path: str,
+    segmentation_adapter,
+    segmentation_mode: bool,
     colour_arr: Optional[np.ndarray],
     intensity_channel: str,
     min_intensity: Optional[int],
     max_intensity: Optional[int],
 ):
     """Load an image and return (seg_values, mask, seg_height, seg_width) or None."""
-    seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
+    if segmentation_mode:
+        seg = segmentation_adapter.load(seg_path)
+    else:
+        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
     if seg is None:
         return None
 
-    if colour_arr is None:
+    if not segmentation_mode:
         # Intensity mode
         seg_values = convert_to_intensity(seg, intensity_channel)
         if min_intensity is not None:
@@ -109,14 +115,12 @@ def _read_section_signal(
             seg_values[seg_values > max_intensity] = 0
         mask = (seg_values != 0).astype(np.float32, copy=False)
     else:
-        # Segmentation mode
-        if seg.ndim == 2:
-            seg_values = seg.astype(np.float32, copy=False)
-            mask = (seg_values != 0).astype(np.float32, copy=False)
-        else:
-            seg = seg[:, :, :3]
-            mask = np.all(seg == colour_arr[None, None, :], axis=2).astype(np.float32)
-            seg_values = mask
+        # Segmentation mode via adapter (supports binary/cellpose/custom)
+        pixel_id = colour_arr.tolist() if colour_arr is not None else None
+        mask = segmentation_adapter.create_binary_mask(seg, pixel_id=pixel_id).astype(
+            np.float32, copy=False
+        )
+        seg_values = mask
 
     seg_height, seg_width = seg.shape[:2]
     return seg_values, mask, seg_height, seg_width
@@ -298,6 +302,8 @@ def _finalize_volumes(
 def _process_one_section(
     seg_path,
     slice_by_nr,
+    segmentation_adapter,
+    segmentation_mode,
     colour_arr,
     intensity_channel,
     min_intensity,
@@ -319,7 +325,13 @@ def _process_one_section(
         return
 
     loaded = _read_section_signal(
-        seg_path, colour_arr, intensity_channel, min_intensity, max_intensity
+        seg_path,
+        segmentation_adapter,
+        segmentation_mode,
+        colour_arr,
+        intensity_channel,
+        min_intensity,
+        max_intensity,
     )
     if loaded is None:
         return
@@ -396,6 +408,8 @@ def project_sections_to_volume(
     use_atlas_mask: bool = True,
     non_linear: bool = True,
     value_mode: str = "pixel_count",
+    segmentation_format: str = "binary",
+    segmentation_mode: bool = True,
     intensity_channel: str = "grayscale",
     min_intensity: Optional[int] = None,
     max_intensity: Optional[int] = None,
@@ -421,6 +435,11 @@ def project_sections_to_volume(
     seg_paths = discover_image_files(segmentation_folder)
 
     colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
+    segmentation_adapter = (
+        SegmentationAdapterRegistry.get(segmentation_format)
+        if segmentation_mode
+        else None
+    )
 
     gv = np.zeros(out_shape, dtype=np.float32)
     fv = np.zeros(out_shape, dtype=np.uint32)
@@ -433,6 +452,8 @@ def project_sections_to_volume(
         _process_one_section(
             seg_path,
             slice_by_nr,
+            segmentation_adapter,
+            segmentation_mode,
             colour_arr,
             intensity_channel,
             min_intensity,
