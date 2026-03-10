@@ -72,7 +72,13 @@ class SliceInfo:
 
     @property
     def physical_dimensions(self) -> Tuple[int, int]:
-        """Physical plane dimensions (width, height) derived from anchoring vectors."""
+        """Physical plane dimensions (width, height) derived from anchoring vectors.
+
+        The +1 ensures the integer dimension fully covers the continuous extent of the
+        plane (i.e. ceil-like rounding), which is needed for image loading and mask
+        creation. For continuous-valued computations such as volume sampling, use the
+        raw anchoring vector norms directly.
+        """
         u = self.anchoring[3:6]
         v = self.anchoring[6:9]
         return int(math.hypot(*u)) + 1, int(math.hypot(*v)) + 1

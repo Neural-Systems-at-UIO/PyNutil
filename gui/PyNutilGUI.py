@@ -633,7 +633,7 @@ For more information about the QUINT workflow: <a href="https://quint-workflow.r
                 self.arguments["custom_region_path"] = config.custom_region_path
                 self.update_recent("custom_region", config.custom_region_path)
                 populate_dropdown(self.custom_region_dropdown, self.recent_files.get("custom_region", []))
-                self.custom_region_dropdown.setCurrentIndex(0)
+                self.custom_region_dropdown.setCurrentIndex(1)
 
             if config.atlas_name:
                 index = self.atlas_combo.findText(config.atlas_name)
