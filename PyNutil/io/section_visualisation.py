@@ -90,6 +90,7 @@ def overlay_segmentation_on_rgb(
     *,
     segmentation: Optional[np.ndarray] = None,
     adapter: Optional[SegmentationAdapter] = None,
+    pixel_id: Optional[List[int]] = None,
 ) -> np.ndarray:
     """Overlay segmentation on an RGB NumPy image.
 
@@ -107,7 +108,7 @@ def overlay_segmentation_on_rgb(
             segmentation, (width, height), interpolation=cv2.INTER_NEAREST
         )
 
-        mask = adapter.create_binary_mask(segmentation)
+        mask = adapter.create_binary_mask(segmentation, pixel_id=pixel_id)
         if not np.any(mask):
             return rgb_image
 
@@ -151,6 +152,7 @@ def create_colored_atlas_slice(
         ]
     ] = None,
     adapter: Optional[SegmentationAdapter] = None,
+    pixel_id: Optional[List[int]] = None,
 ) -> None:
     """Create a coloured atlas slice and optionally overlay segmentation pixels."""
     atlas_slice = generate_target_slice(slice_dict["anchoring"], atlas_volume)
@@ -208,7 +210,7 @@ def create_colored_atlas_slice(
     if seg_available:
         coloured_slice = overlay_segmentation_on_rgb(
             coloured_slice, segmentation_path, segmentation=segmentation_img,
-            adapter=adapter,
+            adapter=adapter, pixel_id=pixel_id,
         )
 
     _ = objects_data
@@ -275,6 +277,7 @@ def create_section_visualisations(
     objects_per_section: Optional[List[List[Dict]]] = None,
     scale_factor: float = 0.5,
     adapter: Optional[SegmentationAdapter] = None,
+    pixel_id: Optional[List[int]] = None,
 ):
     """Create visualisation images for all sections in the analysis."""
     viz_dir = os.path.join(output_folder, "visualisations")
@@ -314,6 +317,7 @@ def create_section_visualisations(
                 scale_factor=scale_factor,
                 _color_lookup=color_lookup,
                 adapter=adapter,
+                pixel_id=pixel_id,
             )
 
         except Exception as e:

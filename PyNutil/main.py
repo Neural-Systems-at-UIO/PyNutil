@@ -734,6 +734,7 @@ class PyNutil:
                 self.atlas_labels,
                 output_folder,
                 adapter=adapter,
+                pixel_id=self.colour,
             )
         except Exception as e:
             logger.error(f"visualisation failed: {e}")

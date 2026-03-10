@@ -44,6 +44,7 @@ class TestVisualisations(TimedTestCase):
             pnt = PyNutil(settings_file=self.settings_path)
 
             from PyNutil.processing.adapters.registry import load_registration
+            from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
             from PyNutil.io.section_visualisation import create_section_visualisations
 
             reg_data = load_registration(
@@ -62,12 +63,16 @@ class TestVisualisations(TimedTestCase):
                 ]
             }
 
+            adapter = SegmentationAdapterRegistry.get(pnt.segmentation_format)
+
             create_section_visualisations(
                 pnt.segmentation_folder,
                 alignment_data,
                 pnt.atlas_volume,
                 pnt.atlas_labels,
                 output_root,
+                adapter=adapter,
+                pixel_id=pnt.colour,
             )
 
             generated_dir = os.path.join(output_root, "visualisations")
