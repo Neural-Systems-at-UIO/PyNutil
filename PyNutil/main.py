@@ -45,20 +45,6 @@ def _apply_extraction_result(ctx, result, *, apply_damage_mask, map_custom_regio
         )
 
 
-def _apply_custom_regions_to_quantification(ctx):
-    """Shared post-quantification step: remap to custom regions if configured."""
-    if ctx.custom_regions_dict is not None:
-        ctx.custom_label_df, ctx.label_df = apply_custom_regions(
-            ctx.label_df, ctx.custom_regions_dict
-        )
-        ctx.custom_per_section_df = []
-        for section_df in ctx.per_section_df:
-            custom_df, section_df = apply_custom_regions(
-                section_df, ctx.custom_regions_dict
-            )
-            ctx.custom_per_section_df.append(custom_df)
-
-
 class PyNutil:
     """
     A class to perform brain-wide quantification and spatial analysis of serial section images.
@@ -351,7 +337,16 @@ class PyNutil:
                 self.atlas_labels,
                 self.apply_damage_mask,
             )
-        _apply_custom_regions_to_quantification(self)
+        if self.custom_regions_dict is not None:
+            self.custom_label_df, self.label_df = apply_custom_regions(
+                self.label_df, self.custom_regions_dict
+            )
+            self.custom_per_section_df = []
+            for section_df in self.per_section_df:
+                custom_df, section_df = apply_custom_regions(
+                    section_df, self.custom_regions_dict
+                )
+                self.custom_per_section_df.append(custom_df)
 
     def interpolate_volume(
         self,

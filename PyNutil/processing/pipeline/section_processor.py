@@ -23,9 +23,7 @@ from ..atlas_map import (
     apply_deformation_map,
 )
 from ..transforms import (
-    transform_points_to_atlas_space,
     transform_to_registration,
-    get_transformed_coordinates,
     transform_to_atlas_space,
 )
 from ..analysis.aggregator import build_region_intensity_dataframe
@@ -212,22 +210,20 @@ def _deform_and_build_result(
     cx_filtered = centroidsX[per_centroid_undamaged] if centroidsX is not None else np.array([])
     cy_filtered = centroidsY[per_centroid_undamaged] if centroidsY is not None else np.array([])
 
-    new_x, new_y, cx_new, cy_new = get_transformed_coordinates(
-        non_linear,
-        scaled_x[per_point_undamaged],
-        scaled_y[per_point_undamaged],
-        cx_filtered,
-        cy_filtered,
-        deformation,
+    pts_x = scaled_x[per_point_undamaged]
+    pts_y = scaled_y[per_point_undamaged]
+    if non_linear and deformation is not None:
+        if pts_x is not None:
+            pts_x, pts_y = deformation(pts_x, pts_y)
+        if len(cx_filtered):
+            cx_filtered, cy_filtered = deformation(cx_filtered, cy_filtered)
+    points = (
+        transform_to_atlas_space(slice_info.anchoring, pts_y, pts_x, reg_height, reg_width)
+        if pts_x is not None else None
     )
-    points, centroids = transform_points_to_atlas_space(
-        slice_info.anchoring,
-        new_x,
-        new_y,
-        cx_new,
-        cy_new,
-        reg_height,
-        reg_width,
+    centroids = (
+        transform_to_atlas_space(slice_info.anchoring, cy_filtered, cx_filtered, reg_height, reg_width)
+        if len(cx_filtered) else None
     )
     return SectionResult(
         points=np.asarray(points) if points is not None else np.array([]),

@@ -42,25 +42,6 @@ def _group_triplets(
         yield key, triplets, len(grp)
 
 
-def create_region_dict(
-    points: np.ndarray,
-    regions: np.ndarray,
-):
-    """Group points by region label into flattened triplet arrays.
-
-    Kept as a public compatibility API.
-    """
-    if points is None or regions is None or len(regions) == 0:
-        return {}
-    return {
-        int(region): triplets
-        for region, triplets, _ in _group_triplets(
-            points,
-            {"region": regions},
-            ["region"],
-        )
-    }
-
 
 def _meshview_entry(idx, name, triplets, r, g, b, count=None):
     """Build a single MeshView JSON entry dict."""
