@@ -181,55 +181,32 @@ def _save_per_section_reports(ctx: SaveContext, output_folder: str):
                 if ctx.point_intensities is not None
                 else None
             )
-            _save_per_section_meshview(
-                ctx,
-                output_folder,
-                window,
+            write_hemi_points_to_meshview(
+                _slice_or_none(ctx.pixel_points, window.points_start, window.points_end),
+                _slice_or_none(ctx.labeled_points, window.points_start, window.points_end),
+                _slice_or_none(ctx.points_hemi_labels, window.points_start, window.points_end),
+                f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_pixels.json",
+                ctx.atlas_labels,
                 section_intensities,
+                colormap=ctx.colormap,
             )
-
-
-def _save_per_section_meshview(
-    ctx: SaveContext,
-    output_folder: str,
-    window: _SectionWindow,
-    section_intensities=None,
-):
-    """Write per-section MeshView JSONs for pixels and centroids."""
-    write_hemi_points_to_meshview(
-        _slice_or_none(ctx.pixel_points, window.points_start, window.points_end),
-        _slice_or_none(ctx.labeled_points, window.points_start, window.points_end),
-        _slice_or_none(
-            ctx.points_hemi_labels,
-            window.points_start,
-            window.points_end,
-        ),
-        f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_pixels.json",
-        ctx.atlas_labels,
-        section_intensities,
-        colormap=ctx.colormap,
-    )
-    if ctx.centroids is not None:
-        write_hemi_points_to_meshview(
-            _slice_or_none(
-                ctx.centroids,
-                window.centroids_start,
-                window.centroids_end,
-            ),
-            _slice_or_none(
-                ctx.labeled_points_centroids,
-                window.centroids_start,
-                window.centroids_end,
-            ),
-            _slice_or_none(
-                ctx.centroids_hemi_labels,
-                window.centroids_start,
-                window.centroids_end,
-            ),
-            f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_centroids.json",
-            ctx.atlas_labels,
-            colormap=ctx.colormap,
-        )
+            if ctx.centroids is not None:
+                write_hemi_points_to_meshview(
+                    _slice_or_none(ctx.centroids, window.centroids_start, window.centroids_end),
+                    _slice_or_none(
+                        ctx.labeled_points_centroids,
+                        window.centroids_start,
+                        window.centroids_end,
+                    ),
+                    _slice_or_none(
+                        ctx.centroids_hemi_labels,
+                        window.centroids_start,
+                        window.centroids_end,
+                    ),
+                    f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_centroids.json",
+                    ctx.atlas_labels,
+                    colormap=ctx.colormap,
+                )
 
 
 def _save_whole_series_meshview(ctx: SaveContext, output_folder: str):

@@ -32,51 +32,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def _assign_custom_region_labels(ctx):
-    """Populate custom region labels for points/centroids when configured."""
-    if ctx.custom_regions_dict is None:
-        return
-    ctx.points_custom_labels = map_to_custom_regions(
-        ctx.custom_regions_dict, ctx.points_labels
-    )
-    ctx.centroids_custom_labels = map_to_custom_regions(
-        ctx.custom_regions_dict, ctx.centroids_labels
-    )
-
-
-def _quantify_coordinate_entities(ctx):
-    """Shared quantification for coordinate-based (pixel/centroid) modes."""
-    if not hasattr(ctx, "pixel_points") and not hasattr(ctx, "centroids"):
-        raise ValueError(
-            "Please run get_coordinates before running quantify_coordinates."
-        )
-    points = PerEntityArrays(
-        labels=ctx.points_labels,
-        hemi_labels=ctx.points_hemi_labels,
-        undamaged=ctx.per_point_undamaged,
-        section_lengths=ctx.total_points_len,
-    )
-    centroids = PerEntityArrays(
-        labels=ctx.centroids_labels,
-        hemi_labels=ctx.centroids_hemi_labels,
-        undamaged=ctx.per_centroid_undamaged,
-        section_lengths=ctx.total_centroids_len,
-    )
-    return quantify_labeled_points(
-        points,
-        centroids,
-        ctx.region_areas_list,
-        ctx.atlas_labels,
-        ctx.apply_damage_mask,
-    )
-
-
 def _apply_extraction_result(ctx, result, *, apply_damage_mask, map_custom_regions):
     """Apply standardized extraction-result fields directly to context."""
     ctx.__dict__.update(vars(result))
     ctx.apply_damage_mask = apply_damage_mask
-    if map_custom_regions:
-        _assign_custom_region_labels(ctx)
+    if map_custom_regions and ctx.custom_regions_dict is not None:
+        ctx.points_custom_labels = map_to_custom_regions(
+            ctx.custom_regions_dict, ctx.points_labels
+        )
+        ctx.centroids_custom_labels = map_to_custom_regions(
+            ctx.custom_regions_dict, ctx.centroids_labels
+        )
 
 
 def _apply_custom_regions_to_quantification(ctx):
@@ -364,7 +330,27 @@ class PyNutil:
                 self.region_intensities_list, self.atlas_labels
             )
         else:
-            self.label_df, self.per_section_df = _quantify_coordinate_entities(self)
+            if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
+                raise ValueError(
+                    "Please run get_coordinates before running quantify_coordinates."
+                )
+            self.label_df, self.per_section_df = quantify_labeled_points(
+                PerEntityArrays(
+                    labels=self.points_labels,
+                    hemi_labels=self.points_hemi_labels,
+                    undamaged=self.per_point_undamaged,
+                    section_lengths=self.total_points_len,
+                ),
+                PerEntityArrays(
+                    labels=self.centroids_labels,
+                    hemi_labels=self.centroids_hemi_labels,
+                    undamaged=self.per_centroid_undamaged,
+                    section_lengths=self.total_centroids_len,
+                ),
+                self.region_areas_list,
+                self.atlas_labels,
+                self.apply_damage_mask,
+            )
         _apply_custom_regions_to_quantification(self)
 
     def interpolate_volume(

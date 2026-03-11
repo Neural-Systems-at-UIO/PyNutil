@@ -185,20 +185,6 @@ def _compute_hemi_state(
     return per_point_hemi, per_centroid_hemi
 
 
-def _safe_index(arr, mask):
-    """Index *arr* by boolean *mask*, returning empty array when *arr* is None."""
-    if arr is not None:
-        return arr[mask]
-    return np.array([])
-
-
-def _to_array(val, gate):
-    """Return ``np.array(val)`` when *gate* is not None, else empty array."""
-    if gate is not None:
-        return np.asarray(val)
-    return np.array([])
-
-
 def _deform_and_build_result(
     *,
     slice_info,
@@ -223,8 +209,8 @@ def _deform_and_build_result(
     Consolidates the final ~30 lines shared by segmentation_to_atlas_space
     and coordinates_to_atlas_space.
     """
-    cx_filtered = _safe_index(centroidsX, per_centroid_undamaged)
-    cy_filtered = _safe_index(centroidsY, per_centroid_undamaged)
+    cx_filtered = centroidsX[per_centroid_undamaged] if centroidsX is not None else np.array([])
+    cy_filtered = centroidsY[per_centroid_undamaged] if centroidsY is not None else np.array([])
 
     new_x, new_y, cx_new, cy_new = get_transformed_coordinates(
         non_linear,
@@ -244,15 +230,15 @@ def _deform_and_build_result(
         reg_width,
     )
     return SectionResult(
-        points=_to_array(points, points),
-        centroids=_to_array(centroids, centroids),
+        points=np.asarray(points) if points is not None else np.array([]),
+        centroids=np.asarray(centroids) if centroids is not None else np.array([]),
         region_areas=region_areas,
-        points_labels=_to_array(per_point_labels, points),
-        centroids_labels=_to_array(per_centroid_labels, centroids),
-        per_point_undamaged=_to_array(per_point_undamaged, points),
-        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
-        points_hemi_labels=_to_array(per_point_hemi, points),
-        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
+        points_labels=np.asarray(per_point_labels) if points is not None else np.array([]),
+        centroids_labels=np.asarray(per_centroid_labels) if centroids is not None else np.array([]),
+        per_point_undamaged=np.asarray(per_point_undamaged) if points is not None else np.array([]),
+        per_centroid_undamaged=np.asarray(per_centroid_undamaged) if centroids is not None else np.array([]),
+        points_hemi_labels=np.asarray(per_point_hemi) if points is not None else np.array([]),
+        centroids_hemi_labels=np.asarray(per_centroid_hemi) if points is not None else np.array([]),
     )
 
 
