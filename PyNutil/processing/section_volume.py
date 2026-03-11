@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import cv2
@@ -14,6 +15,42 @@ from .utils import (
     resize_mask_nearest,
 )
 from ..io.loaders import number_sections
+
+
+@dataclass(frozen=True)
+class VolumeConfig:
+    """Immutable configuration for section-to-volume projection.
+
+    Groups the per-run processing parameters so they can be passed as a
+    single object to ``_process_one_section`` instead of nine positional
+    arguments.
+    """
+
+    segmentation_adapter: object
+    segmentation_mode: bool
+    colour_arr: Optional[np.ndarray]
+    intensity_channel: str
+    min_intensity: Optional[int]
+    max_intensity: Optional[int]
+    scale: float
+    non_linear: bool
+    value_mode: str
+
+
+@dataclass(frozen=True)
+class InterpolationConfig:
+    """Immutable configuration for volume interpolation and finalisation.
+
+    Groups the post-accumulation parameters so they can be passed as a
+    single object to ``_finalize_volumes``.
+    """
+
+    do_interpolation: bool
+    missing_fill: float
+    use_atlas_mask: bool
+    atlas_volume: Optional[np.ndarray]
+    k: int
+    batch_size: int
 
 
 def derive_shape_from_atlas(
@@ -129,15 +166,14 @@ def _sample_and_deform_plane(
     slice_info,
     values_reg: np.ndarray,
     damage_reg: Optional[np.ndarray],
-    scale: float,
-    reg_height: int,
-    reg_width: int,
-    non_linear: bool,
+    vol_cfg: VolumeConfig,
 ):
     """Construct a sampling grid, optionally deform, and remap values.
 
     Returns (sampled_2d, vals_flat, damage_vals, flat_x, flat_y, plane_h, plane_w).
     """
+    reg_height, reg_width = slice_info.height, slice_info.width
+    scale = vol_cfg.scale
     anch = slice_info.anchoring
     u = np.asarray(anch[3:6], dtype=np.float32)
     v = np.asarray(anch[6:9], dtype=np.float32)
@@ -151,7 +187,7 @@ def _sample_and_deform_plane(
     flat_x = reg_x.reshape(-1)
     flat_y = reg_y.reshape(-1)
 
-    if non_linear and slice_info.forward_deformation is not None:
+    if vol_cfg.non_linear and slice_info.forward_deformation is not None:
         new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
         map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
@@ -255,26 +291,21 @@ def _finalize_volumes(
     fv: np.ndarray,
     dv: np.ndarray,
     ov_flat: Optional[np.ndarray],
-    out_shape: Tuple[int, int, int],
-    value_mode: str,
-    missing_fill: float,
-    do_interpolation: bool,
-    atlas_volume: Optional[np.ndarray],
-    use_atlas_mask: bool,
-    k: int,
-    batch_size: int,
+    vol_cfg: VolumeConfig,
+    interp_cfg: InterpolationConfig,
 ):
     """Convert accumulated sums and optionally interpolate."""
-    gv = _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill)
+    out_shape = gv.shape
+    gv = _compute_value_volume(gv, fv, ov_flat, out_shape, vol_cfg.value_mode, interp_cfg.missing_fill)
 
-    if do_interpolation:
-        atlas_mask = _resolve_atlas_mask(use_atlas_mask, atlas_volume, gv)
+    if interp_cfg.do_interpolation:
+        atlas_mask = _resolve_atlas_mask(interp_cfg.use_atlas_mask, interp_cfg.atlas_volume, gv)
         gv = _knn_interpolate_generic(
             gv=gv,
             fv=fv,
             atlas_mask=atlas_mask,
-            k=k,
-            batch_size=batch_size,
+            k=interp_cfg.k,
+            batch_size=interp_cfg.batch_size,
             mode="mean",
         )
         if np.any(dv > 0):
@@ -283,13 +314,13 @@ def _finalize_volumes(
                 gv=dv_float,
                 fv=fv,
                 atlas_mask=atlas_mask,
-                k=k,
-                batch_size=batch_size,
+                k=interp_cfg.k,
+                batch_size=interp_cfg.batch_size,
                 mode="max",
             )
             dv = (dv_interp > 0).astype(np.uint8)
-    elif missing_fill is not None and missing_fill != 0:
-        gv[fv == 0] = float(missing_fill)
+    elif interp_cfg.missing_fill is not None and interp_cfg.missing_fill != 0:
+        gv[fv == 0] = float(interp_cfg.missing_fill)
 
     return (
         gv.astype(np.float32, copy=False),
@@ -301,22 +332,14 @@ def _finalize_volumes(
 def _process_one_section(
     seg_path,
     slice_by_nr,
-    segmentation_adapter,
-    segmentation_mode,
-    colour_arr,
-    intensity_channel,
-    min_intensity,
-    max_intensity,
-    scale,
-    non_linear,
-    value_mode,
+    vol_cfg: VolumeConfig,
     gv,
     fv,
     dv,
     ov_flat,
-    out_shape,
 ):
     """Process a single section path and accumulate into the output volumes."""
+    out_shape = gv.shape
     sx, sy, sz = out_shape
     seg_nr = int(number_sections([seg_path])[0])
     slice_info = slice_by_nr.get(seg_nr)
@@ -325,12 +348,12 @@ def _process_one_section(
 
     loaded = _read_section_signal(
         seg_path,
-        segmentation_adapter,
-        segmentation_mode,
-        colour_arr,
-        intensity_channel,
-        min_intensity,
-        max_intensity,
+        vol_cfg.segmentation_adapter,
+        vol_cfg.segmentation_mode,
+        vol_cfg.colour_arr,
+        vol_cfg.intensity_channel,
+        vol_cfg.min_intensity,
+        vol_cfg.max_intensity,
     )
     if loaded is None:
         return
@@ -350,30 +373,22 @@ def _process_one_section(
     )
 
     # Resample segmentation values into registration space
-    src = seg_values if value_mode == "mean" else mask
+    src = seg_values if vol_cfg.value_mode == "mean" else mask
     values_reg = cv2.resize(
         src, (reg_width, reg_height), interpolation=cv2.INTER_NEAREST
     )
 
     # Sample, deform, and remap the plane
     sampled_2d, vals, damage_vals, flat_x, flat_y, plane_h, plane_w = (
-        _sample_and_deform_plane(
-            slice_info,
-            values_reg,
-            damage_reg,
-            scale,
-            reg_height,
-            reg_width,
-            non_linear,
-        )
+        _sample_and_deform_plane(slice_info, values_reg, damage_reg, vol_cfg)
     )
 
     # Transform flat grid to atlas-space 3-D coordinates
     coords = transform_to_atlas_space(
         slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
     )
-    if scale != 1.0:
-        coords = coords * float(scale)
+    if vol_cfg.scale != 1.0:
+        coords = coords * float(vol_cfg.scale)
 
     idx = np.rint(coords).astype(np.int64, copy=False)
     x, y, z = idx[:, 0], idx[:, 1], idx[:, 2]
@@ -434,10 +449,28 @@ def project_sections_to_volume(
     seg_paths = discover_image_files(segmentation_folder)
 
     colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
-    segmentation_adapter = (
-        SegmentationAdapterRegistry.get(segmentation_format)
-        if segmentation_mode
-        else None
+    vol_cfg = VolumeConfig(
+        segmentation_adapter=(
+            SegmentationAdapterRegistry.get(segmentation_format)
+            if segmentation_mode
+            else None
+        ),
+        segmentation_mode=segmentation_mode,
+        colour_arr=colour_arr,
+        intensity_channel=intensity_channel,
+        min_intensity=min_intensity,
+        max_intensity=max_intensity,
+        scale=scale,
+        non_linear=non_linear,
+        value_mode=value_mode,
+    )
+    interp_cfg = InterpolationConfig(
+        do_interpolation=do_interpolation,
+        missing_fill=missing_fill,
+        use_atlas_mask=use_atlas_mask,
+        atlas_volume=atlas_volume,
+        k=k,
+        batch_size=batch_size,
     )
 
     gv = np.zeros(out_shape, dtype=np.float32)
@@ -448,36 +481,6 @@ def project_sections_to_volume(
     )
 
     for seg_path in seg_paths:
-        _process_one_section(
-            seg_path,
-            slice_by_nr,
-            segmentation_adapter,
-            segmentation_mode,
-            colour_arr,
-            intensity_channel,
-            min_intensity,
-            max_intensity,
-            scale,
-            non_linear,
-            value_mode,
-            gv,
-            fv,
-            dv,
-            ov_flat,
-            out_shape,
-        )
+        _process_one_section(seg_path, slice_by_nr, vol_cfg, gv, fv, dv, ov_flat)
 
-    return _finalize_volumes(
-        gv,
-        fv,
-        dv,
-        ov_flat,
-        out_shape,
-        value_mode,
-        missing_fill,
-        do_interpolation,
-        atlas_volume,
-        use_atlas_mask,
-        k,
-        batch_size,
-    )
+    return _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)

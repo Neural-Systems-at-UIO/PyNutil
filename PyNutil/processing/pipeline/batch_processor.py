@@ -16,7 +16,6 @@ from ...results import (
     ExtractionResult,
 )
 from ..adapters import load_registration
-from ..adapters.segmentation import SegmentationAdapterRegistry
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
@@ -25,50 +24,7 @@ from .section_processor import (
 from ..utils import (
     discover_image_files,
 )
-from ...io.loaders import number_sections
-
-
-# ---------------------------------------------------------------------------
-# Context builders
-# ---------------------------------------------------------------------------
-
-
-def _build_pipeline_context(
-    *,
-    atlas_labels,
-    atlas_volume,
-    hemi_map,
-    segmentation_format,
-    non_linear,
-    object_cutoff,
-    use_flat,
-    pixel_id,
-    apply_damage_mask,
-    flat_label_path=None,
-    intensity_channel=None,
-    min_intensity=None,
-    max_intensity=None,
-) -> PipelineContext:
-    """Construct an immutable PipelineContext from loose parameters."""
-    adapter = SegmentationAdapterRegistry.get(segmentation_format)
-    return PipelineContext(
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
-        segmentation_adapter=adapter,
-        non_linear=non_linear,
-        object_cutoff=object_cutoff,
-        use_flat=use_flat,
-        pixel_id=pixel_id,
-        apply_damage_mask=apply_damage_mask,
-        flat_label_path=flat_label_path,
-        intensity_channel=intensity_channel,
-        min_intensity=min_intensity,
-        max_intensity=max_intensity,
-    )
-
-
-# ---------------------------------------------------------------------------
+from ...io.loaders import number_sections# ---------------------------------------------------------------------------
 # Shared batch scaffold
 # ---------------------------------------------------------------------------
 
@@ -257,11 +213,11 @@ def folder_to_atlas_space(
     Returns:
         ExtractionResult: Structured extraction output.
     """
-    pipeline_ctx = _build_pipeline_context(
+    pipeline_ctx = PipelineContext.from_format(
+        segmentation_format=segmentation_format,
         atlas_labels=atlas_labels,
         atlas_volume=atlas_volume,
         hemi_map=hemi_map,
-        segmentation_format=segmentation_format,
         non_linear=non_linear,
         object_cutoff=object_cutoff,
         use_flat=use_flat,
@@ -344,11 +300,11 @@ def folder_to_atlas_space_intensity(
     Returns:
         ExtractionResult: Structured extraction output.
     """
-    pipeline_ctx = _build_pipeline_context(
+    pipeline_ctx = PipelineContext.from_format(
+        segmentation_format="binary",
         atlas_labels=atlas_labels,
         atlas_volume=atlas_volume,
         hemi_map=hemi_map,
-        segmentation_format="binary",
         non_linear=non_linear,
         object_cutoff=0,
         use_flat=use_flat,
@@ -442,12 +398,12 @@ def file_to_atlas_space_coordinates(
     )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
-    # Build a minimal PipelineContext (no segmentation adapter needed)
-    pipeline_ctx = PipelineContext(
+    # Build a minimal PipelineContext (no segmentation adapter needed for coordinates)
+    pipeline_ctx = PipelineContext.from_format(
+        segmentation_format="binary",
         atlas_labels=atlas_labels,
         atlas_volume=atlas_volume,
         hemi_map=hemi_map,
-        segmentation_adapter=SegmentationAdapterRegistry.get("binary"),
         non_linear=non_linear,
         object_cutoff=0,
         use_flat=False,

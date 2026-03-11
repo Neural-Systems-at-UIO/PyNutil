@@ -35,13 +35,8 @@ def _prepare_section(
     slice_info,
     seg_width,
     seg_height,
-    atlas_labels,
-    flat_file_atlas,
-    atlas_volume,
-    hemi_map,
-    non_linear,
-    use_flat,
-    flat_label_path,
+    p_ctx,
+    flat_file_atlas=None,
 ):
     """Shared setup for both segmentation and intensity section processors.
 
@@ -50,9 +45,23 @@ def _prepare_section(
     coordinate-computation pass and shares the deformation map between
     them, roughly halving the cost of these operations.
 
+    Args:
+        slice_info: Per-section registration data.
+        seg_width: Width of the source segmentation/image.
+        seg_height: Height of the source segmentation/image.
+        p_ctx: Immutable pipeline-wide state (atlas, adapter, options).
+        flat_file_atlas: Path to the flat-file atlas for this section, or None.
+
     Returns:
         (atlas_map, region_areas, hemi_mask, damage_mask, deformation)
     """
+    atlas_labels = p_ctx.atlas_labels
+    atlas_volume = p_ctx.atlas_volume
+    hemi_map = p_ctx.hemi_map
+    non_linear = p_ctx.non_linear
+    use_flat = p_ctx.use_flat
+    flat_label_path = p_ctx.flat_label_path
+
     deformation = slice_info.deformation if non_linear else None
     damage_mask = slice_info.damage_mask
     reg_height, reg_width = slice_info.height, slice_info.width
@@ -183,10 +192,7 @@ def _compute_hemi_state(
 def _deform_and_build_result(
     *,
     slice_info,
-    reg_height,
-    reg_width,
     non_linear,
-    deformation,
     scaled_x,
     scaled_y,
     centroidsX,
@@ -204,6 +210,9 @@ def _deform_and_build_result(
     Consolidates the final ~30 lines shared by segmentation_to_atlas_space
     and coordinates_to_atlas_space.
     """
+    reg_height, reg_width = slice_info.height, slice_info.width
+    deformation = slice_info.deformation if non_linear else None
+
     cx_filtered = centroidsX[per_centroid_undamaged] if centroidsX is not None else np.array([])
     cy_filtered = centroidsY[per_centroid_undamaged] if centroidsY is not None else np.array([])
 
@@ -309,21 +318,11 @@ def segmentation_to_atlas_space(
     Returns:
         SectionResult with transformed coordinates, labels, and metadata.
     """
-    # ── unbox contexts at the boundary ─────────────────────────────────
     slice_info = s_ctx.slice_info
-    segmentation_path = s_ctx.segmentation_path
-    flat_file_atlas = s_ctx.flat_file_path
-    atlas_labels = p_ctx.atlas_labels
     pixel_id = p_ctx.pixel_id
-    non_linear = p_ctx.non_linear
-    object_cutoff = p_ctx.object_cutoff
-    atlas_volume = p_ctx.atlas_volume
-    hemi_map = p_ctx.hemi_map
-    use_flat = p_ctx.use_flat
-    flat_label_path = p_ctx.flat_label_path
     adapter = p_ctx.segmentation_adapter
 
-    segmentation = adapter.load(segmentation_path)
+    segmentation = adapter.load(s_ctx.segmentation_path)
     if pixel_id == "auto":
         pixel_id = adapter.detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
@@ -333,13 +332,8 @@ def segmentation_to_atlas_space(
         slice_info,
         seg_width,
         seg_height,
-        atlas_labels,
-        flat_file_atlas,
-        atlas_volume,
-        hemi_map,
-        non_linear,
-        use_flat,
-        flat_label_path,
+        p_ctx,
+        flat_file_atlas=s_ctx.flat_file_path,
     )
     y_scale = reg_height / seg_height
     x_scale = reg_width / seg_width
@@ -357,7 +351,7 @@ def segmentation_to_atlas_space(
         atlas_map,
         y_scale,
         x_scale,
-        object_cutoff=object_cutoff,
+        object_cutoff=p_ctx.object_cutoff,
         atlas_at_original_resolution=True,
         reg_height=reg_height,
         reg_width=reg_width,
@@ -394,10 +388,7 @@ def segmentation_to_atlas_space(
 
     return _deform_and_build_result(
         slice_info=slice_info,
-        reg_height=reg_height,
-        reg_width=reg_width,
-        non_linear=non_linear,
-        deformation=deformation,
+        non_linear=p_ctx.non_linear,
         scaled_x=scaled_x,
         scaled_y=scaled_y,
         centroidsX=scaled_centroidsX,
@@ -436,25 +427,13 @@ def coordinates_to_atlas_space(
     Returns:
         SectionResult with transformed coordinates, labels, and metadata.
     """
-    atlas_labels = p_ctx.atlas_labels
-    non_linear = p_ctx.non_linear
-    atlas_volume = p_ctx.atlas_volume
-    hemi_map = p_ctx.hemi_map
-    flat_label_path = p_ctx.flat_label_path
-
     reg_height, reg_width = slice_info.height, slice_info.width
 
     atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
         slice_info,
         image_width,
         image_height,
-        atlas_labels,
-        None,  # no flat file
-        atlas_volume,
-        hemi_map,
-        non_linear,
-        False,  # use_flat
-        flat_label_path,
+        p_ctx,
     )
 
     # Scale from image space to registration space
@@ -494,10 +473,7 @@ def coordinates_to_atlas_space(
     # Apply non-linear deformation and transform to 3D atlas space
     return _deform_and_build_result(
         slice_info=slice_info,
-        reg_height=reg_height,
-        reg_width=reg_width,
-        non_linear=non_linear,
-        deformation=deformation,
+        non_linear=p_ctx.non_linear,
         scaled_x=scaled_x,
         scaled_y=scaled_y,
         centroidsX=scaled_x,  # coordinates mode: centroids == points
@@ -525,24 +501,12 @@ def segmentation_to_atlas_space_intensity(
     Returns:
         IntensitySectionResult with region intensities and MeshView point data.
     """
-    # ── unbox contexts at the boundary ─────────────────────────────────
     slice_info = s_ctx.slice_info
-    image_path = s_ctx.segmentation_path
-    flat_file_atlas = s_ctx.flat_file_path
-    atlas_labels = p_ctx.atlas_labels
-    intensity_channel = p_ctx.intensity_channel
-    non_linear = p_ctx.non_linear
-    atlas_volume = p_ctx.atlas_volume
-    hemi_map = p_ctx.hemi_map
-    use_flat = p_ctx.use_flat
-    flat_label_path = p_ctx.flat_label_path
-    min_intensity = p_ctx.min_intensity
-    max_intensity = p_ctx.max_intensity
     adapter = p_ctx.segmentation_adapter
 
-    image = adapter.load(image_path)
-    intensity = convert_to_intensity(image, intensity_channel)
-    _apply_intensity_bounds(intensity, min_intensity, max_intensity)
+    image = adapter.load(s_ctx.segmentation_path)
+    intensity = convert_to_intensity(image, p_ctx.intensity_channel)
+    _apply_intensity_bounds(intensity, p_ctx.min_intensity, p_ctx.max_intensity)
 
     reg_height, reg_width = slice_info.height, slice_info.width
 
@@ -550,13 +514,8 @@ def segmentation_to_atlas_space_intensity(
         slice_info,
         image.shape[1],
         image.shape[0],
-        atlas_labels,
-        flat_file_atlas,
-        atlas_volume,
-        hemi_map,
-        non_linear,
-        use_flat,
-        flat_label_path,
+        p_ctx,
+        flat_file_atlas=s_ctx.flat_file_path,
     )
 
     # Ensure atlas_map and hemi_mask match registration resolution
@@ -575,7 +534,7 @@ def segmentation_to_atlas_space_intensity(
     intensity_resized = cv2.resize(
         intensity, (reg_width, reg_height), interpolation=cv2.INTER_AREA
     )
-    _apply_intensity_bounds(intensity_resized, min_intensity, max_intensity)
+    _apply_intensity_bounds(intensity_resized, p_ctx.min_intensity, p_ctx.max_intensity)
 
     # Apply damage mask if it exists
     if damage_mask is not None:
@@ -590,7 +549,7 @@ def segmentation_to_atlas_space_intensity(
     df = build_region_intensity_dataframe(
         atlas_map=atlas_map,
         intensity_resized=intensity_resized,
-        atlas_labels=atlas_labels,
+        atlas_labels=p_ctx.atlas_labels,
         region_areas=region_areas,
         hemi_mask=hemi_mask,
         damage_mask_resized=damage_mask_resized,
@@ -598,10 +557,10 @@ def segmentation_to_atlas_space_intensity(
 
     # Build signal mask and extract pixels for MeshView
     signal_mask = np.ones_like(intensity_resized, dtype=bool)
-    if min_intensity is not None:
-        signal_mask &= intensity_resized >= min_intensity
-    if max_intensity is not None:
-        signal_mask &= intensity_resized <= max_intensity
+    if p_ctx.min_intensity is not None:
+        signal_mask &= intensity_resized >= p_ctx.min_intensity
+    if p_ctx.max_intensity is not None:
+        signal_mask &= intensity_resized <= p_ctx.max_intensity
     if damage_mask is not None:
         signal_mask &= damage_mask_resized
 
@@ -611,11 +570,11 @@ def segmentation_to_atlas_space_intensity(
         signal_mask,
         reg_width,
         reg_height,
-        min_intensity,
-        max_intensity,
+        p_ctx.min_intensity,
+        p_ctx.max_intensity,
     )
 
-    result = _build_intensity_result(
+    return _build_intensity_result(
         df,
         sig_y,
         sig_x,
@@ -623,12 +582,8 @@ def segmentation_to_atlas_space_intensity(
         slice_info,
         atlas_map,
         hemi_mask,
-        reg_height,
-        reg_width,
         deformation,
     )
-
-    return result
 
 
 def _build_intensity_result(
@@ -639,8 +594,6 @@ def _build_intensity_result(
     slice_info,
     atlas_map,
     hemi_mask,
-    reg_height,
-    reg_width,
     deformation=None,
 ):
     """Construct an IntensitySectionResult from extracted signal pixels."""
@@ -653,6 +606,8 @@ def _build_intensity_result(
             point_intensities=None,
             num_points=0,
         )
+
+    reg_height, reg_width = slice_info.height, slice_info.width
 
     # Apply non-linear deformation before transforming to atlas space
     if deformation is not None:
