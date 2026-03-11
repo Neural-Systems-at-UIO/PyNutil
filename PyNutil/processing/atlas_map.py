@@ -11,7 +11,6 @@ Public API
 - :func:`generate_target_slice` — extract a 2-D slice from a 3-D atlas.
 - :func:`warp_image` — apply non-linear deformation to an image.
 - :func:`load_atlas_image` — load / generate an atlas map for a section.
-- :func:`assign_labels_to_image` — replace flat-file pixel values with atlas IDs.
 - :func:`flat_to_dataframe` — count region pixels with optional damage/hemi masks.
 - :func:`get_region_areas` — build atlas map and compute region areas for a section.
 """
@@ -182,28 +181,6 @@ def warp_image(image, deformation, rescaleXY):
 # ---------------------------------------------------------------------------
 
 
-def assign_labels_to_image(image, labelfile):
-    """Assign atlas or region labels to an image array.
-
-    Args:
-        image (ndarray): Image array to label.
-        labelfile (DataFrame): Contains label IDs in the 'idx' column.
-
-    Returns:
-        ndarray: Image with assigned labels.
-    """
-    w, h = image.shape
-    allen_id_image = np.zeros((h, w))
-    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-
-    values = image[coordsy, coordsx].astype(int)
-    lbidx = labelfile["idx"].values
-
-    valid = (values >= 0) & (values < len(lbidx))
-    allen_id_image[valid] = lbidx[values[valid]]
-    return allen_id_image
-
-
 @lru_cache(maxsize=8)
 def _read_itksnap_label_lookup(path):
     """Read a label lookup file and return ordered atlas IDs by label index."""
@@ -281,7 +258,15 @@ def load_atlas_image(
                 return lookup[image.astype(int)]
         if file.endswith(".seg"):
             image = read_seg_file(file)
-        image = assign_labels_to_image(image, labelfile)
+        # Remap flat-file pixel values to atlas region IDs
+        w, h = image.shape
+        allen_id_image = np.zeros((h, w))
+        coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
+        values = image[coordsy, coordsx].astype(int)
+        lbidx = labelfile["idx"].values
+        valid = (values >= 0) & (values < len(lbidx))
+        allen_id_image[valid] = lbidx[values[valid]]
+        image = allen_id_image
 
     return image
 

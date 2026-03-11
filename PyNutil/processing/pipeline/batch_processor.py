@@ -25,10 +25,8 @@ from .section_processor import (
 )
 from ..utils import (
     discover_image_files,
-    get_flat_files,
-    number_sections,
-    get_current_flat_file,
 )
+from ...io.loaders import number_sections
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +105,18 @@ def _run_batch_with_context(
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
     segmentations = discover_image_files(folder)
-    flat_files, flat_file_nrs = get_flat_files(folder, pipeline_ctx.use_flat)
+
+    # Discover flat files (only needed when use_flat is True)
+    flat_files, flat_file_nrs = [], []
+    if pipeline_ctx.use_flat:
+        flat_dir = os.path.join(folder, "flat_files")
+        flat_files = [
+            os.path.join(flat_dir, name)
+            for name in os.listdir(flat_dir)
+            if name.endswith(".flat") or name.endswith(".seg")
+        ]
+        print(f"Found {len(flat_files)} flat files in folder {folder}")
+        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
 
     results = [empty_result_factory() for _ in range(len(segmentations))]
 
@@ -126,9 +135,10 @@ def _run_batch_with_context(
                 if not slice_info.anchoring:
                     continue
 
-                current_flat = get_current_flat_file(
-                    seg_nr, flat_files, flat_file_nrs, pipeline_ctx.use_flat
-                )
+                current_flat = None
+                if pipeline_ctx.use_flat:
+                    idx_arr = [i for i, nr in enumerate(flat_file_nrs) if nr == seg_nr]
+                    current_flat = flat_files[idx_arr[0]] if idx_arr else None
                 section_ctx = SectionContext(
                     section_number=seg_nr,
                     slice_info=slice_info,

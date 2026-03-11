@@ -21,8 +21,6 @@ from .atlas_loader import (
 from .file_operations import save_analysis_output, SaveContext
 from .loaders import (
     number_sections,
-    get_flat_files,
-    get_current_flat_file,
     open_custom_region_file,
     read_flat_file,
     read_seg_file,

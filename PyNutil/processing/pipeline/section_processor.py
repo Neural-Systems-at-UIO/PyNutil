@@ -269,21 +269,6 @@ def _apply_intensity_bounds(arr, min_val, max_val):
         arr[arr > max_val] = 0
 
 
-def _filter_rgb_by_intensity(image_resized, min_intensity, max_intensity):
-    """Zero RGB pixels whose luminance falls outside intensity bounds."""
-    if min_intensity is None and max_intensity is None:
-        return
-    temp_gray = (
-        0.2989 * image_resized[:, :, 0]
-        + 0.5870 * image_resized[:, :, 1]
-        + 0.1140 * image_resized[:, :, 2]
-    )
-    if min_intensity is not None:
-        image_resized[temp_gray < min_intensity] = 0
-    if max_intensity is not None:
-        image_resized[temp_gray > max_intensity] = 0
-
-
 def _extract_signal_pixels(
     image,
     intensity_resized,
@@ -301,7 +286,17 @@ def _extract_signal_pixels(
             image, (reg_width, reg_height), interpolation=cv2.INTER_AREA
         )
         image_resized = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)
-        _filter_rgb_by_intensity(image_resized, min_intensity, max_intensity)
+        # Zero RGB pixels whose luminance falls outside intensity bounds.
+        if min_intensity is not None or max_intensity is not None:
+            temp_gray = (
+                0.2989 * image_resized[:, :, 0]
+                + 0.5870 * image_resized[:, :, 1]
+                + 0.1140 * image_resized[:, :, 2]
+            )
+            if min_intensity is not None:
+                image_resized[temp_gray < min_intensity] = 0
+            if max_intensity is not None:
+                image_resized[temp_gray > max_intensity] = 0
         sig_intensities = image_resized[sig_y, sig_x]
     else:
         sig_intensities = intensity_resized[sig_y, sig_x]

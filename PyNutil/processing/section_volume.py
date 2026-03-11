@@ -10,11 +10,11 @@ from .adapters import load_registration
 from .adapters.segmentation import SegmentationAdapterRegistry
 from .transforms import transform_to_atlas_space
 from .utils import (
-    number_sections,
     convert_to_intensity,
     discover_image_files,
     resize_mask_nearest,
 )
+from ..io.loaders import number_sections
 
 
 def derive_shape_from_atlas(

@@ -221,46 +221,6 @@ def number_sections(filenames):
     return section_numbers
 
 
-def get_flat_files(folder, use_flat=False):
-    """Retrieve flat file paths from the given folder.
-
-    Args:
-        folder (str): Path to the folder containing flat files.
-        use_flat (bool, optional): If True, filter only flat files.
-
-    Returns:
-        tuple: A list of flat file paths and their numeric indices.
-    """
-    if use_flat:
-        flat_files = [
-            os.path.join(folder, "flat_files", name)
-            for name in os.listdir(os.path.join(folder, "flat_files"))
-            if name.endswith(".flat") or name.endswith(".seg")
-        ]
-        print(f"Found {len(flat_files)} flat files in folder {folder}")
-        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
-        return flat_files, flat_file_nrs
-    return [], []
-
-
-def get_current_flat_file(seg_nr, flat_files, flat_file_nrs, use_flat):
-    """Determine the correct flat file for a given section number.
-
-    Args:
-        seg_nr (int): Numeric index of the segmentation.
-        flat_files (list): List of flat file paths.
-        flat_file_nrs (list): Numeric indices for each flat file.
-        use_flat (bool): If True, attempts to match flat files to segments.
-
-    Returns:
-        str or None: The matched flat file path, or None if not found or unused.
-    """
-    if use_flat:
-        current_flat_file_index = np.where([f == seg_nr for f in flat_file_nrs])
-        return flat_files[current_flat_file_index[0][0]]
-    return None
-
-
 # ---------------------------------------------------------------------------
 # Coordinate file loading
 # ---------------------------------------------------------------------------
