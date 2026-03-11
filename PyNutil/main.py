@@ -139,47 +139,88 @@ class PyNutil:
         cfg.normalize(logger=logger)
         cfg.validate()
 
-        self.segmentation_folder = cfg.segmentation_folder
-        self.image_folder = cfg.image_folder
-        self.coordinate_file = cfg.coordinate_file
-        self.alignment_json = cfg.alignment_json
-        self.colour = cfg.colour
-        self.intensity_channel = cfg.intensity_channel
-        self.atlas_name = cfg.atlas_name
-        self.voxel_size_um = (
-            float(cfg.voxel_size_um) if cfg.voxel_size_um is not None else None
-        )
-        self.min_intensity = cfg.min_intensity
-        self.max_intensity = cfg.max_intensity
-        self.segmentation_format = cfg.segmentation_format
-        self.custom_region_path = cfg.custom_region_path
+        # Store the config as the single source of truth for pipeline settings.
+        # voxel_size_um may be overwritten by _infer_voxel_size below.
+        self._cfg = cfg
 
         if cfg.custom_region_path:
-            custom_regions_dict, custom_atlas_labels = open_custom_region_file(
-                cfg.custom_region_path
+            self._custom_regions_dict, self._custom_atlas_labels = (
+                open_custom_region_file(cfg.custom_region_path)
             )
         else:
-            custom_regions_dict = None
-            custom_atlas_labels = None
-        self.custom_regions_dict = custom_regions_dict
-        self.custom_atlas_labels = custom_atlas_labels
+            self._custom_regions_dict = None
+            self._custom_atlas_labels = None
 
-        self._load_atlas_data(cfg)
+        self._load_atlas_data()
         self._infer_voxel_size()
 
-        self.point_intensities = None
+        # Extraction result (populated by get_coordinates)
+        self._result = None
+        # Quantification results (populated by quantify_coordinates)
+        self.label_df = None
+        self.per_section_df = None
+        self.custom_label_df = None
+        self.custom_per_section_df = None
 
-    def _load_atlas_data(self, cfg):
+    # ── Public config properties (tests and user code access these) ──────────
+
+    @property
+    def segmentation_folder(self):
+        return self._cfg.segmentation_folder
+
+    @property
+    def image_folder(self):
+        return self._cfg.image_folder
+
+    @property
+    def alignment_json(self):
+        return self._cfg.alignment_json
+
+    @property
+    def colour(self):
+        return self._cfg.colour
+
+    @property
+    def intensity_channel(self):
+        return self._cfg.intensity_channel
+
+    @property
+    def atlas_name(self):
+        return self._cfg.atlas_name
+
+    @property
+    def segmentation_format(self):
+        return self._cfg.segmentation_format
+
+    @property
+    def voxel_size_um(self):
+        return self._cfg.voxel_size_um
+
+    @voxel_size_um.setter
+    def voxel_size_um(self, value):
+        self._cfg.voxel_size_um = value
+
+    @property
+    def custom_regions_dict(self):
+        return self._custom_regions_dict
+
+    # ── Public result properties ─────────────────────────────────────────────
+
+    @property
+    def segmentation_filenames(self):
+        return self._result.segmentation_filenames if self._result else None
+
+    # ── Atlas loading ────────────────────────────────────────────────────────
+
+    def _load_atlas_data(self):
         """Load atlas volume, hemisphere map, and labels from config."""
+        cfg = self._cfg
         if cfg.atlas_path and cfg.label_path:
-            self.atlas_path = cfg.atlas_path
-            self.label_path = cfg.label_path
-            self.hemi_path = cfg.hemi_path
             self.atlas_volume, self.hemi_map, self.atlas_labels = load_custom_atlas(
                 cfg.atlas_path, cfg.hemi_path, cfg.label_path
             )
         else:
-            if not self.atlas_name:
+            if not cfg.atlas_name:
                 raise ValueError(
                     "When atlas_path and label_path are not specified, atlas_name must be specified."
                 )
@@ -189,14 +230,14 @@ class PyNutil:
 
     def _infer_voxel_size(self):
         """Try to infer voxel size from brainglobe atlas name."""
-        if self.voxel_size_um is not None or not isinstance(self.atlas_name, str):
+        if self._cfg.voxel_size_um is not None or not isinstance(self._cfg.atlas_name, str):
             return
-        m = re.search(r"(\d+(?:\.\d+)?)um$", self.atlas_name)
+        m = re.search(r"(\d+(?:\.\d+)?)um$", self._cfg.atlas_name)
         if m:
             try:
-                self.voxel_size_um = float(m.group(1))
+                self._cfg.voxel_size_um = float(m.group(1))
             except Exception:
-                self.voxel_size_um = None
+                pass
 
     def get_coordinates(
         self,
@@ -223,10 +264,11 @@ class PyNutil:
         Returns:
             None: Results are stored in class attributes.
         """
-        if self.coordinate_file:
+        cfg = self._cfg
+        if cfg.coordinate_file:
             result = file_to_atlas_space_coordinates(
-                self.coordinate_file,
-                self.alignment_json,
+                cfg.coordinate_file,
+                cfg.alignment_json,
                 self.atlas_labels,
                 non_linear,
                 self.atlas_volume,
@@ -234,28 +276,28 @@ class PyNutil:
                 apply_damage_mask,
             )
             map_custom_regions = True
-        elif self.image_folder:
+        elif cfg.image_folder:
             result = folder_to_atlas_space_intensity(
-                self.image_folder,
-                self.alignment_json,
+                cfg.image_folder,
+                cfg.alignment_json,
                 self.atlas_labels,
-                self.intensity_channel,
+                cfg.intensity_channel,
                 non_linear,
                 self.atlas_volume,
                 self.hemi_map,
                 use_flat,
                 apply_damage_mask,
                 flat_label_path=flat_label_path,
-                min_intensity=self.min_intensity,
-                max_intensity=self.max_intensity,
+                min_intensity=cfg.min_intensity,
+                max_intensity=cfg.max_intensity,
             )
             map_custom_regions = False
         else:
             result = folder_to_atlas_space(
-                self.segmentation_folder,
-                self.alignment_json,
+                cfg.segmentation_folder,
+                cfg.alignment_json,
                 self.atlas_labels,
-                self.colour,
+                cfg.colour,
                 non_linear,
                 object_cutoff,
                 self.atlas_volume,
@@ -263,18 +305,18 @@ class PyNutil:
                 use_flat,
                 apply_damage_mask,
                 flat_label_path=flat_label_path,
-                segmentation_format=self.segmentation_format,
+                segmentation_format=cfg.segmentation_format,
             )
             map_custom_regions = True
 
-        self.__dict__.update(vars(result))
-        self.apply_damage_mask = apply_damage_mask
-        if map_custom_regions and self.custom_regions_dict is not None:
-            self.points_custom_labels = map_to_custom_regions(
-                self.custom_regions_dict, self.points_labels
+        self._result = result
+        self._apply_damage_mask = apply_damage_mask
+        if map_custom_regions and self._custom_regions_dict is not None:
+            self._result.points_custom_labels = map_to_custom_regions(
+                self._custom_regions_dict, result.points_labels
             )
-            self.centroids_custom_labels = map_to_custom_regions(
-                self.custom_regions_dict, self.centroids_labels
+            self._result.centroids_custom_labels = map_to_custom_regions(
+                self._custom_regions_dict, result.centroids_labels
             )
 
     def quantify_coordinates(self):
@@ -295,44 +337,45 @@ class PyNutil:
         Returns:
             None
         """
-        if self.image_folder:
-            if not hasattr(self, "region_intensities_list"):
+        r = self._result
+        if self._cfg.image_folder:
+            if r is None or not hasattr(r, "region_intensities_list"):
                 raise ValueError(
                     "Please run get_coordinates before running quantify_coordinates."
                 )
             self.label_df, self.per_section_df = quantify_intensity(
-                self.region_intensities_list, self.atlas_labels
+                r.region_intensities_list, self.atlas_labels
             )
         else:
-            if not hasattr(self, "pixel_points") and not hasattr(self, "centroids"):
+            if r is None:
                 raise ValueError(
                     "Please run get_coordinates before running quantify_coordinates."
                 )
             self.label_df, self.per_section_df = quantify_labeled_points(
                 PerEntityArrays(
-                    labels=self.points_labels,
-                    hemi_labels=self.points_hemi_labels,
-                    undamaged=self.per_point_undamaged,
-                    section_lengths=self.total_points_len,
+                    labels=r.points_labels,
+                    hemi_labels=r.points_hemi_labels,
+                    undamaged=r.per_point_undamaged,
+                    section_lengths=r.total_points_len,
                 ),
                 PerEntityArrays(
-                    labels=self.centroids_labels,
-                    hemi_labels=self.centroids_hemi_labels,
-                    undamaged=self.per_centroid_undamaged,
-                    section_lengths=self.total_centroids_len,
+                    labels=r.centroids_labels,
+                    hemi_labels=r.centroids_hemi_labels,
+                    undamaged=r.per_centroid_undamaged,
+                    section_lengths=r.total_centroids_len,
                 ),
-                self.region_areas_list,
+                r.region_areas_list,
                 self.atlas_labels,
-                self.apply_damage_mask,
+                self._apply_damage_mask,
             )
-        if self.custom_regions_dict is not None:
+        if self._custom_regions_dict is not None:
             self.custom_label_df, self.label_df = apply_custom_regions(
-                self.label_df, self.custom_regions_dict
+                self.label_df, self._custom_regions_dict
             )
             self.custom_per_section_df = []
             for section_df in self.per_section_df:
                 custom_df, section_df = apply_custom_regions(
-                    section_df, self.custom_regions_dict
+                    section_df, self._custom_regions_dict
                 )
                 self.custom_per_section_df.append(custom_df)
 
@@ -379,40 +422,34 @@ class PyNutil:
         Returns:
             (volume, frequency_volume)
         """
-
-        if not self.segmentation_folder and not self.image_folder:
+        cfg = self._cfg
+        if not cfg.segmentation_folder and not cfg.image_folder:
             raise ValueError(
                 "Either segmentation_folder or image_folder must be specified"
             )
-        if not self.alignment_json:
+        if not cfg.alignment_json:
             raise ValueError("alignment_json is required")
         if (
-            self.segmentation_folder
-            and self.segmentation_format != "cellpose"
-            and self.colour is None
+            cfg.segmentation_folder
+            and cfg.segmentation_format != "cellpose"
+            and cfg.colour is None
         ):
             raise ValueError(
                 "colour must be set to interpolate_volume when using segmentation_folder"
             )
 
-        atlas_shape = (
-            tuple(int(x) for x in self.atlas_volume.shape)
-            if getattr(self, "atlas_volume", None) is not None
-            else None
-        )
-        if atlas_shape is None:
+        if self.atlas_volume is None:
             raise ValueError("atlas_volume is unavailable")
+        atlas_shape = tuple(int(x) for x in self.atlas_volume.shape)
 
-        folder_to_use = (
-            self.segmentation_folder if self.segmentation_folder else self.image_folder
-        )
+        folder_to_use = cfg.segmentation_folder or cfg.image_folder
 
         gv, fv, dv = _project_sections_to_volume(
             segmentation_folder=folder_to_use,
-            alignment_json=self.alignment_json,
-            colour=self.colour,
+            alignment_json=cfg.alignment_json,
+            colour=cfg.colour,
             atlas_shape=atlas_shape,
-            atlas_volume=getattr(self, "atlas_volume", None),
+            atlas_volume=self.atlas_volume,
             scale=scale,
             missing_fill=missing_fill,
             do_interpolation=do_interpolation,
@@ -421,11 +458,11 @@ class PyNutil:
             use_atlas_mask=use_atlas_mask,
             non_linear=non_linear,
             value_mode=value_mode,
-            segmentation_format=self.segmentation_format,
-            segmentation_mode=bool(self.segmentation_folder),
-            intensity_channel=self.intensity_channel,
-            min_intensity=self.min_intensity,
-            max_intensity=self.max_intensity,
+            segmentation_format=cfg.segmentation_format,
+            segmentation_mode=bool(cfg.segmentation_folder),
+            intensity_channel=cfg.intensity_channel,
+            min_intensity=cfg.min_intensity,
+            max_intensity=cfg.max_intensity,
         )
 
         self.interpolated_volume = gv
@@ -455,31 +492,31 @@ class PyNutil:
         self._save_analysis_variant(
             base_ctx,
             output_folder,
-            label_df_attr="label_df",
-            per_section_df_attr="per_section_df",
-            points_labels_attr="points_labels",
-            centroids_labels_attr="centroids_labels",
+            label_df=self.label_df,
+            per_section_df=self.per_section_df,
+            points_labels=self._result.points_labels if self._result else None,
+            centroids_labels=self._result.centroids_labels if self._result else None,
             atlas_labels=self.atlas_labels,
             prepend="",
         )
         self._save_volumes(output_folder)
 
-        if self.custom_regions_dict is not None:
+        if self._custom_regions_dict is not None:
             self._save_analysis_variant(
                 base_ctx,
                 output_folder,
-                label_df_attr="custom_label_df",
-                per_section_df_attr="custom_per_section_df",
-                points_labels_attr="points_custom_labels",
-                centroids_labels_attr="centroids_custom_labels",
-                atlas_labels=self.custom_atlas_labels,
+                label_df=self.custom_label_df,
+                per_section_df=self.custom_per_section_df,
+                points_labels=self._result.points_custom_labels if self._result else None,
+                centroids_labels=self._result.centroids_custom_labels if self._result else None,
+                atlas_labels=self._custom_atlas_labels,
                 prepend="custom_",
                 colormap="gray",
             )
 
         self._remap_compressed_ids(output_folder)
 
-        if create_visualisations and self.alignment_json:
+        if create_visualisations and self._cfg.alignment_json:
             self._create_visualisations(output_folder)
 
         logger.info(f"Saved output to {output_folder}")
@@ -495,32 +532,24 @@ class PyNutil:
         return full_arr
 
     def _build_save_context(self, colormap):
-        """Build a SaveContext with MeshView-appropriate (undamaged-only) arrays."""
-        _und_p = getattr(self, "per_point_undamaged", None)
-        _und_c = getattr(self, "per_centroid_undamaged", None)
+        """Build a SaveContext from the stored config and extraction result."""
+        r = self._result
+        und_p = r.per_point_undamaged if r else None
+        und_c = r.per_centroid_undamaged if r else None
         return SaveContext(
-            pixel_points=getattr(self, "pixel_points", None),
-            centroids=getattr(self, "centroids", None),
+            pixel_points=r.pixel_points if r else None,
+            centroids=r.centroids if r else None,
             points_hemi_labels=self._filter_undamaged(
-                getattr(self, "points_hemi_labels", None), _und_p
+                r.points_hemi_labels if r else None, und_p
             ),
             centroids_hemi_labels=self._filter_undamaged(
-                getattr(self, "centroids_hemi_labels", None), _und_c
+                r.centroids_hemi_labels if r else None, und_c
             ),
-            points_len=getattr(self, "points_len", None),
-            centroids_len=getattr(self, "centroids_len", None),
-            segmentation_filenames=getattr(self, "segmentation_filenames", None),
-            point_intensities=getattr(self, "point_intensities", None),
-            segmentation_folder=self.segmentation_folder,
-            image_folder=getattr(self, "image_folder", None),
-            alignment_json=self.alignment_json,
-            colour=self.colour,
-            intensity_channel=getattr(self, "intensity_channel", None),
-            atlas_name=getattr(self, "atlas_name", None),
-            custom_region_path=getattr(self, "custom_region_path", None),
-            atlas_path=getattr(self, "atlas_path", None),
-            label_path=getattr(self, "label_path", None),
-            settings_file=getattr(self, "settings_file", None),
+            points_len=r.points_len if r else None,
+            centroids_len=r.centroids_len if r else None,
+            segmentation_filenames=r.segmentation_filenames if r else None,
+            point_intensities=r.point_intensities if r else None,
+            config=self._cfg,
             colormap=colormap,
         )
 
@@ -529,25 +558,22 @@ class PyNutil:
         base_ctx,
         output_folder,
         *,
-        label_df_attr,
-        per_section_df_attr,
-        points_labels_attr,
-        centroids_labels_attr,
+        label_df,
+        per_section_df,
+        points_labels,
+        centroids_labels,
         atlas_labels,
         prepend,
         colormap=None,
     ):
         """Save one analysis variant (primary or custom-region) to output files."""
-        _und_p = getattr(self, "per_point_undamaged", None)
-        _und_c = getattr(self, "per_centroid_undamaged", None)
-        base_ctx.label_df = getattr(self, label_df_attr, None)
-        base_ctx.per_section_df = getattr(self, per_section_df_attr, None)
-        base_ctx.labeled_points = self._filter_undamaged(
-            getattr(self, points_labels_attr, None), _und_p
-        )
-        base_ctx.labeled_points_centroids = self._filter_undamaged(
-            getattr(self, centroids_labels_attr, None), _und_c
-        )
+        r = self._result
+        und_p = r.per_point_undamaged if r else None
+        und_c = r.per_centroid_undamaged if r else None
+        base_ctx.label_df = label_df
+        base_ctx.per_section_df = per_section_df
+        base_ctx.labeled_points = self._filter_undamaged(points_labels, und_p)
+        base_ctx.labeled_points_centroids = self._filter_undamaged(centroids_labels, und_c)
         base_ctx.atlas_labels = atlas_labels
         base_ctx.prepend = prepend
         if colormap is not None:
@@ -562,8 +588,8 @@ class PyNutil:
                 interpolated_volume=getattr(self, "interpolated_volume", None),
                 frequency_volume=getattr(self, "frequency_volume", None),
                 damage_volume=getattr(self, "damage_volume", None),
-                atlas_volume=getattr(self, "atlas_volume", None),
-                voxel_size_um=getattr(self, "voxel_size_um", None),
+                atlas_volume=self.atlas_volume,
+                voxel_size_um=self._cfg.voxel_size_um,
                 logger=logger,
             )
         except Exception as e:
@@ -571,7 +597,7 @@ class PyNutil:
 
     def _remap_compressed_ids(self, output_folder):
         """Restore original atlas IDs if they were compressed during loading."""
-        if hasattr(self, "label_df") and ("original_idx" in self.label_df.columns):
+        if self.label_df is not None and "original_idx" in self.label_df.columns:
             self.label_df["idx"] = self.label_df["original_idx"]
             self.label_df = self.label_df.drop(columns=["original_idx"])
             self.label_df.to_csv(
@@ -588,19 +614,19 @@ class PyNutil:
             from .processing.adapters.segmentation import SegmentationAdapterRegistry
 
             reg_data = load_registration(
-                self.alignment_json, apply_deformation=False, apply_damage=False
+                self._cfg.alignment_json, apply_deformation=False, apply_damage=False
             )
-            adapter = SegmentationAdapterRegistry.get(self.segmentation_format)
+            adapter = SegmentationAdapterRegistry.get(self._cfg.segmentation_format)
 
             logger.info("Creating section visualisations...")
             create_section_visualisations(
-                self.segmentation_folder or self.image_folder,
+                self._cfg.segmentation_folder or self._cfg.image_folder,
                 reg_data.slices,
                 self.atlas_volume,
                 self.atlas_labels,
                 output_folder,
                 adapter=adapter,
-                pixel_id=self.colour,
+                pixel_id=self._cfg.colour,
             )
         except Exception as e:
             logger.error(f"visualisation failed: {e}")

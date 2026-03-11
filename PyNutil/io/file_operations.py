@@ -1,19 +1,23 @@
 import os
 import json
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
 from .meshview_writer import write_hemi_points_to_meshview
 
+if TYPE_CHECKING:
+    from ..config import PyNutilConfig
+
 
 @dataclass
 class SaveContext:
-    """Groups the many parameters needed by :func:`save_analysis_output`.
+    """Groups the parameters needed by :func:`save_analysis_output`.
 
-    Replaces 26+ positional parameters with a single, documented object.
+    Configuration metadata (paths, colour, etc.) is passed as a single
+    ``config`` reference rather than as individual fields.
     """
 
     # Core data
@@ -31,17 +35,8 @@ class SaveContext:
     atlas_labels: Optional[pd.DataFrame] = None
     point_intensities: Optional[np.ndarray] = None
 
-    # Configuration / metadata (saved to settings JSON)
-    segmentation_folder: Optional[str] = None
-    image_folder: Optional[str] = None
-    alignment_json: Optional[str] = None
-    colour: Optional[list] = None
-    intensity_channel: Optional[str] = None
-    atlas_name: Optional[str] = None
-    custom_region_path: Optional[str] = None
-    atlas_path: Optional[str] = None
-    label_path: Optional[str] = None
-    settings_file: Optional[str] = None
+    # Single config reference (replaces ~10 individual fields)
+    config: Optional["PyNutilConfig"] = None
 
     # Output control
     prepend: str = ""
@@ -120,7 +115,8 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
     _ensure_analysis_output_dirs(output_folder)
 
     if ctx.label_df is not None:
-        report_name = "intensity.csv" if ctx.image_folder else "counts.csv"
+        cfg = ctx.config
+        report_name = "intensity.csv" if (cfg and cfg.image_folder) else "counts.csv"
         ctx.label_df.to_csv(
             f"{output_folder}/whole_series_report/{ctx.prepend}{report_name}",
             sep=";",
@@ -143,20 +139,22 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
 
 def _save_settings_json(ctx: SaveContext, output_folder: str) -> None:
     """Write a reference settings JSON to *output_folder*."""
+    cfg = ctx.config
+    if cfg is None:
+        return
     settings_dict = {
-        "segmentation_folder": ctx.segmentation_folder,
-        "image_folder": ctx.image_folder,
-        "alignment_json": ctx.alignment_json,
-        "colour": ctx.colour,
-        "intensity_channel": ctx.intensity_channel,
-        "custom_region_path": ctx.custom_region_path,
+        "segmentation_folder": cfg.segmentation_folder,
+        "image_folder": cfg.image_folder,
+        "alignment_json": cfg.alignment_json,
+        "colour": cfg.colour,
+        "intensity_channel": cfg.intensity_channel,
+        "custom_region_path": cfg.custom_region_path,
     }
 
     for key, val in [
-        ("atlas_name", ctx.atlas_name),
-        ("atlas_path", ctx.atlas_path),
-        ("label_path", ctx.label_path),
-        ("settings_file", ctx.settings_file),
+        ("atlas_name", cfg.atlas_name),
+        ("atlas_path", cfg.atlas_path),
+        ("label_path", cfg.label_path),
     ]:
         if val:
             settings_dict[key] = val

@@ -147,3 +147,6 @@ class ExtractionResult:
     total_centroids_len: Optional[List[int]]
     region_intensities_list: Optional[List[Optional[pd.DataFrame]]] = None
     point_intensities: Optional[np.ndarray] = None
+    # Custom-region mapped labels; populated by get_coordinates when custom regions are set
+    points_custom_labels: Optional[np.ndarray] = None
+    centroids_custom_labels: Optional[np.ndarray] = None

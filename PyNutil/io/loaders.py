@@ -65,7 +65,7 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
         print("Error: Non integer value found in rgb list")
         rgb_values = list(df.iloc[0, 1:].values)
     atlas_ids_raw = df.iloc[1:, 1:].T.values
-    atlas_ids = [[int(j) for j in i if j is not np.nan] for i in atlas_ids_raw]
+    atlas_ids = [[int(j) for j in i if pd.notna(j)] for i in atlas_ids_raw]
     new_ids = []
     new_id = 1
     for group in atlas_ids:
