@@ -14,7 +14,7 @@ import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from PyNutil.processing.pipeline.section_processor import segmentation_to_atlas_space
-from PyNutil.processing.transforms import get_region_areas
+from PyNutil.processing.atlas_map import get_region_areas
 from PyNutil.processing.adapters import SliceInfo
 from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
 from PyNutil.context import PipelineContext, SectionContext

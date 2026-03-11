@@ -21,9 +21,6 @@ from ..atlas_map import (
     warp_image,
     compute_deformation_map,
     apply_deformation_map,
-)
-from ..transforms import (
-    transform_to_registration,
     transform_to_atlas_space,
 )
 from ..analysis.aggregator import build_region_intensity_dataframe
@@ -344,9 +341,8 @@ def segmentation_to_atlas_space(
         use_flat,
         flat_label_path,
     )
-    y_scale, x_scale = transform_to_registration(
-        seg_height, seg_width, reg_height, reg_width
-    )
+    y_scale = reg_height / seg_height
+    x_scale = reg_width / seg_width
 
     (
         centroids,
@@ -462,9 +458,8 @@ def coordinates_to_atlas_space(
     )
 
     # Scale from image space to registration space
-    y_scale, x_scale = transform_to_registration(
-        image_height, image_width, reg_height, reg_width
-    )
+    y_scale = reg_height / image_height
+    x_scale = reg_width / image_width
     scaled_x = coords_x.astype(np.float64) * x_scale
     scaled_y = coords_y.astype(np.float64) * y_scale
 

@@ -8,7 +8,7 @@ import numpy as np
 from tqdm import tqdm
 from .adapters import load_registration
 from .adapters.segmentation import SegmentationAdapterRegistry
-from .transforms import transform_to_atlas_space
+from .atlas_map import transform_to_atlas_space
 from .utils import (
     convert_to_intensity,
     discover_image_files,
