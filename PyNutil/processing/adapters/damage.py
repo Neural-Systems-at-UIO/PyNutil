@@ -23,7 +23,8 @@ def create_damage_mask(slice_info, section_grid, grid_spacing):
     """Create a binary damage mask from grid information in the given section.
 
     Args:
-        section (dict): Dictionary with slice and grid data.
+        slice_info: SliceInfo with anchoring and registration dimensions.
+        section_grid (dict): Dictionary with grid data (grid, gridx, gridy).
         grid_spacing (int): Space between grid marks.
 
     Returns:

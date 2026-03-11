@@ -153,9 +153,13 @@ def quantify_labeled_points(
         atlas_labels,
         apply_damage_mask,
     )
-    label_df = _combine_reports(
-        per_section_df, atlas_labels, derive_fn=_derive_area_fractions
-    )
+
+    def _area_fractions(df):
+        for num, den, res in AREA_FRACTION_PAIRS:
+            if num in df.columns and den in df.columns:
+                df[res] = df[num] / df[den]
+
+    label_df = _combine_reports(per_section_df, atlas_labels, derive_fn=_area_fractions)
     if not apply_damage_mask:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
@@ -246,52 +250,31 @@ def quantify_intensity(region_intensities_list, atlas_labels):
 # ── Shared combine logic ────────────────────────────────────────────────
 
 
-def _backfill_label_info(label_df, atlas_labels):
-    """Fill missing name/colour columns from *atlas_labels* for zero-count regions."""
-    if "name" not in atlas_labels.columns or "name" not in label_df.columns:
-        return
-    idx_map = atlas_labels.set_index("idx")
-    for col in ["name", "r", "g", "b"]:
-        if col in atlas_labels.columns:
-            label_df[col] = label_df[col].fillna(label_df["idx"].map(idx_map[col]))
-
-
-def _prepare_combined_df(per_section_df, available_group_cols):
-    """Concat per-section DataFrames and coerce non-group columns to numeric."""
-    non_empty = []
-    for df in per_section_df:
-        if df is None or df.empty:
-            continue
-        non_na = df.dropna(how="all")
-        non_na = non_na.dropna(how="all", axis=1)
-        if non_na.empty:
-            continue
-        non_empty.append(df)
-    combined = pd.concat(non_empty) if non_empty else pd.DataFrame()
-    for col in combined.columns:
-        if col not in available_group_cols:
-            combined[col] = pd.to_numeric(combined[col], errors="coerce")
-    return combined
-
-
 def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
     """Combine per-section DataFrames into a whole-series report.
 
-    This is the single implementation shared by both the segmentation
-    (area-fraction) and intensity (mean-intensity) pipelines.
+    Shared by both the segmentation (area-fraction) and intensity
+    (mean-intensity) pipelines.
 
     Args:
         per_section_df: List of per-section DataFrames.
         atlas_labels: Atlas labels DataFrame.
-        derive_fn: Callable ``(df) → None`` that adds derived columns
-            (e.g. area fractions or mean intensities) **in-place**.
+        derive_fn: Callable ``(df) → None`` that adds derived columns in-place.
 
     Returns:
         Combined DataFrame reindexed to all atlas regions.
     """
     group_cols = ["idx", "name", "r", "g", "b"]
     available_group_cols = [c for c in group_cols if c in per_section_df[0].columns]
-    combined = _prepare_combined_df(per_section_df, available_group_cols)
+
+    non_empty = [
+        df for df in per_section_df
+        if df is not None and not df.empty and not df.dropna(how="all").empty
+    ]
+    combined = pd.concat(non_empty) if non_empty else pd.DataFrame()
+    for col in combined.columns:
+        if col not in available_group_cols:
+            combined[col] = pd.to_numeric(combined[col], errors="coerce")
 
     numeric_cols = combined.select_dtypes(include=[np.number]).columns
     sum_cols = [c for c in numeric_cols if c not in set(available_group_cols)]
@@ -302,20 +285,13 @@ def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
     derive_fn(label_df)
     label_df.fillna(0, inplace=True)
     label_df = reindex_to_atlas(label_df, atlas_labels)
-    _backfill_label_info(label_df, atlas_labels)
+
+    # Fill missing name/colour columns from atlas_labels for zero-count regions
+    if "name" in atlas_labels.columns and "name" in label_df.columns:
+        idx_map = atlas_labels.set_index("idx")
+        for col in ["name", "r", "g", "b"]:
+            if col in atlas_labels.columns:
+                label_df[col] = label_df[col].fillna(label_df["idx"].map(idx_map[col]))
+
     label_df.fillna(0, inplace=True)
     return label_df
-
-
-def _derive_area_fractions(df):
-    """Callback: add area-fraction columns to *df* in-place.
-
-    Uses direct division to match the historical ``_combine_slice_reports``
-    behaviour: ``inf`` for *x / 0* and ``NaN`` for *0 / 0*.  The caller
-    follows up with ``fillna(0)`` which converts NaN → 0 and preserves
-    inf (the expected output includes inf for regions with non-zero
-    pixel counts but zero region area).
-    """
-    for num, den, res in AREA_FRACTION_PAIRS:
-        if num in df.columns and den in df.columns:
-            df[res] = df[num] / df[den]

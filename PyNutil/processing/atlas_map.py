@@ -20,7 +20,6 @@ import math
 from typing import Any, Callable, List, Optional, Tuple
 from functools import lru_cache
 
-import cv2
 import numpy as np
 import pandas as pd
 
@@ -273,30 +272,6 @@ def load_atlas_image(
 # ---------------------------------------------------------------------------
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
-
-def _derive_area_aggregates(df, hemi_mask, damage_mask):
-    """Derive aggregate area columns from leaf-level columns in *df*."""
-    if (hemi_mask is not None) and (damage_mask is not None):
-        df["undamaged_region_area"] = (
-            df["left_hemi_undamaged_region_area"]
-            + df["right_hemi_undamaged_region_area"]
-        )
-        df["damaged_region_area"] = (
-            df["left_hemi_damaged_region_area"] + df["right_hemi_damaged_region_area"]
-        )
-        df["left_hemi_region_area"] = (
-            df["left_hemi_damaged_region_area"] + df["left_hemi_undamaged_region_area"]
-        )
-        df["right_hemi_region_area"] = (
-            df["right_hemi_damaged_region_area"]
-            + df["right_hemi_undamaged_region_area"]
-        )
-        df["region_area"] = df["undamaged_region_area"] + df["damaged_region_area"]
-    if (hemi_mask is not None) and (damage_mask is None):
-        df["region_area"] = df["left_hemi_region_area"] + df["right_hemi_region_area"]
-    if (hemi_mask is None) and (damage_mask is not None):
-        df["region_area"] = df["undamaged_region_area"] + df["damaged_region_area"]
-
 
 def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """Build a DataFrame from an atlas map, with optional damage/hemisphere masks.

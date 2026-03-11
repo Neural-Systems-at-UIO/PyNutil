@@ -7,7 +7,6 @@ in a folder, mapping each one to atlas space using parallel execution.
 import os
 
 import numpy as np
-import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 from ...context import PipelineContext, SectionContext

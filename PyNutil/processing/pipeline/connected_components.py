@@ -8,8 +8,6 @@ and region assignment.
 import numpy as np
 import cv2
 
-from ..utils import assign_labels_at_coordinates
-
 
 # ── Shared pixel-grouping helper ─────────────────────────────────────────
 
