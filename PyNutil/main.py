@@ -32,18 +32,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def _apply_extraction_result(ctx, result, *, apply_damage_mask, map_custom_regions):
-    """Apply standardized extraction-result fields directly to context."""
-    ctx.__dict__.update(vars(result))
-    ctx.apply_damage_mask = apply_damage_mask
-    if map_custom_regions and ctx.custom_regions_dict is not None:
-        ctx.points_custom_labels = map_to_custom_regions(
-            ctx.custom_regions_dict, ctx.points_labels
-        )
-        ctx.centroids_custom_labels = map_to_custom_regions(
-            ctx.custom_regions_dict, ctx.centroids_labels
-        )
-
 
 class PyNutil:
     """
@@ -191,7 +179,10 @@ class PyNutil:
                 cfg.atlas_path, cfg.hemi_path, cfg.label_path
             )
         else:
-            self._check_atlas_name()
+            if not self.atlas_name:
+                raise ValueError(
+                    "When atlas_path and label_path are not specified, atlas_name must be specified."
+                )
             self.atlas_volume, self.hemi_map, self.atlas_labels = load_atlas_data(
                 atlas_name=cfg.atlas_name
             )
@@ -206,12 +197,6 @@ class PyNutil:
                 self.voxel_size_um = float(m.group(1))
             except Exception:
                 self.voxel_size_um = None
-
-    def _check_atlas_name(self):
-        if not self.atlas_name:
-            raise ValueError(
-                "When atlas_path and label_path are not specified, atlas_name must be specified."
-            )
 
     def get_coordinates(
         self,
@@ -282,12 +267,15 @@ class PyNutil:
             )
             map_custom_regions = True
 
-        _apply_extraction_result(
-            self,
-            result,
-            apply_damage_mask=apply_damage_mask,
-            map_custom_regions=map_custom_regions,
-        )
+        self.__dict__.update(vars(result))
+        self.apply_damage_mask = apply_damage_mask
+        if map_custom_regions and self.custom_regions_dict is not None:
+            self.points_custom_labels = map_to_custom_regions(
+                self.custom_regions_dict, self.points_labels
+            )
+            self.centroids_custom_labels = map_to_custom_regions(
+                self.custom_regions_dict, self.centroids_labels
+            )
 
     def quantify_coordinates(self):
         """

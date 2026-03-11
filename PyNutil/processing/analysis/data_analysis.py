@@ -39,32 +39,6 @@ _RATIO_COLS = frozenset(
 # ── Custom region helpers ────────────────────────────────────────────────
 
 
-def _build_custom_region_mappings(custom_regions_dict):
-    """Build id/name/rgb lookup dicts from a custom regions definition.
-
-    Args:
-        custom_regions_dict: Dict with keys ``custom_ids``, ``custom_names``,
-            ``rgb_values``, ``subregion_ids``.
-
-    Returns:
-        (id_mapping, name_mapping, rgb_mapping) — each maps *subregion id* →
-        custom value.
-    """
-    id_mapping = {}
-    name_mapping = {}
-    rgb_mapping = {}
-    for cid, cname, rgb, subregions in zip(
-        custom_regions_dict["custom_ids"],
-        custom_regions_dict["custom_names"],
-        custom_regions_dict["rgb_values"],
-        custom_regions_dict["subregion_ids"],
-    ):
-        for sid in subregions:
-            id_mapping[sid] = cid
-            name_mapping[sid] = cname
-            rgb_mapping[sid] = rgb
-    return id_mapping, name_mapping, rgb_mapping
-
 
 def map_to_custom_regions(custom_regions_dict, points_labels):
     """Reassign atlas-region labels to user-defined custom region IDs.
@@ -102,14 +76,27 @@ def apply_custom_regions(df, custom_regions_dict):
         (grouped_df, df) — *grouped_df* aggregated by custom region,
         *df* with an added ``custom_region_name`` column.
     """
-    id_mapping, name_mapping, rgb_mapping = _build_custom_region_mappings(
-        custom_regions_dict
-    )
+    id_mapping = {}
+    name_mapping = {}
+    rgb_mapping = {}
+    for cid, cname, rgb, subregions in zip(
+        custom_regions_dict["custom_ids"],
+        custom_regions_dict["custom_names"],
+        custom_regions_dict["rgb_values"],
+        custom_regions_dict["subregion_ids"],
+    ):
+        for sid in subregions:
+            id_mapping[sid] = cid
+            name_mapping[sid] = cname
+            rgb_mapping[sid] = rgb
 
     # Annotate original df
     df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
     temp_df = df.copy()
-    _apply_rgb_mapping(temp_df, id_mapping, rgb_mapping)
+    temp_df["r"] = temp_df["idx"].map(lambda x: rgb_mapping[x][0] if x in rgb_mapping else None)
+    temp_df["g"] = temp_df["idx"].map(lambda x: rgb_mapping[x][1] if x in rgb_mapping else None)
+    temp_df["b"] = temp_df["idx"].map(lambda x: rgb_mapping[x][2] if x in rgb_mapping else None)
+    temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
     # Aggregate all numeric columns dynamically
     numeric_cols = temp_df.select_dtypes(include=[np.number]).columns
@@ -135,20 +122,6 @@ def apply_custom_regions(df, custom_regions_dict):
         + [col for col in grouped_df.columns if col not in common_columns]
     )
     return grouped_df, df
-
-
-def _apply_rgb_mapping(temp_df, id_mapping, rgb_mapping):
-    """Set r/g/b columns and remap idx using *id_mapping* and *rgb_mapping*."""
-    temp_df["r"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][0] if x in rgb_mapping else None
-    )
-    temp_df["g"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][1] if x in rgb_mapping else None
-    )
-    temp_df["b"] = temp_df["idx"].map(
-        lambda x: rgb_mapping[x][2] if x in rgb_mapping else None
-    )
-    temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
 
 # ── Segmentation quantification ─────────────────────────────────────────
