@@ -274,28 +274,6 @@ def load_atlas_image(
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
 
-def _build_area_combos(hemi_mask, damage_mask):
-    """Return list of (hemi_val, damage_val, column_name) for area counting."""
-    if (hemi_mask is not None) and (damage_mask is not None):
-        return [
-            (1, 0, "left_hemi_undamaged_region_area"),
-            (1, 1, "left_hemi_damaged_region_area"),
-            (2, 0, "right_hemi_undamaged_region_area"),
-            (2, 1, "right_hemi_damaged_region_area"),
-        ]
-    if (hemi_mask is not None) and (damage_mask is None):
-        return [
-            (1, 0, "left_hemi_region_area"),
-            (2, 0, "right_hemi_region_area"),
-        ]
-    if (hemi_mask is None) and (damage_mask is not None):
-        return [
-            (0, 0, "undamaged_region_area"),
-            (0, 1, "damaged_region_area"),
-        ]
-    return [(None, None, "region_area")]
-
-
 def _derive_area_aggregates(df, hemi_mask, damage_mask):
     """Derive aggregate area columns from leaf-level columns in *df*."""
     if (hemi_mask is not None) and (damage_mask is not None):
@@ -355,7 +333,21 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     flat_img = image.ravel()
     unique_ids, inverse = np.unique(flat_img, return_inverse=True)
 
-    combos = _build_area_combos(hemi_mask, damage_mask)
+    # Build the list of (hemi_val, damage_val, column_name) combos
+    if (hemi_mask is not None) and (damage_mask is not None):
+        combos = [
+            (1, 0, "left_hemi_undamaged_region_area"),
+            (1, 1, "left_hemi_damaged_region_area"),
+            (2, 0, "right_hemi_undamaged_region_area"),
+            (2, 1, "right_hemi_damaged_region_area"),
+        ]
+    elif hemi_mask is not None:
+        combos = [(1, 0, "left_hemi_region_area"), (2, 0, "right_hemi_region_area")]
+    elif damage_mask is not None:
+        combos = [(0, 0, "undamaged_region_area"), (0, 1, "damaged_region_area")]
+    else:
+        combos = [(None, None, "region_area")]
+
     data = {"idx": unique_ids}
 
     for hemi_val, damage_val, col_name in combos:
@@ -373,14 +365,38 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
 
     df_area_per_label = pd.DataFrame(data)
 
-    _derive_area_aggregates(df_area_per_label, hemi_mask, damage_mask)
-
-    # When no masks are present, add the total region_area column.
-    if (hemi_mask is None) and (damage_mask is None):
-        total_counts = np.bincount(inverse, minlength=len(unique_ids))
-        if scale_factor:
-            total_counts = total_counts.astype(np.float64) * scale_factor
-        df_area_per_label["region_area"] = total_counts.astype(np.float64)
+    # Derive aggregate area columns from leaf-level columns
+    if (hemi_mask is not None) and (damage_mask is not None):
+        df_area_per_label["undamaged_region_area"] = (
+            df_area_per_label["left_hemi_undamaged_region_area"]
+            + df_area_per_label["right_hemi_undamaged_region_area"]
+        )
+        df_area_per_label["damaged_region_area"] = (
+            df_area_per_label["left_hemi_damaged_region_area"]
+            + df_area_per_label["right_hemi_damaged_region_area"]
+        )
+        df_area_per_label["left_hemi_region_area"] = (
+            df_area_per_label["left_hemi_damaged_region_area"]
+            + df_area_per_label["left_hemi_undamaged_region_area"]
+        )
+        df_area_per_label["right_hemi_region_area"] = (
+            df_area_per_label["right_hemi_damaged_region_area"]
+            + df_area_per_label["right_hemi_undamaged_region_area"]
+        )
+        df_area_per_label["region_area"] = (
+            df_area_per_label["undamaged_region_area"]
+            + df_area_per_label["damaged_region_area"]
+        )
+    elif hemi_mask is not None:
+        df_area_per_label["region_area"] = (
+            df_area_per_label["left_hemi_region_area"]
+            + df_area_per_label["right_hemi_region_area"]
+        )
+    elif damage_mask is not None:
+        df_area_per_label["region_area"] = (
+            df_area_per_label["undamaged_region_area"]
+            + df_area_per_label["damaged_region_area"]
+        )
 
     return df_area_per_label
 

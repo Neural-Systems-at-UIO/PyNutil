@@ -6,7 +6,7 @@ They take RegistrationData and add damage masks to each slice.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -17,22 +17,6 @@ from ...io.loaders import load_json_file
 # ---------------------------------------------------------------------------
 # Grid-based damage mask construction
 # ---------------------------------------------------------------------------
-
-
-def update_spacing(slice_info, grid_spacing):
-    """Calculate spacing along width and height from slice anchoring.
-
-    Args:
-        slice_info: SliceInfo with anchoring and registration dimensions.
-        grid_spacing (int): Grid spacing in image units.
-
-    Returns:
-        tuple: (xspacing, yspacing)
-    """
-    ow, oh = slice_info.physical_dimensions
-    xspacing = int(slice_info.width * grid_spacing / ow)
-    yspacing = int(slice_info.height * grid_spacing / oh)
-    return xspacing, yspacing
 
 
 def create_damage_mask(slice_info, section_grid, grid_spacing):
@@ -51,7 +35,9 @@ def create_damage_mask(slice_info, section_grid, grid_spacing):
     gridx = section_grid["gridx"]
     gridy = section_grid["gridy"]
 
-    xspacing, yspacing = update_spacing(slice_info, grid_spacing)
+    ow, oh = slice_info.physical_dimensions
+    xspacing = int(width * grid_spacing / ow)
+    yspacing = int(height * grid_spacing / oh)
     x_coords = np.arange(gridx, width, xspacing)
     y_coords = np.arange(gridy, height, yspacing)
 
@@ -101,16 +87,6 @@ class QCAlignDamageProvider(DamageProvider):
 
         return grids, data.get("gridspacing")
 
-    def _create_damage_mask(
-        self, slice_info, slice_data: Dict[str, Any], grid_spacing: int
-    ) -> np.ndarray:
-        """Create damage mask from QCAlign grid.
-
-        Returns a mask at grid resolution where 1=undamaged, 0=damaged.
-        Downstream code is responsible for resizing to the needed resolution.
-        """
-        return create_damage_mask(slice_info, slice_data, grid_spacing)
-
     def apply(self, data: RegistrationData) -> RegistrationData:
         """Add QCAlign damage masks to slices."""
         # Load grids from separate file if specified
@@ -132,7 +108,7 @@ class QCAlignDamageProvider(DamageProvider):
         for s in data.slices:
             grid_data = grids_by_nr.get(s.section_number)
             if grid_data:
-                s.damage_mask = self._create_damage_mask(s, grid_data, grid_spacing)
+                s.damage_mask = create_damage_mask(s, grid_data, grid_spacing)
                 s.metadata["grid"] = grid_data.get("grid")
 
         return data
