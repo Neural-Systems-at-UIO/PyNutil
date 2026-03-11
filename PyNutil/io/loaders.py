@@ -60,7 +60,7 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
 
     custom_region_names = df.columns[1:].to_list()
     try:
-        rgb_values = [list(int(i) for i in rgb.split(";")) for rgb in df.iloc[0, 1:].values]
+        rgb_values = [[int(i) for i in rgb.split(";")] for rgb in df.iloc[0, 1:].values]
     except ValueError:
         print("Error: Non integer value found in rgb list")
         rgb_values = list(df.iloc[0, 1:].values)

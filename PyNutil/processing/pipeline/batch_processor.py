@@ -24,7 +24,10 @@ from .section_processor import (
 from ..utils import (
     discover_image_files,
 )
-from ...io.loaders import number_sections# ---------------------------------------------------------------------------
+from ...io.loaders import number_sections
+
+
+# ---------------------------------------------------------------------------
 # Shared batch scaffold
 # ---------------------------------------------------------------------------
 
@@ -122,7 +125,8 @@ def _concat(arrays, *, dtype=None, none_if_empty=False):
     """Concatenate arrays with configurable dtype and empty-result behavior."""
     non_empty = [a for a in arrays if a is not None and len(a) > 0]
     if non_empty:
-        return np.concatenate(non_empty)
+        result = np.concatenate(non_empty)
+        return result if dtype is None else result.astype(dtype, copy=False)
     if none_if_empty:
         return None
     return np.array([], dtype=dtype)

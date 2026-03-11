@@ -382,11 +382,9 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
 
 
 def transform_to_atlas_space(
-    anchoring: List[float],
+    slice_info,
     y: np.ndarray,
     x: np.ndarray,
-    reg_height: int,
-    reg_width: int,
 ) -> np.ndarray:
     """Transform 2-D registration coordinates to 3-D atlas space.
 
@@ -394,11 +392,10 @@ def transform_to_atlas_space(
         atlas_coord = O + (x/width) * U + (y/height) * V
 
     Args:
-        anchoring: 9-element vector [O[3], U[3], V[3]].
+        slice_info: SliceInfo with `anchoring` (9-element vector), `height`,
+            and `width` for the registration image.
         y: Y coordinates in registration space.
         x: X coordinates in registration space.
-        reg_height: Registration image height.
-        reg_width: Registration image width.
 
     Returns:
         (N, 3) array of 3-D atlas-space coordinates.
@@ -406,14 +403,15 @@ def transform_to_atlas_space(
     # NOTE: This implementation intentionally avoids building intermediate arrays via
     # np.array([row0, row1, row2]).T, which has been observed to miscompute under
     # some Python/numpy builds for large inputs.
+    anchoring = slice_info.anchoring
     o = np.asarray(anchoring[0:3], dtype=np.float64)
     u = np.asarray(anchoring[3:6], dtype=np.float64)
     v = np.asarray(anchoring[6:9], dtype=np.float64)
 
     y_arr = np.asarray(y, dtype=np.float64).ravel()
     x_arr = np.asarray(x, dtype=np.float64).ravel()
-    y_scale = y_arr / float(reg_height)
-    x_scale = x_arr / float(reg_width)
+    y_scale = y_arr / float(slice_info.height)
+    x_scale = x_arr / float(slice_info.width)
 
     return (
         o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])

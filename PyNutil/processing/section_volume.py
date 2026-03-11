@@ -384,9 +384,7 @@ def _process_one_section(
     )
 
     # Transform flat grid to atlas-space 3-D coordinates
-    coords = transform_to_atlas_space(
-        slice_info.anchoring, flat_y, flat_x, reg_height, reg_width
-    )
+    coords = transform_to_atlas_space(slice_info, flat_y, flat_x)
     if vol_cfg.scale != 1.0:
         coords = coords * float(vol_cfg.scale)
 

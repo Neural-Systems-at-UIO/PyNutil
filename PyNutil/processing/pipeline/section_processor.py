@@ -134,10 +134,10 @@ def _compute_damage_state(
     scaled_y,
     scaled_centroidsX,
     scaled_centroidsY,
-    reg_width,
-    reg_height,
+    slice_info,
 ):
     """Compute per-point and per-centroid undamaged boolean masks."""
+    reg_height, reg_width = slice_info.height, slice_info.width
     if damage_mask is not None:
         damage_mask = resize_mask_nearest(damage_mask, reg_width, reg_height).astype(
             bool
@@ -167,10 +167,10 @@ def _compute_hemi_state(
     scaled_y,
     scaled_centroidsX,
     scaled_centroidsY,
-    reg_height,
-    reg_width,
+    slice_info,
 ):
     """Compute per-point and per-centroid hemisphere labels."""
+    reg_height, reg_width = slice_info.height, slice_info.width
     if hemi_mask is not None:
         per_point_hemi = assign_labels_at_coordinates(
             scaled_y, scaled_x, hemi_mask, reg_height, reg_width
@@ -224,11 +224,11 @@ def _deform_and_build_result(
         if len(cx_filtered):
             cx_filtered, cy_filtered = deformation(cx_filtered, cy_filtered)
     points = (
-        transform_to_atlas_space(slice_info.anchoring, pts_y, pts_x, reg_height, reg_width)
+        transform_to_atlas_space(slice_info, pts_y, pts_x)
         if pts_x is not None else None
     )
     centroids = (
-        transform_to_atlas_space(slice_info.anchoring, cy_filtered, cx_filtered, reg_height, reg_width)
+        transform_to_atlas_space(slice_info, cy_filtered, cx_filtered)
         if len(cx_filtered) else None
     )
     return SectionResult(
@@ -352,9 +352,6 @@ def segmentation_to_atlas_space(
         y_scale,
         x_scale,
         object_cutoff=p_ctx.object_cutoff,
-        atlas_at_original_resolution=True,
-        reg_height=reg_height,
-        reg_width=reg_width,
         segmentation_format=adapter.name,
     )
 
@@ -370,8 +367,7 @@ def segmentation_to_atlas_space(
         scaled_y,
         scaled_centroidsX,
         scaled_centroidsY,
-        reg_width,
-        reg_height,
+        slice_info,
     )
     per_point_hemi, per_centroid_hemi = _compute_hemi_state(
         hemi_mask,
@@ -379,8 +375,7 @@ def segmentation_to_atlas_space(
         scaled_y,
         scaled_centroidsX,
         scaled_centroidsY,
-        reg_height,
-        reg_width,
+        slice_info,
     )
 
     if per_centroid_labels is None:
@@ -457,8 +452,7 @@ def coordinates_to_atlas_space(
         scaled_y,
         scaled_x,  # centroids = points for coordinate mode
         scaled_y,
-        reg_width,
-        reg_height,
+        slice_info,
     )
     per_point_hemi, per_centroid_hemi = _compute_hemi_state(
         hemi_mask,
@@ -466,8 +460,7 @@ def coordinates_to_atlas_space(
         scaled_y,
         scaled_x,
         scaled_y,
-        reg_height,
-        reg_width,
+        slice_info,
     )
 
     # Apply non-linear deformation and transform to 3D atlas space
@@ -607,8 +600,6 @@ def _build_intensity_result(
             num_points=0,
         )
 
-    reg_height, reg_width = slice_info.height, slice_info.width
-
     # Apply non-linear deformation before transforming to atlas space
     if deformation is not None:
         new_x, new_y = deformation(
@@ -618,13 +609,7 @@ def _build_intensity_result(
         new_x = sig_x.astype(np.float32)
         new_y = sig_y.astype(np.float32)
 
-    sig_points_3d = transform_to_atlas_space(
-        slice_info.anchoring,
-        new_y,
-        new_x,
-        reg_height,
-        reg_width,
-    )
+    sig_points_3d = transform_to_atlas_space(slice_info, new_y, new_x)
     sig_labels = atlas_map[sig_y, sig_x]
     sig_hemi = (
         hemi_mask[sig_y, sig_x]
