@@ -12,6 +12,7 @@ from PyNutil import PyNutil
 import json
 
 from timing_utils import TimedTestCase
+from test_helpers import pynutil_from_settings_dict
 
 class TestCellposeQuantification(TimedTestCase):
     def setUp(self):
@@ -26,7 +27,7 @@ class TestCellposeQuantification(TimedTestCase):
 
     def test_cellpose_quantification(self):
         test_case_filename, test_case = self.load_test_case("cellpose_test.json")
-        pnt = PyNutil(settings_file=test_case_filename)
+        pnt = pynutil_from_settings_dict(test_case)
         pnt.get_coordinates(object_cutoff=0)
         pnt.quantify_coordinates()
 

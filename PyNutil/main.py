@@ -1,6 +1,5 @@
 import logging
 import re
-from json import JSONDecodeError
 from typing import Optional
 
 import numpy as np
@@ -62,7 +61,6 @@ class PyNutil:
         label_path=None,
         hemi_path=None,
         custom_region_path=None,
-        settings_file=None,
         voxel_size_um: Optional[float] = None,
         min_intensity: Optional[int] = None,
         max_intensity: Optional[int] = None,
@@ -91,8 +89,6 @@ class PyNutil:
             The path to the custom atlas label file, only specify if you don't want to use brainglobe (default is None).
         custom_region_path : str, optional
             The path to a custom region id file. This can be found
-        settings_file : str, optional
-            The path to the settings JSON file. This file contains the above parameters and is used for automation (default is None).
         voxel_size_um : float, optional
             Only relevant when using a custom atlas. The voxel size of the atlas in micrometers (default is None).
         min_intensity : int, optional
@@ -104,37 +100,29 @@ class PyNutil:
 
         Raises
         ------
-        KeyError
-            If the settings file does not contain the required keys.
         ValueError
             If both atlas_path and atlas_name are specified or if neither is specified.
         """
         # Configure logging using centralized utility (only configures if not already done)
         configure_logging()
 
-        if settings_file is not None:
-            try:
-                cfg = PyNutilConfig.from_settings_file(settings_file)
-            except (FileNotFoundError, JSONDecodeError) as e:
-                raise ValueError(f"Error loading settings file: {e}") from e
-        else:
-            cfg = PyNutilConfig(
-                segmentation_folder=segmentation_folder,
-                image_folder=image_folder,
-                coordinate_file=coordinate_file,
-                alignment_json=alignment_json,
-                colour=colour,
-                intensity_channel=intensity_channel,
-                atlas_name=atlas_name,
-                atlas_path=atlas_path,
-                label_path=label_path,
-                hemi_path=hemi_path,
-                custom_region_path=custom_region_path,
-                voxel_size_um=voxel_size_um,
-                min_intensity=min_intensity,
-                max_intensity=max_intensity,
-                segmentation_format=segmentation_format,
-            )
+        cfg = PyNutilConfig(
+            segmentation_folder=segmentation_folder,
+            image_folder=image_folder,
+            coordinate_file=coordinate_file,
+            alignment_json=alignment_json,
+            colour=colour,
+            intensity_channel=intensity_channel,
+            atlas_name=atlas_name,
+            atlas_path=atlas_path,
+            label_path=label_path,
+            hemi_path=hemi_path,
+            custom_region_path=custom_region_path,
+            voxel_size_um=voxel_size_um,
+            min_intensity=min_intensity,
+            max_intensity=max_intensity,
+            segmentation_format=segmentation_format,
+        )
 
         cfg.normalize(logger=logger)
         cfg.validate()

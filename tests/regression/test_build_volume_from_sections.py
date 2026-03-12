@@ -8,7 +8,7 @@ import nibabel as nib
 
 from PyNutil import PyNutil
 from PyNutil.io.volume_nifti import scale_to_uint8
-from tests.test_helpers import copy_tree_to_demo, small_volume_scale
+from tests.test_helpers import copy_tree_to_demo, small_volume_scale, pynutil_from_settings_dict
 try:
     # When run via `python -m unittest discover` from repo root
     from tests.timing_utils import TimedTestCase
@@ -38,7 +38,10 @@ class TestBuildVolumeFromSections(TimedTestCase):
         self.expected_report_dir = os.path.join(self.expected_case_dir, "interpolated_volume")
 
     def _generate_pnt(self):
-        pnt = PyNutil(settings_file=self.settings_path)
+        import json
+        with open(self.settings_path) as f:
+            settings = json.load(f)
+        pnt = pynutil_from_settings_dict(settings)
         pnt.get_coordinates(object_cutoff=0)
         pnt.quantify_coordinates()
 
