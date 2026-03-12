@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -38,7 +39,6 @@ class TestBuildVolumeFromSections(TimedTestCase):
         self.expected_report_dir = os.path.join(self.expected_case_dir, "interpolated_volume")
 
     def _generate_pnt(self):
-        import json
         with open(self.settings_path) as f:
             settings = json.load(f)
         pnt = pynutil_from_settings_dict(settings)

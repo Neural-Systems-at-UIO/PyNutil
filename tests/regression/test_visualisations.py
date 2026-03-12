@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -42,7 +43,6 @@ class TestVisualisations(TimedTestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = os.path.join(tmp, "outputs")
 
-            import json
             with open(self.settings_path) as f:
                 settings = json.load(f)
             pnt = pynutil_from_settings_dict(settings)
