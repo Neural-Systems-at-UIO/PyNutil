@@ -126,7 +126,12 @@ def _concat(arrays, *, dtype=None, none_if_empty=False):
     non_empty = [a for a in arrays if a is not None and len(a) > 0]
     if non_empty:
         result = np.concatenate(non_empty)
-        return result if dtype is None else result.astype(dtype, copy=False)
+        # Only coerce dtype for numeric arrays; object arrays (e.g. hemi labels
+        # that are [None, ...] when no hemisphere map is available) must be left
+        # as-is so that downstream None-aware code still works correctly.
+        if dtype is not None and result.dtype != object:
+            return result.astype(dtype, copy=False)
+        return result
     if none_if_empty:
         return None
     return np.array([], dtype=dtype)
