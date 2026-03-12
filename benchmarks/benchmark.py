@@ -227,9 +227,9 @@ def _run_scenario_in_process(tmpdir):
         sys.path.insert(0, root)
 
     from PyNutil import PyNutil as _PyNutil  # noqa: local import
+    from PyNutil.io.loaders import load_json_file  # noqa: local import
 
-    with open(os.path.join(tmpdir, "meta.json")) as f:
-        meta = json.load(f)
+    meta = load_json_file(os.path.join(tmpdir, "meta.json"))
 
     def _run():
         # Suppress stdout from PyNutil (e.g. "Found N segmentations")

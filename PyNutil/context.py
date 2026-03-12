@@ -62,6 +62,43 @@ class PipelineContext:
     min_intensity: Optional[int] = None
     max_intensity: Optional[int] = None
 
+    @classmethod
+    def from_format(
+        cls,
+        *,
+        segmentation_format: str,
+        atlas_labels,
+        atlas_volume,
+        hemi_map,
+        non_linear: bool,
+        object_cutoff: int,
+        use_flat: bool,
+        pixel_id,
+        apply_damage_mask: bool,
+        flat_label_path=None,
+        intensity_channel=None,
+        min_intensity=None,
+        max_intensity=None,
+    ) -> "PipelineContext":
+        """Construct a PipelineContext, resolving *segmentation_format* to an adapter."""
+        from .processing.adapters.segmentation import SegmentationAdapterRegistry
+
+        return cls(
+            atlas_labels=atlas_labels,
+            atlas_volume=atlas_volume,
+            hemi_map=hemi_map,
+            segmentation_adapter=SegmentationAdapterRegistry.get(segmentation_format),
+            non_linear=non_linear,
+            object_cutoff=object_cutoff,
+            use_flat=use_flat,
+            pixel_id=pixel_id,
+            apply_damage_mask=apply_damage_mask,
+            flat_label_path=flat_label_path,
+            intensity_channel=intensity_channel,
+            min_intensity=min_intensity,
+            max_intensity=max_intensity,
+        )
+
 
 @dataclass(frozen=True)
 class SectionContext:

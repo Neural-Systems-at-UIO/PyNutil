@@ -9,7 +9,7 @@ def _classify_triangles(x, y, triangles):
     keep = []
     remove = []
     for triangle in triangles:
-        if not found and triangle.intriangle(x, y):
+        if not found and triangle.contains_point(x, y):
             found = True
         if triangle.incircle(x, y):
             remove.append(triangle)
@@ -142,29 +142,6 @@ def inv3x3(m):
         return None
 
 
-def rowmul3(v, m):
-    """Multiply a 1x3 row vector by a 3x3 matrix."""
-    return (np.asarray(v, dtype=np.float64) @ np.asarray(m, dtype=np.float64)).tolist()
-
-
-def rowmul3_vec(x, y, m):
-    """
-    Multiplies a set of row vectors by a 3x3 matrix.
-
-    Args:
-        x (ndarray): X coordinates of the vectors.
-        y (ndarray): Y coordinates of the vectors.
-        m (list): 3x3 matrix.
-
-    Returns:
-        ndarray: Resulting coordinates.
-    """
-    x = np.asarray(x, dtype=np.float64)
-    y = np.asarray(y, dtype=np.float64)
-    m = np.asarray(m, dtype=np.float64)
-    return (x[:, None] * m[0]) + (y[:, None] * m[1]) + m[2]
-
-
 def distsquare(ax, ay, bx, by):
     """
     Calculates the squared distance between two points.
@@ -272,20 +249,13 @@ class Triangle:
             distsquare(x * self.den, y * self.den, self.Mdenx, self.Mdeny) < self.r2den
         )
 
-    def intriangle(self, x, y):
-        """
-        Checks if a point is inside the triangle.
-
-        Args:
-            x (float): X coordinate of the point.
-            y (float): Y coordinate of the point.
-
-        Returns:
-            list: Barycentric coordinates of the point if inside, None otherwise.
-        """
-        uv1 = rowmul3([x, y, 1], self.decomp)
-        if 0 <= uv1[0] <= 1 and 0 <= uv1[1] <= 1 and uv1[0] + uv1[1] <= 1:
-            return uv1
+    def contains_point(self, x, y):
+        """Return True if scalar point (x, y) lies inside this triangle."""
+        ok, _, _ = self.intriangle_subset(
+            np.asarray([x], dtype=np.float64),
+            np.asarray([y], dtype=np.float64),
+        )
+        return bool(ok[0])
 
     def _barycentric_transform(self, x, y, decomp, xi, yi):
         """Return transformed coordinates for points that lie inside triangle."""
@@ -310,13 +280,6 @@ class Triangle:
         )
         return ok, x_prime, y_prime
 
-    def _barycentric_transform_vec(self, x, y, xPrime, yPrime, decomp, xi, yi):
-        """Shared barycentric interpolation for vectorised triangle transforms."""
-        ok, x_ok, y_ok = self._barycentric_transform(x, y, decomp, xi, yi)
-        if np.any(ok):
-            xPrime[ok] = x_ok
-            yPrime[ok] = y_ok
-
     def intriangle_subset(self, x, y):
         """Transform subset points that lie inside this triangle (backward map)."""
         return self._barycentric_transform(x, y, self.decomp, 0, 1)
@@ -324,11 +287,3 @@ class Triangle:
     def inforward_subset(self, x, y):
         """Transform subset points that lie inside this triangle (forward map)."""
         return self._barycentric_transform(x, y, self.forwarddecomp, 2, 3)
-
-    def inforward_vec(self, x, y, xPrime, yPrime):
-        """Apply forward barycentric transform to points inside this triangle."""
-        self._barycentric_transform_vec(x, y, xPrime, yPrime, self.forwarddecomp, 2, 3)
-
-    def intriangle_vec(self, x, y, xPrime, yPrime):
-        """Apply backward barycentric transform to points inside this triangle."""
-        self._barycentric_transform_vec(x, y, xPrime, yPrime, self.decomp, 0, 1)

@@ -1,8 +1,9 @@
 import unittest
+import types
 
 import numpy as np
 
-from PyNutil.processing.transforms import transform_to_atlas_space
+from PyNutil.processing.atlas_map import transform_to_atlas_space
 
 
 class TestTransformations(unittest.TestCase):
@@ -30,7 +31,9 @@ class TestTransformations(unittest.TestCase):
         y = sig_y[idx]
         x = sig_x[idx]
 
-        pts = transform_to_atlas_space(anchoring, y, x, reg_h, reg_w)
+        # Build a minimal slice_info-like object with the required attributes.
+        slice_info = types.SimpleNamespace(anchoring=anchoring, height=reg_h, width=reg_w)
+        pts = transform_to_atlas_space(slice_info, y, x)
 
         o = np.asarray(anchoring[0:3], dtype=np.float64)
         u = np.asarray(anchoring[3:6], dtype=np.float64)

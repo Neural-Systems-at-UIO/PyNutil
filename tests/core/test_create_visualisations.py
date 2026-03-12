@@ -49,22 +49,10 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         reg_data = load_registration(
             alignment_json, apply_deformation=False, apply_damage=False
         )
-        alignment_data = {
-            "slices": [
-                {
-                    "filename": s.section_id,
-                    "nr": s.section_number,
-                    "anchoring": s.anchoring,
-                    "width": s.width,
-                    "height": s.height,
-                }
-                for s in reg_data.slices
-            ]
-        }
 
         with tempfile.TemporaryDirectory() as tmp:
             create_section_visualisations(
-                seg_folder, alignment_data, atlas_volume, atlas_labels, tmp,
+                seg_folder, reg_data.slices, atlas_volume, atlas_labels, tmp,
             )
             viz_dir = os.path.join(tmp, "visualisations")
             self.assertTrue(os.path.isdir(viz_dir))
@@ -92,22 +80,10 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         reg_data = load_registration(
             bg_json, apply_deformation=False, apply_damage=False
         )
-        alignment_data = {
-            "slices": [
-                {
-                    "filename": s.section_id,
-                    "nr": s.section_number,
-                    "anchoring": s.anchoring,
-                    "width": s.width,
-                    "height": s.height,
-                }
-                for s in reg_data.slices
-            ]
-        }
 
         with tempfile.TemporaryDirectory() as tmp:
             create_section_visualisations(
-                None, alignment_data, atlas_volume, atlas_labels, tmp,
+                None, reg_data.slices, atlas_volume, atlas_labels, tmp,
             )
             viz_dir = os.path.join(tmp, "visualisations")
             self.assertTrue(os.path.isdir(viz_dir))
@@ -162,30 +138,24 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
         """Passing None as segmentation_folder should not raise."""
         from PyNutil.io.section_visualisation import create_section_visualisations
         from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.processing.adapters.base import SliceInfo
 
         atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
 
-        # Minimal slice data with a valid anchoring vector
-        alignment_data = {
-            "slices": [
-                {
-                    "filename": "test_slice",
-                    "nr": 0,
-                    "anchoring": [
-                        200, 200, 200,
-                        0, 0, 100,
-                        0, 100, 0,
-                    ],
-                    "width": 100,
-                    "height": 100,
-                }
-            ]
-        }
+        slices = [
+            SliceInfo(
+                section_id="test_slice",
+                section_number=0,
+                width=100,
+                height=100,
+                anchoring=[200, 200, 200, 0, 0, 100, 0, 100, 0],
+            )
+        ]
 
         with tempfile.TemporaryDirectory() as tmp:
             create_section_visualisations(
                 None,
-                alignment_data,
+                slices,
                 atlas_volume,
                 atlas_labels,
                 tmp,
@@ -205,7 +175,7 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             create_section_visualisations(
                 None,
-                {"slices": []},
+                [],
                 atlas_volume,
                 atlas_labels,
                 tmp,
@@ -217,65 +187,45 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
 
 
 class TestLoadRegistrationForVisualisation(unittest.TestCase):
-    """Test that load_registration returns data usable for visualisation."""
+    """Test that load_registration returns SliceInfo objects with the correct attributes."""
 
-    def _load_and_convert(self, alignment_json):
-        """Load registration and convert to visualisation dict format."""
+    def _load_slices(self, alignment_json):
         from PyNutil.processing.adapters.registry import load_registration
 
         reg_data = load_registration(
             alignment_json, apply_deformation=False, apply_damage=False
         )
-        return {
-            "slices": [
-                {
-                    "filename": s.section_id,
-                    "nr": s.section_number,
-                    "anchoring": s.anchoring,
-                    "width": s.width,
-                    "height": s.height,
-                }
-                for s in reg_data.slices
-            ]
-        }
+        return reg_data.slices
 
     def test_quint_json_produces_valid_slices(self):
-        """QuickNII JSON should produce slices with all required fields."""
+        """QuickNII JSON should produce SliceInfo objects with all required fields."""
         quint_json = os.path.join(
             TEST_DIR, "test_data", "nonlinear_allen_mouse", "alignment.json"
         )
         if not os.path.isfile(quint_json):
             self.skipTest("QuickNII alignment test data not found")
 
-        result = self._load_and_convert(quint_json)
-        self.assertIn("slices", result)
-        self.assertGreater(len(result["slices"]), 0)
-        for s in result["slices"]:
-            self.assertIn("anchoring", s)
-            self.assertEqual(len(s["anchoring"]), 9)
-            self.assertIn("width", s)
-            self.assertIn("height", s)
-            self.assertGreater(s["width"], 0)
-            self.assertGreater(s["height"], 0)
+        slices = self._load_slices(quint_json)
+        self.assertGreater(len(slices), 0)
+        for s in slices:
+            self.assertEqual(len(s.anchoring), 9)
+            self.assertGreater(s.width, 0)
+            self.assertGreater(s.height, 0)
 
     def test_brainglobe_json_produces_valid_slices(self):
-        """Brainglobe registration JSON should produce slices with all required fields."""
+        """Brainglobe registration JSON should produce SliceInfo with all required fields."""
         bg_json = os.path.join(
             TEST_DIR, "test_data", "brainglobe_registration", "brainglobe-registration.json"
         )
         if not os.path.isfile(bg_json):
             self.skipTest("Brainglobe registration test data not found")
 
-        result = self._load_and_convert(bg_json)
-        self.assertIn("slices", result)
-        self.assertGreater(len(result["slices"]), 0)
-        for s in result["slices"]:
-            self.assertIn("anchoring", s)
-            self.assertEqual(len(s["anchoring"]), 9)
-            self.assertIn("width", s)
-            self.assertIn("height", s)
-            self.assertGreater(s["width"], 0)
-            self.assertGreater(s["height"], 0)
+        slices = self._load_slices(bg_json)
+        self.assertGreater(len(slices), 0)
+        for s in slices:
+            self.assertEqual(len(s.anchoring), 9)
+            self.assertGreater(s.width, 0)
+            self.assertGreater(s.height, 0)
 
     def test_brainglobe_coordinate_json_produces_valid_slices(self):
         """Brainglobe coordinate registration JSON should also work."""
@@ -285,13 +235,12 @@ class TestLoadRegistrationForVisualisation(unittest.TestCase):
         if not os.path.isfile(bg_json):
             self.skipTest("Brainglobe coordinate test data not found")
 
-        result = self._load_and_convert(bg_json)
-        self.assertIn("slices", result)
-        self.assertGreater(len(result["slices"]), 0)
-        for s in result["slices"]:
-            self.assertEqual(len(s["anchoring"]), 9)
-            self.assertGreater(s["width"], 0)
-            self.assertGreater(s["height"], 0)
+        slices = self._load_slices(bg_json)
+        self.assertGreater(len(slices), 0)
+        for s in slices:
+            self.assertEqual(len(s.anchoring), 9)
+            self.assertGreater(s.width, 0)
+            self.assertGreater(s.height, 0)
 
 
 if __name__ == "__main__":

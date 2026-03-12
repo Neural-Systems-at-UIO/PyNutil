@@ -12,7 +12,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from scipy import ndimage
 import numpy as np
 
-from .base import DeformationFunction, DeformationProvider, RegistrationData
+from .base import (
+    DeformationFunction,
+    DeformationProvider,
+    RegistrationData,
+)
+from ...io.loaders import load_json_file
 
 
 class VisuAlignDeformationProvider(DeformationProvider):
@@ -36,10 +41,7 @@ class VisuAlignDeformationProvider(DeformationProvider):
 
     def _load_markers(self, path: str) -> Dict[int, List[List[float]]]:
         """Load markers from a VisuAlign JSON file."""
-        import json
-
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = load_json_file(path)
 
         markers = {}
         for s in data.get("slices", []):

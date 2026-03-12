@@ -8,8 +8,6 @@ and region assignment.
 import numpy as np
 import cv2
 
-from ..utils import scale_positions, assign_labels_at_coordinates
-
 
 # ── Shared pixel-grouping helper ─────────────────────────────────────────
 
@@ -123,9 +121,6 @@ def get_objects_and_assign_regions(
     y_scale,
     x_scale,
     object_cutoff=0,
-    atlas_at_original_resolution=False,
-    reg_height=None,
-    reg_width=None,
     segmentation_format="binary",
 ):
     """Single-pass object detection, pixel extraction, and region assignment.
@@ -134,12 +129,9 @@ def get_objects_and_assign_regions(
         segmentation: Segmentation image array.
         pixel_id: Pixel color to match [R, G, B] (only used for binary format).
         atlas_map: 2D atlas label map.
-        y_scale: Vertical scaling factor.
-        x_scale: Horizontal scaling factor.
+        y_scale: Vertical scaling factor (segmentation → registration space).
+        x_scale: Horizontal scaling factor (segmentation → registration space).
         object_cutoff: Minimum object size.
-        atlas_at_original_resolution: If True, scale coords to atlas resolution.
-        reg_height: Registration height (required if atlas_at_original_resolution).
-        reg_width: Registration width (required if atlas_at_original_resolution).
         segmentation_format: Format name ("binary" or "cellpose").
 
     Returns:
@@ -161,7 +153,7 @@ def get_objects_and_assign_regions(
         return None, None, None, None, None, None
 
     # Scale pixel coordinates to registration space
-    scaled_y, scaled_x = scale_positions(pixel_y, pixel_x, y_scale, x_scale)
+    scaled_y, scaled_x = pixel_y * y_scale, pixel_x * x_scale
 
     objects_info = adapter.extract_objects(segmentation, binary_seg, min_area=object_cutoff)
 
@@ -171,24 +163,18 @@ def get_objects_and_assign_regions(
     centroids = []
     per_centroid_labels = []
     atlas_h, atlas_w = atlas_map.shape
+    seg_height, seg_width = segmentation.shape[:2]
 
-    if atlas_at_original_resolution:
-        scale_to_atlas_y = atlas_h / reg_height
-        scale_to_atlas_x = atlas_w / reg_width
+    # Map directly from segmentation pixel coords to atlas map coords.
+    # Equivalent to the former atlas_at_original_resolution=True code path.
+    seg_to_atlas_y = atlas_h / seg_height
+    seg_to_atlas_x = atlas_w / seg_width
 
     for obj in objects_info:
         centroids.append(obj.centroid)
-        # Scale object coords
-        scaled_obj_y, scaled_obj_x = scale_positions(
-            obj.coords[:, 0], obj.coords[:, 1], y_scale, x_scale
-        )
-
-        # Handle resolution scaling strategy
-        if atlas_at_original_resolution:
-            assignment_y = scaled_obj_y * scale_to_atlas_y
-            assignment_x = scaled_obj_x * scale_to_atlas_x
-        else:
-            assignment_y, assignment_x = scaled_obj_y, scaled_obj_x
+        # Map object pixel coords directly to atlas map resolution
+        assignment_y = obj.coords[:, 0] * seg_to_atlas_y
+        assignment_x = obj.coords[:, 1] * seg_to_atlas_x
 
         # Check bounds
         iy = np.rint(assignment_y).astype(np.int32, copy=False)
@@ -220,8 +206,8 @@ def get_objects_and_assign_regions(
     centroids = np.array(centroids)
     per_centroid_labels = np.array(per_centroid_labels, dtype=np.int64)
 
-    scaled_centroidsY, scaled_centroidsX = scale_positions(
-        centroids[:, 0], centroids[:, 1], y_scale, x_scale
+    scaled_centroidsY, scaled_centroidsX = (
+        centroids[:, 0] * y_scale, centroids[:, 1] * x_scale
     )
 
     return (

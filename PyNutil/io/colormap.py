@@ -6,8 +6,6 @@ intensity values to RGB colors, avoiding matplotlib dependency.
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 
 
@@ -71,24 +69,3 @@ def get_colormap_colors(values: np.ndarray, name: str = "gray") -> np.ndarray:
     lut = _build_lut(name)
     idx = np.clip(values, 0, 255).astype(np.intp)
     return lut[idx]
-
-
-def get_colormap_color(value: int, name: str = "gray") -> Tuple[int, int, int]:
-    """Map an intensity value (0-255) to RGB color based on colormap name.
-
-    Parameters
-    ----------
-    value : int
-        Intensity value (0-255).
-    name : str
-        Colormap name. Options: "gray", "viridis", "plasma", "magma", "hot".
-
-    Returns
-    -------
-    tuple
-        (r, g, b) color values (0-255).
-    """
-    lut = _build_lut(name)
-    idx = int(np.clip(value, 0, 255))
-    row = lut[idx]
-    return int(row[0]), int(row[1]), int(row[2])

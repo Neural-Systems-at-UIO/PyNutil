@@ -125,3 +125,28 @@ class IntensitySectionResult:
             point_intensities=None,
             num_points=0,
         )
+
+
+@dataclass
+class ExtractionResult:
+    """Concatenated extraction output with context-aligned attribute names."""
+
+    pixel_points: Optional[np.ndarray]
+    centroids: Optional[np.ndarray]
+    points_labels: Optional[np.ndarray]
+    centroids_labels: Optional[np.ndarray]
+    points_hemi_labels: Optional[np.ndarray]
+    centroids_hemi_labels: Optional[np.ndarray]
+    region_areas_list: List[pd.DataFrame]
+    points_len: List[int]
+    centroids_len: Optional[List[int]]
+    segmentation_filenames: List[str]
+    per_point_undamaged: Optional[np.ndarray]
+    per_centroid_undamaged: Optional[np.ndarray]
+    total_points_len: List[int]
+    total_centroids_len: Optional[List[int]]
+    region_intensities_list: Optional[List[Optional[pd.DataFrame]]] = None
+    point_intensities: Optional[np.ndarray] = None
+    # Custom-region mapped labels; populated by get_coordinates when custom regions are set
+    points_custom_labels: Optional[np.ndarray] = None
+    centroids_custom_labels: Optional[np.ndarray] = None

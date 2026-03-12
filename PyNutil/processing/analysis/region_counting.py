@@ -2,7 +2,6 @@
 
 Public API
 ----------
-- :func:`create_base_counts_dict` — skeleton dictionary for count accumulation.
 - :func:`pixel_count_per_region` — tally per-pixel/centroid counts by region.
 """
 
@@ -10,55 +9,35 @@ import numpy as np
 import pandas as pd
 
 
-def create_base_counts_dict(with_hemisphere=False, with_damage=False):
-    """
-    Creates and returns a base dictionary structure for tracking counts.
-
-    Args:
-        with_hemisphere (bool): If True, include hemisphere fields.
-        with_damage (bool): If True, include damage fields.
-
-    Returns:
-        dict: Structure containing count lists for pixels/objects.
-    """
-    counts = {
-        "idx": [],
-        "name": [],
-        "r": [],
-        "g": [],
-        "b": [],
-        "pixel_count": [],
-        "object_count": [],
-    }
+def _empty_count_columns(with_hemisphere=False, with_damage=False):
+    """Return the list of count-column names for an empty result DataFrame."""
+    cols = ["idx", "name", "r", "g", "b", "pixel_count", "object_count"]
     if with_damage:
-        damage_fields = {
-            "undamaged_object_count": [],
-            "damaged_object_count": [],
-            "undamaged_pixel_count": [],
-            "damaged_pixel_counts": [],
-        }
-        counts.update(damage_fields)
+        cols += [
+            "undamaged_object_count",
+            "damaged_object_count",
+            "undamaged_pixel_count",
+            "damaged_pixel_counts",
+        ]
     if with_hemisphere:
-        hemisphere_fields = {
-            "left_hemi_pixel_count": [],
-            "right_hemi_pixel_count": [],
-            "left_hemi_object_count": [],
-            "right_hemi_object_count": [],
-        }
-        counts.update(hemisphere_fields)
+        cols += [
+            "left_hemi_pixel_count",
+            "right_hemi_pixel_count",
+            "left_hemi_object_count",
+            "right_hemi_object_count",
+        ]
     if with_damage and with_hemisphere:
-        damage_hemisphere_fields = {
-            "left_hemi_undamaged_pixel_count": [],
-            "left_hemi_damaged_pixel_count": [],
-            "right_hemi_undamaged_pixel_count": [],
-            "right_hemi_damaged_pixel_count": [],
-            "left_hemi_undamaged_object_count": [],
-            "left_hemi_damaged_object_count": [],
-            "right_hemi_undamaged_object_count": [],
-            "right_hemi_damaged_object_count": [],
-        }
-        counts.update(damage_hemisphere_fields)
-    return counts
+        cols += [
+            "left_hemi_undamaged_pixel_count",
+            "left_hemi_damaged_pixel_count",
+            "right_hemi_undamaged_pixel_count",
+            "right_hemi_damaged_pixel_count",
+            "left_hemi_undamaged_object_count",
+            "left_hemi_damaged_object_count",
+            "right_hemi_undamaged_object_count",
+            "right_hemi_damaged_object_count",
+        ]
+    return cols
 
 
 def _counts_for(
@@ -200,9 +179,6 @@ def pixel_count_per_region(
     dmg_iter = (
         [(True, "undamaged_"), (False, "damaged_")] if with_damage else [(None, "")]
     )
-    # Always compute unfiltered totals so points outside the hemisphere mask
-    # (hemi=0) are not silently dropped when deriving aggregate counts.
-    total_iter = [(None, "")]
 
     computed = {}  # col_name -> (idx_array, count_array)
     all_indices = []
@@ -250,11 +226,7 @@ def pixel_count_per_region(
     )
     if all_idx.size == 0:
         return pd.DataFrame(
-            columns=list(
-                create_base_counts_dict(
-                    with_hemisphere=with_hemi, with_damage=with_damage
-                ).keys()
-            )
+            columns=_empty_count_columns(with_hemisphere=with_hemi, with_damage=with_damage)
         )
 
     base = df_label_colours[df_label_colours["idx"].isin(all_idx)].copy()

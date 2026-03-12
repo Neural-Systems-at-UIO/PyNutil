@@ -4,13 +4,14 @@ Generates colored atlas slice PNGs and optionally overlays segmentation pixels.
 """
 
 import os
-from typing import Dict, List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union
 from tqdm import tqdm
 import cv2
 import numpy as np
 import pandas as pd
 
 from ..processing.atlas_map import generate_target_slice
+from ..processing.adapters.base import SliceInfo
 from ..processing.adapters.segmentation import SegmentationAdapter, SegmentationAdapterRegistry
 
 
@@ -120,31 +121,22 @@ def overlay_segmentation_on_rgb(
         return rgb_image
 
 
-def _resolve_target_dimensions(slice_dict, coloured_slice):
-    """Determine target (width, height) from segmentation or registration dims."""
-    target_width = coloured_slice.shape[1]
-    target_height = coloured_slice.shape[0]
-    segmentation_img = None
-
-    seg_path = None  # not used here; caller handles seg loading
-    try:
-        reg_w = int(slice_dict.get("width", target_width))
-        reg_h = int(slice_dict.get("height", target_height))
-        if reg_w > 0 and reg_h > 0:
-            target_width, target_height = reg_w, reg_h
-    except Exception:
-        pass
-
+def _resolve_target_dimensions(slice_info: SliceInfo, coloured_slice):
+    """Determine target (width, height) from registration or atlas-slice dims."""
+    target_width, target_height = coloured_slice.shape[1], coloured_slice.shape[0]
+    reg_w, reg_h = slice_info.width, slice_info.height
+    if reg_w > 0 and reg_h > 0:
+        target_width, target_height = reg_w, reg_h
     return target_width, target_height
 
 
 def create_colored_atlas_slice(
-    slice_dict: Dict,
+    slice_info: SliceInfo,
     atlas_volume: np.ndarray,
     atlas_labels: pd.DataFrame,
     output_path: str,
     segmentation_path: Optional[str] = None,
-    objects_data: Optional[List[Dict]] = None,
+    objects_data: Optional[List] = None,
     scale_factor: float = 0.5,
     _color_lookup: Optional[
         Tuple[
@@ -155,7 +147,7 @@ def create_colored_atlas_slice(
     pixel_id: Optional[List[int]] = None,
 ) -> None:
     """Create a coloured atlas slice and optionally overlay segmentation pixels."""
-    atlas_slice = generate_target_slice(slice_dict["anchoring"], atlas_volume)
+    atlas_slice = generate_target_slice(slice_info.anchoring, atlas_volume)
     if _color_lookup is None:
         lookup_mode, lookup, default_colour = _build_color_lookup(atlas_labels)
     else:
@@ -183,11 +175,11 @@ def create_colored_atlas_slice(
             print(f"Warning: Could not load segmentation for sizing: {e}")
             seg_available = False
             target_width, target_height = _resolve_target_dimensions(
-                slice_dict, coloured_slice
+                slice_info, coloured_slice
             )
     else:
         target_width, target_height = _resolve_target_dimensions(
-            slice_dict, coloured_slice
+            slice_info, coloured_slice
         )
 
     if (coloured_slice.shape[1], coloured_slice.shape[0]) != (
@@ -220,10 +212,10 @@ def create_colored_atlas_slice(
         raise RuntimeError(f"Failed to write visualisation image: {output_path}")
 
 
-def _index_segmentation_files(segmentation_folder: str) -> Dict[str, str]:
+def _index_segmentation_files(segmentation_folder: str) -> dict:
     """Build a base-name→path index of segmentation images in a folder."""
     ext_priority = {".png": 0, ".tif": 1, ".tiff": 2, ".jpg": 3, ".jpeg": 4}
-    seg_index: Dict[str, str] = {}
+    seg_index: dict = {}
     try:
         for filename in os.listdir(segmentation_folder):
             base, ext = os.path.splitext(filename)
@@ -245,7 +237,7 @@ def _index_segmentation_files(segmentation_folder: str) -> Dict[str, str]:
 
 def _resolve_segmentation_path(
     filename: str,
-    seg_index: Dict[str, str],
+    seg_index: dict,
     segmentation_folder: str,
 ) -> Optional[str]:
     """Resolve the segmentation file path for a given slice filename."""
@@ -270,11 +262,11 @@ def _resolve_segmentation_path(
 
 def create_section_visualisations(
     segmentation_folder: str,
-    alignment_json: Dict,
+    slices: List[SliceInfo],
     atlas_volume: np.ndarray,
     atlas_labels: pd.DataFrame,
     output_folder: str,
-    objects_per_section: Optional[List[List[Dict]]] = None,
+    objects_per_section: Optional[List] = None,
     scale_factor: float = 0.5,
     adapter: Optional[SegmentationAdapter] = None,
     pixel_id: Optional[List[int]] = None,
@@ -286,10 +278,9 @@ def create_section_visualisations(
     seg_index = _index_segmentation_files(segmentation_folder)
     color_lookup = _build_color_lookup(atlas_labels)
 
-    slices = alignment_json.get("slices", [])
-    for i, slice_dict in tqdm(enumerate(slices), total = len(slices), desc="saving atlas images"):
+    for i, slice_info in tqdm(enumerate(slices), total=len(slices), desc="saving atlas images"):
         try:
-            filename = slice_dict.get("filename", "")
+            filename = slice_info.section_id or ""
             base_name = os.path.splitext(filename)[0] if filename else f"slice_{i:03d}"
             segmentation_path = _resolve_segmentation_path(
                 filename,
@@ -302,13 +293,13 @@ def create_section_visualisations(
                 section_objects = objects_per_section[i]
 
             output_filename = (
-                f"section_{slice_dict.get('nr', i):03d}_{base_name}_atlas_colored.png"
+                f"section_{slice_info.section_number:03d}_{base_name}_atlas_colored.png"
             )
             output_path = os.path.join(viz_dir, output_filename)
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             create_colored_atlas_slice(
-                slice_dict=slice_dict,
+                slice_info=slice_info,
                 atlas_volume=atlas_volume,
                 atlas_labels=atlas_labels,
                 output_path=output_path,

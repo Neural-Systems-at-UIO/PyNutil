@@ -2,18 +2,15 @@
 
 This module groups every function that turns an anchoring vector (or
 flat-file path) into a 2-D atlas map and derives per-region statistics
-from it.  By concentrating this logic in one place, the
-``transforms`` module no longer needs to depend on ``analysis``,
-breaking the previous cyclic coupling.
+from it.
 
 Public API
 ----------
 - :func:`generate_target_slice` — extract a 2-D slice from a 3-D atlas.
 - :func:`warp_image` — apply non-linear deformation to an image.
 - :func:`load_atlas_image` — load / generate an atlas map for a section.
-- :func:`assign_labels_to_image` — replace flat-file pixel values with atlas IDs.
-- :func:`calculate_scale_factor` — compute a resize scale factor.
 - :func:`flat_to_dataframe` — count region pixels with optional damage/hemi masks.
+- :func:`transform_to_atlas_space` — transform 2-D coordinates to 3-D atlas space.
 - :func:`get_region_areas` — build atlas map and compute region areas for a section.
 """
 
@@ -23,11 +20,11 @@ import math
 from typing import Any, Callable, List, Optional, Tuple
 from functools import lru_cache
 
-import cv2
 import numpy as np
 import pandas as pd
 
 from ..io.loaders import read_flat_file, read_seg_file
+from .utils import resize_mask_nearest
 
 
 # ---------------------------------------------------------------------------
@@ -182,28 +179,6 @@ def warp_image(image, deformation, rescaleXY):
 # ---------------------------------------------------------------------------
 
 
-def assign_labels_to_image(image, labelfile):
-    """Assign atlas or region labels to an image array.
-
-    Args:
-        image (ndarray): Image array to label.
-        labelfile (DataFrame): Contains label IDs in the 'idx' column.
-
-    Returns:
-        ndarray: Image with assigned labels.
-    """
-    w, h = image.shape
-    allen_id_image = np.zeros((h, w))
-    coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-
-    values = image[coordsy, coordsx].astype(int)
-    lbidx = labelfile["idx"].values
-
-    valid = (values >= 0) & (values < len(lbidx))
-    allen_id_image[valid] = lbidx[values[valid]]
-    return allen_id_image
-
-
 @lru_cache(maxsize=8)
 def _read_itksnap_label_lookup(path):
     """Read a label lookup file and return ordered atlas IDs by label index."""
@@ -281,97 +256,22 @@ def load_atlas_image(
                 return lookup[image.astype(int)]
         if file.endswith(".seg"):
             image = read_seg_file(file)
-        image = assign_labels_to_image(image, labelfile)
+        # Remap flat-file pixel values to atlas region IDs
+        w, h = image.shape
+        allen_id_image = np.zeros((h, w))
+        coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
+        values = image[coordsy, coordsx].astype(int)
+        lbidx = labelfile["idx"].values
+        valid = (values >= 0) & (values < len(lbidx))
+        allen_id_image[valid] = lbidx[values[valid]]
+        image = allen_id_image
 
     return image
-
-
-def calculate_scale_factor(image, rescaleXY):
-    """Compute a resize scale factor.
-
-    Args:
-        image (ndarray): Original image array.
-        rescaleXY (tuple): (width, height) for potential resizing.
-
-    Returns:
-        float or bool: Scale factor or False if not applicable.
-    """
-    if rescaleXY:
-        image_shapeY, image_shapeX = image.shape[0], image.shape[1]
-        image_pixels = image_shapeY * image_shapeX
-        seg_pixels = rescaleXY[0] * rescaleXY[1]
-        return seg_pixels / image_pixels
-    return False
 
 
 # ---------------------------------------------------------------------------
 # Region counting from atlas map
 # ---------------------------------------------------------------------------
-
-
-def count_pixels_per_label(image, scale_factor=False):
-    """Count the pixels associated with each label in an image.
-
-    Args:
-        image (ndarray): Image array containing labels.
-        scale_factor (bool, optional): Apply scaling if True.
-
-    Returns:
-        DataFrame: Table of label IDs and pixel counts.
-    """
-    unique_ids, counts = np.unique(image, return_counts=True)
-    if scale_factor:
-        counts = counts * scale_factor
-    area_per_label = list(zip(unique_ids, counts))
-    df_area_per_label = pd.DataFrame(area_per_label, columns=["idx", "region_area"])
-    return df_area_per_label
-
-
-def _build_area_combos(hemi_mask, damage_mask):
-    """Return list of (hemi_val, damage_val, column_name) for area counting."""
-    if (hemi_mask is not None) and (damage_mask is not None):
-        return [
-            (1, 0, "left_hemi_undamaged_region_area"),
-            (1, 1, "left_hemi_damaged_region_area"),
-            (2, 0, "right_hemi_undamaged_region_area"),
-            (2, 1, "right_hemi_damaged_region_area"),
-        ]
-    if (hemi_mask is not None) and (damage_mask is None):
-        return [
-            (1, 0, "left_hemi_region_area"),
-            (2, 0, "right_hemi_region_area"),
-        ]
-    if (hemi_mask is None) and (damage_mask is not None):
-        return [
-            (0, 0, "undamaged_region_area"),
-            (0, 1, "damaged_region_area"),
-        ]
-    return [(None, None, "region_area")]
-
-
-def _derive_area_aggregates(df, hemi_mask, damage_mask):
-    """Derive aggregate area columns from leaf-level columns in *df*."""
-    if (hemi_mask is not None) and (damage_mask is not None):
-        df["undamaged_region_area"] = (
-            df["left_hemi_undamaged_region_area"]
-            + df["right_hemi_undamaged_region_area"]
-        )
-        df["damaged_region_area"] = (
-            df["left_hemi_damaged_region_area"] + df["right_hemi_damaged_region_area"]
-        )
-        df["left_hemi_region_area"] = (
-            df["left_hemi_damaged_region_area"] + df["left_hemi_undamaged_region_area"]
-        )
-        df["right_hemi_region_area"] = (
-            df["right_hemi_damaged_region_area"]
-            + df["right_hemi_undamaged_region_area"]
-        )
-        df["region_area"] = df["undamaged_region_area"] + df["damaged_region_area"]
-    if (hemi_mask is not None) and (damage_mask is None):
-        df["region_area"] = df["left_hemi_region_area"] + df["right_hemi_region_area"]
-    if (hemi_mask is None) and (damage_mask is not None):
-        df["region_area"] = df["undamaged_region_area"] + df["damaged_region_area"]
-
 
 def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     """Build a DataFrame from an atlas map, with optional damage/hemisphere masks.
@@ -389,26 +289,40 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
     Returns:
         DataFrame: Pixel counts grouped by label.
     """
-    scale_factor = calculate_scale_factor(image, rescaleXY)
+    scale_factor = (
+        (rescaleXY[0] * rescaleXY[1]) / (image.shape[0] * image.shape[1])
+        if rescaleXY
+        else None
+    )
     if hemi_mask is not None:
-        hemi_mask = cv2.resize(
-            hemi_mask.astype(np.uint8),
-            (image.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
+        hemi_mask = resize_mask_nearest(
+            hemi_mask.astype(np.uint8), image.shape[1], image.shape[0]
         )
 
     if damage_mask is not None:
-        damage_mask = cv2.resize(
-            damage_mask.astype(np.uint8),
-            (image.shape[::-1]),
-            interpolation=cv2.INTER_NEAREST,
+        damage_mask = resize_mask_nearest(
+            damage_mask.astype(np.uint8), image.shape[1], image.shape[0]
         ).astype(bool)
 
     # --- single-pass counting via np.unique + np.bincount ---
     flat_img = image.ravel()
     unique_ids, inverse = np.unique(flat_img, return_inverse=True)
 
-    combos = _build_area_combos(hemi_mask, damage_mask)
+    # Build the list of (hemi_val, damage_val, column_name) combos
+    if (hemi_mask is not None) and (damage_mask is not None):
+        combos = [
+            (1, 0, "left_hemi_undamaged_region_area"),
+            (1, 1, "left_hemi_damaged_region_area"),
+            (2, 0, "right_hemi_undamaged_region_area"),
+            (2, 1, "right_hemi_damaged_region_area"),
+        ]
+    elif hemi_mask is not None:
+        combos = [(1, 0, "left_hemi_region_area"), (2, 0, "right_hemi_region_area")]
+    elif damage_mask is not None:
+        combos = [(0, 0, "undamaged_region_area"), (0, 1, "damaged_region_area")]
+    else:
+        combos = [(None, None, "region_area")]
+
     data = {"idx": unique_ids}
 
     for hemi_val, damage_val, col_name in combos:
@@ -426,16 +340,82 @@ def flat_to_dataframe(image, damage_mask, hemi_mask, rescaleXY=None):
 
     df_area_per_label = pd.DataFrame(data)
 
-    _derive_area_aggregates(df_area_per_label, hemi_mask, damage_mask)
-
-    # When no masks are present, add the total region_area column.
-    if (hemi_mask is None) and (damage_mask is None):
-        total_counts = np.bincount(inverse, minlength=len(unique_ids))
-        if scale_factor:
-            total_counts = total_counts.astype(np.float64) * scale_factor
-        df_area_per_label["region_area"] = total_counts.astype(np.float64)
+    # Derive aggregate area columns from leaf-level columns
+    if (hemi_mask is not None) and (damage_mask is not None):
+        df_area_per_label["undamaged_region_area"] = (
+            df_area_per_label["left_hemi_undamaged_region_area"]
+            + df_area_per_label["right_hemi_undamaged_region_area"]
+        )
+        df_area_per_label["damaged_region_area"] = (
+            df_area_per_label["left_hemi_damaged_region_area"]
+            + df_area_per_label["right_hemi_damaged_region_area"]
+        )
+        df_area_per_label["left_hemi_region_area"] = (
+            df_area_per_label["left_hemi_damaged_region_area"]
+            + df_area_per_label["left_hemi_undamaged_region_area"]
+        )
+        df_area_per_label["right_hemi_region_area"] = (
+            df_area_per_label["right_hemi_damaged_region_area"]
+            + df_area_per_label["right_hemi_undamaged_region_area"]
+        )
+        df_area_per_label["region_area"] = (
+            df_area_per_label["undamaged_region_area"]
+            + df_area_per_label["damaged_region_area"]
+        )
+    elif hemi_mask is not None:
+        df_area_per_label["region_area"] = (
+            df_area_per_label["left_hemi_region_area"]
+            + df_area_per_label["right_hemi_region_area"]
+        )
+    elif damage_mask is not None:
+        df_area_per_label["region_area"] = (
+            df_area_per_label["undamaged_region_area"]
+            + df_area_per_label["damaged_region_area"]
+        )
 
     return df_area_per_label
+
+
+# ---------------------------------------------------------------------------
+# Atlas-space coordinate transformation
+# ---------------------------------------------------------------------------
+
+
+def transform_to_atlas_space(
+    slice_info,
+    y: np.ndarray,
+    x: np.ndarray,
+) -> np.ndarray:
+    """Transform 2-D registration coordinates to 3-D atlas space.
+
+    Uses the QuickNII anchoring vector to apply the affine:
+        atlas_coord = O + (x/width) * U + (y/height) * V
+
+    Args:
+        slice_info: SliceInfo with `anchoring` (9-element vector), `height`,
+            and `width` for the registration image.
+        y: Y coordinates in registration space.
+        x: X coordinates in registration space.
+
+    Returns:
+        (N, 3) array of 3-D atlas-space coordinates.
+    """
+    # NOTE: This implementation intentionally avoids building intermediate arrays via
+    # np.array([row0, row1, row2]).T, which has been observed to miscompute under
+    # some Python/numpy builds for large inputs.
+    anchoring = slice_info.anchoring
+    o = np.asarray(anchoring[0:3], dtype=np.float64)
+    u = np.asarray(anchoring[3:6], dtype=np.float64)
+    v = np.asarray(anchoring[6:9], dtype=np.float64)
+
+    y_arr = np.asarray(y, dtype=np.float64).ravel()
+    x_arr = np.asarray(x, dtype=np.float64).ravel()
+    y_scale = y_arr / float(slice_info.height)
+    x_scale = x_arr / float(slice_info.width)
+
+    return (
+        o[None, :] + (x_scale[:, None] * u[None, :]) + (y_scale[:, None] * v[None, :])
+    )
 
 
 # ---------------------------------------------------------------------------

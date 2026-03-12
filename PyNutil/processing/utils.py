@@ -5,48 +5,6 @@ import os
 import cv2
 
 
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
-
-
-def safe_area_fraction(df, numerator_col, denominator_col, result_col):
-    """Compute *numerator / denominator* with zero-division protection.
-
-    If either column is missing from *df* the function silently does nothing,
-    making it safe to call unconditionally for optional column pairs.
-
-    Args:
-        df: pandas DataFrame (modified **in-place**).
-        numerator_col: Column name for the numerator.
-        denominator_col: Column name for the denominator.
-        result_col: Column name to write the result into.
-    """
-    if numerator_col not in df.columns or denominator_col not in df.columns:
-        return
-    mask = df[denominator_col] != 0
-    df[result_col] = 0.0
-    df.loc[mask, result_col] = (
-        df.loc[mask, numerator_col] / df.loc[mask, denominator_col]
-    )
-
-
-def safe_mean_ratio(df, numerator_col, denominator_col, result_col):
-    """Compute *numerator / denominator* where denominator > 0.
-
-    Same contract as :func:`safe_area_fraction` but uses ``> 0`` rather than
-    ``!= 0`` as the guard — appropriate for count-based denominators (e.g.
-    mean intensity = sum / pixel_count).
-    """
-    if numerator_col not in df.columns or denominator_col not in df.columns:
-        return
-    mask = df[denominator_col] > 0
-    df[result_col] = 0.0
-    df.loc[mask, result_col] = (
-        df.loc[mask, numerator_col] / df.loc[mask, denominator_col]
-    )
-
-
 def assign_labels_at_coordinates(coords_y, coords_x, source_map, reg_height, reg_width):
     """Look up values in *source_map* for coordinates scaled to atlas resolution.
 
@@ -152,13 +110,21 @@ MEAN_INTENSITY_PAIRS = [
 def apply_area_fractions(df):
     """Add all standard area-fraction columns to *df* (in-place)."""
     for num, den, res in AREA_FRACTION_PAIRS:
-        safe_area_fraction(df, num, den, res)
+        if num not in df.columns or den not in df.columns:
+            continue
+        mask = df[den] != 0
+        df[res] = 0.0
+        df.loc[mask, res] = df.loc[mask, num] / df.loc[mask, den]
 
 
 def apply_mean_intensities(df):
     """Add all standard mean-intensity columns to *df* (in-place)."""
     for num, den, res in MEAN_INTENSITY_PAIRS:
-        safe_mean_ratio(df, num, den, res)
+        if num not in df.columns or den not in df.columns:
+            continue
+        mask = df[den] > 0
+        df[res] = 0.0
+        df.loc[mask, res] = df.loc[mask, num] / df.loc[mask, den]
 
 
 _CHANNEL_INDEX = {"R": 2, "G": 1, "B": 0}
@@ -183,25 +149,6 @@ def convert_to_intensity(image, channel):
         return image[:, :, idx].astype(np.float32)
 
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
-
-
-def scale_positions(id_y, id_x, y_scale, x_scale):
-    """
-    Scales the Y and X coordinates to the registration space.
-
-    Args:
-        id_y (ndarray): Y coordinates.
-        id_x (ndarray): X coordinates.
-        y_scale (float): Y scaling factor.
-        x_scale (float): X scaling factor.
-
-    Returns:
-        tuple: Scaled Y and X coordinates.
-    """
-    id_y = id_y * y_scale
-    id_x = id_x * x_scale
-    return id_y, id_x
-
 
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".dzip"}
 
@@ -232,10 +179,3 @@ def discover_image_files(folder):
         )
     print(f"Found {len(paths)} segmentations in folder {folder}")
     return paths
-
-
-from ..io.loaders import (  # noqa: E402, F401
-    number_sections,
-    get_flat_files,
-    get_current_flat_file,
-)

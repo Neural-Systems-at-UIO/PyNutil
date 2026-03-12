@@ -21,11 +21,6 @@ from ..atlas_map import (
     warp_image,
     compute_deformation_map,
     apply_deformation_map,
-)
-from ..transforms import (
-    transform_points_to_atlas_space,
-    transform_to_registration,
-    get_transformed_coordinates,
     transform_to_atlas_space,
 )
 from ..analysis.aggregator import build_region_intensity_dataframe
@@ -40,13 +35,8 @@ def _prepare_section(
     slice_info,
     seg_width,
     seg_height,
-    atlas_labels,
-    flat_file_atlas,
-    atlas_volume,
-    hemi_map,
-    non_linear,
-    use_flat,
-    flat_label_path,
+    p_ctx,
+    flat_file_atlas=None,
 ):
     """Shared setup for both segmentation and intensity section processors.
 
@@ -55,9 +45,23 @@ def _prepare_section(
     coordinate-computation pass and shares the deformation map between
     them, roughly halving the cost of these operations.
 
+    Args:
+        slice_info: Per-section registration data.
+        seg_width: Width of the source segmentation/image.
+        seg_height: Height of the source segmentation/image.
+        p_ctx: Immutable pipeline-wide state (atlas, adapter, options).
+        flat_file_atlas: Path to the flat-file atlas for this section, or None.
+
     Returns:
         (atlas_map, region_areas, hemi_mask, damage_mask, deformation)
     """
+    atlas_labels = p_ctx.atlas_labels
+    atlas_volume = p_ctx.atlas_volume
+    hemi_map = p_ctx.hemi_map
+    non_linear = p_ctx.non_linear
+    use_flat = p_ctx.use_flat
+    flat_label_path = p_ctx.flat_label_path
+
     deformation = slice_info.deformation if non_linear else None
     damage_mask = slice_info.damage_mask
     reg_height, reg_width = slice_info.height, slice_info.width
@@ -130,10 +134,10 @@ def _compute_damage_state(
     scaled_y,
     scaled_centroidsX,
     scaled_centroidsY,
-    reg_width,
-    reg_height,
+    slice_info,
 ):
     """Compute per-point and per-centroid undamaged boolean masks."""
+    reg_height, reg_width = slice_info.height, slice_info.width
     if damage_mask is not None:
         damage_mask = resize_mask_nearest(damage_mask, reg_width, reg_height).astype(
             bool
@@ -163,10 +167,10 @@ def _compute_hemi_state(
     scaled_y,
     scaled_centroidsX,
     scaled_centroidsY,
-    reg_height,
-    reg_width,
+    slice_info,
 ):
     """Compute per-point and per-centroid hemisphere labels."""
+    reg_height, reg_width = slice_info.height, slice_info.width
     if hemi_mask is not None:
         per_point_hemi = assign_labels_at_coordinates(
             scaled_y, scaled_x, hemi_mask, reg_height, reg_width
@@ -185,18 +189,59 @@ def _compute_hemi_state(
     return per_point_hemi, per_centroid_hemi
 
 
-def _safe_index(arr, mask):
-    """Index *arr* by boolean *mask*, returning empty array when *arr* is None."""
-    if arr is not None:
-        return arr[mask]
-    return np.array([])
+def _deform_and_build_result(
+    *,
+    slice_info,
+    non_linear,
+    scaled_x,
+    scaled_y,
+    centroidsX,
+    centroidsY,
+    per_point_undamaged,
+    per_centroid_undamaged,
+    per_point_labels,
+    per_centroid_labels,
+    per_point_hemi,
+    per_centroid_hemi,
+    region_areas,
+):
+    """Apply deformation, transform to atlas space, and assemble a SectionResult.
 
+    Consolidates the final ~30 lines shared by segmentation_to_atlas_space
+    and coordinates_to_atlas_space.
+    """
+    reg_height, reg_width = slice_info.height, slice_info.width
+    deformation = slice_info.deformation if non_linear else None
 
-def _to_array(val, gate):
-    """Return ``np.array(val)`` when *gate* is not None, else empty array."""
-    if gate is not None:
-        return np.asarray(val)
-    return np.array([])
+    cx_filtered = centroidsX[per_centroid_undamaged] if centroidsX is not None else np.array([])
+    cy_filtered = centroidsY[per_centroid_undamaged] if centroidsY is not None else np.array([])
+
+    pts_x = scaled_x[per_point_undamaged]
+    pts_y = scaled_y[per_point_undamaged]
+    if non_linear and deformation is not None:
+        if pts_x is not None:
+            pts_x, pts_y = deformation(pts_x, pts_y)
+        if len(cx_filtered):
+            cx_filtered, cy_filtered = deformation(cx_filtered, cy_filtered)
+    points = (
+        transform_to_atlas_space(slice_info, pts_y, pts_x)
+        if pts_x is not None else None
+    )
+    centroids = (
+        transform_to_atlas_space(slice_info, cy_filtered, cx_filtered)
+        if len(cx_filtered) else None
+    )
+    return SectionResult(
+        points=np.asarray(points) if points is not None else np.array([]),
+        centroids=np.asarray(centroids) if centroids is not None else np.array([]),
+        region_areas=region_areas,
+        points_labels=np.asarray(per_point_labels) if points is not None else np.array([]),
+        centroids_labels=np.asarray(per_centroid_labels) if centroids is not None else np.array([]),
+        per_point_undamaged=np.asarray(per_point_undamaged) if points is not None else np.array([]),
+        per_centroid_undamaged=np.asarray(per_centroid_undamaged) if centroids is not None else np.array([]),
+        points_hemi_labels=np.asarray(per_point_hemi) if points is not None else np.array([]),
+        centroids_hemi_labels=np.asarray(per_centroid_hemi) if points is not None else np.array([]),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -210,21 +255,6 @@ def _apply_intensity_bounds(arr, min_val, max_val):
         arr[arr < min_val] = 0
     if max_val is not None:
         arr[arr > max_val] = 0
-
-
-def _filter_rgb_by_intensity(image_resized, min_intensity, max_intensity):
-    """Zero RGB pixels whose luminance falls outside intensity bounds."""
-    if min_intensity is None and max_intensity is None:
-        return
-    temp_gray = (
-        0.2989 * image_resized[:, :, 0]
-        + 0.5870 * image_resized[:, :, 1]
-        + 0.1140 * image_resized[:, :, 2]
-    )
-    if min_intensity is not None:
-        image_resized[temp_gray < min_intensity] = 0
-    if max_intensity is not None:
-        image_resized[temp_gray > max_intensity] = 0
 
 
 def _extract_signal_pixels(
@@ -244,7 +274,17 @@ def _extract_signal_pixels(
             image, (reg_width, reg_height), interpolation=cv2.INTER_AREA
         )
         image_resized = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)
-        _filter_rgb_by_intensity(image_resized, min_intensity, max_intensity)
+        # Zero RGB pixels whose luminance falls outside intensity bounds.
+        if min_intensity is not None or max_intensity is not None:
+            temp_gray = (
+                0.2989 * image_resized[:, :, 0]
+                + 0.5870 * image_resized[:, :, 1]
+                + 0.1140 * image_resized[:, :, 2]
+            )
+            if min_intensity is not None:
+                image_resized[temp_gray < min_intensity] = 0
+            if max_intensity is not None:
+                image_resized[temp_gray > max_intensity] = 0
         sig_intensities = image_resized[sig_y, sig_x]
     else:
         sig_intensities = intensity_resized[sig_y, sig_x]
@@ -278,21 +318,11 @@ def segmentation_to_atlas_space(
     Returns:
         SectionResult with transformed coordinates, labels, and metadata.
     """
-    # ── unbox contexts at the boundary ─────────────────────────────────
     slice_info = s_ctx.slice_info
-    segmentation_path = s_ctx.segmentation_path
-    flat_file_atlas = s_ctx.flat_file_path
-    atlas_labels = p_ctx.atlas_labels
     pixel_id = p_ctx.pixel_id
-    non_linear = p_ctx.non_linear
-    object_cutoff = p_ctx.object_cutoff
-    atlas_volume = p_ctx.atlas_volume
-    hemi_map = p_ctx.hemi_map
-    use_flat = p_ctx.use_flat
-    flat_label_path = p_ctx.flat_label_path
     adapter = p_ctx.segmentation_adapter
 
-    segmentation = adapter.load(segmentation_path)
+    segmentation = adapter.load(s_ctx.segmentation_path)
     if pixel_id == "auto":
         pixel_id = adapter.detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
@@ -302,17 +332,11 @@ def segmentation_to_atlas_space(
         slice_info,
         seg_width,
         seg_height,
-        atlas_labels,
-        flat_file_atlas,
-        atlas_volume,
-        hemi_map,
-        non_linear,
-        use_flat,
-        flat_label_path,
+        p_ctx,
+        flat_file_atlas=s_ctx.flat_file_path,
     )
-    y_scale, x_scale = transform_to_registration(
-        seg_height, seg_width, reg_height, reg_width
-    )
+    y_scale = reg_height / seg_height
+    x_scale = reg_width / seg_width
 
     (
         centroids,
@@ -327,10 +351,7 @@ def segmentation_to_atlas_space(
         atlas_map,
         y_scale,
         x_scale,
-        object_cutoff=object_cutoff,
-        atlas_at_original_resolution=True,
-        reg_height=reg_height,
-        reg_width=reg_width,
+        object_cutoff=p_ctx.object_cutoff,
         segmentation_format=adapter.name,
     )
 
@@ -346,8 +367,7 @@ def segmentation_to_atlas_space(
         scaled_y,
         scaled_centroidsX,
         scaled_centroidsY,
-        reg_width,
-        reg_height,
+        slice_info,
     )
     per_point_hemi, per_centroid_hemi = _compute_hemi_state(
         hemi_mask,
@@ -355,44 +375,27 @@ def segmentation_to_atlas_space(
         scaled_y,
         scaled_centroidsX,
         scaled_centroidsY,
-        reg_height,
-        reg_width,
+        slice_info,
     )
 
     if per_centroid_labels is None:
         per_centroid_labels = np.array([], dtype=per_point_labels.dtype)
 
-    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
-        non_linear,
-        None,
-        scaled_x[per_point_undamaged],
-        scaled_y[per_point_undamaged],
-        _safe_index(scaled_centroidsX, per_centroid_undamaged),
-        _safe_index(scaled_centroidsY, per_centroid_undamaged),
-        deformation,
-    )
-    points, centroids = transform_points_to_atlas_space(
-        slice_info.anchoring,
-        new_x,
-        new_y,
-        centroids_new_x,
-        centroids_new_y,
-        reg_height,
-        reg_width,
-    )
-    result = SectionResult(
-        points=_to_array(points, points),
-        centroids=_to_array(centroids, centroids),
+    return _deform_and_build_result(
+        slice_info=slice_info,
+        non_linear=p_ctx.non_linear,
+        scaled_x=scaled_x,
+        scaled_y=scaled_y,
+        centroidsX=scaled_centroidsX,
+        centroidsY=scaled_centroidsY,
+        per_point_undamaged=per_point_undamaged,
+        per_centroid_undamaged=per_centroid_undamaged,
+        per_point_labels=per_point_labels,
+        per_centroid_labels=per_centroid_labels,
+        per_point_hemi=per_point_hemi,
+        per_centroid_hemi=per_centroid_hemi,
         region_areas=region_areas,
-        points_labels=_to_array(per_point_labels, points),
-        centroids_labels=_to_array(per_centroid_labels, centroids),
-        per_point_undamaged=_to_array(per_point_undamaged, points),
-        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
-        points_hemi_labels=_to_array(per_point_hemi, points),
-        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
     )
-
-    return result
 
 
 def coordinates_to_atlas_space(
@@ -419,31 +422,18 @@ def coordinates_to_atlas_space(
     Returns:
         SectionResult with transformed coordinates, labels, and metadata.
     """
-    atlas_labels = p_ctx.atlas_labels
-    non_linear = p_ctx.non_linear
-    atlas_volume = p_ctx.atlas_volume
-    hemi_map = p_ctx.hemi_map
-    flat_label_path = p_ctx.flat_label_path
-
     reg_height, reg_width = slice_info.height, slice_info.width
 
     atlas_map, region_areas, hemi_mask, damage_mask, deformation = _prepare_section(
         slice_info,
         image_width,
         image_height,
-        atlas_labels,
-        None,  # no flat file
-        atlas_volume,
-        hemi_map,
-        non_linear,
-        False,  # use_flat
-        flat_label_path,
+        p_ctx,
     )
 
     # Scale from image space to registration space
-    y_scale, x_scale = transform_to_registration(
-        image_height, image_width, reg_height, reg_width
-    )
+    y_scale = reg_height / image_height
+    x_scale = reg_width / image_width
     scaled_x = coords_x.astype(np.float64) * x_scale
     scaled_y = coords_y.astype(np.float64) * y_scale
 
@@ -462,8 +452,7 @@ def coordinates_to_atlas_space(
         scaled_y,
         scaled_x,  # centroids = points for coordinate mode
         scaled_y,
-        reg_width,
-        reg_height,
+        slice_info,
     )
     per_point_hemi, per_centroid_hemi = _compute_hemi_state(
         hemi_mask,
@@ -471,40 +460,24 @@ def coordinates_to_atlas_space(
         scaled_y,
         scaled_x,
         scaled_y,
-        reg_height,
-        reg_width,
+        slice_info,
     )
 
     # Apply non-linear deformation and transform to 3D atlas space
-    new_x, new_y, centroids_new_x, centroids_new_y = get_transformed_coordinates(
-        non_linear,
-        None,
-        scaled_x[per_point_undamaged],
-        scaled_y[per_point_undamaged],
-        scaled_x[per_centroid_undamaged],
-        scaled_y[per_centroid_undamaged],
-        deformation,
-    )
-    points, centroids = transform_points_to_atlas_space(
-        slice_info.anchoring,
-        new_x,
-        new_y,
-        centroids_new_x,
-        centroids_new_y,
-        reg_height,
-        reg_width,
-    )
-
-    return SectionResult(
-        points=_to_array(points, points),
-        centroids=_to_array(centroids, centroids),
+    return _deform_and_build_result(
+        slice_info=slice_info,
+        non_linear=p_ctx.non_linear,
+        scaled_x=scaled_x,
+        scaled_y=scaled_y,
+        centroidsX=scaled_x,  # coordinates mode: centroids == points
+        centroidsY=scaled_y,
+        per_point_undamaged=per_point_undamaged,
+        per_centroid_undamaged=per_centroid_undamaged,
+        per_point_labels=per_point_labels,
+        per_centroid_labels=per_point_labels,  # same labels for both
+        per_point_hemi=per_point_hemi,
+        per_centroid_hemi=per_centroid_hemi,
         region_areas=region_areas,
-        points_labels=_to_array(per_point_labels, points),
-        centroids_labels=_to_array(per_point_labels, centroids),
-        per_point_undamaged=_to_array(per_point_undamaged, points),
-        per_centroid_undamaged=_to_array(per_centroid_undamaged, centroids),
-        points_hemi_labels=_to_array(per_point_hemi, points),
-        centroids_hemi_labels=_to_array(per_centroid_hemi, points),
     )
 
 
@@ -521,24 +494,12 @@ def segmentation_to_atlas_space_intensity(
     Returns:
         IntensitySectionResult with region intensities and MeshView point data.
     """
-    # ── unbox contexts at the boundary ─────────────────────────────────
     slice_info = s_ctx.slice_info
-    image_path = s_ctx.segmentation_path
-    flat_file_atlas = s_ctx.flat_file_path
-    atlas_labels = p_ctx.atlas_labels
-    intensity_channel = p_ctx.intensity_channel
-    non_linear = p_ctx.non_linear
-    atlas_volume = p_ctx.atlas_volume
-    hemi_map = p_ctx.hemi_map
-    use_flat = p_ctx.use_flat
-    flat_label_path = p_ctx.flat_label_path
-    min_intensity = p_ctx.min_intensity
-    max_intensity = p_ctx.max_intensity
     adapter = p_ctx.segmentation_adapter
 
-    image = adapter.load(image_path)
-    intensity = convert_to_intensity(image, intensity_channel)
-    _apply_intensity_bounds(intensity, min_intensity, max_intensity)
+    image = adapter.load(s_ctx.segmentation_path)
+    intensity = convert_to_intensity(image, p_ctx.intensity_channel)
+    _apply_intensity_bounds(intensity, p_ctx.min_intensity, p_ctx.max_intensity)
 
     reg_height, reg_width = slice_info.height, slice_info.width
 
@@ -546,13 +507,8 @@ def segmentation_to_atlas_space_intensity(
         slice_info,
         image.shape[1],
         image.shape[0],
-        atlas_labels,
-        flat_file_atlas,
-        atlas_volume,
-        hemi_map,
-        non_linear,
-        use_flat,
-        flat_label_path,
+        p_ctx,
+        flat_file_atlas=s_ctx.flat_file_path,
     )
 
     # Ensure atlas_map and hemi_mask match registration resolution
@@ -571,7 +527,7 @@ def segmentation_to_atlas_space_intensity(
     intensity_resized = cv2.resize(
         intensity, (reg_width, reg_height), interpolation=cv2.INTER_AREA
     )
-    _apply_intensity_bounds(intensity_resized, min_intensity, max_intensity)
+    _apply_intensity_bounds(intensity_resized, p_ctx.min_intensity, p_ctx.max_intensity)
 
     # Apply damage mask if it exists
     if damage_mask is not None:
@@ -586,7 +542,7 @@ def segmentation_to_atlas_space_intensity(
     df = build_region_intensity_dataframe(
         atlas_map=atlas_map,
         intensity_resized=intensity_resized,
-        atlas_labels=atlas_labels,
+        atlas_labels=p_ctx.atlas_labels,
         region_areas=region_areas,
         hemi_mask=hemi_mask,
         damage_mask_resized=damage_mask_resized,
@@ -594,10 +550,10 @@ def segmentation_to_atlas_space_intensity(
 
     # Build signal mask and extract pixels for MeshView
     signal_mask = np.ones_like(intensity_resized, dtype=bool)
-    if min_intensity is not None:
-        signal_mask &= intensity_resized >= min_intensity
-    if max_intensity is not None:
-        signal_mask &= intensity_resized <= max_intensity
+    if p_ctx.min_intensity is not None:
+        signal_mask &= intensity_resized >= p_ctx.min_intensity
+    if p_ctx.max_intensity is not None:
+        signal_mask &= intensity_resized <= p_ctx.max_intensity
     if damage_mask is not None:
         signal_mask &= damage_mask_resized
 
@@ -607,11 +563,11 @@ def segmentation_to_atlas_space_intensity(
         signal_mask,
         reg_width,
         reg_height,
-        min_intensity,
-        max_intensity,
+        p_ctx.min_intensity,
+        p_ctx.max_intensity,
     )
 
-    result = _build_intensity_result(
+    return _build_intensity_result(
         df,
         sig_y,
         sig_x,
@@ -619,12 +575,8 @@ def segmentation_to_atlas_space_intensity(
         slice_info,
         atlas_map,
         hemi_mask,
-        reg_height,
-        reg_width,
         deformation,
     )
-
-    return result
 
 
 def _build_intensity_result(
@@ -635,8 +587,6 @@ def _build_intensity_result(
     slice_info,
     atlas_map,
     hemi_mask,
-    reg_height,
-    reg_width,
     deformation=None,
 ):
     """Construct an IntensitySectionResult from extracted signal pixels."""
@@ -659,13 +609,7 @@ def _build_intensity_result(
         new_x = sig_x.astype(np.float32)
         new_y = sig_y.astype(np.float32)
 
-    sig_points_3d = transform_to_atlas_space(
-        slice_info.anchoring,
-        new_y,
-        new_x,
-        reg_height,
-        reg_width,
-    )
+    sig_points_3d = transform_to_atlas_space(slice_info, new_y, new_x)
     sig_labels = atlas_map[sig_y, sig_x]
     sig_hemi = (
         hemi_mask[sig_y, sig_x]

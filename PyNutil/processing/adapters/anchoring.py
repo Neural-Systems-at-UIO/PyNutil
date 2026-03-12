@@ -6,7 +6,6 @@ transformation (anchoring) from registration files.
 
 from __future__ import annotations
 
-import math
 import os
 import re
 from typing import List
@@ -14,6 +13,7 @@ from typing import List
 import numpy as np
 
 from .base import AnchoringLoader, RegistrationData, SliceInfo
+from ...io.loaders import number_sections, load_json_file
 
 
 class QuintAnchoringLoader(AnchoringLoader):
@@ -32,10 +32,7 @@ class QuintAnchoringLoader(AnchoringLoader):
 
     def load(self, path: str) -> RegistrationData:
         """Load anchoring from a QUINT JSON file."""
-        import json
-
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = load_json_file(path)
 
         # .waln/.wwrp files use "sections" with "ouv" instead of
         # "slices" with "anchoring"
@@ -51,9 +48,10 @@ class QuintAnchoringLoader(AnchoringLoader):
             filename = s.get("filename", "")
             nr = s.get("nr", 0)
             if not nr and filename:
-                m = re.search(r"_s(\d+)", filename)
-                if m:
-                    nr = int(m.group(1))
+                try:
+                    nr = int(number_sections([filename])[0])
+                except Exception:
+                    nr = 0
 
             slices.append(
                 SliceInfo(
@@ -101,13 +99,10 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
     @classmethod
     def can_handle(cls, path: str) -> bool:
         """Detect brainglobe-registration JSON by looking for atlas_slice_corners."""
-        import json
-
         if not path.endswith(".json"):
             return False
         try:
-            with open(path, "r") as f:
-                data = json.load(f)
+            data = load_json_file(path)
             return "atlas_slice_corners" in data
         except Exception:
             return False
@@ -162,10 +157,7 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
 
     def load(self, path: str) -> RegistrationData:
         """Load anchoring from a brainglobe-registration JSON."""
-        import json
-
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = load_json_file(path)
 
         atlas_name = data["atlas"]
         corners_um = np.array(data["atlas_slice_corners"], dtype=np.float64)
@@ -181,8 +173,13 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
         V = pn_corners[2] - pn_corners[0]
         anchoring = O.tolist() + U.tolist() + V.tolist()
 
-        width = int(math.floor(math.hypot(*U))) + 1
-        height = int(math.floor(math.hypot(*V))) + 1
+        width, height = SliceInfo(
+            section_id="",
+            section_number=0,
+            width=0,
+            height=0,
+            anchoring=anchoring,
+        ).physical_dimensions
 
         reg_dir = os.path.dirname(os.path.abspath(path))
         tiff_h, tiff_w = self._find_tiff_dims(reg_dir)

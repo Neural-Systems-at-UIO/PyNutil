@@ -2,16 +2,17 @@ import json
 import re
 import os
 
+from PyNutil.io.loaders import load_json_file
+
 """
 Sharon Yates, 04.04.24.
 This is a script for converting WALN and WWRP files from WebAlign and WebWarp to VisuAlign compatible JSON files.
-To be used for testing purposes. 
+To be used for testing purposes.
 """
 
 
 def waln_to_json(filename):
-    with open(filename) as f:
-        vafile = json.load(f)
+    vafile = load_json_file(filename)
     if filename.endswith(".waln") or filename.endswith("wwrp"):
         slices = vafile["sections"]  # define slices as "section" in waln
         vafile["slices"] = slices
