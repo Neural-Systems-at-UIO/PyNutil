@@ -199,13 +199,13 @@ class TestValidatorNutilComparison(TimedTestCase):
             self._itksnap_label_to_csv(scenario["label_txt"], labels_csv)
 
             pnt = PyNutil(
-                segmentation_folder=seg_folder,
-                alignment_json=alignment_json,
-                colour=scenario["colour"],
                 atlas_path=atlas_nrrd,
                 label_path=labels_csv,
             )
             pnt.get_coordinates(
+                segmentation_folder=seg_folder,
+                alignment_json=alignment_json,
+                colour=scenario["colour"],
                 non_linear=False,
                 object_cutoff=0,
                 use_flat=True,

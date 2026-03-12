@@ -59,13 +59,13 @@ class TestObliqueNutilComparison(TimedTestCase):
 
     def _run_pynutil_oblique(self):
         pnt = PyNutil(
-            segmentation_folder=self.segmentation_folder,
-            alignment_json=self.alignment_json,
-            colour=[0, 0, 0],
             atlas_path=self.atlas_path,
             label_path=self.label_path,
         )
         pnt.get_coordinates(
+            segmentation_folder=self.segmentation_folder,
+            alignment_json=self.alignment_json,
+            colour=[0, 0, 0],
             object_cutoff=0,
             use_flat=True,
             flat_label_path=self.flat_label_path,
