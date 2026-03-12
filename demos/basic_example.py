@@ -18,19 +18,20 @@ atlas_name = "allen_mouse_25um"
 output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_24_03_2025")
 
 # Initialize PyNutil object
-pnt = PyNutil(
+pnt = PyNutil(atlas_name=atlas_name)
+
+# Execute workflow
+pnt.get_coordinates(
     segmentation_folder=segmentation_folder,
     alignment_json=alignment_json,
     colour=colour,
-    atlas_name=atlas_name,
+    object_cutoff=0,
+    use_flat=False,
     custom_region_path=os.path.join(
         repo_root,
         "tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
     ),
 )
-
-# Execute workflow
-pnt.get_coordinates(object_cutoff=0, use_flat=False)
 pnt.quantify_coordinates()
 pnt.interpolate_volume()
 pnt.save_analysis(output_folder)

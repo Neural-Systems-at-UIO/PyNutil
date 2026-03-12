@@ -28,17 +28,13 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        # Initialize PyNutil with a filter (e.g., min_intensity=20)
-        pynutil = PyNutil(
+        pynutil = PyNutil(atlas_name=self.atlas_name)
+        pynutil.get_coordinates(
             image_folder=self.image_folder,
             intensity_channel="grayscale",
             alignment_json=self.alignment_json,
-            atlas_name=self.atlas_name,
-            min_intensity=20
+            min_intensity=20,
         )
-
-        # Run quantification
-        pynutil.get_coordinates()
         pynutil.quantify_coordinates()
 
         # Save with magma colormap
@@ -67,16 +63,12 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        # Initialize PyNutil
-        pynutil = PyNutil(
+        pynutil = PyNutil(atlas_name=self.atlas_name)
+        pynutil.get_coordinates(
             image_folder=self.rgb_image_folder,
             intensity_channel="grayscale",
             alignment_json=self.alignment_json,
-            atlas_name=self.atlas_name
         )
-
-        # Run quantification
-        pynutil.get_coordinates()
         pynutil.quantify_coordinates()
 
         # Save with original_colours colormap
@@ -104,17 +96,13 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        # Initialize PyNutil with a max filter (e.g., max_intensity=100)
-        pynutil = PyNutil(
+        pynutil = PyNutil(atlas_name=self.atlas_name)
+        pynutil.get_coordinates(
             image_folder=self.image_folder,
             intensity_channel="grayscale",
             alignment_json=self.alignment_json,
-            atlas_name=self.atlas_name,
-            max_intensity=100
+            max_intensity=100,
         )
-
-        # Run quantification
-        pynutil.get_coordinates()
         pynutil.quantify_coordinates()
         pynutil.save_analysis(output_folder)
 

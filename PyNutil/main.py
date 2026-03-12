@@ -1,6 +1,5 @@
 import logging
 import re
-from json import JSONDecodeError
 from typing import Optional
 
 import numpy as np
@@ -40,9 +39,10 @@ class PyNutil:
     Methods
     -------
     __init__(...)
-        Initialize the PyNutil class with segmentation, alignment, atlas and region settings.
+        Initialize the PyNutil class with atlas settings only.
     get_coordinates(...)
-        Extract and transform pixel coordinates from segmentation files.
+        Supply data-pipeline arguments, extract and transform pixel coordinates
+        from segmentation files.
     quantify_coordinates()
         Quantify pixel and centroid counts by atlas regions.
     save_analysis(output_folder)
@@ -51,105 +51,61 @@ class PyNutil:
 
     def __init__(
         self,
-        segmentation_folder=None,
-        image_folder=None,
-        coordinate_file=None,
-        alignment_json=None,
-        colour=None,
-        intensity_channel=None,
         atlas_name=None,
         atlas_path=None,
         label_path=None,
         hemi_path=None,
-        custom_region_path=None,
-        settings_file=None,
         voxel_size_um: Optional[float] = None,
-        min_intensity: Optional[int] = None,
-        max_intensity: Optional[int] = None,
-        segmentation_format: str = "binary",
     ):
         """
-        Initializes the PyNutil class with the given parameters.
+        Initializes the PyNutil class with atlas settings.
+
+        Data-pipeline arguments (segmentation folder, alignment JSON, colour,
+        etc.) are supplied later when calling :meth:`get_coordinates`.
 
         Parameters
         ----------
-        segmentation_folder : str, optional
-            The folder containing the segmentation files (default is None).
-        image_folder : str, optional
-            The folder containing the original images for intensity quantification (default is None).
-        alignment_json : str, optional
-            The path to the alignment JSON file (default is None).
-        colour : list, optional
-            The RGB colour of the object to be quantified in the segmentation (default is None).
-        intensity_channel : str, optional
-            The channel to use for intensity quantification ('R', 'G', 'B', 'grayscale', 'auto').
         atlas_name : str, optional
-            The name of the atlas in the brainglobe api to be used for quantification (default is None).
+            The name of the atlas in the BrainGlobe API to be used for
+            quantification (default is None).
         atlas_path : str, optional
-            The path to the custom atlas volume file, only specify if you don't want to use brainglobe (default is None).
+            Path to a custom atlas volume file.  Only specify when not using
+            a BrainGlobe atlas (default is None).
         label_path : str, optional
-            The path to the custom atlas label file, only specify if you don't want to use brainglobe (default is None).
-        custom_region_path : str, optional
-            The path to a custom region id file. This can be found
-        settings_file : str, optional
-            The path to the settings JSON file. This file contains the above parameters and is used for automation (default is None).
+            Path to the label CSV for a custom atlas (default is None).
+        hemi_path : str, optional
+            Path to the hemisphere annotation file for a custom atlas
+            (default is None).
         voxel_size_um : float, optional
-            Only relevant when using a custom atlas. The voxel size of the atlas in micrometers (default is None).
-        min_intensity : int, optional
-            Only when specifying images with intensity to quantify. The minimum intensity value to include in quantification and MeshView (default is None).
-        max_intensity : int, optional
-            Only when specifying images with intensity to quantify. The maximum intensity value to include in quantification and MeshView (default is None).
-        segmentation_format : str, optional
-            The segmentation format: "binary" for ilastik-style masks, "cellpose" for Cellpose output (default is "binary").
+            Voxel size of a custom atlas in micrometers.  Ignored when
+            *atlas_name* is provided (default is None).
 
         Raises
         ------
-        KeyError
-            If the settings file does not contain the required keys.
         ValueError
-            If both atlas_path and atlas_name are specified or if neither is specified.
+            If both *atlas_path* and *atlas_name* are specified, or if
+            neither is specified.
         """
         # Configure logging using centralized utility (only configures if not already done)
         configure_logging()
 
-        if settings_file is not None:
-            try:
-                cfg = PyNutilConfig.from_settings_file(settings_file)
-            except (FileNotFoundError, JSONDecodeError) as e:
-                raise ValueError(f"Error loading settings file: {e}") from e
-        else:
-            cfg = PyNutilConfig(
-                segmentation_folder=segmentation_folder,
-                image_folder=image_folder,
-                coordinate_file=coordinate_file,
-                alignment_json=alignment_json,
-                colour=colour,
-                intensity_channel=intensity_channel,
-                atlas_name=atlas_name,
-                atlas_path=atlas_path,
-                label_path=label_path,
-                hemi_path=hemi_path,
-                custom_region_path=custom_region_path,
-                voxel_size_um=voxel_size_um,
-                min_intensity=min_intensity,
-                max_intensity=max_intensity,
-                segmentation_format=segmentation_format,
-            )
+        cfg = PyNutilConfig(
+            atlas_name=atlas_name,
+            atlas_path=atlas_path,
+            label_path=label_path,
+            hemi_path=hemi_path,
+            voxel_size_um=voxel_size_um,
+        )
 
         cfg.normalize(logger=logger)
-        cfg.validate()
+        cfg._validate_atlas()
 
         # Store the config as the single source of truth for pipeline settings.
         # voxel_size_um may be overwritten by _infer_voxel_size below.
         self._cfg = cfg
 
-        if cfg.custom_region_path:
-            self._custom_regions_dict, self._custom_atlas_labels = (
-                open_custom_region_file(cfg.custom_region_path)
-            )
-        else:
-            self._custom_regions_dict = None
-            self._custom_atlas_labels = None
+        self._custom_regions_dict = None
+        self._custom_atlas_labels = None
 
         self._load_atlas_data()
         self._infer_voxel_size()
@@ -241,6 +197,16 @@ class PyNutil:
 
     def get_coordinates(
         self,
+        segmentation_folder=None,
+        image_folder=None,
+        coordinate_file=None,
+        alignment_json=None,
+        colour=None,
+        intensity_channel=None,
+        min_intensity: Optional[int] = None,
+        max_intensity: Optional[int] = None,
+        segmentation_format: str = "binary",
+        custom_region_path=None,
         non_linear=True,
         object_cutoff=0,
         use_flat=False,
@@ -248,23 +214,73 @@ class PyNutil:
         flat_label_path=None,
     ):
         """
-        Retrieves pixel and centroid coordinates from segmentation data,
-        or extracts intensity from original images,
-        applies atlas-space transformations, and optionally uses a damage
-        mask if specified.
+        Supplies data-pipeline settings, retrieves pixel and centroid
+        coordinates from segmentation data (or extracts intensity from
+        original images), applies atlas-space transformations, and
+        optionally uses a damage mask.
+
+        The first time this method is called the data-pipeline arguments
+        are stored on the instance so that subsequent calls to
+        :meth:`quantify_coordinates`, :meth:`interpolate_volume`, and
+        :meth:`save_analysis` can use them without repetition.
 
         Args:
+            segmentation_folder (str, optional): Folder containing
+                segmentation images. Mutually exclusive with
+                *image_folder* and *coordinate_file*.
+            image_folder (str, optional): Folder containing original
+                images for intensity quantification.
+            coordinate_file (str, optional): CSV with pre-extracted
+                pixel coordinates.
+            alignment_json (str): Path to the alignment JSON produced by
+                QuickNII / VisuAlign / BrainGlobe registration.
+            colour (list, optional): RGB colour of the object to quantify
+                (e.g. ``[0, 0, 0]``).  Required for *segmentation_folder*.
+            intensity_channel (str, optional): Channel to use for
+                intensity quantification (``'R'``, ``'G'``, ``'B'``,
+                ``'grayscale'``, or ``'auto'``).
+            min_intensity (int, optional): Minimum intensity value to
+                include.  Only valid with *image_folder*.
+            max_intensity (int, optional): Maximum intensity value to
+                include.  Only valid with *image_folder*.
+            segmentation_format (str, optional): ``"binary"`` for
+                ilastik-style masks or ``"cellpose"`` for Cellpose output
+                (default is ``"binary"``).
+            custom_region_path (str, optional): Path to a custom-region
+                definition file.
             non_linear (bool, optional): Enable non-linear transformation.
-            object_cutoff (int, optional): Minimum object size.
+            object_cutoff (int, optional): Minimum object size in pixels.
             use_flat (bool, optional): Use flat maps if True.
             apply_damage_mask (bool, optional): Apply damage mask if True.
-            flat_label_path (str, optional): Path to flatmap region-id lookup
-                file (.csv or .label) used when flat files store indexed labels.
+            flat_label_path (str, optional): Path to flatmap region-id
+                lookup file (.csv or .label).
 
         Returns:
             None: Results are stored in class attributes.
         """
+        # Update the config with data-pipeline arguments.
         cfg = self._cfg
+        cfg.segmentation_folder = segmentation_folder
+        cfg.image_folder = image_folder
+        cfg.coordinate_file = coordinate_file
+        cfg.alignment_json = alignment_json
+        cfg.colour = colour
+        cfg.intensity_channel = intensity_channel
+        cfg.min_intensity = min_intensity
+        cfg.max_intensity = max_intensity
+        cfg.segmentation_format = segmentation_format
+        cfg.custom_region_path = custom_region_path
+        cfg._validate_folders()
+
+        # Load custom regions when a path is provided.
+        if custom_region_path:
+            self._custom_regions_dict, self._custom_atlas_labels = (
+                open_custom_region_file(custom_region_path)
+            )
+        else:
+            self._custom_regions_dict = None
+            self._custom_atlas_labels = None
+
         if cfg.coordinate_file:
             result = file_to_atlas_space_coordinates(
                 cfg.coordinate_file,

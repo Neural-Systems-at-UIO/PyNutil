@@ -108,12 +108,11 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
 
         from PyNutil import PyNutil
 
-        pnt = PyNutil(
+        pnt = PyNutil(atlas_name="allen_mouse_25um")
+        pnt.get_coordinates(
             coordinate_file=coord_file,
             alignment_json=bg_json,
-            atlas_name="allen_mouse_25um",
         )
-        pnt.get_coordinates()
         pnt.quantify_coordinates()
 
         with tempfile.TemporaryDirectory() as tmp:

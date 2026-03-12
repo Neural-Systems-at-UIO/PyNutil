@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -7,6 +8,7 @@ import numpy as np
 
 from PyNutil import PyNutil
 from timing_utils import TimedTestCase
+from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
 
 
 class TestVisualisations(TimedTestCase):
@@ -41,7 +43,10 @@ class TestVisualisations(TimedTestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = os.path.join(tmp, "outputs")
 
-            pnt = PyNutil(settings_file=self.settings_path)
+            with open(self.settings_path) as f:
+                settings = json.load(f)
+            pnt = pynutil_from_settings_dict(settings)
+            pnt.get_coordinates(**get_coordinates_kwargs(settings))
 
             from PyNutil.processing.adapters.registry import load_registration
             from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry

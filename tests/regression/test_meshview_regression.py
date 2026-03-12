@@ -19,6 +19,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from PyNutil import PyNutil
 
 from timing_utils import TimedTestCase
+from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
 
 
 class TestMeshviewRegression(TimedTestCase):
@@ -53,8 +54,10 @@ class TestMeshviewRegression(TimedTestCase):
         )
         cls._tmpdir = tempfile.mkdtemp(prefix="pynutil_meshview_test_")
 
-        pnt = PyNutil(settings_file=test_case_path)
-        pnt.get_coordinates(object_cutoff=0)
+        with open(test_case_path) as f:
+            settings = json.load(f)
+        pnt = pynutil_from_settings_dict(settings)
+        pnt.get_coordinates(**get_coordinates_kwargs(settings), object_cutoff=0)
         pnt.quantify_coordinates()
         pnt.save_analysis(cls._tmpdir, create_visualisations=False)
 

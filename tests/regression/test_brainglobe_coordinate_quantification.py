@@ -23,6 +23,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from PyNutil import PyNutil
 
 from timing_utils import TimedTestCase
+from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
 
 TESTS_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -42,8 +43,8 @@ class TestBrainGlobeCoordinateQuantification(TimedTestCase):
 
         cls._tmpdir = tempfile.mkdtemp(prefix="pynutil_bg_coord_test_")
 
-        pnt = PyNutil(settings_file=test_case_path)
-        pnt.get_coordinates()
+        pnt = pynutil_from_settings_dict(cls.test_case)
+        pnt.get_coordinates(**get_coordinates_kwargs(cls.test_case))
         pnt.quantify_coordinates()
         pnt.save_analysis(cls._tmpdir, create_visualisations=False)
 

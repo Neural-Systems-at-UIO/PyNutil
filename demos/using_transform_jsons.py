@@ -13,7 +13,12 @@ from PyNutil import PyNutil
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.abspath(os.path.join(script_dir, ".."))
 
-pnt = PyNutil(settings_file=os.path.join(repo_root, "tests/test_cases/brainglobe_atlas.json"))
-pnt.get_coordinates(object_cutoff=0)
+pnt = PyNutil(atlas_name="allen_mouse_25um")
+pnt.get_coordinates(
+    segmentation_folder=os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"),
+    alignment_json=os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"),
+    colour=[0, 0, 0],
+    object_cutoff=0,
+)
 pnt.quantify_coordinates()
 pnt.save_analysis(os.path.join(repo_root, "demo_data/PyNutil_nonlinear_noflat"))
