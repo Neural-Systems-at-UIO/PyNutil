@@ -6,43 +6,53 @@ from PyNutil import PyNutil
 # Add the root directory to sys.path to allow importing PyNutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+ATLAS_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "test_data", "allen_mouse_2017_atlas")
+)
+ATLAS_PATH = os.path.join(ATLAS_DIR, "annotation_25_reoriented_2017.nrrd")
+LABEL_PATH = os.path.join(ATLAS_DIR, "allen2017_colours.csv")
+
+
 class TestValidation(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "test_data", "image_intensity"))
         self.image_folder = os.path.join(self.base_dir, "images")
         self.alignment_json = os.path.join(self.base_dir, "alignment.json")
-        self.atlas_name = "allen_mouse_25um"
+
+    def _make_pnt(self):
+        return PyNutil(atlas_path=ATLAS_PATH, label_path=LABEL_PATH)
 
     def test_both_folders_raises_error(self):
+        pnt = self._make_pnt()
         with self.assertRaises(ValueError) as cm:
-            PyNutil(
+            pnt.get_coordinates(
                 segmentation_folder=self.image_folder,
                 image_folder=self.image_folder,
                 alignment_json=self.alignment_json,
-                atlas_name=self.atlas_name
             )
         self.assertIn("only one of", str(cm.exception))
 
     def test_intensity_filter_with_segmentation_raises_error(self):
+        pnt = self._make_pnt()
         with self.assertRaises(ValueError) as cm:
-            PyNutil(
+            pnt.get_coordinates(
                 segmentation_folder=self.image_folder,
                 alignment_json=self.alignment_json,
-                atlas_name=self.atlas_name,
-                min_intensity=10
+                min_intensity=10,
             )
         self.assertIn("only supported when using image_folder", str(cm.exception))
 
     def test_voxel_size_ignored_with_atlas_name(self):
         # We check if it logs a warning. For now we just check if it resets the value.
-        pnt = PyNutil(
-            image_folder=self.image_folder,
-            alignment_json=self.alignment_json,
-            atlas_name=self.atlas_name,
-            voxel_size_um=10.0
-        )
-        # Should be 25.0 (inferred from allen_mouse_25um) not 10.0
-        self.assertEqual(pnt.voxel_size_um, 25.0)
+        # Note: voxel_size_um is ignored when atlas_name is provided; with a custom atlas
+        # it is accepted as-is (no inference).  We test the normalisation warning path
+        # indirectly via the config's normalize() logic.
+        from PyNutil.config import PyNutilConfig
+        cfg = PyNutilConfig(atlas_name="allen_mouse_25um", voxel_size_um=10.0)
+        cfg.normalize()
+        # voxel_size_um should be cleared because atlas_name takes precedence
+        self.assertIsNone(cfg.voxel_size_um)
+
 
 if __name__ == "__main__":
     unittest.main()

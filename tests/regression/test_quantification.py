@@ -10,7 +10,7 @@ from PyNutil import PyNutil
 import json
 
 from timing_utils import TimedTestCase
-from test_helpers import pynutil_from_settings_dict
+from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
 
 
 class TestQuantification(TimedTestCase):
@@ -33,7 +33,7 @@ class TestQuantification(TimedTestCase):
     ):
         test_case_filename, test_case = self.load_test_case(test_case_filename)
         pnt = pynutil_from_settings_dict(test_case)
-        pnt.get_coordinates(object_cutoff=0)
+        pnt.get_coordinates(**get_coordinates_kwargs(test_case), object_cutoff=0)
         pnt.quantify_coordinates()
         expected_output_path = os.path.join(
             self.test_case_dir,

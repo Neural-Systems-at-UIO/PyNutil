@@ -12,31 +12,42 @@ def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
 
 
 def pynutil_from_settings_dict(settings: dict) -> PyNutil:
-    """Create a PyNutil instance from a settings dictionary."""
+    """Create a PyNutil instance with atlas settings from a settings dictionary.
+
+    Data-pipeline arguments (segmentation folder, alignment JSON, colour, etc.)
+    must be passed to :meth:`~PyNutil.get_coordinates` separately.  Use
+    :func:`get_coordinates_kwargs` to extract them from the same dict.
+    """
     return PyNutil(
-        segmentation_folder=settings.get("segmentation_folder"),
-        image_folder=settings.get("image_folder"),
-        coordinate_file=settings.get("coordinate_file"),
-        alignment_json=settings.get("alignment_json"),
-        colour=settings.get("colour"),
-        intensity_channel=settings.get("intensity_channel"),
         atlas_name=settings.get("atlas_name"),
         atlas_path=settings.get("atlas_path"),
         label_path=settings.get("label_path"),
         hemi_path=settings.get("hemi_path"),
-        custom_region_path=settings.get("custom_region_path"),
         voxel_size_um=settings.get("voxel_size_um"),
-        min_intensity=settings.get("min_intensity"),
-        max_intensity=settings.get("max_intensity"),
-        segmentation_format=settings.get("segmentation_format", "binary"),
     )
+
+
+def get_coordinates_kwargs(settings: dict) -> dict:
+    """Extract data-pipeline kwargs for :meth:`~PyNutil.get_coordinates` from a settings dict."""
+    return {
+        "segmentation_folder": settings.get("segmentation_folder"),
+        "image_folder": settings.get("image_folder"),
+        "coordinate_file": settings.get("coordinate_file"),
+        "alignment_json": settings.get("alignment_json"),
+        "colour": settings.get("colour"),
+        "intensity_channel": settings.get("intensity_channel"),
+        "min_intensity": settings.get("min_intensity"),
+        "max_intensity": settings.get("max_intensity"),
+        "segmentation_format": settings.get("segmentation_format", "binary"),
+        "custom_region_path": settings.get("custom_region_path"),
+    }
 
 
 def make_pynutil_ready(settings_path: str) -> PyNutil:
     with open(settings_path) as f:
         settings = json.load(f)
     pnt = pynutil_from_settings_dict(settings)
-    pnt.get_coordinates(object_cutoff=0)
+    pnt.get_coordinates(**get_coordinates_kwargs(settings), object_cutoff=0)
     pnt.quantify_coordinates()
     return pnt
 

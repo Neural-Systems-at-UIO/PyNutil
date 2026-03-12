@@ -7,7 +7,7 @@ import numpy as np
 
 from PyNutil import PyNutil
 from timing_utils import TimedTestCase
-from test_helpers import pynutil_from_settings_dict
+from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
 
 
 class TestVisualisations(TimedTestCase):
@@ -46,6 +46,7 @@ class TestVisualisations(TimedTestCase):
             with open(self.settings_path) as f:
                 settings = json.load(f)
             pnt = pynutil_from_settings_dict(settings)
+            pnt.get_coordinates(**get_coordinates_kwargs(settings))
 
             from PyNutil.processing.adapters.registry import load_registration
             from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
