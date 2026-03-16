@@ -32,7 +32,13 @@ coords = pnt.seg_to_coords(
 
 # Quantify by atlas region
 label_df, per_section_df = pnt.quantify_coords(coords, atlas)
-
+# Optionally generate a 3D heatmap
+pnt.interpolate_volume(
+    segmentation_folder=segmentation_folder,
+    alignment_json=alignment_json,
+    colour=colour,
+    atlas_shape=atlas.shape,
+)
 # Save results
 pnt.save_analysis(
     output_folder,
