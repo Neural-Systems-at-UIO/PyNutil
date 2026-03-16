@@ -10,13 +10,12 @@ The CSV must have columns: X, Y, image_width, image_height, section number
 """
 from PyNutil import PyNutil
 
-pnt = PyNutil(
+pnt = PyNutil(atlas_name="allen_mouse_25um")
+
+pnt.get_coordinates(
     coordinate_file="tests/test_data/coordinates/coordinate_data_section_edges.csv",
     alignment_json="tests/test_data/brainglobe_registration/brainglobe-registration.json",
-    atlas_name="allen_mouse_25um",
 )
-
-pnt.get_coordinates()
 pnt.quantify_coordinates()
 
 pnt.save_analysis(

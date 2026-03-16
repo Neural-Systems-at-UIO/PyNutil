@@ -26,37 +26,39 @@ class AnalysisWorker(QThread):
                 print("Analysis cancelled")
                 return
 
-            # Only pass one of segmentation_folder or image_folder to PyNutil
-            pnt_args = {
-                "alignment_json": self.arguments["registration_json"],
-                "colour": self.arguments["object_colour"],
-                "custom_region_path": self.arguments.get("custom_region_path"),
-                "segmentation_format": self.arguments.get("segmentation_format", "binary"),
-            }
-            if self.arguments.get("segmentation_dir") and not self.arguments.get("image_dir"):
-                pnt_args["segmentation_folder"] = self.arguments.get("segmentation_dir")
-            elif self.arguments.get("image_dir") and not self.arguments.get("segmentation_dir"):
-                pnt_args["image_folder"] = self.arguments.get("image_dir")
-
+            # Build atlas-only args for the constructor
+            atlas_args = {}
             if self.arguments.get("use_custom_atlas", False):
-                pnt_args["atlas_path"] = self.arguments["atlas_path"]
-                pnt_args["label_path"] = self.arguments["label_path"]
+                atlas_args["atlas_path"] = self.arguments["atlas_path"]
+                atlas_args["label_path"] = self.arguments["label_path"]
                 print(
                     f"Using custom atlas: {self.arguments.get('custom_atlas_name', 'Custom')}"
                 )
             else:
-                pnt_args["atlas_name"] = self.arguments["atlas_name"]
+                atlas_args["atlas_name"] = self.arguments["atlas_name"]
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
 
-            pnt = PyNutil.PyNutil(**pnt_args)
+            pnt = PyNutil.PyNutil(**atlas_args)
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            pnt.get_coordinates(
-                object_cutoff=0, apply_damage_mask=self.arguments["apply_damage_mask"]
-            )
+            # Build data-pipeline args for get_coordinates
+            coord_args = {
+                "alignment_json": self.arguments["registration_json"],
+                "colour": self.arguments["object_colour"],
+                "custom_region_path": self.arguments.get("custom_region_path"),
+                "segmentation_format": self.arguments.get("segmentation_format", "binary"),
+                "object_cutoff": 0,
+                "apply_damage_mask": self.arguments["apply_damage_mask"],
+            }
+            if self.arguments.get("segmentation_dir") and not self.arguments.get("image_dir"):
+                coord_args["segmentation_folder"] = self.arguments.get("segmentation_dir")
+            elif self.arguments.get("image_dir") and not self.arguments.get("segmentation_dir"):
+                coord_args["image_folder"] = self.arguments.get("image_dir")
+
+            pnt.get_coordinates(**coord_args)
 
             if self.cancelled:
                 print("Analysis cancelled")

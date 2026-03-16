@@ -9,14 +9,13 @@ works as normal.
 """
 from PyNutil import PyNutil
 
-pnt = PyNutil(
+pnt = PyNutil(atlas_name="allen_mouse_25um")
+
+pnt.get_coordinates(
     segmentation_folder="tests/test_data/brainglobe_segmentation_test_image/",
     alignment_json="tests/test_data/brainglobe_registration/brainglobe-registration.json",
-    atlas_name="allen_mouse_25um",
-    colour=[0,0,0]
+    colour=[0,0,0],
 )
-
-pnt.get_coordinates()
 pnt.quantify_coordinates()
 
 pnt.save_analysis("demo_data/outputs/brainglobe_registration_intensity", create_visualisations=False)

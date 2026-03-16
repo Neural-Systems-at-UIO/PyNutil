@@ -20,18 +20,17 @@ atlas_name = "allen_mouse_25um"
 output_folder = os.path.join(repo_root, "test_result/intensity_measurement")
 
 # Initialize PyNutil object
-pnt = PyNutil(
+pnt = PyNutil(atlas_name=atlas_name)
+
+# Execute workflow
+pnt.get_coordinates(
     image_folder=image_folder,
     alignment_json=alignment_json,
-    atlas_name=atlas_name,
     custom_region_path=os.path.join(
         repo_root,
         "tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
     ),
 )
-
-# Execute workflow
-pnt.get_coordinates()
 pnt.quantify_coordinates()
 pnt.interpolate_volume()
 pnt.save_analysis(output_folder)
