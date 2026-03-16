@@ -17,6 +17,18 @@ from ...results import (
 )
 from ..adapters.base import RegistrationData
 from ...results import AtlasData
+from ...io.atlas_loader import process_atlas_volume, load_atlas_labels
+
+
+def _resolve_atlas(atlas):
+    """Convert atlas argument to AtlasData if it's a BrainGlobeAtlas."""
+    if isinstance(atlas, AtlasData):
+        return atlas
+    # Assume BrainGlobeAtlas-like object
+    volume = process_atlas_volume(atlas.annotation)
+    hemi_map = process_atlas_volume(atlas.hemispheres)
+    labels = load_atlas_labels(atlas)
+    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
@@ -201,7 +213,7 @@ def folder_to_atlas_space(
     Args:
         folder: Path to segmentation files.
         registration: Pre-loaded registration data.
-        atlas: Atlas data bundle (volume, hemi_map, labels).
+        atlas: AtlasData or BrainGlobeAtlas object.
         pixel_id: Pixel color to match.
         object_cutoff: Minimum object size.
         use_flat: If True, load flat files.
@@ -210,6 +222,7 @@ def folder_to_atlas_space(
     Returns:
         ExtractionResult: Structured extraction output.
     """
+    atlas = _resolve_atlas(atlas)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format=segmentation_format,
         atlas_labels=atlas.labels,
@@ -280,7 +293,7 @@ def folder_to_atlas_space_intensity(
     Args:
         folder: Path to image files.
         registration: Pre-loaded registration data.
-        atlas: Atlas data bundle (volume, hemi_map, labels).
+        atlas: AtlasData or BrainGlobeAtlas object.
         intensity_channel: Channel to use for intensity.
         use_flat: If True, load flat files.
         min_intensity: Minimum intensity value to include.
@@ -289,6 +302,7 @@ def folder_to_atlas_space_intensity(
     Returns:
         ExtractionResult: Structured extraction output.
     """
+    atlas = _resolve_atlas(atlas)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
         atlas_labels=atlas.labels,
@@ -368,6 +382,7 @@ def file_to_atlas_space_coordinates(
     Returns:
         ExtractionResult: Structured extraction output.
     """
+    atlas = _resolve_atlas(atlas)
     from ...io.loaders import load_coordinate_file
 
     coord_df = load_coordinate_file(coordinate_file)

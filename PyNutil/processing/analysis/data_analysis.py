@@ -315,9 +315,12 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
     Returns:
         ``(label_df, per_section_df)`` — whole-series and per-section DataFrames.
     """
-    # Accept AtlasData or a raw DataFrame
+    # Accept AtlasData, BrainGlobeAtlas, or a raw DataFrame
     if hasattr(atlas_labels, "labels"):
         atlas_labels = atlas_labels.labels
+    elif hasattr(atlas_labels, "structures_list"):
+        from ...io.atlas_loader import load_atlas_labels
+        atlas_labels = load_atlas_labels(atlas_labels)
 
     if result.region_intensities_list is not None:
         return quantify_intensity(result.region_intensities_list, atlas_labels)

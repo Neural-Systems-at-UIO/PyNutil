@@ -7,9 +7,10 @@ json which is saved by brainglobe registration. PyNutil assumes the
 deformation files are saved into the same folder. Everything else
 works as normal.
 """
+from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
-atlas = pnt.load_atlas_data("allen_mouse_25um")
+atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(
     "tests/test_data/brainglobe_registration/brainglobe-registration.json"
 )

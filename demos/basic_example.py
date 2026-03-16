@@ -1,5 +1,6 @@
 import os
 
+from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
 # Configuration
@@ -14,8 +15,8 @@ alignment_json = os.path.join(
 colour = [0, 0, 0]
 output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_24_03_2025")
 
-# Load atlas and alignment
-atlas = pnt.load_atlas_data("allen_mouse_25um")
+# Load atlas (BrainGlobe) and alignment
+atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(alignment_json)
 
 # Extract coordinates from segmentations
@@ -31,14 +32,6 @@ coords = pnt.seg_to_coords(
 
 # Quantify by atlas region
 label_df, per_section_df = pnt.quantify_coords(coords, atlas)
-
-# Optionally generate a 3D heatmap
-pnt.interpolate_volume(
-    segmentation_folder=segmentation_folder,
-    alignment_json=alignment_json,
-    colour=colour,
-    atlas_shape=atlas.volume.shape,
-)
 
 # Save results
 pnt.save_analysis(

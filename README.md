@@ -45,10 +45,11 @@ As input, PyNutil requires:
 3. A segmentation file for each brain section with the features to be quantified displayed with a unique RGB colour code (it currently accepts many image formats: png, jpg, jpeg, etc).
 
 ```python
+from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
 # Load an atlas (BrainGlobe) and alignment
-atlas = pnt.load_atlas_data("allen_mouse_25um")
+atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment("path/to/alignment.json")
 
 # Extract coordinates from segmentations

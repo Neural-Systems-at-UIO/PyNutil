@@ -1,5 +1,6 @@
 import os
 
+from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
 # PyNutil is a toolkit for quantifying neuroscientific data using brain atlases.
@@ -10,7 +11,7 @@ import PyNutil as pnt
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.abspath(os.path.join(script_dir, ".."))
 
-atlas = pnt.load_atlas_data("allen_mouse_25um")
+atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(
     os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json")
 )

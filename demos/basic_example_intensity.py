@@ -3,6 +3,7 @@ To do this we use image_to_coords instead of seg_to_coords.
 """
 import os
 
+from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
 # Configuration
@@ -17,7 +18,7 @@ alignment_json = os.path.join(
 output_folder = os.path.join(repo_root, "test_result/intensity_measurement")
 
 # Load atlas and alignment
-atlas = pnt.load_atlas_data("allen_mouse_25um")
+atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(alignment_json)
 
 # Extract intensity data

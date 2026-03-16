@@ -240,6 +240,9 @@ def save_analysis(
     """
     if hasattr(atlas_labels, "labels"):
         atlas_labels = atlas_labels.labels
+    elif hasattr(atlas_labels, "structures_list"):
+        from .atlas_loader import load_atlas_labels
+        atlas_labels = load_atlas_labels(atlas_labels)
 
     und_p = result.per_point_undamaged if result else None
     und_c = result.per_centroid_undamaged if result else None
