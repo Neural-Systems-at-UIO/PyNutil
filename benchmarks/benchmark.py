@@ -226,7 +226,9 @@ def _run_scenario_in_process(tmpdir):
     if root not in sys.path:
         sys.path.insert(0, root)
 
-    from PyNutil import PyNutil as _PyNutil  # noqa: local import
+    from PyNutil import (  # noqa: local import
+        load_custom_atlas, read_alignment, seg_to_coords, quantify_coords,
+    )
     from PyNutil.io.loaders import load_json_file  # noqa: local import
 
     meta = load_json_file(os.path.join(tmpdir, "meta.json"))
@@ -237,17 +239,18 @@ def _run_scenario_in_process(tmpdir):
         old_stdout = sys.stdout
         sys.stdout = sys.stderr
         try:
-            pn = _PyNutil(
-                segmentation_folder=meta["seg_folder"],
-                alignment_json=meta["alignment_json"],
-                colour=COLOUR,
-                atlas_path=meta["atlas_path"],
-                label_path=meta["label_path"],
-                hemi_path=meta["hemi_path"],
+            atlas = load_custom_atlas(
+                meta["atlas_path"], meta["hemi_path"], meta["label_path"],
+            )
+            alignment = read_alignment(meta["alignment_json"])
+            coords = seg_to_coords(
+                meta["seg_folder"],
+                alignment,
+                atlas,
+                pixel_id=COLOUR,
                 segmentation_format=meta.get("mode", "binary"),
             )
-            pn.get_coordinates(non_linear=True)
-            pn.quantify_coordinates()
+            quantify_coords(coords, atlas)
         finally:
             sys.stdout = old_stdout
 

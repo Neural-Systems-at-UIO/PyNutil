@@ -2,17 +2,24 @@
 Example of using PyNutil with BrainGlobe registration and
 pre-extracted coordinate data.
 """
-from PyNutil import PyNutil
+import PyNutil as pnt
 
-pnt = PyNutil(atlas_name="allen_mouse_25um")
-
-pnt.get_coordinates(
-    coordinate_file="tests/test_data/brainglobe_coordinates/coordinates.csv",
-    alignment_json="tests/test_data/brainglobe_coordinates/brainglobe-registration.json",
+atlas = pnt.load_atlas_data("allen_mouse_25um")
+alignment = pnt.read_alignment(
+    "tests/test_data/brainglobe_coordinates/brainglobe-registration.json"
 )
-pnt.quantify_coordinates()
+
+coords = pnt.xy_to_coords(
+    "tests/test_data/brainglobe_coordinates/coordinates.csv",
+    alignment,
+    atlas,
+)
+label_df, per_section_df = pnt.quantify_coords(coords, atlas)
 
 pnt.save_analysis(
     "demo_data/outputs/brainglobe_coordinate_example",
-    create_visualisations=False,
+    coords,
+    atlas,
+    label_df=label_df,
+    per_section_df=per_section_df,
 )

@@ -1,45 +1,46 @@
 import os
 
-# This demo assumes PyNutil is installed (recommended for development):
-#   pip install -e .
-from PyNutil import PyNutil
+import PyNutil as pnt
 
-###PyNutil is a toolkit for quantifying neuroscientific data using brain atlases
-###Here we define a quantifier object
-###The segmentations should be images which come out of ilastix, segmenting an object of interest
-###The alignment json should be out of DeepSlice, QuickNII, or VisuAlign, it defines the sections position in an atlas
-###The colour says which colour is the object you want to quantify in your segmentation. It is defined in RGB
-###The atlas_path is the path to the relevant atlas.nrrd
-###The label_path is the path to the corresponding atlas .csv
-###The object_cutoff is a cut-off for min object size
-### get_coordinates, if use_flat=True, place flat files in folder titled "flat_files" at same level as "segmentations" folder
-# This does not use BrainGlobe API.
+# PyNutil is a toolkit for quantifying neuroscientific data using brain atlases.
+# This example uses a custom atlas (not BrainGlobe API).
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.abspath(os.path.join(script_dir, ".."))
 
-pnt = PyNutil(
+# Load custom atlas
+atlas = pnt.load_custom_atlas(
     atlas_path=os.path.join(
         repo_root,
         "tests/test_data/allen_mouse_2017_atlas/annotation_25_reoriented_2017.nrrd",
     ),
+    hemi_path=None,
     label_path=os.path.join(
         repo_root, "tests/test_data/allen_mouse_2017_atlas/allen2017_colours.csv"
     ),
 )
-pnt.get_coordinates(
-    segmentation_folder=os.path.join(
-        repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"
-    ),
-    alignment_json=os.path.join(
-        repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"
-    ),
-    colour=[0, 0, 0],
+
+# Load alignment
+alignment = pnt.read_alignment(
+    os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json")
+)
+
+# Extract coordinates
+coords = pnt.seg_to_coords(
+    os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"),
+    alignment,
+    atlas,
+    pixel_id=[0, 0, 0],
     object_cutoff=0,
     use_flat=False,
-    # custom_region_path=os.path.join(
-    #     script_dir,
-    #     "../tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
-    # ),
 )
-pnt.quantify_coordinates()
-pnt.save_analysis(os.path.join(repo_root, "test_result/2custom_atlas_hemi_test_24_03_2025"))
+
+# Quantify and save
+label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+pnt.save_analysis(
+    os.path.join(repo_root, "test_result/2custom_atlas_hemi_test_24_03_2025"),
+    coords,
+    atlas,
+    label_df=label_df,
+    per_section_df=per_section_df,
+)

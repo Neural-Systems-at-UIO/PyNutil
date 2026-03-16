@@ -45,39 +45,30 @@ As input, PyNutil requires:
 3. A segmentation file for each brain section with the features to be quantified displayed with a unique RGB colour code (it currently accepts many image formats: png, jpg, jpeg, etc).
 
 ```python
-from PyNutil import PyNutil
+import PyNutil as pnt
 
-"""
-Here we define a quantifier object
-The segmentations should be images which come out of ilastik, segmenting objects-of-interest
-The alignment json should be from DeepSlice, QuickNII, or VisuAlign, it defines the sections position in an atlas
-The colour says which colour is the object you want to quantify in your segmentation. It is defined in RGB
-Finally the atlas name is the relevant atlas from brainglobe_atlasapi or a custom atlas in nrrd format.
+# Load an atlas (BrainGlobe) and alignment
+atlas = pnt.load_atlas_data("allen_mouse_25um")
+alignment = pnt.read_alignment("path/to/alignment.json")
 
-basic_example.py (brainglobe_atlasapi)
-basic_example_custom_atlas.py (custom atlas)
-
-"""
-pnt = PyNutil(
-    segmentation_folder='../tests/test_data/non_linear_allen_mouse/segmentations/',
-    alignment_json='../tests/test_data/non_linear_allen_mouse/alignment.json',
-    colour=[0, 0, 0],
-    atlas_name='allen_mouse_25um'
-    #If you would like to use cellpose segmentations add:
-    #segmentation_format = 'cellpose'
+# Extract coordinates from segmentations
+coords = pnt.seg_to_coords(
+    "path/to/segmentations/",
+    alignment,
+    atlas,
+    pixel_id=[0, 0, 0],
+    # For cellpose segmentations: segmentation_format="cellpose"
 )
 
+# Quantify by atlas region
+label_df, per_section_df = pnt.quantify_coords(coords, atlas)
 
-
-pnt.get_coordinates(object_cutoff=0)
-
-pnt.quantify_coordinates()
-
-#optionally, if you want to generate a 3D heatmap
-pnt.interpolate_volume()
-
-pnt.save_analysis("PyNutil/test_result/myResults")
+# Save results
+pnt.save_analysis("path/to/output", coords, atlas, label_df=label_df, per_section_df=per_section_df)
 ```
+
+For custom atlases (not from BrainGlobe), use `pnt.load_custom_atlas()` instead.
+See `demos/basic_example.py` and `demos/basic_example_custom_atlas.py` for complete examples.
 PyNutil generates a series of reports in the folder which you specify.
 
 ## Per-Hemisphere Quantification
