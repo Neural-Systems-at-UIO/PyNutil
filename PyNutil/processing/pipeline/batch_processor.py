@@ -16,6 +16,7 @@ from ...results import (
     ExtractionResult,
 )
 from ..adapters import load_registration
+from ..adapters.base import RegistrationData
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,

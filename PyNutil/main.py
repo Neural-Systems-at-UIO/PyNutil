@@ -1,10 +1,11 @@
+import copy
 import logging
 import re
 from typing import Optional
 
 import numpy as np
 from .io.atlas_loader import load_atlas_data, load_custom_atlas
-from .results import PerEntityArrays
+from .results import ExtractionResult, PerEntityArrays
 from .processing.analysis.data_analysis import (
     quantify_labeled_points,
     quantify_intensity,
@@ -112,6 +113,7 @@ class PyNutil:
 
         # Extraction result (populated by get_coordinates)
         self._result = None
+        self._apply_damage_mask = True
         # Quantification results (populated by quantify_coordinates)
         self.label_df = None
         self.per_section_df = None
@@ -256,7 +258,9 @@ class PyNutil:
                 lookup file (.csv or .label).
 
         Returns:
-            None: Results are stored in class attributes.
+            ExtractionResult: The extracted coordinates/intensity data.
+                The same object is also stored as ``self._result`` for
+                backward-compatible implicit use by subsequent methods.
         """
         # Update the config with data-pipeline arguments.
         cfg = self._cfg
@@ -334,12 +338,24 @@ class PyNutil:
             self._result.centroids_custom_labels = map_to_custom_regions(
                 self._custom_regions_dict, result.centroids_labels
             )
+        return self._result
 
-    def quantify_coordinates(self):
+    def quantify_coordinates(
+        self,
+        result: Optional[ExtractionResult] = None,
+    ):
         """
         Quantifies and summarizes pixel and centroid coordinates by atlas region,
-        or summarizes intensity by atlas region,
-        storing the aggregated results in class attributes.
+        or summarizes intensity by atlas region.
+
+        Parameters
+        ----------
+        result : ExtractionResult, optional
+            Explicit extraction result to quantify.  When provided this takes
+            precedence over ``self._result``.  Pass the value returned by
+            :meth:`get_coordinates` to avoid relying on implicit shared state.
+            If omitted, ``self._result`` (set by the last call to
+            :meth:`get_coordinates`) is used.
 
         Attributes:
             label_df (pd.DataFrame): Contains aggregated label information.
@@ -351,23 +367,25 @@ class PyNutil:
             ValueError: If required attributes are missing or computation fails.
 
         Returns:
-            None
+            tuple[pd.DataFrame, list[pd.DataFrame]]: ``(label_df, per_section_df)``.
+                When called without an explicit *result* (implicit mode), the
+                same objects are also stored as instance attributes for
+                backward-compatible use by :meth:`save_analysis`.  When an
+                explicit *result* is passed, instance attributes are not
+                modified.
         """
-        r = self._result
-        if self._cfg.image_folder:
-            if r is None or not hasattr(r, "region_intensities_list"):
-                raise ValueError(
-                    "Please run get_coordinates before running quantify_coordinates."
-                )
-            self.label_df, self.per_section_df = quantify_intensity(
+        r = result if result is not None else self._result
+        if r is None:
+            raise ValueError(
+                "Please run get_coordinates before running quantify_coordinates,"
+                " or pass an ExtractionResult explicitly."
+            )
+        if r.region_intensities_list is not None:
+            label_df, per_section_df = quantify_intensity(
                 r.region_intensities_list, self.atlas_labels
             )
         else:
-            if r is None:
-                raise ValueError(
-                    "Please run get_coordinates before running quantify_coordinates."
-                )
-            self.label_df, self.per_section_df = quantify_labeled_points(
+            label_df, per_section_df = quantify_labeled_points(
                 PerEntityArrays(
                     labels=r.points_labels,
                     hemi_labels=r.points_hemi_labels,
@@ -385,15 +403,26 @@ class PyNutil:
                 self._apply_damage_mask,
             )
         if self._custom_regions_dict is not None:
-            self.custom_label_df, self.label_df = apply_custom_regions(
-                self.label_df, self._custom_regions_dict
+            custom_label_df, label_df = apply_custom_regions(
+                label_df, self._custom_regions_dict
             )
-            self.custom_per_section_df = []
-            for section_df in self.per_section_df:
+            custom_per_section_df = []
+            for section_df in per_section_df:
                 custom_df, section_df = apply_custom_regions(
                     section_df, self._custom_regions_dict
                 )
-                self.custom_per_section_df.append(custom_df)
+                custom_per_section_df.append(custom_df)
+        else:
+            custom_label_df = None
+            custom_per_section_df = None
+
+        # Cache on self only in implicit mode (no explicit result passed)
+        if result is None:
+            self.label_df = label_df
+            self.per_section_df = per_section_df
+            self.custom_label_df = custom_label_df
+            self.custom_per_section_df = custom_per_section_df
+        return label_df, per_section_df
 
     def interpolate_volume(
         self,
@@ -485,7 +514,18 @@ class PyNutil:
         self.frequency_volume = fv
         self.damage_volume = dv
 
-    def save_analysis(self, output_folder, create_visualisations=True, colormap="gray"):
+    def save_analysis(
+        self,
+        output_folder,
+        *,
+        result: Optional[ExtractionResult] = None,
+        label_df=None,
+        per_section_df=None,
+        custom_label_df=None,
+        custom_per_section_df=None,
+        create_visualisations=True,
+        colormap="gray",
+    ):
         """
         Saves the pixel coordinates and pixel counts to different files in the specified output folder.
 
@@ -493,6 +533,24 @@ class PyNutil:
         ----------
         output_folder : str
             The folder where the analysis output will be saved.
+        result : ExtractionResult, optional
+            Explicit extraction result.  When provided this takes precedence
+            over ``self._result``.  Pass the value returned by
+            :meth:`get_coordinates` to avoid relying on implicit shared state.
+        label_df : pd.DataFrame, optional
+            Explicit quantification summary.  When provided this takes
+            precedence over ``self.label_df``.  Pass the first element of the
+            tuple returned by :meth:`quantify_coordinates`.
+        per_section_df : list of pd.DataFrame, optional
+            Explicit per-section summaries.  When provided this takes
+            precedence over ``self.per_section_df``.  Pass the second element
+            of the tuple returned by :meth:`quantify_coordinates`.
+        custom_label_df : pd.DataFrame, optional
+            Explicit custom-region quantification summary.  When provided
+            this takes precedence over ``self.custom_label_df``.
+        custom_per_section_df : list of pd.DataFrame, optional
+            Explicit custom-region per-section summaries.  When provided
+            this takes precedence over ``self.custom_per_section_df``.
         create_visualisations : bool, optional
             If True, create section visualisations (default is True).
         colormap : str, optional
@@ -503,17 +561,24 @@ class PyNutil:
         -------
         None
         """
-        base_ctx = self._build_save_context(colormap)
+        r = result if result is not None else self._result
+        ldf = label_df if label_df is not None else self.label_df
+        psdf = per_section_df if per_section_df is not None else self.per_section_df
+        cldf = custom_label_df if custom_label_df is not None else self.custom_label_df
+        cpsdf = custom_per_section_df if custom_per_section_df is not None else self.custom_per_section_df
+
+        base_ctx = self._build_save_context(colormap, r)
 
         self._save_analysis_variant(
             base_ctx,
             output_folder,
-            label_df=self.label_df,
-            per_section_df=self.per_section_df,
-            points_labels=self._result.points_labels if self._result else None,
-            centroids_labels=self._result.centroids_labels if self._result else None,
+            label_df=ldf,
+            per_section_df=psdf,
+            points_labels=r.points_labels if r else None,
+            centroids_labels=r.centroids_labels if r else None,
             atlas_labels=self.atlas_labels,
             prepend="",
+            result=r,
         )
         self._save_volumes(output_folder)
 
@@ -521,16 +586,17 @@ class PyNutil:
             self._save_analysis_variant(
                 base_ctx,
                 output_folder,
-                label_df=self.custom_label_df,
-                per_section_df=self.custom_per_section_df,
-                points_labels=self._result.points_custom_labels if self._result else None,
-                centroids_labels=self._result.centroids_custom_labels if self._result else None,
+                label_df=cldf,
+                per_section_df=cpsdf,
+                points_labels=r.points_custom_labels if r else None,
+                centroids_labels=r.centroids_custom_labels if r else None,
                 atlas_labels=self._custom_atlas_labels,
                 prepend="custom_",
                 colormap="gray",
+                result=r,
             )
 
-        self._remap_compressed_ids(output_folder)
+        self._remap_compressed_ids(ldf, output_folder)
 
         if create_visualisations and self._cfg.alignment_json:
             self._create_visualisations(output_folder)
@@ -547,9 +613,9 @@ class PyNutil:
             return full_arr[undamaged_mask]
         return full_arr
 
-    def _build_save_context(self, colormap):
+    def _build_save_context(self, colormap, result=None):
         """Build a SaveContext from the stored config and extraction result."""
-        r = self._result
+        r = result if result is not None else self._result
         und_p = r.per_point_undamaged if r else None
         und_c = r.per_centroid_undamaged if r else None
         return SaveContext(
@@ -581,20 +647,22 @@ class PyNutil:
         atlas_labels,
         prepend,
         colormap=None,
+        result=None,
     ):
         """Save one analysis variant (primary or custom-region) to output files."""
-        r = self._result
+        r = result if result is not None else self._result
         und_p = r.per_point_undamaged if r else None
         und_c = r.per_centroid_undamaged if r else None
-        base_ctx.label_df = label_df
-        base_ctx.per_section_df = per_section_df
-        base_ctx.labeled_points = self._filter_undamaged(points_labels, und_p)
-        base_ctx.labeled_points_centroids = self._filter_undamaged(centroids_labels, und_c)
-        base_ctx.atlas_labels = atlas_labels
-        base_ctx.prepend = prepend
+        ctx = copy.copy(base_ctx)
+        ctx.label_df = label_df
+        ctx.per_section_df = per_section_df
+        ctx.labeled_points = self._filter_undamaged(points_labels, und_p)
+        ctx.labeled_points_centroids = self._filter_undamaged(centroids_labels, und_c)
+        ctx.atlas_labels = atlas_labels
+        ctx.prepend = prepend
         if colormap is not None:
-            base_ctx.colormap = colormap
-        save_analysis_output(base_ctx, output_folder)
+            ctx.colormap = colormap
+        save_analysis_output(ctx, output_folder)
 
     def _save_volumes(self, output_folder):
         """Save interpolated / frequency / damage NIfTI volumes if they exist."""
@@ -611,12 +679,17 @@ class PyNutil:
         except Exception as e:
             logger.error(f"Saving NIfTI volumes failed: {e}")
 
-    def _remap_compressed_ids(self, output_folder):
-        """Restore original atlas IDs if they were compressed during loading."""
-        if self.label_df is not None and "original_idx" in self.label_df.columns:
-            self.label_df["idx"] = self.label_df["original_idx"]
-            self.label_df = self.label_df.drop(columns=["original_idx"])
-            self.label_df.to_csv(
+    @staticmethod
+    def _remap_compressed_ids(label_df, output_folder):
+        """Restore original atlas IDs if they were compressed during loading.
+
+        Writes the remapped DataFrame to disk without mutating the original.
+        """
+        if label_df is not None and "original_idx" in label_df.columns:
+            remapped = label_df.copy()
+            remapped["idx"] = remapped["original_idx"]
+            remapped = remapped.drop(columns=["original_idx"])
+            remapped.to_csv(
                 f"{output_folder}/whole_series_report/counts.csv",
                 sep=";",
                 index=False,

@@ -128,6 +128,20 @@ class IntensitySectionResult:
 
 
 @dataclass
+class AtlasData:
+    """Bundle of atlas volume, hemisphere map, and region labels.
+
+    Returned by :func:`load_atlas` for custom atlases.  Pipeline functions
+    also accept a ``BrainGlobeAtlas`` instance directly.
+    """
+
+    volume: np.ndarray
+    hemi_map: Optional[np.ndarray]
+    labels: pd.DataFrame
+    voxel_size_um: Optional[float] = None
+
+
+@dataclass
 class ExtractionResult:
     """Concatenated extraction output with context-aligned attribute names."""
 
