@@ -4,6 +4,8 @@ import numpy as np
 import nrrd
 from functools import lru_cache
 
+from ..results import AtlasData
+
 
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
@@ -38,19 +40,15 @@ def load_atlas_data(atlas_name):
 
     Returns
     -------
-    numpy.ndarray
-        The atlas volume array.
-    numpy.ndarray
-        The hemisphere data array.
-    pandas.DataFrame
-        A dataframe containing atlas labels and RGB information.
+    AtlasData
+        Bundle containing atlas volume, hemisphere map, and labels.
     """
     atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
     atlas_labels = load_atlas_labels(atlas)
     atlas_volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
     print("atlas labels loaded ✅")
-    return atlas_volume, hemi_map, atlas_labels
+    return AtlasData(volume=atlas_volume, hemi_map=hemi_map, labels=atlas_labels)
 
 
 def process_atlas_volume(vol):
@@ -74,6 +72,11 @@ def process_atlas_volume(vol):
 def load_custom_atlas(atlas_path, hemi_path, label_path):
     """
     Loads a custom atlas from provided file paths.
+
+    Returns
+    -------
+    AtlasData
+        Bundle containing atlas volume, hemisphere map, and labels.
     """
     atlas_volume, _ = nrrd.read(atlas_path)
 
@@ -84,4 +87,4 @@ def load_custom_atlas(atlas_path, hemi_path, label_path):
 
     atlas_labels = pd.read_csv(label_path)
 
-    return atlas_volume, hemi_volume, atlas_labels
+    return AtlasData(volume=atlas_volume, hemi_map=hemi_volume, labels=atlas_labels)

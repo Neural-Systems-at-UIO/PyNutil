@@ -45,7 +45,8 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(alignment_json):
             self.skipTest("QuickNII alignment test data not found")
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
         reg_data = load_registration(
             alignment_json, apply_deformation=False, apply_damage=False
         )
@@ -76,7 +77,8 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(bg_json):
             self.skipTest("Brainglobe registration test data not found")
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
         reg_data = load_registration(
             bg_json, apply_deformation=False, apply_damage=False
         )
@@ -139,7 +141,8 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
         from PyNutil.io.atlas_loader import load_atlas_data
         from PyNutil.processing.adapters.base import SliceInfo
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
 
         slices = [
             SliceInfo(
@@ -169,7 +172,8 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
         from PyNutil.io.section_visualisation import create_section_visualisations
         from PyNutil.io.atlas_loader import load_atlas_data
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
 
         with tempfile.TemporaryDirectory() as tmp:
             create_section_visualisations(

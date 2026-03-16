@@ -14,6 +14,7 @@ from .processing.analysis.data_analysis import (
 )
 from .io.file_operations import save_analysis_output, SaveContext
 from .io.loaders import open_custom_region_file
+from .processing.adapters import load_registration
 from .processing.pipeline.batch_processor import (
     folder_to_atlas_space,
     folder_to_atlas_space_intensity,
@@ -174,7 +175,7 @@ class PyNutil:
         """Load atlas volume, hemisphere map, and labels from config."""
         cfg = self._cfg
         if cfg.atlas_path and cfg.label_path:
-            self.atlas_volume, self.hemi_map, self.atlas_labels = load_custom_atlas(
+            self._atlas = load_custom_atlas(
                 cfg.atlas_path, cfg.hemi_path, cfg.label_path
             )
         else:
@@ -182,9 +183,10 @@ class PyNutil:
                 raise ValueError(
                     "When atlas_path and label_path are not specified, atlas_name must be specified."
                 )
-            self.atlas_volume, self.hemi_map, self.atlas_labels = load_atlas_data(
-                atlas_name=cfg.atlas_name
-            )
+            self._atlas = load_atlas_data(atlas_name=cfg.atlas_name)
+        self.atlas_volume = self._atlas.volume
+        self.hemi_map = self._atlas.hemi_map
+        self.atlas_labels = self._atlas.labels
 
     def _infer_voxel_size(self):
         """Try to infer voxel size from brainglobe atlas name."""
@@ -285,28 +287,26 @@ class PyNutil:
             self._custom_regions_dict = None
             self._custom_atlas_labels = None
 
+        registration = load_registration(
+            cfg.alignment_json,
+            apply_deformation=non_linear,
+            apply_damage=apply_damage_mask,
+        )
+
         if cfg.coordinate_file:
             result = file_to_atlas_space_coordinates(
                 cfg.coordinate_file,
-                cfg.alignment_json,
-                self.atlas_labels,
-                non_linear,
-                self.atlas_volume,
-                self.hemi_map,
-                apply_damage_mask,
+                registration,
+                self._atlas,
             )
             map_custom_regions = True
         elif cfg.image_folder:
             result = folder_to_atlas_space_intensity(
                 cfg.image_folder,
-                cfg.alignment_json,
-                self.atlas_labels,
+                registration,
+                self._atlas,
                 cfg.intensity_channel,
-                non_linear,
-                self.atlas_volume,
-                self.hemi_map,
                 use_flat,
-                apply_damage_mask,
                 flat_label_path=flat_label_path,
                 min_intensity=cfg.min_intensity,
                 max_intensity=cfg.max_intensity,
@@ -315,15 +315,11 @@ class PyNutil:
         else:
             result = folder_to_atlas_space(
                 cfg.segmentation_folder,
-                cfg.alignment_json,
-                self.atlas_labels,
+                registration,
+                self._atlas,
                 cfg.colour,
-                non_linear,
                 object_cutoff,
-                self.atlas_volume,
-                self.hemi_map,
                 use_flat,
-                apply_damage_mask,
                 flat_label_path=flat_label_path,
                 segmentation_format=cfg.segmentation_format,
             )

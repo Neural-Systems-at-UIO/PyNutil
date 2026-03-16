@@ -295,3 +295,47 @@ def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
 
     label_df.fillna(0, inplace=True)
     return label_df
+
+
+# ── Unified quantification entry point ──────────────────────────────────
+
+
+def quantify_coords(result, atlas_labels, apply_damage_mask=True):
+    """Quantify an ExtractionResult by atlas region.
+
+    Dispatches to :func:`quantify_labeled_points` or :func:`quantify_intensity`
+    depending on the content of *result*.
+
+    Args:
+        result: ExtractionResult from a coordinate extraction function.
+        atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels``
+            will be used).
+        apply_damage_mask: Include damage statistics in output.
+
+    Returns:
+        ``(label_df, per_section_df)`` — whole-series and per-section DataFrames.
+    """
+    # Accept AtlasData or a raw DataFrame
+    if hasattr(atlas_labels, "labels"):
+        atlas_labels = atlas_labels.labels
+
+    if result.region_intensities_list is not None:
+        return quantify_intensity(result.region_intensities_list, atlas_labels)
+
+    return quantify_labeled_points(
+        PerEntityArrays(
+            labels=result.points_labels,
+            hemi_labels=result.points_hemi_labels,
+            undamaged=result.per_point_undamaged,
+            section_lengths=result.total_points_len,
+        ),
+        PerEntityArrays(
+            labels=result.centroids_labels,
+            hemi_labels=result.centroids_hemi_labels,
+            undamaged=result.per_centroid_undamaged,
+            section_lengths=result.total_centroids_len,
+        ),
+        result.region_areas_list,
+        atlas_labels,
+        apply_damage_mask,
+    )

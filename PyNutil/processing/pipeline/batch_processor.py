@@ -15,8 +15,8 @@ from ...results import (
     IntensitySectionResult,
     ExtractionResult,
 )
-from ..adapters import load_registration
 from ..adapters.base import RegistrationData
+from ...results import AtlasData
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
@@ -35,19 +35,19 @@ from ...io.loaders import number_sections
 
 def _run_batch_with_context(
     folder,
-    quint_alignment,
+    registration: RegistrationData,
     pipeline_ctx: PipelineContext,
     empty_result_factory,
     processing_fn,
 ):
     """Generic batch scaffold using context objects.
 
-    Handles registration loading, file discovery, thread-pool setup,
-    per-section looping, and futures collection.
+    Handles file discovery, thread-pool setup, per-section looping,
+    and futures collection.
 
     Args:
         folder: Path to segmentation / image files.
-        quint_alignment: Path to alignment JSON.
+        registration: Pre-loaded registration data.
         pipeline_ctx: Immutable pipeline-wide state.
         empty_result_factory: Callable returning a default empty result.
         processing_fn: ``fn(p_ctx, s_ctx)`` — processes one section.
@@ -56,11 +56,6 @@ def _run_batch_with_context(
         tuple: (segmentations, results) where *results* is a list parallel to
                *segmentations*, each element being the Future's result.
     """
-    registration = load_registration(
-        quint_alignment,
-        apply_deformation=pipeline_ctx.non_linear,
-        apply_damage=pipeline_ctx.apply_damage_mask,
-    )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
     segmentations = discover_image_files(folder)
@@ -193,15 +188,11 @@ def _collect_section_results(results):
 
 def folder_to_atlas_space(
     folder,
-    quint_alignment,
-    atlas_labels,
+    registration: RegistrationData,
+    atlas: AtlasData,
     pixel_id=[0, 0, 0],
-    non_linear=True,
     object_cutoff=0,
-    atlas_volume=None,
-    hemi_map=None,
     use_flat=False,
-    apply_damage_mask=True,
     flat_label_path=None,
     segmentation_format="binary",
 ):
@@ -209,15 +200,11 @@ def folder_to_atlas_space(
 
     Args:
         folder: Path to segmentation files.
-        quint_alignment: Path to alignment JSON.
-        atlas_labels: DataFrame with atlas labels.
+        registration: Pre-loaded registration data.
+        atlas: Atlas data bundle (volume, hemi_map, labels).
         pixel_id: Pixel color to match.
-        non_linear: Apply non-linear transform.
         object_cutoff: Minimum object size.
-        atlas_volume: Atlas volume data.
-        hemi_map: Hemisphere mask data.
         use_flat: If True, load flat files.
-        apply_damage_mask: If True, apply damage mask.
         segmentation_format: Format name ("binary" or "cellpose").
 
     Returns:
@@ -225,20 +212,20 @@ def folder_to_atlas_space(
     """
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format=segmentation_format,
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
-        non_linear=non_linear,
+        atlas_labels=atlas.labels,
+        atlas_volume=atlas.volume,
+        hemi_map=atlas.hemi_map,
+        non_linear=True,
         object_cutoff=object_cutoff,
         use_flat=use_flat,
         pixel_id=pixel_id,
-        apply_damage_mask=apply_damage_mask,
+        apply_damage_mask=True,
         flat_label_path=flat_label_path,
     )
 
     segmentations, results = _run_batch_with_context(
         folder,
-        quint_alignment,
+        registration,
         pipeline_ctx,
         SectionResult.empty,
         segmentation_to_atlas_space,
@@ -280,14 +267,10 @@ def folder_to_atlas_space(
 
 def folder_to_atlas_space_intensity(
     folder,
-    quint_alignment,
-    atlas_labels,
+    registration: RegistrationData,
+    atlas: AtlasData,
     intensity_channel="grayscale",
-    non_linear=True,
-    atlas_volume=None,
-    hemi_map=None,
     use_flat=False,
-    apply_damage_mask=True,
     flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
@@ -296,14 +279,10 @@ def folder_to_atlas_space_intensity(
 
     Args:
         folder: Path to image files.
-        quint_alignment: Path to alignment JSON.
-        atlas_labels: DataFrame with atlas labels.
+        registration: Pre-loaded registration data.
+        atlas: Atlas data bundle (volume, hemi_map, labels).
         intensity_channel: Channel to use for intensity.
-        non_linear: Apply non-linear transform.
-        atlas_volume: Atlas volume data.
-        hemi_map: Hemisphere mask data.
         use_flat: If True, load flat files.
-        apply_damage_mask: If True, apply damage mask.
         min_intensity: Minimum intensity value to include.
         max_intensity: Maximum intensity value to include.
 
@@ -312,14 +291,14 @@ def folder_to_atlas_space_intensity(
     """
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
-        non_linear=non_linear,
+        atlas_labels=atlas.labels,
+        atlas_volume=atlas.volume,
+        hemi_map=atlas.hemi_map,
+        non_linear=True,
         object_cutoff=0,
         use_flat=use_flat,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=apply_damage_mask,
+        apply_damage_mask=True,
         flat_label_path=flat_label_path,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
@@ -328,7 +307,7 @@ def folder_to_atlas_space_intensity(
 
     images, results = _run_batch_with_context(
         folder,
-        quint_alignment,
+        registration,
         pipeline_ctx,
         IntensitySectionResult.empty,
         segmentation_to_atlas_space_intensity,
@@ -372,12 +351,8 @@ def folder_to_atlas_space_intensity(
 
 def file_to_atlas_space_coordinates(
     coordinate_file,
-    quint_alignment,
-    atlas_labels,
-    non_linear=True,
-    atlas_volume=None,
-    hemi_map=None,
-    apply_damage_mask=True,
+    registration: RegistrationData,
+    atlas: AtlasData,
 ):
     """Process a coordinate CSV file, transforming points to atlas space.
 
@@ -387,12 +362,8 @@ def file_to_atlas_space_coordinates(
 
     Args:
         coordinate_file: Path to the coordinate CSV file.
-        quint_alignment: Path to alignment JSON.
-        atlas_labels: DataFrame with atlas labels.
-        non_linear: Apply non-linear transform.
-        atlas_volume: Atlas volume data.
-        hemi_map: Hemisphere mask data.
-        apply_damage_mask: If True, apply damage mask.
+        registration: Pre-loaded registration data.
+        atlas: Atlas data bundle (volume, hemi_map, labels).
 
     Returns:
         ExtractionResult: Structured extraction output.
@@ -401,24 +372,19 @@ def file_to_atlas_space_coordinates(
 
     coord_df = load_coordinate_file(coordinate_file)
 
-    registration = load_registration(
-        quint_alignment,
-        apply_deformation=non_linear,
-        apply_damage=apply_damage_mask,
-    )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
     # Build a minimal PipelineContext (no segmentation adapter needed for coordinates)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
-        non_linear=non_linear,
+        atlas_labels=atlas.labels,
+        atlas_volume=atlas.volume,
+        hemi_map=atlas.hemi_map,
+        non_linear=True,
         object_cutoff=0,
         use_flat=False,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=apply_damage_mask,
+        apply_damage_mask=True,
     )
 
     results = []
