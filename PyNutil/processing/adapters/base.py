@@ -26,6 +26,18 @@ import numpy as np
 DeformationFunction = Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
 
 
+def calculate_physical_dimensions(anchoring: List[float]) -> Tuple[int, int]:
+    """Return physical plane dimensions (width, height) from an anchoring vector.
+
+    The +1 ensures the integer dimension fully covers the continuous extent of
+    the plane (i.e. ceil-like rounding), which is needed for image loading and
+    mask creation.
+    """
+    u = anchoring[3:6]
+    v = anchoring[6:9]
+    return int(math.hypot(*u)) + 1, int(math.hypot(*v)) + 1
+
+
 # =============================================================================
 # Data Classes
 # =============================================================================
@@ -79,9 +91,7 @@ class SliceInfo:
         creation. For continuous-valued computations such as volume sampling, use the
         raw anchoring vector norms directly.
         """
-        u = self.anchoring[3:6]
-        v = self.anchoring[6:9]
-        return int(math.hypot(*u)) + 1, int(math.hypot(*v)) + 1
+        return calculate_physical_dimensions(self.anchoring)
 
 
 @dataclass

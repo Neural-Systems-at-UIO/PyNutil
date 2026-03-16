@@ -17,7 +17,7 @@ from ...results import (
 )
 from ..adapters.base import RegistrationData
 from ...results import AtlasData
-from ...io.atlas_loader import process_atlas_volume, load_atlas_labels
+from ...io.atlas_loader import process_atlas_volume, resolve_atlas_labels
 
 
 def _resolve_atlas(atlas):
@@ -27,7 +27,7 @@ def _resolve_atlas(atlas):
     # Assume BrainGlobeAtlas-like object
     volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
-    labels = load_atlas_labels(atlas)
+    labels = resolve_atlas_labels(atlas)
     return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
 from .section_processor import (
     segmentation_to_atlas_space,

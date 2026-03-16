@@ -28,6 +28,24 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     return atlas_labels
 
 
+def resolve_atlas_labels(atlas_labels):
+    """Resolve atlas labels input into a DataFrame.
+
+    Accepts a raw labels DataFrame, AtlasData-like objects exposing ``labels``,
+    or BrainGlobeAtlas-like objects exposing ``structures_list``.
+    """
+    if isinstance(atlas_labels, pd.DataFrame):
+        return atlas_labels
+    if hasattr(atlas_labels, "labels"):
+        return atlas_labels.labels
+    if hasattr(atlas_labels, "structures_list"):
+        return load_atlas_labels(atlas_labels)
+    raise TypeError(
+        "atlas_labels must be a pandas DataFrame, AtlasData-like (.labels), "
+        "or BrainGlobeAtlas-like (.structures_list)."
+    )
+
+
 @lru_cache(maxsize=8)
 def load_atlas_data(atlas_name):
     """

@@ -12,7 +12,7 @@ from typing import List
 
 import numpy as np
 
-from .base import AnchoringLoader, RegistrationData, SliceInfo
+from .base import AnchoringLoader, RegistrationData, SliceInfo, calculate_physical_dimensions
 from ...io.loaders import number_sections, load_json_file
 
 
@@ -173,13 +173,7 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
         V = pn_corners[2] - pn_corners[0]
         anchoring = O.tolist() + U.tolist() + V.tolist()
 
-        width, height = SliceInfo(
-            section_id="",
-            section_number=0,
-            width=0,
-            height=0,
-            anchoring=anchoring,
-        ).physical_dimensions
+        width, height = calculate_physical_dimensions(anchoring)
 
         reg_dir = os.path.dirname(os.path.abspath(path))
         tiff_h, tiff_w = self._find_tiff_dims(reg_dir)

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .meshview_writer import write_hemi_points_to_meshview
+from .atlas_loader import resolve_atlas_labels
 
 
 @dataclass
@@ -238,11 +239,7 @@ def save_analysis(
         colormap: Colormap for MeshView intensity output.
         settings_dict: Optional dict written to pynutil_settings.json.
     """
-    if hasattr(atlas_labels, "labels"):
-        atlas_labels = atlas_labels.labels
-    elif hasattr(atlas_labels, "structures_list"):
-        from .atlas_loader import load_atlas_labels
-        atlas_labels = load_atlas_labels(atlas_labels)
+    atlas_labels = resolve_atlas_labels(atlas_labels)
 
     und_p = result.per_point_undamaged if result else None
     und_c = result.per_centroid_undamaged if result else None

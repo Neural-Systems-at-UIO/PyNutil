@@ -59,11 +59,24 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
         raise ValueError("Expected at least two columns in the file.")
 
     custom_region_names = df.columns[1:].to_list()
-    try:
-        rgb_values = [[int(i) for i in rgb.split(";")] for rgb in df.iloc[0, 1:].values]
-    except ValueError:
-        print("Error: Non integer value found in rgb list")
-        rgb_values = list(df.iloc[0, 1:].values)
+    rgb_values = []
+    for rgb in df.iloc[0, 1:].values:
+        parts = str(rgb).split(";")
+        if len(parts) != 3:
+            raise ValueError(
+                f"Invalid RGB entry '{rgb}'. Expected 'R;G;B' with three integers."
+            )
+        try:
+            parsed = [int(i) for i in parts]
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid RGB entry '{rgb}'. Expected integer triplet 'R;G;B'."
+            ) from exc
+        if any(c < 0 or c > 255 for c in parsed):
+            raise ValueError(
+                f"Invalid RGB entry '{rgb}'. Channel values must be in [0, 255]."
+            )
+        rgb_values.append(parsed)
     atlas_ids_raw = df.iloc[1:, 1:].T.values
     atlas_ids = [[int(j) for j in i if pd.notna(j)] for i in atlas_ids_raw]
     new_ids = []

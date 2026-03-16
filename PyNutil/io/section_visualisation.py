@@ -181,21 +181,19 @@ def create_colored_atlas_slice(
             slice_info, coloured_slice
         )
 
+    resize_width, resize_height = target_width, target_height
+    if scale_factor != 1.0:
+        resize_width = max(1, int(target_width * scale_factor))
+        resize_height = max(1, int(target_height * scale_factor))
+
     if (coloured_slice.shape[1], coloured_slice.shape[0]) != (
-        target_width,
-        target_height,
+        resize_width,
+        resize_height,
     ):
         coloured_slice = cv2.resize(
             coloured_slice,
-            (target_width, target_height),
+            (resize_width, resize_height),
             interpolation=cv2.INTER_NEAREST,
-        )
-
-    if scale_factor != 1.0:
-        new_width = max(1, int(target_width * scale_factor))
-        new_height = max(1, int(target_height * scale_factor))
-        coloured_slice = cv2.resize(
-            coloured_slice, (new_width, new_height), interpolation=cv2.INTER_NEAREST
         )
 
     if seg_available:

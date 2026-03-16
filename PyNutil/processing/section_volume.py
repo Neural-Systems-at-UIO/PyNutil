@@ -385,7 +385,8 @@ def _process_one_section(
 
     x, y, z = x[inb], y[inb], z[inb]
     np.add.at(fv, (x, y, z), 1)
-    np.add.at(gv, (x, y, z), vals[inb])
+    if vol_cfg.value_mode != "object_count":
+        np.add.at(gv, (x, y, z), vals[inb])
 
     if damage_vals is not None:
         dv[x, y, z] |= damage_vals[inb].astype(np.uint8)

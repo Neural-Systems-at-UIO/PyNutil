@@ -68,6 +68,7 @@ class TestCoordinateScaling(TimedTestCase):
 
             def _fake_get_objects(
                 segmentation_img,
+                adapter,
                 pixel_id,
                 atlas_map_img,
                 y_scale,

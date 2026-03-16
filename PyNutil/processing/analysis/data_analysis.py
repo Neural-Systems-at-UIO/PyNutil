@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ...results import PerEntityArrays
+from ...io.atlas_loader import resolve_atlas_labels
 from .region_counting import pixel_count_per_region
 from ..utils import (
     AREA_FRACTION_PAIRS,
@@ -315,12 +316,7 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
     Returns:
         ``(label_df, per_section_df)`` — whole-series and per-section DataFrames.
     """
-    # Accept AtlasData, BrainGlobeAtlas, or a raw DataFrame
-    if hasattr(atlas_labels, "labels"):
-        atlas_labels = atlas_labels.labels
-    elif hasattr(atlas_labels, "structures_list"):
-        from ...io.atlas_loader import load_atlas_labels
-        atlas_labels = load_atlas_labels(atlas_labels)
+    atlas_labels = resolve_atlas_labels(atlas_labels)
 
     if result.region_intensities_list is not None:
         return quantify_intensity(result.region_intensities_list, atlas_labels)
