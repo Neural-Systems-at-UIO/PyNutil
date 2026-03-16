@@ -410,8 +410,7 @@ def project_sections_to_volume(
     segmentation_folder: str,
     alignment_json: str,
     colour,
-    atlas_shape: Tuple[int, int, int],
-    atlas_volume: Optional[np.ndarray],
+    atlas: object,
     scale: float = 1.0,
     missing_fill: float = np.nan,
     do_interpolation: bool = True,
@@ -433,14 +432,29 @@ def project_sections_to_volume(
         - frequency volume (fv): number of sampled pixels per voxel
         - damage volume (dv): binary mask of damaged voxels
 
-    Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
+        Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
+
+        Atlas input:
+                - Pass *atlas* (BrainGlobe atlas or PyNutil AtlasData). Volume and
+                    shape are inferred from ``atlas.annotation`` or ``atlas.volume``.
     """
     if value_mode not in {"pixel_count", "mean", "object_count"}:
         raise ValueError(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
+    if hasattr(atlas, "annotation") and getattr(atlas, "annotation") is not None:
+        atlas_volume = getattr(atlas, "annotation")
+    elif hasattr(atlas, "volume") and getattr(atlas, "volume") is not None:
+        atlas_volume = getattr(atlas, "volume")
+    else:
+        raise ValueError(
+            "atlas must provide a non-None 'annotation' or 'volume' attribute"
+        )
+
+    out_base_shape = tuple(int(x) for x in atlas_volume.shape)
+
+    out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)
 
     registration = load_registration(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}

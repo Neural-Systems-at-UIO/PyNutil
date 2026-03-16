@@ -37,8 +37,7 @@ pnt.interpolate_volume(
     segmentation_folder=segmentation_folder,
     alignment_json=alignment_json,
     colour=colour,
-    atlas_shape=atlas.shape,
-    atlas_volume=atlas.annotation
+    atlas=atlas,
 )
 # Save results
 pnt.save_analysis(
