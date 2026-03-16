@@ -10,7 +10,7 @@ import pandas as pd
 import nibabel as nib
 import nrrd
 
-from PyNutil import PyNutil
+from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
 
 try:
     from tests.timing_utils import TimedTestCase
@@ -198,21 +198,21 @@ class TestValidatorNutilComparison(TimedTestCase):
             self._nifti_to_nrrd(scenario["atlas_nii"], atlas_nrrd)
             self._itksnap_label_to_csv(scenario["label_txt"], labels_csv)
 
-            pnt = PyNutil(
-                atlas_path=atlas_nrrd,
-                label_path=labels_csv,
+            atlas = load_custom_atlas(atlas_nrrd, None, labels_csv)
+            alignment = read_alignment(
+                alignment_json,
+                apply_deformation=False,
+                apply_damage=False,
             )
-            pnt.get_coordinates(
-                segmentation_folder=seg_folder,
-                alignment_json=alignment_json,
-                colour=scenario["colour"],
-                non_linear=False,
-                object_cutoff=0,
+            result = seg_to_coords(
+                seg_folder,
+                alignment,
+                atlas,
+                pixel_id=scenario["colour"],
                 use_flat=True,
-                apply_damage_mask=False,
                 flat_label_path=scenario["label_txt"],
             )
-            pnt.quantify_coordinates()
+            label_df, per_section_df = quantify_coords(result, atlas)
         finally:
             shutil.rmtree(temp_root, ignore_errors=True)
             shutil.rmtree(atlas_temp, ignore_errors=True)
@@ -222,12 +222,12 @@ class TestValidatorNutilComparison(TimedTestCase):
         )
         self._assert_load_and_region_area(
             expected_whole,
-            pnt.label_df,
+            label_df,
             where=f"validator {scenario['case']} whole-series",
         )
 
         section_map = {}
-        for seg_path, section_df in zip(pnt.segmentation_filenames, pnt.per_section_df):
+        for seg_path, section_df in zip(result.segmentation_filenames, per_section_df):
             match = re.search(r"_s(\d+)", os.path.basename(seg_path))
             if match:
                 section_map[match.group(1).zfill(3)] = section_df

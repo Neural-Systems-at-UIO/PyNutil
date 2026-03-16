@@ -609,6 +609,22 @@ class PyNutil:
             return full_arr[undamaged_mask]
         return full_arr
 
+    def _build_settings_dict(self):
+        """Build settings dict for pynutil_settings.json."""
+        cfg = self._cfg
+        d = {
+            "segmentation_folder": cfg.segmentation_folder,
+            "image_folder": cfg.image_folder,
+            "alignment_json": cfg.alignment_json,
+            "colour": cfg.colour,
+            "intensity_channel": cfg.intensity_channel,
+            "custom_region_path": cfg.custom_region_path,
+        }
+        for key, val in [("atlas_name", cfg.atlas_name), ("atlas_path", cfg.atlas_path), ("label_path", cfg.label_path)]:
+            if val:
+                d[key] = val
+        return d
+
     def _build_save_context(self, colormap, result=None):
         """Build a SaveContext from the stored config and extraction result."""
         r = result if result is not None else self._result
@@ -627,7 +643,8 @@ class PyNutil:
             centroids_len=r.centroids_len if r else None,
             segmentation_filenames=r.segmentation_filenames if r else None,
             point_intensities=r.point_intensities if r else None,
-            config=self._cfg,
+            is_intensity=bool(self._cfg.image_folder),
+            settings_dict=self._build_settings_dict(),
             colormap=colormap,
         )
 

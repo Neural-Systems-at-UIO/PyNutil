@@ -1,7 +1,8 @@
 import unittest
 import os
 import sys
-from PyNutil import PyNutil
+
+from PyNutil import load_custom_atlas, read_alignment, seg_to_coords
 
 # Add the root directory to sys.path to allow importing PyNutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -19,28 +20,21 @@ class TestValidation(unittest.TestCase):
         self.image_folder = os.path.join(self.base_dir, "images")
         self.alignment_json = os.path.join(self.base_dir, "alignment.json")
 
-    def _make_pnt(self):
-        return PyNutil(atlas_path=ATLAS_PATH, label_path=LABEL_PATH)
-
-    def test_both_folders_raises_error(self):
-        pnt = self._make_pnt()
-        with self.assertRaises(ValueError) as cm:
-            pnt.get_coordinates(
-                segmentation_folder=self.image_folder,
-                image_folder=self.image_folder,
-                alignment_json=self.alignment_json,
-            )
-        self.assertIn("only one of", str(cm.exception))
+    def _load_atlas(self):
+        return load_custom_atlas(ATLAS_PATH, None, LABEL_PATH)
 
     def test_intensity_filter_with_segmentation_raises_error(self):
-        pnt = self._make_pnt()
-        with self.assertRaises(ValueError) as cm:
-            pnt.get_coordinates(
-                segmentation_folder=self.image_folder,
-                alignment_json=self.alignment_json,
+        """seg_to_coords does not accept min_intensity; passing it should raise TypeError."""
+        atlas = self._load_atlas()
+        alignment = read_alignment(self.alignment_json)
+        with self.assertRaises(TypeError):
+            seg_to_coords(
+                self.image_folder,
+                alignment,
+                atlas,
+                pixel_id=[0, 0, 0],
                 min_intensity=10,
             )
-        self.assertIn("only supported when using image_folder", str(cm.exception))
 
     def test_voxel_size_ignored_with_atlas_name(self):
         # We check if it logs a warning. For now we just check if it resets the value.

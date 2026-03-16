@@ -2,7 +2,15 @@ import json
 import os
 import shutil
 
-from PyNutil import PyNutil
+from PyNutil import (
+    load_atlas_data,
+    load_custom_atlas,
+    read_alignment,
+    seg_to_coords,
+    image_to_coords,
+    xy_to_coords,
+    quantify_coords,
+)
 
 
 def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
@@ -11,45 +19,58 @@ def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
     return min(float(target_max_dim) / float(max_dim), 1.0)
 
 
-def pynutil_from_settings_dict(settings: dict) -> PyNutil:
-    """Create a PyNutil instance with atlas settings from a settings dictionary.
-
-    Data-pipeline arguments (segmentation folder, alignment JSON, colour, etc.)
-    must be passed to :meth:`~PyNutil.get_coordinates` separately.  Use
-    :func:`get_coordinates_kwargs` to extract them from the same dict.
-    """
-    return PyNutil(
-        atlas_name=settings.get("atlas_name"),
-        atlas_path=settings.get("atlas_path"),
-        label_path=settings.get("label_path"),
-        hemi_path=settings.get("hemi_path"),
-        voxel_size_um=settings.get("voxel_size_um"),
+def load_atlas_from_settings(settings: dict):
+    """Load an AtlasData from a settings dictionary."""
+    if settings.get("atlas_name"):
+        return load_atlas_data(settings["atlas_name"])
+    return load_custom_atlas(
+        settings["atlas_path"],
+        settings.get("hemi_path"),
+        settings["label_path"],
     )
 
 
-def get_coordinates_kwargs(settings: dict) -> dict:
-    """Extract data-pipeline kwargs for :meth:`~PyNutil.get_coordinates` from a settings dict."""
-    return {
-        "segmentation_folder": settings.get("segmentation_folder"),
-        "image_folder": settings.get("image_folder"),
-        "coordinate_file": settings.get("coordinate_file"),
-        "alignment_json": settings.get("alignment_json"),
-        "colour": settings.get("colour"),
-        "intensity_channel": settings.get("intensity_channel"),
-        "min_intensity": settings.get("min_intensity"),
-        "max_intensity": settings.get("max_intensity"),
-        "segmentation_format": settings.get("segmentation_format", "binary"),
-        "custom_region_path": settings.get("custom_region_path"),
-    }
+def run_pipeline_from_settings(settings: dict):
+    """Run the full extraction + quantification pipeline from a settings dict.
+
+    Returns (atlas, result, label_df, per_section_df, alignment).
+    """
+    atlas = load_atlas_from_settings(settings)
+    alignment = read_alignment(settings["alignment_json"])
+
+    if settings.get("coordinate_file"):
+        result = xy_to_coords(
+            settings["coordinate_file"],
+            alignment,
+            atlas,
+        )
+    elif settings.get("image_folder"):
+        result = image_to_coords(
+            settings["image_folder"],
+            alignment,
+            atlas,
+            intensity_channel=settings.get("intensity_channel", "grayscale"),
+            min_intensity=settings.get("min_intensity"),
+            max_intensity=settings.get("max_intensity"),
+        )
+    else:
+        result = seg_to_coords(
+            settings["segmentation_folder"],
+            alignment,
+            atlas,
+            pixel_id=settings.get("colour", [0, 0, 0]),
+            segmentation_format=settings.get("segmentation_format", "binary"),
+        )
+
+    label_df, per_section_df = quantify_coords(result, atlas)
+    return atlas, result, label_df, per_section_df, alignment
 
 
-def make_pynutil_ready(settings_path: str) -> PyNutil:
+def run_pipeline_from_settings_file(settings_path: str):
+    """Load settings from JSON and run the pipeline."""
     with open(settings_path) as f:
         settings = json.load(f)
-    pnt = pynutil_from_settings_dict(settings)
-    pnt.get_coordinates(**get_coordinates_kwargs(settings), object_cutoff=0)
-    pnt.quantify_coordinates()
-    return pnt
+    return run_pipeline_from_settings(settings)
 
 
 def copy_tree_to_demo(output_dir: str, demo_dir: str) -> None:

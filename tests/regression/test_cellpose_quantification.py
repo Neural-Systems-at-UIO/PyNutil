@@ -8,11 +8,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 
 import numpy as np
 import pandas as pd
-from PyNutil import PyNutil
 import json
 
 from timing_utils import TimedTestCase
-from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
+from test_helpers import run_pipeline_from_settings
 
 class TestCellposeQuantification(TimedTestCase):
     def setUp(self):
@@ -27,9 +26,7 @@ class TestCellposeQuantification(TimedTestCase):
 
     def test_cellpose_quantification(self):
         test_case_filename, test_case = self.load_test_case("cellpose_test.json")
-        pnt = pynutil_from_settings_dict(test_case)
-        pnt.get_coordinates(**get_coordinates_kwargs(test_case), object_cutoff=0)
-        pnt.quantify_coordinates()
+        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(test_case)
 
         expected_output_path = os.path.join(
             self.test_case_dir,
@@ -56,17 +53,17 @@ class TestCellposeQuantification(TimedTestCase):
         for column in columns:
             with self.subTest(column=column):
                 self.assertIn(
-                    column, pnt.label_df.columns, f"Missing column in output: {column}"
+                    column, label_df.columns, f"Missing column in output: {column}"
                 )
                 if column in ["idx", "name"]:
                     np.testing.assert_array_equal(
-                        pnt.label_df[column].values,
+                        label_df[column].values,
                         expected_output[column].values,
                         err_msg=f"Mismatch in column: {column}",
                     )
                 else:
                     np.testing.assert_array_almost_equal(
-                        pnt.label_df[column].values,
+                        label_df[column].values,
                         expected_output[column].values,
                         err_msg=f"Mismatch in column: {column}",
                     )

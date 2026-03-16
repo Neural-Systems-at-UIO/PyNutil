@@ -7,9 +7,9 @@ import unittest
 import numpy as np
 import nibabel as nib
 
-from PyNutil import PyNutil
+from PyNutil import save_analysis, interpolate_volume
 from PyNutil.io.volume_nifti import scale_to_uint8
-from tests.test_helpers import copy_tree_to_demo, small_volume_scale, pynutil_from_settings_dict, get_coordinates_kwargs
+from tests.test_helpers import copy_tree_to_demo, small_volume_scale, run_pipeline_from_settings
 try:
     # When run via `python -m unittest discover` from repo root
     from tests.timing_utils import TimedTestCase
@@ -38,19 +38,22 @@ class TestBuildVolumeFromSections(TimedTestCase):
         self.expected_case_dir = os.path.join(self.expected_dir, self.save_root)
         self.expected_report_dir = os.path.join(self.expected_case_dir, "interpolated_volume")
 
-    def _generate_pnt(self):
+    def _run_pipeline_and_interpolate(self):
         with open(self.settings_path) as f:
             settings = json.load(f)
-        pnt = pynutil_from_settings_dict(settings)
-        pnt.get_coordinates(**get_coordinates_kwargs(settings), object_cutoff=0)
-        pnt.quantify_coordinates()
+        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(settings)
 
         # Downscale to keep runtime/memory small and stable.
-        scale = small_volume_scale(pnt.atlas_volume.shape)
+        scale = small_volume_scale(atlas.volume.shape)
 
         # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
-        pnt.interpolate_volume(
+        gv, fv, dv = interpolate_volume(
+            segmentation_folder=settings["segmentation_folder"],
+            alignment_json=settings["alignment_json"],
+            colour=settings.get("colour", [0, 0, 0]),
+            atlas_shape=atlas.volume.shape,
+            atlas_volume=atlas.volume,
             scale=scale,
             missing_fill=np.nan,
             do_interpolation=True,
@@ -58,15 +61,15 @@ class TestBuildVolumeFromSections(TimedTestCase):
             use_atlas_mask=True,
             non_linear=True,
         )
-        return pnt
+        return atlas, result, label_df, per_section_df, gv, fv, dv, settings
 
     def test_interpolate_volume_k5_matches_expected(self):
-        pnt = self._generate_pnt()
+        atlas, result, label_df, per_section_df, gv, fv, dv, settings = self._run_pipeline_and_interpolate()
 
         # Volumes are saved as uint8 in NIfTI; we scale them here to match
         # the expected disk fixtures without having to read back what we just wrote.
-        got_interp = scale_to_uint8(pnt.interpolated_volume)
-        got_freq = scale_to_uint8(pnt.frequency_volume)
+        got_interp = scale_to_uint8(gv)
+        got_freq = scale_to_uint8(fv)
 
         exp_interp_path = os.path.join(
             self.expected_report_dir, "interpolated_volume.nii.gz"
@@ -75,8 +78,8 @@ class TestBuildVolumeFromSections(TimedTestCase):
 
         with tempfile.TemporaryDirectory(prefix="pynutil_build_from_sections_k5_") as tmpdir:
             output_dir = os.path.join(tmpdir, self.save_root)
-            # Volumes should be written as NII during save_analysis for human inspection.
-            pnt.save_analysis(output_dir, create_visualisations=True)
+            # Save analysis output for human inspection.
+            save_analysis(output_dir, result, atlas, label_df, per_section_df)
 
             if not (os.path.exists(exp_interp_path) and os.path.exists(exp_freq_path)):
                 # Copy outputs for human inspection (never used for assertions).

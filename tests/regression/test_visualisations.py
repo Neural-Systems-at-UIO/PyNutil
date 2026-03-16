@@ -6,9 +6,8 @@ import unittest
 import cv2
 import numpy as np
 
-from PyNutil import PyNutil
+from PyNutil import load_atlas_data, read_alignment, seg_to_coords
 from timing_utils import TimedTestCase
-from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
 
 
 class TestVisualisations(TimedTestCase):
@@ -45,26 +44,34 @@ class TestVisualisations(TimedTestCase):
 
             with open(self.settings_path) as f:
                 settings = json.load(f)
-            pnt = pynutil_from_settings_dict(settings)
-            pnt.get_coordinates(**get_coordinates_kwargs(settings))
+
+            atlas = load_atlas_data(settings["atlas_name"])
+            alignment = read_alignment(settings["alignment_json"])
+            result = seg_to_coords(
+                settings["segmentation_folder"],
+                alignment,
+                atlas,
+                pixel_id=settings.get("colour", [0, 0, 0]),
+                segmentation_format=settings.get("segmentation_format", "binary"),
+            )
 
             from PyNutil.processing.adapters.registry import load_registration
             from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
             from PyNutil.io.section_visualisation import create_section_visualisations
 
             reg_data = load_registration(
-                pnt.alignment_json, apply_deformation=False, apply_damage=False
+                settings["alignment_json"], apply_deformation=False, apply_damage=False
             )
-            adapter = SegmentationAdapterRegistry.get(pnt.segmentation_format)
+            adapter = SegmentationAdapterRegistry.get(settings.get("segmentation_format", "binary"))
 
             create_section_visualisations(
-                pnt.segmentation_folder,
+                settings["segmentation_folder"],
                 reg_data.slices,
-                pnt.atlas_volume,
-                pnt.atlas_labels,
+                atlas.volume,
+                atlas.labels,
                 output_root,
                 adapter=adapter,
-                pixel_id=pnt.colour,
+                pixel_id=settings.get("colour", [0, 0, 0]),
             )
 
             generated_dir = os.path.join(output_root, "visualisations")

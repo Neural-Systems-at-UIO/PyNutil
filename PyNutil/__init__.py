@@ -1,4 +1,3 @@
-from .main import PyNutil
 from .results import AtlasData, ExtractionResult
 from .processing.adapters.base import RegistrationData
 from .processing.adapters import load_registration as read_alignment
@@ -9,3 +8,6 @@ from .processing.pipeline.batch_processor import (
     file_to_atlas_space_coordinates as xy_to_coords,
 )
 from .processing.analysis.data_analysis import quantify_coords
+from .io.file_operations import save_analysis
+from .processing.section_volume import project_sections_to_volume as interpolate_volume
+from .io.volume_nifti import save_volume_niftis

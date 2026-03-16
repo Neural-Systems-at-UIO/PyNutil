@@ -20,10 +20,10 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from PyNutil import PyNutil
+from PyNutil import save_analysis
 
 from timing_utils import TimedTestCase
-from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
+from test_helpers import run_pipeline_from_settings
 
 TESTS_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -43,12 +43,10 @@ class TestBrainGlobeCoordinateQuantification(TimedTestCase):
 
         cls._tmpdir = tempfile.mkdtemp(prefix="pynutil_bg_coord_test_")
 
-        pnt = pynutil_from_settings_dict(cls.test_case)
-        pnt.get_coordinates(**get_coordinates_kwargs(cls.test_case))
-        pnt.quantify_coordinates()
-        pnt.save_analysis(cls._tmpdir, create_visualisations=False)
+        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(cls.test_case)
+        save_analysis(cls._tmpdir, result, atlas, label_df, per_section_df)
 
-        cls.label_df = pnt.label_df.copy()
+        cls.label_df = label_df.copy()
 
     @classmethod
     def tearDownClass(cls):

@@ -1,24 +1,17 @@
 import os
 import json
-from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any
 
 import numpy as np
 import pandas as pd
 
 from .meshview_writer import write_hemi_points_to_meshview
 
-if TYPE_CHECKING:
-    from ..config import PyNutilConfig
-
 
 @dataclass
 class SaveContext:
-    """Groups the parameters needed by :func:`save_analysis_output`.
-
-    Configuration metadata (paths, colour, etc.) is passed as a single
-    ``config`` reference rather than as individual fields.
-    """
+    """Groups the parameters needed by :func:`save_analysis_output`."""
 
     # Core data
     pixel_points: Optional[np.ndarray] = None
@@ -35,8 +28,11 @@ class SaveContext:
     atlas_labels: Optional[pd.DataFrame] = None
     point_intensities: Optional[np.ndarray] = None
 
-    # Single config reference (replaces ~10 individual fields)
-    config: Optional["PyNutilConfig"] = None
+    # Whether this is intensity mode (affects report filename)
+    is_intensity: bool = False
+
+    # Settings dict written to pynutil_settings.json (optional)
+    settings_dict: Optional[Dict[str, Any]] = None
 
     # Output control
     prepend: str = ""
@@ -115,8 +111,7 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
     _ensure_analysis_output_dirs(output_folder)
 
     if ctx.label_df is not None:
-        cfg = ctx.config
-        report_name = "intensity.csv" if (cfg and cfg.image_folder) else "counts.csv"
+        report_name = "intensity.csv" if ctx.is_intensity else "counts.csv"
         ctx.label_df.to_csv(
             f"{output_folder}/whole_series_report/{ctx.prepend}{report_name}",
             sep=";",
@@ -139,29 +134,11 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
 
 def _save_settings_json(ctx: SaveContext, output_folder: str) -> None:
     """Write a reference settings JSON to *output_folder*."""
-    cfg = ctx.config
-    if cfg is None:
+    if ctx.settings_dict is None:
         return
-    settings_dict = {
-        "segmentation_folder": cfg.segmentation_folder,
-        "image_folder": cfg.image_folder,
-        "alignment_json": cfg.alignment_json,
-        "colour": cfg.colour,
-        "intensity_channel": cfg.intensity_channel,
-        "custom_region_path": cfg.custom_region_path,
-    }
-
-    for key, val in [
-        ("atlas_name", cfg.atlas_name),
-        ("atlas_path", cfg.atlas_path),
-        ("label_path", cfg.label_path),
-    ]:
-        if val:
-            settings_dict[key] = val
-
     settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
     with open(settings_file_path, "w") as f:
-        json.dump(settings_dict, f, indent=4)
+        json.dump(ctx.settings_dict, f, indent=4)
 
 
 def _save_per_section_reports(ctx: SaveContext, output_folder: str):
@@ -226,4 +203,82 @@ def _save_whole_series_meshview(ctx: SaveContext, output_folder: str):
             f"{output_folder}/whole_series_meshview/{ctx.prepend}objects_meshview.json",
             ctx.atlas_labels,
             colormap=ctx.colormap,
+        )
+
+
+def _filter_undamaged(full_arr, undamaged_mask):
+    """Filter *full_arr* to undamaged-only using *undamaged_mask* if lengths match."""
+    if (
+        undamaged_mask is not None
+        and full_arr is not None
+        and len(undamaged_mask) == len(full_arr)
+    ):
+        return full_arr[undamaged_mask]
+    return full_arr
+
+
+def save_analysis(
+    output_folder,
+    result,
+    atlas_labels,
+    label_df=None,
+    per_section_df=None,
+    *,
+    colormap="gray",
+    settings_dict=None,
+):
+    """Save analysis output to the specified directory.
+
+    Args:
+        output_folder: Directory to write output files.
+        result: ExtractionResult from coordinate extraction.
+        atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels`` used).
+        label_df: Whole-series quantification DataFrame.
+        per_section_df: List of per-section DataFrames.
+        colormap: Colormap for MeshView intensity output.
+        settings_dict: Optional dict written to pynutil_settings.json.
+    """
+    if hasattr(atlas_labels, "labels"):
+        atlas_labels = atlas_labels.labels
+
+    und_p = result.per_point_undamaged if result else None
+    und_c = result.per_centroid_undamaged if result else None
+
+    ctx = SaveContext(
+        pixel_points=result.pixel_points if result else None,
+        centroids=result.centroids if result else None,
+        label_df=label_df,
+        per_section_df=per_section_df,
+        labeled_points=_filter_undamaged(
+            result.points_labels if result else None, und_p
+        ),
+        labeled_points_centroids=_filter_undamaged(
+            result.centroids_labels if result else None, und_c
+        ),
+        points_hemi_labels=_filter_undamaged(
+            result.points_hemi_labels if result else None, und_p
+        ),
+        centroids_hemi_labels=_filter_undamaged(
+            result.centroids_hemi_labels if result else None, und_c
+        ),
+        points_len=result.points_len if result else None,
+        centroids_len=result.centroids_len if result else None,
+        segmentation_filenames=result.segmentation_filenames if result else None,
+        atlas_labels=atlas_labels,
+        point_intensities=result.point_intensities if result else None,
+        is_intensity=result.region_intensities_list is not None if result else False,
+        settings_dict=settings_dict,
+        colormap=colormap,
+    )
+    save_analysis_output(ctx, output_folder)
+
+    # Remap compressed IDs if present
+    if label_df is not None and "original_idx" in label_df.columns:
+        remapped = label_df.copy()
+        remapped["idx"] = remapped["original_idx"]
+        remapped = remapped.drop(columns=["original_idx"])
+        remapped.to_csv(
+            f"{output_folder}/whole_series_report/counts.csv",
+            sep=";",
+            index=False,
         )

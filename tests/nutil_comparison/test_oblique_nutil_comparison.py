@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from PyNutil import PyNutil
+from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
 
 try:
     from tests.timing_utils import TimedTestCase
@@ -58,20 +58,22 @@ class TestObliqueNutilComparison(TimedTestCase):
         )
 
     def _run_pynutil_oblique(self):
-        pnt = PyNutil(
-            atlas_path=self.atlas_path,
-            label_path=self.label_path,
+        atlas = load_custom_atlas(self.atlas_path, None, self.label_path)
+        alignment = read_alignment(
+            self.alignment_json,
+            apply_deformation=False,
+            apply_damage=False,
         )
-        pnt.get_coordinates(
-            segmentation_folder=self.segmentation_folder,
-            alignment_json=self.alignment_json,
-            colour=[0, 0, 0],
-            object_cutoff=0,
+        result = seg_to_coords(
+            self.segmentation_folder,
+            alignment,
+            atlas,
+            pixel_id=[0, 0, 0],
             use_flat=True,
             flat_label_path=self.flat_label_path,
         )
-        pnt.quantify_coordinates()
-        return pnt
+        label_df, per_section_df = quantify_coords(result, atlas)
+        return result, label_df, per_section_df
 
     @staticmethod
     def _load_nutil_ref_report(csv_path):
@@ -141,7 +143,7 @@ class TestObliqueNutilComparison(TimedTestCase):
         )
 
     def test_allen_oblique_load_and_region_area_match_nutil(self):
-        pnt = self._run_pynutil_oblique()
+        result, label_df, per_section_df = self._run_pynutil_oblique()
 
         expected_load_path = os.path.join(
             self.expected_root, "test17_RefAtlasRegions_load.csv"
@@ -149,12 +151,12 @@ class TestObliqueNutilComparison(TimedTestCase):
         expected_load = self._load_nutil_ref_report(expected_load_path)
         self._assert_load_and_region_area(
             expected_load,
-            pnt.label_df,
+            label_df,
             where="whole-series load report",
         )
 
         section_map = {}
-        for seg_path, section_df in zip(pnt.segmentation_filenames, pnt.per_section_df):
+        for seg_path, section_df in zip(result.segmentation_filenames, per_section_df):
             match = re.search(r"_s(\d{3})", os.path.basename(seg_path))
             if match:
                 section_map[match.group(1)] = section_df

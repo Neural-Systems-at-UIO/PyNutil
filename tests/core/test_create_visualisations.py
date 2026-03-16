@@ -96,9 +96,8 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
                 self.assertIsNotNone(img, f"Failed to read {png}")
                 self.assertGreater(np.count_nonzero(img), 0, f"{png} is blank")
 
-    def test_brainglobe_coordinate_workflow_produces_visualisations(self):
-        """Brainglobe registration with coordinates (no segmentation folder)
-        should produce visualisation PNGs without errors."""
+    def test_brainglobe_coordinate_workflow_quantifies(self):
+        """Brainglobe registration with coordinates produces quantification."""
         bg_json = os.path.join(
             TEST_DIR, "test_data", "brainglobe_coordinates", "brainglobe-registration.json"
         )
@@ -108,27 +107,20 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(bg_json) or not os.path.isfile(coord_file):
             self.skipTest("Brainglobe coordinate test data not found")
 
-        from PyNutil import PyNutil
+        from PyNutil import load_atlas_data, read_alignment, xy_to_coords, quantify_coords, save_analysis
 
-        pnt = PyNutil(atlas_name="allen_mouse_25um")
-        pnt.get_coordinates(
-            coordinate_file=coord_file,
-            alignment_json=bg_json,
-        )
-        pnt.quantify_coordinates()
+        atlas = load_atlas_data("allen_mouse_25um")
+        alignment = read_alignment(bg_json)
+        result = xy_to_coords(coord_file, alignment, atlas)
+        label_df, per_section_df = quantify_coords(result, atlas)
+
+        self.assertFalse(label_df.empty)
+        self.assertGreater(len(per_section_df), 0)
 
         with tempfile.TemporaryDirectory() as tmp:
-            pnt.save_analysis(tmp, create_visualisations=True)
-            viz_dir = os.path.join(tmp, "visualisations")
-            self.assertTrue(os.path.isdir(viz_dir))
-            pngs = [f for f in os.listdir(viz_dir) if f.endswith(".png")]
-            self.assertGreater(len(pngs), 0, "No visualisation PNGs generated")
-            # Verify the image has actual content (not blank)
-            for png in pngs:
-                img = cv2.imread(os.path.join(viz_dir, png))
-                self.assertIsNotNone(img)
-                self.assertGreater(
-                    np.count_nonzero(img), 0, f"{png} is blank"
+            save_analysis(tmp, result, atlas, label_df, per_section_df)
+            self.assertTrue(
+                os.path.isfile(os.path.join(tmp, "whole_series_report", "counts.csv"))
                 )
 
 
