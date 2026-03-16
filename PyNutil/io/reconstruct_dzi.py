@@ -12,8 +12,6 @@ def reconstruct_dzi(zip_file_path):
     ----------
     zip_file_path : str
         Path to the zip file containing the tiles.
-    apply_damage_mask : bool
-        Whether to apply the damage mask.
 
     Returns
     -------

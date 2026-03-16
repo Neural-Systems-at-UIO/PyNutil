@@ -146,8 +146,8 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
 
 
 def pixel_count_per_region(
-    labels_dict_points,
-    labeled_dict_centroids,
+    per_point_labels,
+    per_centroid_labels,
     current_points_undamaged,
     current_centroids_undamaged,
     current_points_hemi,
@@ -159,8 +159,8 @@ def pixel_count_per_region(
     Tally object counts by region, optionally tracking damage and hemispheres.
 
     Args:
-        labels_dict_points (dict): Maps points to region labels.
-        labeled_dict_centroids (dict): Maps centroids to region labels.
+        per_point_labels (ndarray): 1-D region labels for points.
+        per_centroid_labels (ndarray): 1-D region labels for centroids.
         current_points_undamaged (ndarray): Undamaged-state flags for points.
         current_centroids_undamaged (ndarray): Undamaged-state flags for centroids.
         current_points_hemi (ndarray): Hemisphere tags for points.
@@ -195,8 +195,8 @@ def pixel_count_per_region(
             px_col = f"{hemi_pfx}{dmg_pfx}pixel_count"
             obj_col = f"{hemi_pfx}{dmg_pfx}object_count"
 
-            p_idx, p_cnt = _counts_for(p_mask, labels_dict_points)
-            c_idx, c_cnt = _counts_for(c_mask, labeled_dict_centroids)
+            p_idx, p_cnt = _counts_for(p_mask, per_point_labels)
+            c_idx, c_cnt = _counts_for(c_mask, per_centroid_labels)
 
             computed[px_col] = (p_idx, p_cnt)
             computed[obj_col] = (c_idx, c_cnt)
@@ -212,8 +212,8 @@ def pixel_count_per_region(
             c_mask = _build_count_mask(
                 current_centroids_hemi, current_centroids_undamaged, None, dmg_val
             )
-            p_idx, p_cnt = _counts_for(p_mask, labels_dict_points)
-            c_idx, c_cnt = _counts_for(c_mask, labeled_dict_centroids)
+            p_idx, p_cnt = _counts_for(p_mask, per_point_labels)
+            c_idx, c_cnt = _counts_for(c_mask, per_centroid_labels)
             computed[f"_total_{dmg_pfx}pixel_count"] = (p_idx, p_cnt)
             computed[f"_total_{dmg_pfx}object_count"] = (c_idx, c_cnt)
             all_indices.extend([p_idx, c_idx])

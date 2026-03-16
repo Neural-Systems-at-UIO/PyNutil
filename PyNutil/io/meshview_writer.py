@@ -21,7 +21,6 @@ from .colormap import get_colormap_colors
 def _group_triplets(
     points: np.ndarray,
     key_columns: dict[str, np.ndarray],
-    group_cols: list[str],
 ):
     """Yield grouped triplets from points using a common pandas groupby path."""
     if points is None or len(points) == 0:
@@ -34,6 +33,7 @@ def _group_triplets(
     }
     data.update(key_columns)
     df = pd.DataFrame(data)
+    group_cols = list(key_columns.keys())
 
     for key, grp in df.groupby(group_cols, sort=True, dropna=False):
         if isinstance(key, tuple) and len(key) == 1:
@@ -66,14 +66,13 @@ def _write_grouped_meshview(
     *,
     points: np.ndarray,
     key_columns: dict[str, np.ndarray],
-    group_cols: list[str],
     filename: str,
     entry_builder,
 ) -> None:
     """Group points and write MeshView entries via a supplied entry builder."""
     meshview = []
     for entry_idx, (key, triplets, count) in enumerate(
-        _group_triplets(points, key_columns, group_cols)
+        _group_triplets(points, key_columns)
     ):
         entry = entry_builder(entry_idx, key, triplets, count)
         if entry is not None:
@@ -108,7 +107,6 @@ def _write_region_meshview(
     _write_grouped_meshview(
         points=points,
         key_columns={"region": point_ids},
-        group_cols=["region"],
         filename=filename,
         entry_builder=_build_entry,
     )
@@ -261,7 +259,6 @@ def _write_rgb_meshview(
     _write_grouped_meshview(
         points=points,
         key_columns={"gid": inverse_indices},
-        group_cols=["gid"],
         filename=filename,
         entry_builder=_build_entry,
     )
@@ -311,7 +308,6 @@ def _write_scalar_meshview(
     _write_grouped_meshview(
         points=points,
         key_columns={"intensity": intensities},
-        group_cols=["intensity"],
         filename=filename,
         entry_builder=_build_entry,
     )

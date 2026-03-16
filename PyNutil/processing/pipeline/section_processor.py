@@ -109,13 +109,9 @@ def _prepare_section(
         flat_file_atlas,
         seg_width,
         seg_height,
-        slice_info.anchoring,
-        reg_width,
-        reg_height,
+        slice_info,
         atlas_volume,
         hemi_mask,
-        deformation,
-        damage_mask,
         flat_label_path,
         deform_map=deform_map,
         precomputed_atlas_slice=precomputed_atlas_slice,
@@ -129,7 +125,6 @@ def _prepare_section(
 
 
 def _compute_damage_state(
-    damage_mask,
     scaled_x,
     scaled_y,
     scaled_centroidsX,
@@ -138,6 +133,7 @@ def _compute_damage_state(
 ):
     """Compute per-point and per-centroid undamaged boolean masks."""
     reg_height, reg_width = slice_info.height, slice_info.width
+    damage_mask = slice_info.damage_mask
     if damage_mask is not None:
         damage_mask = resize_mask_nearest(damage_mask, reg_width, reg_height).astype(
             bool
@@ -347,12 +343,12 @@ def segmentation_to_atlas_space(
         per_centroid_labels,
     ) = get_objects_and_assign_regions(
         segmentation,
+        adapter,
         pixel_id,
         atlas_map,
         y_scale,
         x_scale,
         object_cutoff=p_ctx.object_cutoff,
-        segmentation_format=adapter.name,
     )
 
     if scaled_y is None or scaled_x is None:
@@ -362,7 +358,6 @@ def segmentation_to_atlas_space(
         scaled_y, scaled_x, atlas_map, reg_height, reg_width
     )
     per_point_undamaged, per_centroid_undamaged = _compute_damage_state(
-        damage_mask,
         scaled_x,
         scaled_y,
         scaled_centroidsX,
@@ -447,7 +442,6 @@ def coordinates_to_atlas_space(
 
     # Damage and hemisphere state
     per_point_undamaged, per_centroid_undamaged = _compute_damage_state(
-        damage_mask,
         scaled_x,
         scaled_y,
         scaled_x,  # centroids = points for coordinate mode

@@ -127,33 +127,28 @@ def _knn_interpolate_generic(
 
 def _read_section_signal(
     seg_path: str,
-    segmentation_adapter,
-    segmentation_mode: bool,
-    colour_arr: Optional[np.ndarray],
-    intensity_channel: str,
-    min_intensity: Optional[int],
-    max_intensity: Optional[int],
+    vol_cfg: VolumeConfig,
 ):
     """Load an image and return (seg_values, mask, seg_height, seg_width) or None."""
-    if segmentation_mode:
-        seg = segmentation_adapter.load(seg_path)
+    if vol_cfg.segmentation_mode:
+        seg = vol_cfg.segmentation_adapter.load(seg_path)
     else:
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
     if seg is None:
         return None
 
-    if not segmentation_mode:
+    if not vol_cfg.segmentation_mode:
         # Intensity mode
-        seg_values = convert_to_intensity(seg, intensity_channel)
-        if min_intensity is not None:
-            seg_values[seg_values < min_intensity] = 0
-        if max_intensity is not None:
-            seg_values[seg_values > max_intensity] = 0
+        seg_values = convert_to_intensity(seg, vol_cfg.intensity_channel)
+        if vol_cfg.min_intensity is not None:
+            seg_values[seg_values < vol_cfg.min_intensity] = 0
+        if vol_cfg.max_intensity is not None:
+            seg_values[seg_values > vol_cfg.max_intensity] = 0
         mask = (seg_values != 0).astype(np.float32, copy=False)
     else:
         # Segmentation mode via adapter (supports binary/cellpose/custom)
-        pixel_id = colour_arr.tolist() if colour_arr is not None else None
-        mask = segmentation_adapter.create_binary_mask(seg, pixel_id=pixel_id).astype(
+        pixel_id = vol_cfg.colour_arr.tolist() if vol_cfg.colour_arr is not None else None
+        mask = vol_cfg.segmentation_adapter.create_binary_mask(seg, pixel_id=pixel_id).astype(
             np.float32, copy=False
         )
         seg_values = mask
@@ -265,7 +260,7 @@ def _accumulate_object_counts(
     np.add.at(ov_flat, vox_ids, per_vox.astype(np.uint32, copy=False))
 
 
-def _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill):
+def _compute_value_volume(gv, fv, ov_flat, value_mode, missing_fill):
     """Derive the value volume from accumulated sums/counts."""
     if value_mode == "mean":
         out = np.zeros_like(gv, dtype=np.float32)
@@ -275,7 +270,7 @@ def _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill):
             out[~covered] = float(missing_fill)
         return out
     if value_mode == "object_count":
-        return ov_flat.reshape(out_shape).astype(np.float32, copy=False)
+        return ov_flat.reshape(gv.shape).astype(np.float32, copy=False)
     return gv
 
 
@@ -295,8 +290,7 @@ def _finalize_volumes(
     interp_cfg: InterpolationConfig,
 ):
     """Convert accumulated sums and optionally interpolate."""
-    out_shape = gv.shape
-    gv = _compute_value_volume(gv, fv, ov_flat, out_shape, vol_cfg.value_mode, interp_cfg.missing_fill)
+    gv = _compute_value_volume(gv, fv, ov_flat, vol_cfg.value_mode, interp_cfg.missing_fill)
 
     if interp_cfg.do_interpolation:
         atlas_mask = _resolve_atlas_mask(interp_cfg.use_atlas_mask, interp_cfg.atlas_volume, gv)
@@ -348,12 +342,7 @@ def _process_one_section(
 
     loaded = _read_section_signal(
         seg_path,
-        vol_cfg.segmentation_adapter,
-        vol_cfg.segmentation_mode,
-        vol_cfg.colour_arr,
-        vol_cfg.intensity_channel,
-        vol_cfg.min_intensity,
-        vol_cfg.max_intensity,
+        vol_cfg,
     )
     if loaded is None:
         return

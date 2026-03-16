@@ -429,15 +429,9 @@ def get_region_areas(
     flat_file_atlas: Optional[str],
     seg_width: int,
     seg_height: int,
-    anchoring: List[float],
-    reg_width: int,
-    reg_height: int,
+    slice_info,
     atlas_volume: np.ndarray,
     hemi_mask: Optional[np.ndarray],
-    deformation: Optional[
-        Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
-    ],
-    damage_mask: Optional[np.ndarray],
     flat_label_path: Optional[str] = None,
     deform_map: Optional[Tuple] = None,
     precomputed_atlas_slice: Optional[np.ndarray] = None,
@@ -458,18 +452,13 @@ def get_region_areas(
         Path to flat file atlas if use_flat is True.
     seg_width, seg_height : int
         Segmentation image dimensions.
-    anchoring : list
-        Anchoring vector (9 floats).
-    reg_width, reg_height : int
-        Registration dimensions.
+    slice_info : SliceInfo
+        Registration context containing anchoring, dimensions, deformation,
+        and damage mask.
     atlas_volume : np.ndarray
         3D atlas annotation volume.
     hemi_mask : np.ndarray or None
         Hemisphere mask volume.
-    deformation : callable or None
-        Deformation function for non-linear transformation.
-    damage_mask : np.ndarray or None
-        Damage mask for the section.
     deform_map : tuple or None
         Precomputed deformation map to avoid redundant deformation calls.
     precomputed_atlas_slice : ndarray or None
@@ -482,6 +471,11 @@ def get_region_areas(
     atlas_map : np.ndarray
         2D atlas map for the section.
     """
+    anchoring = slice_info.anchoring
+    reg_width, reg_height = slice_info.width, slice_info.height
+    deformation = slice_info.deformation
+    damage_mask = slice_info.damage_mask
+
     image_vector = None if use_flat else anchoring
     volume = None if use_flat else atlas_volume
     atlas_map = load_atlas_image(
