@@ -16,8 +16,8 @@ def _empty_count_columns(with_hemisphere=False, with_damage=False):
         cols += [
             "undamaged_object_count",
             "damaged_object_count",
-            "undamaged_pixel_count",
-            "damaged_pixel_counts",
+            "undamaged_pixel_counts",
+            "damaged_pixel_countss",
         ]
     if with_hemisphere:
         cols += [
@@ -28,10 +28,10 @@ def _empty_count_columns(with_hemisphere=False, with_damage=False):
         ]
     if with_damage and with_hemisphere:
         cols += [
-            "left_hemi_undamaged_pixel_count",
-            "left_hemi_damaged_pixel_count",
-            "right_hemi_undamaged_pixel_count",
-            "right_hemi_damaged_pixel_count",
+            "left_hemi_undamaged_pixel_counts",
+            "left_hemi_damaged_pixel_counts",
+            "right_hemi_undamaged_pixel_counts",
+            "right_hemi_damaged_pixel_counts",
             "left_hemi_undamaged_object_count",
             "left_hemi_damaged_object_count",
             "right_hemi_undamaged_object_count",

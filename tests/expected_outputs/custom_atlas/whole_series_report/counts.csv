@@ -1,4 +1,4 @@
-idx;name;r;g;b;a;VIS;MSH;region_area;damaged_object_count;damaged_pixel_counts;object_count;pixel_count;undamaged_object_count;undamaged_pixel_count;area_fraction
+idx;name;r;g;b;a;VIS;MSH;region_area;damaged_object_count;damaged_pixel_countss;object_count;pixel_count;undamaged_object_count;undamaged_pixel_counts;area_fraction
 0;Clear Label;0;0;0;5.0;5.0;5.0;3417953.3323789854;0.0;0.0;0.0;0.0;0.0;0.0;0.0
 997;root;255;255;255;5.0;5.0;5.0;33569.1936440418;0.0;0.0;0.0;0.0;0.0;0.0;0.0
 8;Basic cell groups and regions;191;218;227;5.0;5.0;5.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0
