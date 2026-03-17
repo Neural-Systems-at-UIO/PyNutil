@@ -35,6 +35,22 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     return atlas_labels
 
 
+def resolve_atlas(atlas):
+    """Convert an atlas argument to AtlasData.
+
+    Accepts an ``AtlasData`` instance (returned as-is) or a
+    ``BrainGlobeAtlas``-like object (converted via volume processing and
+    label loading).
+    """
+    if isinstance(atlas, AtlasData):
+        return atlas
+    # Assume BrainGlobeAtlas-like object
+    volume = process_atlas_volume(atlas.annotation)
+    hemi_map = process_atlas_volume(atlas.hemispheres)
+    labels = load_atlas_labels(atlas)
+    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
+
+
 def resolve_atlas_labels(atlas_labels):
     """Resolve atlas labels input into a DataFrame.
 

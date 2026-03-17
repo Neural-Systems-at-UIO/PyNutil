@@ -17,18 +17,6 @@ from ...results import (
 )
 from ..adapters.base import RegistrationData
 from ...results import AtlasData
-from ...io.atlas_loader import process_atlas_volume, resolve_atlas_labels
-
-
-def _resolve_atlas(atlas):
-    """Convert atlas argument to AtlasData if it's a BrainGlobeAtlas."""
-    if isinstance(atlas, AtlasData):
-        return atlas
-    # Assume BrainGlobeAtlas-like object
-    volume = process_atlas_volume(atlas.annotation)
-    hemi_map = process_atlas_volume(atlas.hemispheres)
-    labels = resolve_atlas_labels(atlas)
-    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
@@ -198,13 +186,15 @@ def _collect_section_results(results):
 # ---------------------------------------------------------------------------
 
 
-def folder_to_atlas_space(
+def seg_to_coords(
     folder,
     registration: RegistrationData,
     atlas: AtlasData,
     pixel_id=[0, 0, 0],
     object_cutoff=0,
     use_flat=False,
+    non_linear=True,
+    apply_damage_mask=True,
     flat_label_path=None,
     segmentation_format="binary",
 ):
@@ -217,22 +207,25 @@ def folder_to_atlas_space(
         pixel_id: Pixel color to match.
         object_cutoff: Minimum object size.
         use_flat: If True, load flat files.
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
         segmentation_format: Format name ("binary" or "cellpose").
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
-    atlas = _resolve_atlas(atlas)
+    from ...io.atlas_loader import resolve_atlas
+    atlas = resolve_atlas(atlas)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format=segmentation_format,
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=True,
+        non_linear=non_linear,
         object_cutoff=object_cutoff,
         use_flat=use_flat,
         pixel_id=pixel_id,
-        apply_damage_mask=True,
+        apply_damage_mask=apply_damage_mask,
         flat_label_path=flat_label_path,
     )
 
@@ -278,12 +271,14 @@ def folder_to_atlas_space(
     )
 
 
-def folder_to_atlas_space_intensity(
+def image_to_coords(
     folder,
     registration: RegistrationData,
     atlas: AtlasData,
     intensity_channel="grayscale",
     use_flat=False,
+    non_linear=True,
+    apply_damage_mask=True,
     flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
@@ -296,23 +291,26 @@ def folder_to_atlas_space_intensity(
         atlas: AtlasData or BrainGlobeAtlas object.
         intensity_channel: Channel to use for intensity.
         use_flat: If True, load flat files.
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
         min_intensity: Minimum intensity value to include.
         max_intensity: Maximum intensity value to include.
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
-    atlas = _resolve_atlas(atlas)
+    from ...io.atlas_loader import resolve_atlas
+    atlas = resolve_atlas(atlas)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=True,
+        non_linear=non_linear,
         object_cutoff=0,
         use_flat=use_flat,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=True,
+        apply_damage_mask=apply_damage_mask,
         flat_label_path=flat_label_path,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
@@ -363,10 +361,12 @@ def folder_to_atlas_space_intensity(
 # ---------------------------------------------------------------------------
 
 
-def file_to_atlas_space_coordinates(
+def xy_to_coords(
     coordinate_file,
     registration: RegistrationData,
     atlas: AtlasData,
+    non_linear=True,
+    apply_damage_mask=True,
 ):
     """Process a coordinate CSV file, transforming points to atlas space.
 
@@ -378,11 +378,14 @@ def file_to_atlas_space_coordinates(
         coordinate_file: Path to the coordinate CSV file.
         registration: Pre-loaded registration data.
         atlas: Atlas data bundle (volume, hemi_map, labels).
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
-    atlas = _resolve_atlas(atlas)
+    from ...io.atlas_loader import resolve_atlas
+    atlas = resolve_atlas(atlas)
     from ...io.loaders import load_coordinate_file
 
     coord_df = load_coordinate_file(coordinate_file)
@@ -395,11 +398,11 @@ def file_to_atlas_space_coordinates(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=True,
+        non_linear=non_linear,
         object_cutoff=0,
         use_flat=False,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=True,
+        apply_damage_mask=apply_damage_mask,
     )
 
     results = []
