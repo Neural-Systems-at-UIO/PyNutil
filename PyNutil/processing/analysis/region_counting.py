@@ -146,15 +146,14 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
 
 
 def pixel_count_per_region(
-    per_point_labels=None,
-    per_centroid_labels=None,
-    current_points_undamaged=None,
-    current_centroids_undamaged=None,
-    current_points_hemi=None,
-    current_centroids_hemi=None,
-    df_label_colours=None,
+    per_point_labels,
+    per_centroid_labels,
+    current_points_undamaged,
+    current_centroids_undamaged,
+    current_points_hemi,
+    current_centroids_hemi,
+    df_label_colours,
     with_damage=False,
-    **legacy_kwargs,
 ):
     """
     Tally object counts by region, optionally tracking damage and hemispheres.
@@ -172,31 +171,6 @@ def pixel_count_per_region(
     Returns:
         DataFrame: Summed counts per region.
     """
-    if per_point_labels is None and "labels_dict_points" in legacy_kwargs:
-        per_point_labels = legacy_kwargs.pop("labels_dict_points")
-    if per_centroid_labels is None and "labeled_dict_centroids" in legacy_kwargs:
-        per_centroid_labels = legacy_kwargs.pop("labeled_dict_centroids")
-    if legacy_kwargs:
-        unknown = ", ".join(sorted(legacy_kwargs.keys()))
-        raise TypeError(f"Unexpected keyword argument(s): {unknown}")
-
-    if per_point_labels is None or per_centroid_labels is None:
-        raise TypeError(
-            "per_point_labels and per_centroid_labels are required "
-            "(legacy aliases: labels_dict_points, labeled_dict_centroids)."
-        )
-    required = {
-        "current_points_undamaged": current_points_undamaged,
-        "current_centroids_undamaged": current_centroids_undamaged,
-        "current_points_hemi": current_points_hemi,
-        "current_centroids_hemi": current_centroids_hemi,
-        "df_label_colours": df_label_colours,
-    }
-    missing = [name for name, value in required.items() if value is None]
-    if missing:
-        missing_str = ", ".join(missing)
-        raise TypeError(f"Missing required argument(s): {missing_str}")
-
     # If hemisphere labels are present, they are integers (1/2). If absent, they are None.
     with_hemi = None not in current_points_hemi
 
