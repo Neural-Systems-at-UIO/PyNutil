@@ -156,7 +156,7 @@ class TestObliqueNutilComparison(TimedTestCase):
         )
 
         section_map = {}
-        for seg_path, section_df in zip(result.segmentation_filenames, per_section_df):
+        for seg_path, section_df in zip(result.section_filenames, per_section_df):
             match = re.search(r"_s(\d{3})", os.path.basename(seg_path))
             if match:
                 section_map[match.group(1)] = section_df

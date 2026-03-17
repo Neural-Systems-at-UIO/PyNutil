@@ -322,23 +322,23 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
-    if result.region_intensities_list is not None:
-        return quantify_intensity(result.region_intensities_list, atlas_labels)
+    if result.region_intensities is not None:
+        return quantify_intensity(result.region_intensities, atlas_labels)
 
     return quantify_labeled_points(
         PerEntityArrays(
-            labels=result.points_labels,
-            hemi_labels=result.points_hemi_labels,
-            undamaged=result.per_point_undamaged,
-            section_lengths=result.total_points_len,
+            labels=result.points.labels,
+            hemi_labels=result.points.hemi_labels,
+            undamaged=result.points.undamaged_mask,
+            section_lengths=result.points.section_lengths,
         ),
         PerEntityArrays(
-            labels=result.centroids_labels,
-            hemi_labels=result.centroids_hemi_labels,
-            undamaged=result.per_centroid_undamaged,
-            section_lengths=result.total_centroids_len,
+            labels=result.objects.labels,
+            hemi_labels=result.objects.hemi_labels,
+            undamaged=result.objects.undamaged_mask,
+            section_lengths=result.objects.section_lengths,
         ),
-        result.region_areas_list,
+        result.region_areas,
         atlas_labels,
         apply_damage_mask,
     )

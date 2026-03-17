@@ -227,7 +227,7 @@ class TestValidatorNutilComparison(TimedTestCase):
         )
 
         section_map = {}
-        for seg_path, section_df in zip(result.segmentation_filenames, per_section_df):
+        for seg_path, section_df in zip(result.section_filenames, per_section_df):
             match = re.search(r"_s(\d+)", os.path.basename(seg_path))
             if match:
                 section_map[match.group(1).zfill(3)] = section_df

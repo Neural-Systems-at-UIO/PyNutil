@@ -1,6 +1,6 @@
 import os
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 import numpy as np
@@ -15,19 +15,19 @@ class SaveContext:
     """Groups the parameters needed by :func:`save_analysis_output`."""
 
     # Core data
-    pixel_points: Optional[np.ndarray] = None
-    centroids: Optional[np.ndarray] = None
+    points: Optional[np.ndarray] = None
+    objects: Optional[np.ndarray] = None
     label_df: Optional[pd.DataFrame] = None
     per_section_df: Optional[list] = None
-    labeled_points: Optional[np.ndarray] = None
-    labeled_points_centroids: Optional[np.ndarray] = None
+    point_labels: Optional[np.ndarray] = None
+    object_labels: Optional[np.ndarray] = None
     points_hemi_labels: Optional[np.ndarray] = None
-    centroids_hemi_labels: Optional[np.ndarray] = None
+    objects_hemi_labels: Optional[np.ndarray] = None
     points_len: Optional[list] = None
-    centroids_len: Optional[list] = None
-    segmentation_filenames: Optional[list] = None
+    objects_len: Optional[list] = None
+    section_filenames: Optional[list] = None
     atlas_labels: Optional[pd.DataFrame] = None
-    point_intensities: Optional[np.ndarray] = None
+    point_values: Optional[np.ndarray] = None
 
     # Whether this is intensity mode (affects report filename)
     is_intensity: bool = False
@@ -59,18 +59,18 @@ def _slice_or_none(arr, start: int, end: int):
 
 def _iter_section_windows(ctx: SaveContext):
     """Yield section-aligned slicing windows for per-section outputs."""
-    if ctx.segmentation_filenames is None or ctx.per_section_df is None:
+    if ctx.section_filenames is None or ctx.per_section_df is None:
         return
 
-    points_len = ctx.points_len or [0] * len(ctx.segmentation_filenames)
-    centroids_len = ctx.centroids_len or [0] * len(ctx.segmentation_filenames)
+    points_len = ctx.points_len or [0] * len(ctx.section_filenames)
+    objects_len = ctx.objects_len or [0] * len(ctx.section_filenames)
 
     points_offset = 0
-    centroids_offset = 0
-    for pl, cl, fn, df in zip(
+    objects_offset = 0
+    for pl, ol, fn, df in zip(
         points_len,
-        centroids_len,
-        ctx.segmentation_filenames,
+        objects_len,
+        ctx.section_filenames,
         ctx.per_section_df,
     ):
         stem = os.path.basename(fn).split(".")[0]
@@ -78,12 +78,12 @@ def _iter_section_windows(ctx: SaveContext):
             stem=stem,
             points_start=points_offset,
             points_end=points_offset + pl,
-            centroids_start=centroids_offset,
-            centroids_end=centroids_offset + cl,
+            centroids_start=objects_offset,
+            centroids_end=objects_offset + ol,
             df=df,
         )
         points_offset += pl
-        centroids_offset += cl
+        objects_offset += ol
 
 
 def _ensure_analysis_output_dirs(output_folder: str) -> None:
@@ -125,9 +125,9 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
             "If you want to save the quantification, please run quantify_coordinates."
         )
 
-    if ctx.per_section_df is not None and ctx.segmentation_filenames is not None:
+    if ctx.per_section_df is not None and ctx.section_filenames is not None:
         _save_per_section_reports(ctx, output_folder)
-    if ctx.pixel_points is not None:
+    if ctx.points is not None:
         _save_whole_series_meshview(ctx, output_folder)
 
     _save_settings_json(ctx, output_folder)
@@ -151,31 +151,31 @@ def _save_per_section_reports(ctx: SaveContext, output_folder: str):
             na_rep="",
             index=False,
         )
-        if ctx.pixel_points is not None or ctx.centroids is not None:
-            section_intensities = (
-                _slice_or_none(ctx.point_intensities, window.points_start, window.points_end)
-                if ctx.point_intensities is not None
+        if ctx.points is not None or ctx.objects is not None:
+            section_values = (
+                _slice_or_none(ctx.point_values, window.points_start, window.points_end)
+                if ctx.point_values is not None
                 else None
             )
             write_hemi_points_to_meshview(
-                _slice_or_none(ctx.pixel_points, window.points_start, window.points_end),
-                _slice_or_none(ctx.labeled_points, window.points_start, window.points_end),
+                _slice_or_none(ctx.points, window.points_start, window.points_end),
+                _slice_or_none(ctx.point_labels, window.points_start, window.points_end),
                 _slice_or_none(ctx.points_hemi_labels, window.points_start, window.points_end),
                 f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_pixels.json",
                 ctx.atlas_labels,
-                section_intensities,
+                section_values,
                 colormap=ctx.colormap,
             )
-            if ctx.centroids is not None:
+            if ctx.objects is not None:
                 write_hemi_points_to_meshview(
-                    _slice_or_none(ctx.centroids, window.centroids_start, window.centroids_end),
+                    _slice_or_none(ctx.objects, window.centroids_start, window.centroids_end),
                     _slice_or_none(
-                        ctx.labeled_points_centroids,
+                        ctx.object_labels,
                         window.centroids_start,
                         window.centroids_end,
                     ),
                     _slice_or_none(
-                        ctx.centroids_hemi_labels,
+                        ctx.objects_hemi_labels,
                         window.centroids_start,
                         window.centroids_end,
                     ),
@@ -188,44 +188,23 @@ def _save_per_section_reports(ctx: SaveContext, output_folder: str):
 def _save_whole_series_meshview(ctx: SaveContext, output_folder: str):
     """Write whole-series MeshView JSONs for pixels and centroids."""
     write_hemi_points_to_meshview(
-        ctx.pixel_points,
-        ctx.labeled_points,
+        ctx.points,
+        ctx.point_labels,
         ctx.points_hemi_labels,
         f"{output_folder}/whole_series_meshview/{ctx.prepend}pixels_meshview.json",
         ctx.atlas_labels,
-        ctx.point_intensities,
+        ctx.point_values,
         colormap=ctx.colormap,
     )
-    if ctx.centroids is not None:
+    if ctx.objects is not None:
         write_hemi_points_to_meshview(
-            ctx.centroids,
-            ctx.labeled_points_centroids,
-            ctx.centroids_hemi_labels,
+            ctx.objects,
+            ctx.object_labels,
+            ctx.objects_hemi_labels,
             f"{output_folder}/whole_series_meshview/{ctx.prepend}objects_meshview.json",
             ctx.atlas_labels,
             colormap=ctx.colormap,
         )
-
-
-def _filter_undamaged(full_arr, undamaged_mask):
-    """Filter *full_arr* to undamaged-only using *undamaged_mask*.
-
-    Raises:
-        ValueError: If both arrays are present but lengths differ.
-    """
-    if undamaged_mask is None or full_arr is None:
-        return full_arr
-
-    if len(undamaged_mask) != len(full_arr):
-        raise ValueError(
-            "Length mismatch between undamaged mask and data array: "
-            f"mask={len(undamaged_mask)}, data={len(full_arr)}"
-        )
-
-    if len(full_arr) == 0:
-        return full_arr
-
-    return full_arr[undamaged_mask]
 
 
 def save_analysis(
@@ -251,32 +230,37 @@ def save_analysis(
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
-    und_p = result.per_point_undamaged if result else None
-    und_c = result.per_centroid_undamaged if result else None
-
     ctx = SaveContext(
-        pixel_points=result.pixel_points if result else None,
-        centroids=result.centroids if result else None,
+        points=result.points.filtered_points() if result else None,
+        objects=(
+            result.objects.filtered_points()
+            if (result and result.objects is not None)
+            else None
+        ),
         label_df=label_df,
         per_section_df=per_section_df,
-        labeled_points=_filter_undamaged(
-            result.points_labels if result else None, und_p
+        point_labels=result.points.filtered_labels() if result else None,
+        object_labels=(
+            result.objects.filtered_labels()
+            if (result and result.objects is not None)
+            else None
         ),
-        labeled_points_centroids=_filter_undamaged(
-            result.centroids_labels if result else None, und_c
+        points_hemi_labels=result.points.filtered_hemi_labels() if result else None,
+        objects_hemi_labels=(
+            result.objects.filtered_hemi_labels()
+            if (result and result.objects is not None)
+            else None
         ),
-        points_hemi_labels=_filter_undamaged(
-            result.points_hemi_labels if result else None, und_p
+        points_len=result.points.filtered_section_lengths() if result else None,
+        objects_len=(
+            result.objects.filtered_section_lengths()
+            if (result and result.objects is not None)
+            else None
         ),
-        centroids_hemi_labels=_filter_undamaged(
-            result.centroids_hemi_labels if result else None, und_c
-        ),
-        points_len=result.points_len if result else None,
-        centroids_len=result.centroids_len if result else None,
-        segmentation_filenames=result.segmentation_filenames if result else None,
+        section_filenames=result.section_filenames if result else None,
         atlas_labels=atlas_labels,
-        point_intensities=result.point_intensities if result else None,
-        is_intensity=result.region_intensities_list is not None if result else False,
+        point_values=result.points.filtered_point_values() if result else None,
+        is_intensity=result.region_intensities is not None if result else False,
         settings_dict=settings_dict,
         colormap=colormap,
     )

@@ -209,23 +209,23 @@ def _deform_and_build_result(
     reg_height, reg_width = slice_info.height, slice_info.width
     deformation = slice_info.deformation if non_linear else None
 
-    cx_filtered = centroidsX[per_centroid_undamaged] if centroidsX is not None else np.array([])
-    cy_filtered = centroidsY[per_centroid_undamaged] if centroidsY is not None else np.array([])
+    cx_all = centroidsX if centroidsX is not None else np.array([])
+    cy_all = centroidsY if centroidsY is not None else np.array([])
 
-    pts_x = scaled_x[per_point_undamaged]
-    pts_y = scaled_y[per_point_undamaged]
+    pts_x = scaled_x
+    pts_y = scaled_y
     if non_linear and deformation is not None:
-        if pts_x is not None:
+        if pts_x is not None and len(pts_x):
             pts_x, pts_y = deformation(pts_x, pts_y)
-        if len(cx_filtered):
-            cx_filtered, cy_filtered = deformation(cx_filtered, cy_filtered)
+        if len(cx_all):
+            cx_all, cy_all = deformation(cx_all, cy_all)
     points = (
         transform_to_atlas_space(slice_info, pts_y, pts_x)
         if pts_x is not None else None
     )
     centroids = (
-        transform_to_atlas_space(slice_info, cy_filtered, cx_filtered)
-        if len(cx_filtered) else None
+        transform_to_atlas_space(slice_info, cy_all, cx_all)
+        if len(cx_all) else None
     )
     return SectionResult(
         points=np.asarray(points) if points is not None else np.array([]),
@@ -236,7 +236,7 @@ def _deform_and_build_result(
         per_point_undamaged=np.asarray(per_point_undamaged) if points is not None else np.array([]),
         per_centroid_undamaged=np.asarray(per_centroid_undamaged) if centroids is not None else np.array([]),
         points_hemi_labels=np.asarray(per_point_hemi) if points is not None else np.array([]),
-        centroids_hemi_labels=np.asarray(per_centroid_hemi) if points is not None else np.array([]),
+        centroids_hemi_labels=np.asarray(per_centroid_hemi) if centroids is not None else np.array([]),
     )
 
 

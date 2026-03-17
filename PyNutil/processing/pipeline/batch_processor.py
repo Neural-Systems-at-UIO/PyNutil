@@ -14,6 +14,7 @@ from ...results import (
     SectionResult,
     IntensitySectionResult,
     ExtractionResult,
+    PointSetResult,
 )
 from ..adapters.base import RegistrationData
 from ...results import AtlasData
@@ -140,7 +141,6 @@ def _collect_section_results(results):
     pts_hemi, ctrs_hemi = [], []
     pt_undam, ct_undam = [], []
     pts_len, ctrs_len = [], []
-    tot_pts_len, tot_ctrs_len = [], []
     areas = []
 
     for r in results:
@@ -154,14 +154,6 @@ def _collect_section_results(results):
         ct_undam.append(r.per_centroid_undamaged)
         pts_len.append(len(r.points) if r.points is not None else 0)
         ctrs_len.append(len(r.centroids) if r.centroids is not None else 0)
-        tot_pts_len.append(
-            len(r.per_point_undamaged) if r.per_point_undamaged is not None else 0
-        )
-        tot_ctrs_len.append(
-            len(r.per_centroid_undamaged)
-            if r.per_centroid_undamaged is not None
-            else 0
-        )
         areas.append(r.region_areas)
 
     return (
@@ -176,8 +168,6 @@ def _collect_section_results(results):
         ctrs_len,
         _concat(pt_undam, dtype=bool),
         _concat(ct_undam, dtype=bool),
-        tot_pts_len,
-        tot_ctrs_len,
     )
 
 
@@ -249,25 +239,28 @@ def seg_to_coords(
         centroids_len,
         per_point_undamaged,
         per_centroid_undamaged,
-        total_points_len,
-        total_centroids_len,
     ) = _collect_section_results(results)
 
+    point_set = PointSetResult(
+        points=points,
+        labels=points_labels,
+        hemi_labels=points_hemi_labels,
+        section_lengths=points_len,
+        undamaged_mask=per_point_undamaged,
+    )
+    object_set = PointSetResult(
+        points=centroids,
+        labels=centroids_labels,
+        hemi_labels=centroids_hemi_labels,
+        section_lengths=centroids_len,
+        undamaged_mask=per_centroid_undamaged,
+    )
+
     return ExtractionResult(
-        pixel_points=points,
-        centroids=centroids,
-        points_labels=points_labels,
-        centroids_labels=centroids_labels,
-        points_hemi_labels=points_hemi_labels,
-        centroids_hemi_labels=centroids_hemi_labels,
-        region_areas_list=region_areas_list,
-        points_len=points_len,
-        centroids_len=centroids_len,
-        segmentation_filenames=segmentations,
-        per_point_undamaged=per_point_undamaged,
-        per_centroid_undamaged=per_centroid_undamaged,
-        total_points_len=total_points_len,
-        total_centroids_len=total_centroids_len,
+        points=point_set,
+        objects=object_set,
+        section_filenames=segmentations,
+        region_areas=region_areas_list,
     )
 
 
@@ -328,31 +321,27 @@ def image_to_coords(
     # ── Concatenate IntensitySectionResults ────────────────────────────
     region_intensities_list = [r.region_intensities for r in results]
 
-    all_centroids = _concat([r.points for r in results], none_if_empty=True)
+    all_points = _concat([r.points for r in results], none_if_empty=True)
     all_labels = _concat([r.points_labels for r in results], none_if_empty=True)
     all_hemi = _concat([r.points_hemi_labels for r in results], none_if_empty=True)
     all_intensities = _concat(
         [r.point_intensities for r in results], none_if_empty=True
     )
-    centroids_len = [r.num_points for r in results]
+    points_len = [r.num_points for r in results]
+
+    point_set = PointSetResult(
+        points=all_points,
+        labels=all_labels,
+        hemi_labels=all_hemi,
+        section_lengths=points_len,
+        point_values=all_intensities,
+    )
 
     return ExtractionResult(
-        pixel_points=all_centroids,
-        centroids=None,
-        points_labels=all_labels,
-        centroids_labels=None,
-        points_hemi_labels=all_hemi,
-        centroids_hemi_labels=None,
-        region_areas_list=[],
-        points_len=centroids_len,
-        centroids_len=None,
-        segmentation_filenames=images,
-        per_point_undamaged=None,
-        per_centroid_undamaged=None,
-        total_points_len=centroids_len,
-        total_centroids_len=None,
-        region_intensities_list=region_intensities_list,
-        point_intensities=all_intensities,
+        points=point_set,
+        objects=None,
+        section_filenames=images,
+        region_intensities=region_intensities_list,
     )
 
 
@@ -447,23 +436,26 @@ def xy_to_coords(
         centroids_len,
         per_point_undamaged,
         per_centroid_undamaged,
-        total_points_len,
-        total_centroids_len,
     ) = _collect_section_results(results)
 
+    point_set = PointSetResult(
+        points=points,
+        labels=points_labels,
+        hemi_labels=points_hemi_labels,
+        section_lengths=points_len,
+        undamaged_mask=per_point_undamaged,
+    )
+    object_set = PointSetResult(
+        points=centroids,
+        labels=centroids_labels,
+        hemi_labels=centroids_hemi_labels,
+        section_lengths=centroids_len,
+        undamaged_mask=per_centroid_undamaged,
+    )
+
     return ExtractionResult(
-        pixel_points=points,
-        centroids=centroids,
-        points_labels=points_labels,
-        centroids_labels=centroids_labels,
-        points_hemi_labels=points_hemi_labels,
-        centroids_hemi_labels=centroids_hemi_labels,
-        region_areas_list=region_areas_list,
-        points_len=points_len,
-        centroids_len=centroids_len,
-        segmentation_filenames=[],
-        per_point_undamaged=per_point_undamaged,
-        per_centroid_undamaged=per_centroid_undamaged,
-        total_points_len=total_points_len,
-        total_centroids_len=total_centroids_len,
+        points=point_set,
+        objects=object_set,
+        section_filenames=[],
+        region_areas=region_areas_list,
     )
