@@ -55,7 +55,6 @@ class TestVisualisations(TimedTestCase):
                 segmentation_format=settings.get("segmentation_format", "binary"),
             )
 
-            from PyNutil.processing.adapters.registry import read_alignment
             from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry
             from PyNutil.io.section_visualisation import create_section_visualisations
 
