@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 from tqdm import tqdm
-from .adapters import load_registration
+from .adapters import read_alignment
 from .adapters.segmentation import SegmentationAdapterRegistry
 from .atlas_map import transform_to_atlas_space
 from .utils import (
@@ -395,7 +395,7 @@ def _process_one_section(
         _accumulate_object_counts(sampled_2d, inb, x, y, z, seg_nr, out_shape, ov_flat)
 
 
-def project_sections_to_volume(
+def interpolate_volume(
     *,
     segmentation_folder: str,
     alignment_json: str,
@@ -446,7 +446,7 @@ def project_sections_to_volume(
 
     out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)
 
-    registration = load_registration(alignment_json)
+    registration = read_alignment(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}
     seg_paths = discover_image_files(segmentation_folder)
 
