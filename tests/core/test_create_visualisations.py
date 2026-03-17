@@ -33,7 +33,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         """QuickNII/VisuAlign alignment should produce visualisation PNGs
         by calling _create_visualisations directly."""
         from PyNutil.io.section_visualisation import create_section_visualisations
-        from PyNutil.processing.adapters.registry import load_registration
+        from PyNutil.processing.adapters.registry import read_alignment
         from PyNutil.io.atlas_loader import load_atlas_data
 
         alignment_json = os.path.join(
@@ -47,7 +47,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
 
         _atlas = load_atlas_data("allen_mouse_25um")
         atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
-        reg_data = load_registration(
+        reg_data = read_alignment(
             alignment_json, apply_deformation=False, apply_damage=False
         )
 
@@ -68,7 +68,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         """Brainglobe registration should produce visualisation PNGs
         (without segmentation overlay, since no matching segmentations exist)."""
         from PyNutil.io.section_visualisation import create_section_visualisations
-        from PyNutil.processing.adapters.registry import load_registration
+        from PyNutil.processing.adapters.registry import read_alignment
         from PyNutil.io.atlas_loader import load_atlas_data
 
         bg_json = os.path.join(
@@ -79,7 +79,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
 
         _atlas = load_atlas_data("allen_mouse_25um")
         atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
-        reg_data = load_registration(
+        reg_data = read_alignment(
             bg_json, apply_deformation=False, apply_damage=False
         )
 
@@ -185,9 +185,9 @@ class TestLoadRegistrationForVisualisation(unittest.TestCase):
     """Test that load_registration returns SliceInfo objects with the correct attributes."""
 
     def _load_slices(self, alignment_json):
-        from PyNutil.processing.adapters.registry import load_registration
+        from PyNutil.processing.adapters.registry import read_alignment
 
-        reg_data = load_registration(
+        reg_data = read_alignment(
             alignment_json, apply_deformation=False, apply_damage=False
         )
         return reg_data.slices

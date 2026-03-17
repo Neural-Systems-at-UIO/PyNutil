@@ -80,8 +80,8 @@ class TestCellCountConservation(unittest.TestCase):
         no_mask = np.ones(n_cells, dtype=bool)
 
         result = pixel_count_per_region(
-            labels_dict_points=labels,
-            labeled_dict_centroids=labels,
+            per_point_labels=labels,
+            per_centroid_labels=labels,
             current_points_undamaged=no_mask,
             current_centroids_undamaged=no_mask,
             current_points_hemi=[None] * n_cells,
@@ -113,8 +113,8 @@ class TestCellCountConservation(unittest.TestCase):
         no_mask = np.ones(n_cells, dtype=bool)
 
         result = pixel_count_per_region(
-            labels_dict_points=labels,
-            labeled_dict_centroids=labels,
+            per_point_labels=labels,
+            per_centroid_labels=labels,
             current_points_undamaged=no_mask,
             current_centroids_undamaged=no_mask,
             current_points_hemi=[None] * n_cells,
@@ -149,8 +149,8 @@ class TestCellCountConservation(unittest.TestCase):
         no_mask = np.ones(n_cells, dtype=bool)
 
         result = pixel_count_per_region(
-            labels_dict_points=labels,
-            labeled_dict_centroids=labels,
+            per_point_labels=labels,
+            per_centroid_labels=labels,
             current_points_undamaged=no_mask,
             current_centroids_undamaged=no_mask,
             current_points_hemi=[None] * n_cells,

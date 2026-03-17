@@ -7,11 +7,11 @@ Contains:
 """
 
 from .batch_processor import (
-    folder_to_atlas_space,
-    folder_to_atlas_space_intensity,
+    seg_to_coords,
+    image_to_coords,
 )
 
 __all__ = [
-    "folder_to_atlas_space",
-    "folder_to_atlas_space_intensity",
+    "seg_to_coords",
+    "image_to_coords",
 ]

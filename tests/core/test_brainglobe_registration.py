@@ -147,9 +147,9 @@ class TestBrainGlobeRegistration(unittest.TestCase):
     def test_load_registration_end_to_end(self):
         """``load_registration`` should auto-detect brainglobe format and
         produce a RegistrationData with deformation applied."""
-        from PyNutil.processing.adapters import load_registration
+        from PyNutil.processing.adapters import read_alignment
 
-        data = load_registration(BG_JSON)
+        data = read_alignment(BG_JSON)
         self.assertEqual(len(data.slices), 1)
         self.assertEqual(data.metadata.get("registration_type"), "brainglobe")
 
