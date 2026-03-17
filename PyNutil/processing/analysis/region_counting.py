@@ -138,11 +138,7 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
             base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
     # else: leaves are already named 'pixel_count' / 'object_count'
 
-    # Legacy naming: "damaged_pixel_counts" (trailing 's')
-    if "damaged_pixel_count" in base.columns:
-        base.rename(
-            columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True
-        )
+
 
 
 def pixel_count_per_region(
