@@ -257,10 +257,9 @@ def load_atlas_image(
         if file.endswith(".seg"):
             image = read_seg_file(file)
         # Remap flat-file pixel values to atlas region IDs
-        w, h = image.shape
+        h, w = image.shape
         allen_id_image = np.zeros((h, w))
-        coordsy, coordsx = np.meshgrid(list(range(w)), list(range(h)))
-        values = image[coordsy, coordsx].astype(int)
+        values = image.astype(int, copy=False)
         lbidx = labelfile["idx"].values
         valid = (values >= 0) & (values < len(lbidx))
         allen_id_image[valid] = lbidx[values[valid]]

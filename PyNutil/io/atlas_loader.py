@@ -13,12 +13,19 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     if not atlas_name and not atlas:
         raise Exception("Either atlas or atlas name must be specified")
     atlas_structures = {
-        "idx": [i["id"] for i in atlas.structures_list],
-        "name": [i["name"] for i in atlas.structures_list],
-        "r": [i["rgb_triplet"][0] for i in atlas.structures_list],
-        "g": [i["rgb_triplet"][1] for i in atlas.structures_list],
-        "b": [i["rgb_triplet"][2] for i in atlas.structures_list],
+        "idx": [],
+        "name": [],
+        "r": [],
+        "g": [],
+        "b": [],
     }
+    for structure in atlas.structures_list:
+        atlas_structures["idx"].append(structure["id"])
+        atlas_structures["name"].append(structure["name"])
+        rgb = structure["rgb_triplet"]
+        atlas_structures["r"].append(rgb[0])
+        atlas_structures["g"].append(rgb[1])
+        atlas_structures["b"].append(rgb[2])
     atlas_structures["idx"].insert(0, 0)
     atlas_structures["name"].insert(0, "Clear Label")
     atlas_structures["r"].insert(0, 0)

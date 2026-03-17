@@ -94,9 +94,13 @@ def apply_custom_regions(df, custom_regions_dict):
     # Annotate original df
     df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
     temp_df = df.copy()
-    temp_df["r"] = temp_df["idx"].map(lambda x: rgb_mapping[x][0] if x in rgb_mapping else None)
-    temp_df["g"] = temp_df["idx"].map(lambda x: rgb_mapping[x][1] if x in rgb_mapping else None)
-    temp_df["b"] = temp_df["idx"].map(lambda x: rgb_mapping[x][2] if x in rgb_mapping else None)
+    rgb_series = temp_df["idx"].map(lambda x: rgb_mapping.get(x, (None, None, None)))
+    rgb_df = pd.DataFrame(
+        rgb_series.tolist(),
+        index=temp_df.index,
+        columns=["r", "g", "b"],
+    )
+    temp_df[["r", "g", "b"]] = rgb_df
     temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
     # Aggregate all numeric columns dynamically

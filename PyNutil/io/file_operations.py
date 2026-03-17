@@ -208,14 +208,24 @@ def _save_whole_series_meshview(ctx: SaveContext, output_folder: str):
 
 
 def _filter_undamaged(full_arr, undamaged_mask):
-    """Filter *full_arr* to undamaged-only using *undamaged_mask* if lengths match."""
-    if (
-        undamaged_mask is not None
-        and full_arr is not None
-        and len(undamaged_mask) == len(full_arr)
-    ):
-        return full_arr[undamaged_mask]
-    return full_arr
+    """Filter *full_arr* to undamaged-only using *undamaged_mask*.
+
+    Raises:
+        ValueError: If both arrays are present but lengths differ.
+    """
+    if undamaged_mask is None or full_arr is None:
+        return full_arr
+
+    if len(undamaged_mask) != len(full_arr):
+        raise ValueError(
+            "Length mismatch between undamaged mask and data array: "
+            f"mask={len(undamaged_mask)}, data={len(full_arr)}"
+        )
+
+    if len(full_arr) == 0:
+        return full_arr
+
+    return full_arr[undamaged_mask]
 
 
 def save_analysis(
