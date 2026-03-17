@@ -17,7 +17,7 @@ def _empty_count_columns(with_hemisphere=False, with_damage=False):
             "undamaged_object_count",
             "damaged_object_count",
             "undamaged_pixel_counts",
-            "damaged_pixel_countss",
+            "damaged_pixel_counts",
         ]
     if with_hemisphere:
         cols += [

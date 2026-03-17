@@ -54,7 +54,7 @@ class TestQuantification(TimedTestCase):
             "right_hemi_undamaged_region_area",
             "undamaged_region_area",
             "damaged_object_count",
-            "damaged_pixel_countss",
+            "damaged_pixel_counts",
             "left_hemi_damaged_object_count",
             "left_hemi_damaged_pixel_counts",
             "left_hemi_object_count",
