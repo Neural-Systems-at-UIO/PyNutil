@@ -162,10 +162,13 @@ def quantify_labeled_points(
 
 def _merge_dataframes(current_df, ra, atlas_labels):
     """Merge count DataFrame with region areas and atlas labels."""
+    text_like_cols = {"name", "acronym", "structure_id_path", "custom_region_name"}
+
     if ra is None or ra.empty:
         # No region areas — just merge counts with atlas labels.
         result = atlas_labels.merge(current_df, on="idx", how="left")
-        result.fillna(0, inplace=True)
+        fill_cols = [c for c in result.columns if c not in text_like_cols]
+        result[fill_cols] = result[fill_cols].fillna(0)
         apply_area_fractions(result)
         return result
 
@@ -184,9 +187,9 @@ def _merge_dataframes(current_df, ra, atlas_labels):
                 extra[col] = 0
         result = pd.concat([result, extra[result.columns]], ignore_index=True)
 
-    # Fill all numeric NaN values with 0 (counts, areas, damage, hemisphere cols).
-    numeric_cols = result.select_dtypes(include=[np.number]).columns
-    result[numeric_cols] = result[numeric_cols].fillna(0)
+    # Fill count/area NaNs with 0. Keep text-like columns untouched.
+    fill_cols = [c for c in result.columns if c not in text_like_cols]
+    result[fill_cols] = result[fill_cols].fillna(0)
 
     apply_area_fractions(result)
     return result

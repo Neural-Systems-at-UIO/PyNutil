@@ -112,9 +112,13 @@ def apply_area_fractions(df):
     for num, den, res in AREA_FRACTION_PAIRS:
         if num not in df.columns or den not in df.columns:
             continue
-        mask = df[den] != 0
-        df[res] = 0.0
-        df.loc[mask, res] = df.loc[mask, num] / df.loc[mask, den]
+        num_vals = pd.to_numeric(df[num], errors="coerce")
+        den_vals = pd.to_numeric(df[den], errors="coerce")
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = num_vals / den_vals
+        # Preserve +inf/-inf when denominator is zero and numerator is non-zero,
+        # but normalise 0/0 and NaN inputs to 0 for stable CSV output.
+        df[res] = ratio.fillna(0.0).astype(np.float64)
 
 
 def apply_mean_intensities(df):
