@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -5,8 +6,8 @@ import unittest
 
 import numpy as np
 
-from PyNutil import PyNutil
-from tests.test_helpers import copy_tree_to_demo, make_pynutil_ready, small_volume_scale
+from PyNutil import load_atlas_data, read_alignment, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
+from tests.test_helpers import copy_tree_to_demo, small_volume_scale
 
 try:
     # When run via `python -m unittest discover` from repo root
@@ -27,53 +28,69 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             self.tests_dir, "..", "demo_data", "outputs", "interpolate_value_modes"
         )
 
+    def _load_settings(self):
+        with open(self.settings_path) as f:
+            return json.load(f)
+
+    def _run_pipeline(self):
+        settings = self._load_settings()
+        atlas = load_atlas_data(settings["atlas_name"])
+        alignment = read_alignment(settings["alignment_json"])
+        result = seg_to_coords(
+            settings["segmentation_folder"],
+            alignment,
+            atlas,
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
+        label_df, per_section_df = quantify_coords(result, atlas)
+        return settings, atlas, result, label_df, per_section_df
+
     def _scale_for_small_volume(self, atlas_shape):
         return small_volume_scale(atlas_shape)
 
     def test_value_mode_mean_matches_pixel_count_over_frequency(self):
-        pnt = make_pynutil_ready(self.settings_path)
+        settings, atlas, result, label_df, per_section_df = self._run_pipeline()
 
-        scale = self._scale_for_small_volume(pnt.atlas_volume.shape)
+        scale = self._scale_for_small_volume(atlas.volume.shape)
 
-        pnt.interpolate_volume(
+        common_kwargs = dict(
+            segmentation_folder=settings["segmentation_folder"],
+            alignment_json=settings["alignment_json"],
+            colour=settings.get("colour", [0, 0, 0]),
+            atlas=atlas,
             scale=scale,
-            missing_fill=0.0,
             do_interpolation=False,
             non_linear=False,
+            segmentation_format="binary",
+            segmentation_mode=True,
+        )
+
+        gv_pc, fv, _ = interpolate_volume(
+            **common_kwargs,
+            missing_fill=0.0,
             value_mode="pixel_count",
         )
-        gv_pc, fv = pnt.interpolated_volume, pnt.frequency_volume
 
-        pnt.interpolate_volume(
-            scale=scale,
+        gv_mean, fv2, _ = interpolate_volume(
+            **common_kwargs,
             missing_fill=-1.0,
-            do_interpolation=False,
-            non_linear=False,
             value_mode="mean",
         )
-        gv_mean, fv2 = pnt.interpolated_volume, pnt.frequency_volume
+
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_mean_") as tmpdir:
             out_root = os.path.join(tmpdir, "mean_vs_pixel_count")
 
             # Save pixel_count
-            pnt.interpolate_volume(
-                scale=scale,
-                missing_fill=0.0,
-                do_interpolation=False,
-                non_linear=False,
-                value_mode="pixel_count",
+            save_analysis(
+                os.path.join(out_root, "pixel_count"),
+                result, atlas, label_df, per_section_df,
             )
-            pnt.save_analysis(os.path.join(out_root, "pixel_count"), create_visualisations=True)
 
             # Save mean
-            pnt.interpolate_volume(
-                scale=scale,
-                missing_fill=-1.0,
-                do_interpolation=False,
-                non_linear=False,
-                value_mode="mean",
+            save_analysis(
+                os.path.join(out_root, "mean"),
+                result, atlas, label_df, per_section_df,
             )
-            pnt.save_analysis(os.path.join(out_root, "mean"), create_visualisations=True)
 
             copy_tree_to_demo(
                 out_root,
@@ -96,50 +113,47 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         self.assertTrue(np.all(gv_pc <= fv.astype(np.float32)))
 
     def test_value_mode_object_count_basic_invariants(self):
-        pnt = make_pynutil_ready(self.settings_path)
+        settings, atlas, result, label_df, per_section_df = self._run_pipeline()
 
-        scale = self._scale_for_small_volume(pnt.atlas_volume.shape)
+        scale = self._scale_for_small_volume(atlas.volume.shape)
 
-        pnt.interpolate_volume(
+        common_kwargs = dict(
+            segmentation_folder=settings["segmentation_folder"],
+            alignment_json=settings["alignment_json"],
+            colour=settings.get("colour", [0, 0, 0]),
+            atlas=atlas,
             scale=scale,
-            missing_fill=0.0,
             do_interpolation=False,
             non_linear=False,
+            segmentation_format="binary",
+            segmentation_mode=True,
+            missing_fill=0.0,
+        )
+
+        gv_pc, fv, _ = interpolate_volume(
+            **common_kwargs,
             value_mode="pixel_count",
         )
-        gv_pc, fv = pnt.interpolated_volume, pnt.frequency_volume
 
-        pnt.interpolate_volume(
-            scale=scale,
-            missing_fill=0.0,
-            do_interpolation=False,
-            non_linear=False,
+        gv_obj, fv2, _ = interpolate_volume(
+            **common_kwargs,
             value_mode="object_count",
         )
-        gv_obj, fv2 = pnt.interpolated_volume, pnt.frequency_volume
 
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_object_") as tmpdir:
             out_root = os.path.join(tmpdir, "object_count")
 
             # Save pixel_count
-            pnt.interpolate_volume(
-                scale=scale,
-                missing_fill=0.0,
-                do_interpolation=False,
-                non_linear=False,
-                value_mode="pixel_count",
+            save_analysis(
+                os.path.join(out_root, "pixel_count"),
+                result, atlas, label_df, per_section_df,
             )
-            pnt.save_analysis(os.path.join(out_root, "pixel_count"), create_visualisations=True)
 
             # Save object_count
-            pnt.interpolate_volume(
-                scale=scale,
-                missing_fill=0.0,
-                do_interpolation=False,
-                non_linear=False,
-                value_mode="object_count",
+            save_analysis(
+                os.path.join(out_root, "object_count"),
+                result, atlas, label_df, per_section_df,
             )
-            pnt.save_analysis(os.path.join(out_root, "object_count"), create_visualisations=True)
 
             copy_tree_to_demo(
                 out_root,

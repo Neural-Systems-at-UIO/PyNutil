@@ -86,14 +86,14 @@ AREA_FRACTION_PAIRS = [
     ("pixel_count", "region_area", "area_fraction"),
     ("left_hemi_pixel_count", "left_hemi_region_area", "left_hemi_area_fraction"),
     ("right_hemi_pixel_count", "right_hemi_region_area", "right_hemi_area_fraction"),
-    ("undamaged_pixel_count", "undamaged_region_area", "undamaged_area_fraction"),
+    ("undamaged_pixel_counts", "undamaged_region_area", "undamaged_area_fraction"),
     (
-        "left_hemi_undamaged_pixel_count",
+        "left_hemi_undamaged_pixel_counts",
         "left_hemi_undamaged_region_area",
         "left_hemi_undamaged_area_fraction",
     ),
     (
-        "right_hemi_undamaged_pixel_count",
+        "right_hemi_undamaged_pixel_counts",
         "right_hemi_undamaged_region_area",
         "right_hemi_undamaged_area_fraction",
     ),

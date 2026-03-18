@@ -4,7 +4,17 @@ from typing import Any, Dict
 import brainglobe_atlasapi
 from PyQt6.QtCore import QThread, pyqtSignal
 from log_manager import TextRedirector
-import PyNutil
+from PyNutil import (
+    load_atlas_data,
+    load_custom_atlas,
+    read_alignment,
+    seg_to_coords,
+    image_to_coords,
+    quantify_coords,
+    save_analysis,
+    interpolate_volume,
+    save_volume_niftis,
+)
 
 
 class AnalysisWorker(QThread):
@@ -26,59 +36,106 @@ class AnalysisWorker(QThread):
                 print("Analysis cancelled")
                 return
 
-            # Build atlas-only args for the constructor
-            atlas_args = {}
+            # Load atlas
             if self.arguments.get("use_custom_atlas", False):
-                atlas_args["atlas_path"] = self.arguments["atlas_path"]
-                atlas_args["label_path"] = self.arguments["label_path"]
                 print(
                     f"Using custom atlas: {self.arguments.get('custom_atlas_name', 'Custom')}"
                 )
+                atlas = load_custom_atlas(
+                    self.arguments["atlas_path"],
+                    self.arguments.get("hemi_path"),
+                    self.arguments["label_path"],
+                )
             else:
-                atlas_args["atlas_name"] = self.arguments["atlas_name"]
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-
-            pnt = PyNutil.PyNutil(**atlas_args)
-
-            if self.cancelled:
-                print("Analysis cancelled")
-                return
-
-            # Build data-pipeline args for get_coordinates
-            coord_args = {
-                "alignment_json": self.arguments["registration_json"],
-                "colour": self.arguments["object_colour"],
-                "custom_region_path": self.arguments.get("custom_region_path"),
-                "segmentation_format": self.arguments.get("segmentation_format", "binary"),
-                "object_cutoff": 0,
-                "apply_damage_mask": self.arguments["apply_damage_mask"],
-            }
-            if self.arguments.get("segmentation_dir") and not self.arguments.get("image_dir"):
-                coord_args["segmentation_folder"] = self.arguments.get("segmentation_dir")
-            elif self.arguments.get("image_dir") and not self.arguments.get("segmentation_dir"):
-                coord_args["image_folder"] = self.arguments.get("image_dir")
-
-            pnt.get_coordinates(**coord_args)
+                atlas = load_atlas_data(self.arguments["atlas_name"])
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            pnt.quantify_coordinates()
+            # Load registration
+            alignment_json = self.arguments["registration_json"]
+            apply_damage_mask = self.arguments["apply_damage_mask"]
+            registration = read_alignment(
+                alignment_json, apply_damage=apply_damage_mask
+            )
+
+            # Extract coordinates
+            seg_dir = self.arguments.get("segmentation_dir")
+            img_dir = self.arguments.get("image_dir")
+            seg_format = self.arguments.get("segmentation_format", "binary")
+
+            if img_dir and not seg_dir:
+                result = image_to_coords(
+                    img_dir,
+                    registration,
+                    atlas,
+                    apply_damage_mask=apply_damage_mask,
+                )
+            else:
+                result = seg_to_coords(
+                    seg_dir,
+                    registration,
+                    atlas,
+                    pixel_id=self.arguments["object_colour"],
+                    segmentation_format=seg_format,
+                    apply_damage_mask=apply_damage_mask,
+                )
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
+            label_df, per_section_df = quantify_coords(
+                result, atlas.labels, apply_damage_mask=apply_damage_mask
+            )
+
+            if self.cancelled:
+                print("Analysis cancelled")
+                return
+
+            volumes = {}
             if self.arguments.get("interpolate_volume"):
-                print(f"Creating interpolated volume (mode: {self.arguments.get('value_mode')})...")
-                pnt.interpolate_volume(value_mode=self.arguments.get("value_mode", "pixel_count"))
+                value_mode = self.arguments.get("value_mode", "pixel_count")
+                print(f"Creating interpolated volume (mode: {value_mode})...")
+                folder = seg_dir or img_dir
+                gv, fv, dv = interpolate_volume(
+                    segmentation_folder=folder,
+                    alignment_json=alignment_json,
+                    colour=self.arguments["object_colour"],
+                    atlas=atlas,
+                    value_mode=value_mode,
+                    segmentation_format=seg_format,
+                    segmentation_mode=bool(seg_dir),
+                )
+                volumes = {
+                    "interpolated_volume": gv,
+                    "frequency_volume": fv,
+                    "damage_volume": dv,
+                }
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            pnt.save_analysis(self.arguments["output_dir"])
+            output_dir = self.arguments["output_dir"]
+            save_analysis(
+                output_dir,
+                result,
+                atlas.labels,
+                label_df=label_df,
+                per_section_df=per_section_df,
+            )
+            if volumes:
+                save_volume_niftis(
+                    output_folder=output_dir,
+                    atlas_volume=atlas.volume,
+                    voxel_size_um=atlas.voxel_size_um,
+                    **volumes,
+                )
+
+            print(f"Analysis complete. Results saved to {output_dir}")
         except Exception as e:
             print(f"Error: {e}")
         finally:

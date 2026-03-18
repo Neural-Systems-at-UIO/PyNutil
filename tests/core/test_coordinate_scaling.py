@@ -68,6 +68,7 @@ class TestCoordinateScaling(TimedTestCase):
 
             def _fake_get_objects(
                 segmentation_img,
+                adapter,
                 pixel_id,
                 atlas_map_img,
                 y_scale,
@@ -184,13 +185,17 @@ class TestCoordinateScaling(TimedTestCase):
                 flat_file_atlas=None,
                 seg_width=seg_w,
                 seg_height=seg_h,
-                anchoring=anchoring,
-                reg_width=reg_w,
-                reg_height=reg_h,
+                slice_info=SliceInfo(
+                    section_id="test",
+                    section_number=1,
+                    width=reg_w,
+                    height=reg_h,
+                    anchoring=anchoring,
+                    deformation=fake_deformation,
+                    damage_mask=None,
+                ),
                 atlas_volume=np.zeros((2, 2, 2), dtype=np.uint32),
                 hemi_mask=None,
-                deformation=fake_deformation,
-                damage_mask=None,
             )
 
         self.assertEqual(called["warp_rescaleXY"], (reg_w, reg_h))

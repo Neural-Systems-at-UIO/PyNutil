@@ -16,7 +16,7 @@ def _empty_count_columns(with_hemisphere=False, with_damage=False):
         cols += [
             "undamaged_object_count",
             "damaged_object_count",
-            "undamaged_pixel_count",
+            "undamaged_pixel_counts",
             "damaged_pixel_counts",
         ]
     if with_hemisphere:
@@ -28,10 +28,10 @@ def _empty_count_columns(with_hemisphere=False, with_damage=False):
         ]
     if with_damage and with_hemisphere:
         cols += [
-            "left_hemi_undamaged_pixel_count",
-            "left_hemi_damaged_pixel_count",
-            "right_hemi_undamaged_pixel_count",
-            "right_hemi_damaged_pixel_count",
+            "left_hemi_undamaged_pixel_counts",
+            "left_hemi_damaged_pixel_counts",
+            "right_hemi_undamaged_pixel_counts",
+            "right_hemi_damaged_pixel_counts",
             "left_hemi_undamaged_object_count",
             "left_hemi_damaged_object_count",
             "right_hemi_undamaged_object_count",
@@ -138,16 +138,19 @@ def _derive_count_aggregates(base, with_hemi, with_damage):
             base[entity] = base[f"undamaged_{entity}"] + base[f"damaged_{entity}"]
     # else: leaves are already named 'pixel_count' / 'object_count'
 
-    # Legacy naming: "damaged_pixel_counts" (trailing 's')
-    if "damaged_pixel_count" in base.columns:
-        base.rename(
-            columns={"damaged_pixel_count": "damaged_pixel_counts"}, inplace=True
-        )
+    # Legacy naming: damage-related pixel_count columns get trailing 's'
+    renames = {
+        c: c + "s"
+        for c in base.columns
+        if c.endswith("_pixel_count") and ("damaged" in c or "undamaged" in c)
+    }
+    if renames:
+        base.rename(columns=renames, inplace=True)
 
 
 def pixel_count_per_region(
-    labels_dict_points,
-    labeled_dict_centroids,
+    per_point_labels,
+    per_centroid_labels,
     current_points_undamaged,
     current_centroids_undamaged,
     current_points_hemi,
@@ -159,8 +162,8 @@ def pixel_count_per_region(
     Tally object counts by region, optionally tracking damage and hemispheres.
 
     Args:
-        labels_dict_points (dict): Maps points to region labels.
-        labeled_dict_centroids (dict): Maps centroids to region labels.
+        per_point_labels (ndarray): 1-D region labels for points.
+        per_centroid_labels (ndarray): 1-D region labels for centroids.
         current_points_undamaged (ndarray): Undamaged-state flags for points.
         current_centroids_undamaged (ndarray): Undamaged-state flags for centroids.
         current_points_hemi (ndarray): Hemisphere tags for points.
@@ -195,8 +198,8 @@ def pixel_count_per_region(
             px_col = f"{hemi_pfx}{dmg_pfx}pixel_count"
             obj_col = f"{hemi_pfx}{dmg_pfx}object_count"
 
-            p_idx, p_cnt = _counts_for(p_mask, labels_dict_points)
-            c_idx, c_cnt = _counts_for(c_mask, labeled_dict_centroids)
+            p_idx, p_cnt = _counts_for(p_mask, per_point_labels)
+            c_idx, c_cnt = _counts_for(c_mask, per_centroid_labels)
 
             computed[px_col] = (p_idx, p_cnt)
             computed[obj_col] = (c_idx, c_cnt)
@@ -212,8 +215,8 @@ def pixel_count_per_region(
             c_mask = _build_count_mask(
                 current_centroids_hemi, current_centroids_undamaged, None, dmg_val
             )
-            p_idx, p_cnt = _counts_for(p_mask, labels_dict_points)
-            c_idx, c_cnt = _counts_for(c_mask, labeled_dict_centroids)
+            p_idx, p_cnt = _counts_for(p_mask, per_point_labels)
+            c_idx, c_cnt = _counts_for(c_mask, per_centroid_labels)
             computed[f"_total_{dmg_pfx}pixel_count"] = (p_idx, p_cnt)
             computed[f"_total_{dmg_pfx}object_count"] = (c_idx, c_cnt)
             all_indices.extend([p_idx, c_idx])

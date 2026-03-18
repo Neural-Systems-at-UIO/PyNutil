@@ -14,8 +14,10 @@ from ...results import (
     SectionResult,
     IntensitySectionResult,
     ExtractionResult,
+    PointSetResult,
 )
-from ..adapters import load_registration
+from ..adapters.base import RegistrationData
+from ...results import AtlasData
 from .section_processor import (
     segmentation_to_atlas_space,
     segmentation_to_atlas_space_intensity,
@@ -34,19 +36,19 @@ from ...io.loaders import number_sections
 
 def _run_batch_with_context(
     folder,
-    quint_alignment,
+    registration: RegistrationData,
     pipeline_ctx: PipelineContext,
     empty_result_factory,
     processing_fn,
 ):
     """Generic batch scaffold using context objects.
 
-    Handles registration loading, file discovery, thread-pool setup,
-    per-section looping, and futures collection.
+    Handles file discovery, thread-pool setup, per-section looping,
+    and futures collection.
 
     Args:
         folder: Path to segmentation / image files.
-        quint_alignment: Path to alignment JSON.
+        registration: Pre-loaded registration data.
         pipeline_ctx: Immutable pipeline-wide state.
         empty_result_factory: Callable returning a default empty result.
         processing_fn: ``fn(p_ctx, s_ctx)`` — processes one section.
@@ -55,11 +57,6 @@ def _run_batch_with_context(
         tuple: (segmentations, results) where *results* is a list parallel to
                *segmentations*, each element being the Future's result.
     """
-    registration = load_registration(
-        quint_alignment,
-        apply_deformation=pipeline_ctx.non_linear,
-        apply_damage=pipeline_ctx.apply_damage_mask,
-    )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
     segmentations = discover_image_files(folder)
@@ -144,7 +141,6 @@ def _collect_section_results(results):
     pts_hemi, ctrs_hemi = [], []
     pt_undam, ct_undam = [], []
     pts_len, ctrs_len = [], []
-    tot_pts_len, tot_ctrs_len = [], []
     areas = []
 
     for r in results:
@@ -158,14 +154,6 @@ def _collect_section_results(results):
         ct_undam.append(r.per_centroid_undamaged)
         pts_len.append(len(r.points) if r.points is not None else 0)
         ctrs_len.append(len(r.centroids) if r.centroids is not None else 0)
-        tot_pts_len.append(
-            len(r.per_point_undamaged) if r.per_point_undamaged is not None else 0
-        )
-        tot_ctrs_len.append(
-            len(r.per_centroid_undamaged)
-            if r.per_centroid_undamaged is not None
-            else 0
-        )
         areas.append(r.region_areas)
 
     return (
@@ -180,8 +168,6 @@ def _collect_section_results(results):
         ctrs_len,
         _concat(pt_undam, dtype=bool),
         _concat(ct_undam, dtype=bool),
-        tot_pts_len,
-        tot_ctrs_len,
     )
 
 
@@ -190,16 +176,14 @@ def _collect_section_results(results):
 # ---------------------------------------------------------------------------
 
 
-def folder_to_atlas_space(
+def seg_to_coords(
     folder,
-    quint_alignment,
-    atlas_labels,
+    registration: RegistrationData,
+    atlas: AtlasData,
     pixel_id=[0, 0, 0],
-    non_linear=True,
     object_cutoff=0,
-    atlas_volume=None,
-    hemi_map=None,
     use_flat=False,
+    non_linear=True,
     apply_damage_mask=True,
     flat_label_path=None,
     segmentation_format="binary",
@@ -208,25 +192,25 @@ def folder_to_atlas_space(
 
     Args:
         folder: Path to segmentation files.
-        quint_alignment: Path to alignment JSON.
-        atlas_labels: DataFrame with atlas labels.
+        registration: Pre-loaded registration data.
+        atlas: AtlasData or BrainGlobeAtlas object.
         pixel_id: Pixel color to match.
-        non_linear: Apply non-linear transform.
         object_cutoff: Minimum object size.
-        atlas_volume: Atlas volume data.
-        hemi_map: Hemisphere mask data.
         use_flat: If True, load flat files.
-        apply_damage_mask: If True, apply damage mask.
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
         segmentation_format: Format name ("binary" or "cellpose").
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
+    from ...io.atlas_loader import resolve_atlas
+    atlas = resolve_atlas(atlas)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format=segmentation_format,
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
+        atlas_labels=atlas.labels,
+        atlas_volume=atlas.volume,
+        hemi_map=atlas.hemi_map,
         non_linear=non_linear,
         object_cutoff=object_cutoff,
         use_flat=use_flat,
@@ -237,7 +221,7 @@ def folder_to_atlas_space(
 
     segmentations, results = _run_batch_with_context(
         folder,
-        quint_alignment,
+        registration,
         pipeline_ctx,
         SectionResult.empty,
         segmentation_to_atlas_space,
@@ -255,37 +239,38 @@ def folder_to_atlas_space(
         centroids_len,
         per_point_undamaged,
         per_centroid_undamaged,
-        total_points_len,
-        total_centroids_len,
     ) = _collect_section_results(results)
 
+    point_set = PointSetResult(
+        points=points,
+        labels=points_labels,
+        hemi_labels=points_hemi_labels,
+        section_lengths=points_len,
+        undamaged_mask=per_point_undamaged,
+    )
+    object_set = PointSetResult(
+        points=centroids,
+        labels=centroids_labels,
+        hemi_labels=centroids_hemi_labels,
+        section_lengths=centroids_len,
+        undamaged_mask=per_centroid_undamaged,
+    )
+
     return ExtractionResult(
-        pixel_points=points,
-        centroids=centroids,
-        points_labels=points_labels,
-        centroids_labels=centroids_labels,
-        points_hemi_labels=points_hemi_labels,
-        centroids_hemi_labels=centroids_hemi_labels,
-        region_areas_list=region_areas_list,
-        points_len=points_len,
-        centroids_len=centroids_len,
-        segmentation_filenames=segmentations,
-        per_point_undamaged=per_point_undamaged,
-        per_centroid_undamaged=per_centroid_undamaged,
-        total_points_len=total_points_len,
-        total_centroids_len=total_centroids_len,
+        points=point_set,
+        objects=object_set,
+        section_filenames=segmentations,
+        region_areas=region_areas_list,
     )
 
 
-def folder_to_atlas_space_intensity(
+def image_to_coords(
     folder,
-    quint_alignment,
-    atlas_labels,
+    registration: RegistrationData,
+    atlas: AtlasData,
     intensity_channel="grayscale",
-    non_linear=True,
-    atlas_volume=None,
-    hemi_map=None,
     use_flat=False,
+    non_linear=True,
     apply_damage_mask=True,
     flat_label_path=None,
     min_intensity=None,
@@ -295,25 +280,25 @@ def folder_to_atlas_space_intensity(
 
     Args:
         folder: Path to image files.
-        quint_alignment: Path to alignment JSON.
-        atlas_labels: DataFrame with atlas labels.
+        registration: Pre-loaded registration data.
+        atlas: AtlasData or BrainGlobeAtlas object.
         intensity_channel: Channel to use for intensity.
-        non_linear: Apply non-linear transform.
-        atlas_volume: Atlas volume data.
-        hemi_map: Hemisphere mask data.
         use_flat: If True, load flat files.
-        apply_damage_mask: If True, apply damage mask.
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
         min_intensity: Minimum intensity value to include.
         max_intensity: Maximum intensity value to include.
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
+    from ...io.atlas_loader import resolve_atlas
+    atlas = resolve_atlas(atlas)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
+        atlas_labels=atlas.labels,
+        atlas_volume=atlas.volume,
+        hemi_map=atlas.hemi_map,
         non_linear=non_linear,
         object_cutoff=0,
         use_flat=use_flat,
@@ -327,7 +312,7 @@ def folder_to_atlas_space_intensity(
 
     images, results = _run_batch_with_context(
         folder,
-        quint_alignment,
+        registration,
         pipeline_ctx,
         IntensitySectionResult.empty,
         segmentation_to_atlas_space_intensity,
@@ -336,31 +321,27 @@ def folder_to_atlas_space_intensity(
     # ── Concatenate IntensitySectionResults ────────────────────────────
     region_intensities_list = [r.region_intensities for r in results]
 
-    all_centroids = _concat([r.points for r in results], none_if_empty=True)
+    all_points = _concat([r.points for r in results], none_if_empty=True)
     all_labels = _concat([r.points_labels for r in results], none_if_empty=True)
     all_hemi = _concat([r.points_hemi_labels for r in results], none_if_empty=True)
     all_intensities = _concat(
         [r.point_intensities for r in results], none_if_empty=True
     )
-    centroids_len = [r.num_points for r in results]
+    points_len = [r.num_points for r in results]
+
+    point_set = PointSetResult(
+        points=all_points,
+        labels=all_labels,
+        hemi_labels=all_hemi,
+        section_lengths=points_len,
+        point_values=all_intensities,
+    )
 
     return ExtractionResult(
-        pixel_points=all_centroids,
-        centroids=None,
-        points_labels=all_labels,
-        centroids_labels=None,
-        points_hemi_labels=all_hemi,
-        centroids_hemi_labels=None,
-        region_areas_list=[],
-        points_len=centroids_len,
-        centroids_len=None,
-        segmentation_filenames=images,
-        per_point_undamaged=None,
-        per_centroid_undamaged=None,
-        total_points_len=centroids_len,
-        total_centroids_len=None,
-        region_intensities_list=region_intensities_list,
-        point_intensities=all_intensities,
+        points=point_set,
+        objects=None,
+        section_filenames=images,
+        region_intensities=region_intensities_list,
     )
 
 
@@ -369,13 +350,11 @@ def folder_to_atlas_space_intensity(
 # ---------------------------------------------------------------------------
 
 
-def file_to_atlas_space_coordinates(
+def xy_to_coords(
     coordinate_file,
-    quint_alignment,
-    atlas_labels,
+    registration: RegistrationData,
+    atlas: AtlasData,
     non_linear=True,
-    atlas_volume=None,
-    hemi_map=None,
     apply_damage_mask=True,
 ):
     """Process a coordinate CSV file, transforming points to atlas space.
@@ -386,33 +365,28 @@ def file_to_atlas_space_coordinates(
 
     Args:
         coordinate_file: Path to the coordinate CSV file.
-        quint_alignment: Path to alignment JSON.
-        atlas_labels: DataFrame with atlas labels.
-        non_linear: Apply non-linear transform.
-        atlas_volume: Atlas volume data.
-        hemi_map: Hemisphere mask data.
-        apply_damage_mask: If True, apply damage mask.
+        registration: Pre-loaded registration data.
+        atlas: Atlas data bundle (volume, hemi_map, labels).
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
+    from ...io.atlas_loader import resolve_atlas
+    atlas = resolve_atlas(atlas)
     from ...io.loaders import load_coordinate_file
 
     coord_df = load_coordinate_file(coordinate_file)
 
-    registration = load_registration(
-        quint_alignment,
-        apply_deformation=non_linear,
-        apply_damage=apply_damage_mask,
-    )
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
     # Build a minimal PipelineContext (no segmentation adapter needed for coordinates)
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
-        atlas_labels=atlas_labels,
-        atlas_volume=atlas_volume,
-        hemi_map=hemi_map,
+        atlas_labels=atlas.labels,
+        atlas_volume=atlas.volume,
+        hemi_map=atlas.hemi_map,
         non_linear=non_linear,
         object_cutoff=0,
         use_flat=False,
@@ -462,23 +436,26 @@ def file_to_atlas_space_coordinates(
         centroids_len,
         per_point_undamaged,
         per_centroid_undamaged,
-        total_points_len,
-        total_centroids_len,
     ) = _collect_section_results(results)
 
+    point_set = PointSetResult(
+        points=points,
+        labels=points_labels,
+        hemi_labels=points_hemi_labels,
+        section_lengths=points_len,
+        undamaged_mask=per_point_undamaged,
+    )
+    object_set = PointSetResult(
+        points=centroids,
+        labels=centroids_labels,
+        hemi_labels=centroids_hemi_labels,
+        section_lengths=centroids_len,
+        undamaged_mask=per_centroid_undamaged,
+    )
+
     return ExtractionResult(
-        pixel_points=points,
-        centroids=centroids,
-        points_labels=points_labels,
-        centroids_labels=centroids_labels,
-        points_hemi_labels=points_hemi_labels,
-        centroids_hemi_labels=centroids_hemi_labels,
-        region_areas_list=region_areas_list,
-        points_len=points_len,
-        centroids_len=centroids_len,
-        segmentation_filenames=[],
-        per_point_undamaged=per_point_undamaged,
-        per_centroid_undamaged=per_centroid_undamaged,
-        total_points_len=total_points_len,
-        total_centroids_len=total_centroids_len,
+        points=point_set,
+        objects=object_set,
+        section_filenames=[],
+        region_areas=region_areas_list,
     )

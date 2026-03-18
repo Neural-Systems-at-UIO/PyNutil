@@ -6,7 +6,7 @@ They take RegistrationData and add damage masks to each slice.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -37,22 +37,22 @@ def create_damage_mask(slice_info, section_grid, grid_spacing):
     gridy = section_grid["gridy"]
 
     ow, oh = slice_info.physical_dimensions
-    xspacing = int(width * grid_spacing / ow)
-    yspacing = int(height * grid_spacing / oh)
+    xspacing = max(1, int(width * grid_spacing / ow))
+    yspacing = max(1, int(height * grid_spacing / oh))
     x_coords = np.arange(gridx, width, xspacing)
     y_coords = np.arange(gridy, height, yspacing)
-
-    num_markers = len(grid_values)
-    markers = [
-        (x_coords[i % len(x_coords)], y_coords[i // len(x_coords)])
-        for i in range(num_markers)
-    ]
-
     binary_image = np.ones((len(y_coords), len(x_coords)), dtype=int)
+    nx = len(x_coords)
+    ny = len(y_coords)
+    if nx == 0 or ny == 0:
+        return binary_image
 
-    for i, (x, y) in enumerate(markers):
-        if grid_values[i] == 4:
-            binary_image[y // yspacing, x // xspacing] = 0
+    for i, val in enumerate(grid_values):
+        if val != 4:
+            continue
+        row, col = divmod(i, nx)
+        if row < ny:
+            binary_image[row, col] = 0
 
     return binary_image
 

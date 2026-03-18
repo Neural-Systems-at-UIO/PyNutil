@@ -15,19 +15,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from benchmarks.benchmark import (
     _write_scenario, ATLAS_SHAPE, COLOUR,
 )
-from PyNutil import PyNutil
+from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
 
 def run(paths):
-    pn = PyNutil(
-        segmentation_folder=paths["seg_folder"],
-        alignment_json=paths["alignment_json"],
-        colour=COLOUR,
-        atlas_path=paths["atlas_path"],
-        label_path=paths["label_path"],
-        hemi_path=paths["hemi_path"],
+    atlas = load_custom_atlas(
+        paths["atlas_path"], paths["hemi_path"], paths["label_path"],
     )
-    pn.get_coordinates(non_linear=True)
-    pn.quantify_coordinates()
+    alignment = read_alignment(paths["alignment_json"])
+    coords = seg_to_coords(
+        paths["seg_folder"],
+        alignment,
+        atlas,
+        pixel_id=COLOUR,
+    )
+    quantify_coords(coords, atlas)
 
 # Profile 10 images at 1000x1000
 tmpdir = tempfile.mkdtemp(prefix="pynutil_prof_")

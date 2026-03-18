@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import os
 import zipfile
 import xmltodict
 
@@ -12,8 +11,6 @@ def reconstruct_dzi(zip_file_path):
     ----------
     zip_file_path : str
         Path to the zip file containing the tiles.
-    apply_damage_mask : bool
-        Whether to apply the damage mask.
 
     Returns
     -------
@@ -25,7 +22,7 @@ def reconstruct_dzi(zip_file_path):
         highest_level = str(
             np.max(
                 [
-                    int(os.path.split(os.path.split(i)[0])[1])
+                    int(i.split("/")[-2])
                     for i in zip_file.namelist()
                     if i.endswith(".png")
                 ]
@@ -60,7 +57,8 @@ def reconstruct_dzi(zip_file_path):
                 contents = f.read()
             # Decode the binary PNG data
             image_ = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
-            x, y = map(int, os.path.splitext(os.path.split(file)[1])[0].split("_"))
+            tile_name = file.split("/")[-1].rsplit(".", 1)[0]
+            x, y = map(int, tile_name.split("_"))
             x, y = x * int(tileSize), y * int(tileSize)
             image[y : y + image_.shape[0], x : x + image_.shape[1], :] = image_
 

@@ -63,7 +63,7 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         data = loader.load(BG_JSON)
         s = data.slices[0]
 
-        atlas_volume, _, _ = load_atlas_data("allen_mouse_25um")
+        atlas_volume = load_atlas_data("allen_mouse_25um").volume
         atlas_slice = generate_target_slice(s.anchoring, atlas_volume)
 
         self.assertEqual(atlas_slice.shape, (s.height, s.width))
@@ -89,7 +89,7 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         self.assertIsNotNone(s.deformation)
         self.assertIsNotNone(s.forward_deformation)
 
-        atlas_volume, _, _ = load_atlas_data("allen_mouse_25um")
+        atlas_volume = load_atlas_data("allen_mouse_25um").volume
         atlas_slice = generate_target_slice(s.anchoring, atlas_volume).astype(np.float64)
         warped = warp_image(atlas_slice, s.deformation, (s.width, s.height)).astype(np.uint32)
 
@@ -147,9 +147,9 @@ class TestBrainGlobeRegistration(unittest.TestCase):
     def test_load_registration_end_to_end(self):
         """``load_registration`` should auto-detect brainglobe format and
         produce a RegistrationData with deformation applied."""
-        from PyNutil.processing.adapters import load_registration
+        from PyNutil.processing.adapters import read_alignment
 
-        data = load_registration(BG_JSON)
+        data = read_alignment(BG_JSON)
         self.assertEqual(len(data.slices), 1)
         self.assertEqual(data.metadata.get("registration_type"), "brainglobe")
 

@@ -59,11 +59,24 @@ def open_custom_region_file(path: str) -> Tuple[Dict[str, Any], pd.DataFrame]:
         raise ValueError("Expected at least two columns in the file.")
 
     custom_region_names = df.columns[1:].to_list()
-    try:
-        rgb_values = [[int(i) for i in rgb.split(";")] for rgb in df.iloc[0, 1:].values]
-    except ValueError:
-        print("Error: Non integer value found in rgb list")
-        rgb_values = list(df.iloc[0, 1:].values)
+    rgb_values = []
+    for rgb in df.iloc[0, 1:].values:
+        parts = str(rgb).split(";")
+        if len(parts) != 3:
+            raise ValueError(
+                f"Invalid RGB entry '{rgb}'. Expected 'R;G;B' with three integers."
+            )
+        try:
+            parsed = [int(i) for i in parts]
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid RGB entry '{rgb}'. Expected integer triplet 'R;G;B'."
+            ) from exc
+        if any(c < 0 or c > 255 for c in parsed):
+            raise ValueError(
+                f"Invalid RGB entry '{rgb}'. Channel values must be in [0, 255]."
+            )
+        rgb_values.append(parsed)
     atlas_ids_raw = df.iloc[1:, 1:].T.values
     atlas_ids = [[int(j) for j in i if pd.notna(j)] for i in atlas_ids_raw]
     new_ids = []
@@ -162,11 +175,22 @@ def read_seg_file(file: str) -> np.ndarray:
         codes = [code() for x in range(code())]
         w = code()
         h = code()
-        data = []
-        while len(data) < w * h:
-            data += [codes[byte() if len(codes) <= 256 else code()]] * (code() + 1)
+        total = w * h
+        image_data = np.empty((total,), dtype=np.int64)
+        pos = 0
+        while pos < total:
+            code_idx = byte() if len(codes) <= 256 else code()
+            run_len = code() + 1
+            if code_idx < 0 or code_idx >= len(codes):
+                raise RuntimeError(f"Invalid code index {code_idx} for {len(codes)} codes")
+            end = pos + run_len
+            if end > total:
+                raise RuntimeError(
+                    f"Decoded run exceeds image size: end={end}, total={total}"
+                )
+            image_data[pos:end] = codes[code_idx]
+            pos = end
 
-    image_data = np.array(data)
     image = np.reshape(image_data, (h, w))
     return image
 

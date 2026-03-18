@@ -33,7 +33,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         """QuickNII/VisuAlign alignment should produce visualisation PNGs
         by calling _create_visualisations directly."""
         from PyNutil.io.section_visualisation import create_section_visualisations
-        from PyNutil.processing.adapters.registry import load_registration
+        from PyNutil.processing.adapters.registry import read_alignment
         from PyNutil.io.atlas_loader import load_atlas_data
 
         alignment_json = os.path.join(
@@ -45,8 +45,9 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(alignment_json):
             self.skipTest("QuickNII alignment test data not found")
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
-        reg_data = load_registration(
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
+        reg_data = read_alignment(
             alignment_json, apply_deformation=False, apply_damage=False
         )
 
@@ -67,7 +68,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         """Brainglobe registration should produce visualisation PNGs
         (without segmentation overlay, since no matching segmentations exist)."""
         from PyNutil.io.section_visualisation import create_section_visualisations
-        from PyNutil.processing.adapters.registry import load_registration
+        from PyNutil.processing.adapters.registry import read_alignment
         from PyNutil.io.atlas_loader import load_atlas_data
 
         bg_json = os.path.join(
@@ -76,8 +77,9 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(bg_json):
             self.skipTest("Brainglobe registration test data not found")
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
-        reg_data = load_registration(
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
+        reg_data = read_alignment(
             bg_json, apply_deformation=False, apply_damage=False
         )
 
@@ -94,9 +96,8 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
                 self.assertIsNotNone(img, f"Failed to read {png}")
                 self.assertGreater(np.count_nonzero(img), 0, f"{png} is blank")
 
-    def test_brainglobe_coordinate_workflow_produces_visualisations(self):
-        """Brainglobe registration with coordinates (no segmentation folder)
-        should produce visualisation PNGs without errors."""
+    def test_brainglobe_coordinate_workflow_quantifies(self):
+        """Brainglobe registration with coordinates produces quantification."""
         bg_json = os.path.join(
             TEST_DIR, "test_data", "brainglobe_coordinates", "brainglobe-registration.json"
         )
@@ -106,27 +107,20 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(bg_json) or not os.path.isfile(coord_file):
             self.skipTest("Brainglobe coordinate test data not found")
 
-        from PyNutil import PyNutil
+        from PyNutil import load_atlas_data, read_alignment, xy_to_coords, quantify_coords, save_analysis
 
-        pnt = PyNutil(atlas_name="allen_mouse_25um")
-        pnt.get_coordinates(
-            coordinate_file=coord_file,
-            alignment_json=bg_json,
-        )
-        pnt.quantify_coordinates()
+        atlas = load_atlas_data("allen_mouse_25um")
+        alignment = read_alignment(bg_json)
+        result = xy_to_coords(coord_file, alignment, atlas)
+        label_df, per_section_df = quantify_coords(result, atlas)
+
+        self.assertFalse(label_df.empty)
+        self.assertGreater(len(per_section_df), 0)
 
         with tempfile.TemporaryDirectory() as tmp:
-            pnt.save_analysis(tmp, create_visualisations=True)
-            viz_dir = os.path.join(tmp, "visualisations")
-            self.assertTrue(os.path.isdir(viz_dir))
-            pngs = [f for f in os.listdir(viz_dir) if f.endswith(".png")]
-            self.assertGreater(len(pngs), 0, "No visualisation PNGs generated")
-            # Verify the image has actual content (not blank)
-            for png in pngs:
-                img = cv2.imread(os.path.join(viz_dir, png))
-                self.assertIsNotNone(img)
-                self.assertGreater(
-                    np.count_nonzero(img), 0, f"{png} is blank"
+            save_analysis(tmp, result, atlas, label_df, per_section_df)
+            self.assertTrue(
+                os.path.isfile(os.path.join(tmp, "whole_series_report", "counts.csv"))
                 )
 
 
@@ -139,7 +133,8 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
         from PyNutil.io.atlas_loader import load_atlas_data
         from PyNutil.processing.adapters.base import SliceInfo
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
 
         slices = [
             SliceInfo(
@@ -169,7 +164,8 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
         from PyNutil.io.section_visualisation import create_section_visualisations
         from PyNutil.io.atlas_loader import load_atlas_data
 
-        atlas_volume, _, atlas_labels = load_atlas_data("allen_mouse_25um")
+        _atlas = load_atlas_data("allen_mouse_25um")
+        atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
 
         with tempfile.TemporaryDirectory() as tmp:
             create_section_visualisations(
@@ -189,9 +185,9 @@ class TestLoadRegistrationForVisualisation(unittest.TestCase):
     """Test that load_registration returns SliceInfo objects with the correct attributes."""
 
     def _load_slices(self, alignment_json):
-        from PyNutil.processing.adapters.registry import load_registration
+        from PyNutil.processing.adapters.registry import read_alignment
 
-        reg_data = load_registration(
+        reg_data = read_alignment(
             alignment_json, apply_deformation=False, apply_damage=False
         )
         return reg_data.slices

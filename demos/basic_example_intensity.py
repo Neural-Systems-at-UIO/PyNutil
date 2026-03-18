@@ -1,11 +1,10 @@
 """Sometimes you may want to measure the intensity of input images.
-To do this we specify image_folder instead of segmentation folder
+To do this we use image_to_coords instead of seg_to_coords.
 """
 import os
 
-# This demo assumes PyNutil is installed (recommended for development):
-#   pip install -e .
-from PyNutil import PyNutil
+from brainglobe_atlasapi import BrainGlobeAtlas
+import PyNutil as pnt
 
 # Configuration
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,21 +15,27 @@ image_folder = os.path.join(
 alignment_json = os.path.join(
     repo_root, "tests/test_data/image_intensity/alignment.json"
 )
-atlas_name = "allen_mouse_25um"
 output_folder = os.path.join(repo_root, "test_result/intensity_measurement")
 
-# Initialize PyNutil object
-pnt = PyNutil(atlas_name=atlas_name)
+# Load atlas and alignment
+atlas = BrainGlobeAtlas("allen_mouse_25um")
+alignment = pnt.read_alignment(alignment_json)
 
-# Execute workflow
-pnt.get_coordinates(
-    image_folder=image_folder,
-    alignment_json=alignment_json,
-    custom_region_path=os.path.join(
-        repo_root,
-        "tests/test_data/nonlinear_allen_mouse/CustomRegions_fromQCAlign.txt",
-    ),
+# Extract intensity data
+coords = pnt.image_to_coords(
+    image_folder,
+    alignment,
+    atlas,
 )
-pnt.quantify_coordinates()
-pnt.interpolate_volume()
-pnt.save_analysis(output_folder)
+
+# Quantify by atlas region
+label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+
+# Save results
+pnt.save_analysis(
+    output_folder,
+    coords,
+    atlas,
+    label_df=label_df,
+    per_section_df=per_section_df,
+)

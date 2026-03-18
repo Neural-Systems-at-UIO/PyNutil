@@ -4,6 +4,8 @@ import numpy as np
 import nrrd
 from functools import lru_cache
 
+from ..results import AtlasData
+
 
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
@@ -11,12 +13,19 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     if not atlas_name and not atlas:
         raise Exception("Either atlas or atlas name must be specified")
     atlas_structures = {
-        "idx": [i["id"] for i in atlas.structures_list],
-        "name": [i["name"] for i in atlas.structures_list],
-        "r": [i["rgb_triplet"][0] for i in atlas.structures_list],
-        "g": [i["rgb_triplet"][1] for i in atlas.structures_list],
-        "b": [i["rgb_triplet"][2] for i in atlas.structures_list],
+        "idx": [],
+        "name": [],
+        "r": [],
+        "g": [],
+        "b": [],
     }
+    for structure in atlas.structures_list:
+        atlas_structures["idx"].append(structure["id"])
+        atlas_structures["name"].append(structure["name"])
+        rgb = structure["rgb_triplet"]
+        atlas_structures["r"].append(rgb[0])
+        atlas_structures["g"].append(rgb[1])
+        atlas_structures["b"].append(rgb[2])
     atlas_structures["idx"].insert(0, 0)
     atlas_structures["name"].insert(0, "Clear Label")
     atlas_structures["r"].insert(0, 0)
@@ -24,6 +33,40 @@ def load_atlas_labels(atlas=None, atlas_name=None):
     atlas_structures["b"].insert(0, 0)
     atlas_labels = pd.DataFrame(atlas_structures)
     return atlas_labels
+
+
+def resolve_atlas(atlas):
+    """Convert an atlas argument to AtlasData.
+
+    Accepts an ``AtlasData`` instance (returned as-is) or a
+    ``BrainGlobeAtlas``-like object (converted via volume processing and
+    label loading).
+    """
+    if isinstance(atlas, AtlasData):
+        return atlas
+    # Assume BrainGlobeAtlas-like object
+    volume = process_atlas_volume(atlas.annotation)
+    hemi_map = process_atlas_volume(atlas.hemispheres)
+    labels = load_atlas_labels(atlas)
+    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
+
+
+def resolve_atlas_labels(atlas_labels):
+    """Resolve atlas labels input into a DataFrame.
+
+    Accepts a raw labels DataFrame, AtlasData-like objects exposing ``labels``,
+    or BrainGlobeAtlas-like objects exposing ``structures_list``.
+    """
+    if isinstance(atlas_labels, pd.DataFrame):
+        return atlas_labels
+    if hasattr(atlas_labels, "labels"):
+        return atlas_labels.labels
+    if hasattr(atlas_labels, "structures_list"):
+        return load_atlas_labels(atlas_labels)
+    raise TypeError(
+        "atlas_labels must be a pandas DataFrame, AtlasData-like (.labels), "
+        "or BrainGlobeAtlas-like (.structures_list)."
+    )
 
 
 @lru_cache(maxsize=8)
@@ -38,19 +81,15 @@ def load_atlas_data(atlas_name):
 
     Returns
     -------
-    numpy.ndarray
-        The atlas volume array.
-    numpy.ndarray
-        The hemisphere data array.
-    pandas.DataFrame
-        A dataframe containing atlas labels and RGB information.
+    AtlasData
+        Bundle containing atlas volume, hemisphere map, and labels.
     """
     atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
     atlas_labels = load_atlas_labels(atlas)
     atlas_volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
     print("atlas labels loaded ✅")
-    return atlas_volume, hemi_map, atlas_labels
+    return AtlasData(volume=atlas_volume, hemi_map=hemi_map, labels=atlas_labels)
 
 
 def process_atlas_volume(vol):
@@ -74,6 +113,11 @@ def process_atlas_volume(vol):
 def load_custom_atlas(atlas_path, hemi_path, label_path):
     """
     Loads a custom atlas from provided file paths.
+
+    Returns
+    -------
+    AtlasData
+        Bundle containing atlas volume, hemisphere map, and labels.
     """
     atlas_volume, _ = nrrd.read(atlas_path)
 
@@ -84,4 +128,4 @@ def load_custom_atlas(atlas_path, hemi_path, label_path):
 
     atlas_labels = pd.read_csv(label_path)
 
-    return atlas_volume, hemi_volume, atlas_labels
+    return AtlasData(volume=atlas_volume, hemi_map=hemi_volume, labels=atlas_labels)

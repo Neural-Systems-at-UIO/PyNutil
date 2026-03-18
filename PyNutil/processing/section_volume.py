@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 from tqdm import tqdm
-from .adapters import load_registration
+from .adapters import read_alignment
 from .adapters.segmentation import SegmentationAdapterRegistry
 from .atlas_map import transform_to_atlas_space
 from .utils import (
@@ -127,33 +127,28 @@ def _knn_interpolate_generic(
 
 def _read_section_signal(
     seg_path: str,
-    segmentation_adapter,
-    segmentation_mode: bool,
-    colour_arr: Optional[np.ndarray],
-    intensity_channel: str,
-    min_intensity: Optional[int],
-    max_intensity: Optional[int],
+    vol_cfg: VolumeConfig,
 ):
     """Load an image and return (seg_values, mask, seg_height, seg_width) or None."""
-    if segmentation_mode:
-        seg = segmentation_adapter.load(seg_path)
+    if vol_cfg.segmentation_mode:
+        seg = vol_cfg.segmentation_adapter.load(seg_path)
     else:
         seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
     if seg is None:
         return None
 
-    if not segmentation_mode:
+    if not vol_cfg.segmentation_mode:
         # Intensity mode
-        seg_values = convert_to_intensity(seg, intensity_channel)
-        if min_intensity is not None:
-            seg_values[seg_values < min_intensity] = 0
-        if max_intensity is not None:
-            seg_values[seg_values > max_intensity] = 0
+        seg_values = convert_to_intensity(seg, vol_cfg.intensity_channel)
+        if vol_cfg.min_intensity is not None:
+            seg_values[seg_values < vol_cfg.min_intensity] = 0
+        if vol_cfg.max_intensity is not None:
+            seg_values[seg_values > vol_cfg.max_intensity] = 0
         mask = (seg_values != 0).astype(np.float32, copy=False)
     else:
         # Segmentation mode via adapter (supports binary/cellpose/custom)
-        pixel_id = colour_arr.tolist() if colour_arr is not None else None
-        mask = segmentation_adapter.create_binary_mask(seg, pixel_id=pixel_id).astype(
+        pixel_id = vol_cfg.colour_arr.tolist() if vol_cfg.colour_arr is not None else None
+        mask = vol_cfg.segmentation_adapter.create_binary_mask(seg, pixel_id=pixel_id).astype(
             np.float32, copy=False
         )
         seg_values = mask
@@ -265,7 +260,7 @@ def _accumulate_object_counts(
     np.add.at(ov_flat, vox_ids, per_vox.astype(np.uint32, copy=False))
 
 
-def _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill):
+def _compute_value_volume(gv, fv, ov_flat, value_mode, missing_fill):
     """Derive the value volume from accumulated sums/counts."""
     if value_mode == "mean":
         out = np.zeros_like(gv, dtype=np.float32)
@@ -275,7 +270,7 @@ def _compute_value_volume(gv, fv, ov_flat, out_shape, value_mode, missing_fill):
             out[~covered] = float(missing_fill)
         return out
     if value_mode == "object_count":
-        return ov_flat.reshape(out_shape).astype(np.float32, copy=False)
+        return ov_flat.reshape(gv.shape).astype(np.float32, copy=False)
     return gv
 
 
@@ -295,8 +290,7 @@ def _finalize_volumes(
     interp_cfg: InterpolationConfig,
 ):
     """Convert accumulated sums and optionally interpolate."""
-    out_shape = gv.shape
-    gv = _compute_value_volume(gv, fv, ov_flat, out_shape, vol_cfg.value_mode, interp_cfg.missing_fill)
+    gv = _compute_value_volume(gv, fv, ov_flat, vol_cfg.value_mode, interp_cfg.missing_fill)
 
     if interp_cfg.do_interpolation:
         atlas_mask = _resolve_atlas_mask(interp_cfg.use_atlas_mask, interp_cfg.atlas_volume, gv)
@@ -348,12 +342,7 @@ def _process_one_section(
 
     loaded = _read_section_signal(
         seg_path,
-        vol_cfg.segmentation_adapter,
-        vol_cfg.segmentation_mode,
-        vol_cfg.colour_arr,
-        vol_cfg.intensity_channel,
-        vol_cfg.min_intensity,
-        vol_cfg.max_intensity,
+        vol_cfg,
     )
     if loaded is None:
         return
@@ -396,7 +385,8 @@ def _process_one_section(
 
     x, y, z = x[inb], y[inb], z[inb]
     np.add.at(fv, (x, y, z), 1)
-    np.add.at(gv, (x, y, z), vals[inb])
+    if vol_cfg.value_mode != "object_count":
+        np.add.at(gv, (x, y, z), vals[inb])
 
     if damage_vals is not None:
         dv[x, y, z] |= damage_vals[inb].astype(np.uint8)
@@ -405,13 +395,12 @@ def _process_one_section(
         _accumulate_object_counts(sampled_2d, inb, x, y, z, seg_nr, out_shape, ov_flat)
 
 
-def project_sections_to_volume(
+def interpolate_volume(
     *,
     segmentation_folder: str,
     alignment_json: str,
     colour,
-    atlas_shape: Tuple[int, int, int],
-    atlas_volume: Optional[np.ndarray],
+    atlas: object,
     scale: float = 1.0,
     missing_fill: float = np.nan,
     do_interpolation: bool = True,
@@ -433,16 +422,31 @@ def project_sections_to_volume(
         - frequency volume (fv): number of sampled pixels per voxel
         - damage volume (dv): binary mask of damaged voxels
 
-    Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
+        Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
+
+        Atlas input:
+                - Pass *atlas* (BrainGlobe atlas or PyNutil AtlasData). Volume and
+                    shape are inferred from ``atlas.annotation`` or ``atlas.volume``.
     """
     if value_mode not in {"pixel_count", "mean", "object_count"}:
         raise ValueError(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    out_shape = derive_shape_from_atlas(atlas_shape=atlas_shape, scale=scale)
+    if hasattr(atlas, "annotation") and getattr(atlas, "annotation") is not None:
+        atlas_volume = getattr(atlas, "annotation")
+    elif hasattr(atlas, "volume") and getattr(atlas, "volume") is not None:
+        atlas_volume = getattr(atlas, "volume")
+    else:
+        raise ValueError(
+            "atlas must provide a non-None 'annotation' or 'volume' attribute"
+        )
 
-    registration = load_registration(alignment_json)
+    out_base_shape = tuple(int(x) for x in atlas_volume.shape)
+
+    out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)
+
+    registration = read_alignment(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}
     seg_paths = discover_image_files(segmentation_folder)
 

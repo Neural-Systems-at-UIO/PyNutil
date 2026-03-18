@@ -1,8 +1,9 @@
+import json
 import os
 import unittest
 import numpy as np
-from PyNutil import PyNutil
-from tests.test_helpers import make_pynutil_ready, small_volume_scale
+from PyNutil import interpolate_volume, save_analysis
+from tests.test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
 
 try:
     # When run via `python -m unittest discover` from repo root
@@ -17,58 +18,53 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         self.settings_path = os.path.join(
             self.tests_dir, "test_cases", "brainglobe_atlas_damage.json"
         )
+        with open(self.settings_path) as f:
+            self.settings = json.load(f)
+
+    def _run_interpolation(self, do_interpolation=False, non_linear=False, k=5):
+        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings_file(self.settings_path)
+        scale = small_volume_scale(atlas.volume.shape)
+
+        gv, fv, dv = interpolate_volume(
+            segmentation_folder=self.settings["segmentation_folder"],
+            alignment_json=self.settings["alignment_json"],
+            colour=self.settings.get("colour", [0, 0, 0]),
+            atlas=atlas,
+            scale=scale,
+            do_interpolation=do_interpolation,
+            non_linear=non_linear,
+            k=k,
+        )
+        return atlas, result, label_df, per_section_df, gv, fv, dv
 
     def test_damage_volume_creation(self):
-        # Initialize PyNutil with the damage test case
-        pnt = make_pynutil_ready(self.settings_path)
-
-        # Use a small scale for faster testing
-        scale = small_volume_scale(pnt.atlas_volume.shape)
-
-        # Run interpolation
-        pnt.interpolate_volume(
-            scale=scale,
-            do_interpolation=False,
-            non_linear=False
+        atlas, result, label_df, per_section_df, gv, fv, dv = self._run_interpolation(
+            do_interpolation=False, non_linear=False
         )
 
-        # Check if damage_volume exists and has the correct shape
-        self.assertTrue(hasattr(pnt, "damage_volume"), "PyNutil instance should have damage_volume attribute")
-        self.assertEqual(pnt.damage_volume.shape, pnt.interpolated_volume.shape, "Damage volume shape should match interpolated volume shape")
+        # Check if damage_volume has the correct shape
+        self.assertEqual(dv.shape, gv.shape, "Damage volume shape should match interpolated volume shape")
 
         # Check if damage_volume contains non-zero values
         # The brainglobe_atlas_damage test case is known to have damage markers
-        self.assertTrue(np.any(pnt.damage_volume > 0), "Damage volume should contain non-zero values for this test case")
+        self.assertTrue(np.any(dv > 0), "Damage volume should contain non-zero values for this test case")
 
         # Check if damage_volume is binary (0 or 1)
-        unique_values = np.unique(pnt.damage_volume)
+        unique_values = np.unique(dv)
         for val in unique_values:
             self.assertIn(val, [0, 1], f"Damage volume should only contain 0 or 1, found {val}")
 
     def test_damage_volume_interpolation(self):
-        # Initialize PyNutil with the damage test case
-        pnt = make_pynutil_ready(self.settings_path)
-
-        # Use a small scale for faster testing
-        scale = small_volume_scale(pnt.atlas_volume.shape)
-
         # Run without interpolation first to get baseline
-        pnt.interpolate_volume(
-            scale=scale,
-            do_interpolation=False,
-            non_linear=False
+        _, _, _, _, gv_no_interp, fv_no_interp, dv_no_interp = self._run_interpolation(
+            do_interpolation=False, non_linear=False
         )
-        dv_no_interp = pnt.damage_volume.copy()
         count_no_interp = np.sum(dv_no_interp > 0)
 
         # Run with interpolation
-        pnt.interpolate_volume(
-            scale=scale,
-            do_interpolation=True,
-            k=5,
-            non_linear=False
+        _, _, _, _, gv_interp, fv_interp, dv_interp = self._run_interpolation(
+            do_interpolation=True, k=5, non_linear=False
         )
-        dv_interp = pnt.damage_volume.copy()
         count_interp = np.sum(dv_interp > 0)
 
         # With interpolation, the damage volume should generally have more (or equal) damaged voxels
@@ -84,24 +80,31 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         import tempfile
         import nibabel as nib
 
-        pnt = make_pynutil_ready(self.settings_path)
-        scale = small_volume_scale(pnt.atlas_volume.shape)
-
-        pnt.interpolate_volume(
-            scale=scale,
-            do_interpolation=True,
-            k=5,
-            non_linear=False
+        atlas, result, label_df, per_section_df, gv, fv, dv = self._run_interpolation(
+            do_interpolation=True, k=5, non_linear=False
         )
+
         demo_output_dir = os.path.join(
             self.tests_dir, "..", "demo_data", "outputs", "interpolated_damage"
         )
-        pnt.save_analysis(demo_output_dir)
+        save_analysis(demo_output_dir, result, atlas, label_df, per_section_df)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            pnt.save_analysis(tmpdir)
+            save_analysis(tmpdir, result, atlas, label_df, per_section_df)
 
             damage_nifti_path = os.path.join(tmpdir, "interpolated_volume", "damage_volume.nii.gz")
+            # Note: save_analysis does not save volume niftis; the damage volume
+            # persistence test needs save_volume_niftis for that.
+            from PyNutil import save_volume_niftis
+            save_volume_niftis(
+                output_folder=tmpdir,
+                interpolated_volume=gv,
+                frequency_volume=fv,
+                damage_volume=dv,
+                atlas_volume=atlas.volume,
+                voxel_size_um=atlas.voxel_size_um or 25.0,
+            )
+
             self.assertTrue(os.path.exists(damage_nifti_path), f"Damage volume NIfTI should be saved at {damage_nifti_path}")
 
             # Load and verify the saved NIfTI

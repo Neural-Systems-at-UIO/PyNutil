@@ -8,7 +8,7 @@ import pandas as pd
 # Add the root directory to sys.path to allow importing PyNutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from PyNutil import PyNutil
+from PyNutil import load_atlas_data, read_alignment, image_to_coords, quantify_coords, save_analysis
 from tests.timing_utils import TimedTestCase
 
 class TestIntensityQuantification(TimedTestCase):
@@ -28,17 +28,19 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        pynutil = PyNutil(atlas_name=self.atlas_name)
-        pynutil.get_coordinates(
-            image_folder=self.image_folder,
+        atlas = load_atlas_data(self.atlas_name)
+        alignment = read_alignment(self.alignment_json)
+        result = image_to_coords(
+            self.image_folder,
+            alignment,
+            atlas,
             intensity_channel="grayscale",
-            alignment_json=self.alignment_json,
             min_intensity=20,
         )
-        pynutil.quantify_coordinates()
+        label_df, per_section_df = quantify_coords(result, atlas)
 
         # Save with magma colormap
-        pynutil.save_analysis(output_folder, colormap="magma")
+        save_analysis(output_folder, result, atlas, label_df, per_section_df, colormap="magma")
 
         # Assertions
         self.assertTrue(os.path.exists(output_folder))
@@ -63,16 +65,18 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        pynutil = PyNutil(atlas_name=self.atlas_name)
-        pynutil.get_coordinates(
-            image_folder=self.rgb_image_folder,
+        atlas = load_atlas_data(self.atlas_name)
+        alignment = read_alignment(self.alignment_json)
+        result = image_to_coords(
+            self.rgb_image_folder,
+            alignment,
+            atlas,
             intensity_channel="grayscale",
-            alignment_json=self.alignment_json,
         )
-        pynutil.quantify_coordinates()
+        label_df, per_section_df = quantify_coords(result, atlas)
 
         # Save with original_colours colormap
-        pynutil.save_analysis(output_folder, colormap="original_colours")
+        save_analysis(output_folder, result, atlas, label_df, per_section_df, colormap="original_colours")
 
         # Assertions
         self.assertTrue(os.path.exists(output_folder))
@@ -96,15 +100,17 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        pynutil = PyNutil(atlas_name=self.atlas_name)
-        pynutil.get_coordinates(
-            image_folder=self.image_folder,
+        atlas = load_atlas_data(self.atlas_name)
+        alignment = read_alignment(self.alignment_json)
+        result = image_to_coords(
+            self.image_folder,
+            alignment,
+            atlas,
             intensity_channel="grayscale",
-            alignment_json=self.alignment_json,
             max_intensity=100,
         )
-        pynutil.quantify_coordinates()
-        pynutil.save_analysis(output_folder)
+        label_df, per_section_df = quantify_coords(result, atlas)
+        save_analysis(output_folder, result, atlas, label_df, per_section_df)
 
         # Assertions
         meshview_json = os.path.join(output_folder, "whole_series_meshview", "pixels_meshview.json")

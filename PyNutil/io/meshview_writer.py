@@ -21,25 +21,39 @@ from .colormap import get_colormap_colors
 def _group_triplets(
     points: np.ndarray,
     key_columns: dict[str, np.ndarray],
-    group_cols: list[str],
 ):
-    """Yield grouped triplets from points using a common pandas groupby path."""
+    """Yield grouped triplets from points using NumPy sort/grouping."""
     if points is None or len(points) == 0:
         return
+    if not key_columns:
+        yield None, points.ravel(), len(points)
+        return
 
-    data = {
-        "x": points[:, 0],
-        "y": points[:, 1],
-        "z": points[:, 2],
-    }
-    data.update(key_columns)
-    df = pd.DataFrame(data)
+    keys = [np.asarray(arr) for arr in key_columns.values()]
+    order = np.lexsort(tuple(keys[::-1]))
+    points_sorted = points[order]
+    keys_sorted = [arr[order] for arr in keys]
 
-    for key, grp in df.groupby(group_cols, sort=True, dropna=False):
-        if isinstance(key, tuple) and len(key) == 1:
-            key = key[0]
-        triplets = grp[["x", "y", "z"]].to_numpy().ravel()
-        yield key, triplets, len(grp)
+    n = points_sorted.shape[0]
+    changed = np.zeros(n, dtype=bool)
+    changed[0] = True
+    for key_arr in keys_sorted:
+        left = key_arr[:-1]
+        right = key_arr[1:]
+        if np.issubdtype(key_arr.dtype, np.floating):
+            neq = ~(right == left) & ~(np.isnan(right) & np.isnan(left))
+        else:
+            neq = right != left
+        changed[1:] |= neq
+
+    starts = np.flatnonzero(changed)
+    ends = np.r_[starts[1:], n]
+
+    for start, end in zip(starts, ends):
+        key_vals = tuple(key_arr[start] for key_arr in keys_sorted)
+        key = key_vals[0] if len(key_vals) == 1 else key_vals
+        chunk = points_sorted[start:end]
+        yield key, chunk.ravel(), (end - start)
 
 
 
@@ -66,14 +80,13 @@ def _write_grouped_meshview(
     *,
     points: np.ndarray,
     key_columns: dict[str, np.ndarray],
-    group_cols: list[str],
     filename: str,
     entry_builder,
 ) -> None:
     """Group points and write MeshView entries via a supplied entry builder."""
     meshview = []
     for entry_idx, (key, triplets, count) in enumerate(
-        _group_triplets(points, key_columns, group_cols)
+        _group_triplets(points, key_columns)
     ):
         entry = entry_builder(entry_idx, key, triplets, count)
         if entry is not None:
@@ -108,7 +121,6 @@ def _write_region_meshview(
     _write_grouped_meshview(
         points=points,
         key_columns={"region": point_ids},
-        group_cols=["region"],
         filename=filename,
         entry_builder=_build_entry,
     )
@@ -261,7 +273,6 @@ def _write_rgb_meshview(
     _write_grouped_meshview(
         points=points,
         key_columns={"gid": inverse_indices},
-        group_cols=["gid"],
         filename=filename,
         entry_builder=_build_entry,
     )
@@ -311,7 +322,6 @@ def _write_scalar_meshview(
     _write_grouped_meshview(
         points=points,
         key_columns={"intensity": intensities},
-        group_cols=["intensity"],
         filename=filename,
         entry_builder=_build_entry,
     )

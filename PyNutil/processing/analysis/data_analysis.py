@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ...results import PerEntityArrays
+from ...io.atlas_loader import resolve_atlas_labels
 from .region_counting import pixel_count_per_region
 from ..utils import (
     AREA_FRACTION_PAIRS,
@@ -93,9 +94,13 @@ def apply_custom_regions(df, custom_regions_dict):
     # Annotate original df
     df["custom_region_name"] = df["idx"].map(name_mapping).fillna("")
     temp_df = df.copy()
-    temp_df["r"] = temp_df["idx"].map(lambda x: rgb_mapping[x][0] if x in rgb_mapping else None)
-    temp_df["g"] = temp_df["idx"].map(lambda x: rgb_mapping[x][1] if x in rgb_mapping else None)
-    temp_df["b"] = temp_df["idx"].map(lambda x: rgb_mapping[x][2] if x in rgb_mapping else None)
+    rgb_series = temp_df["idx"].map(lambda x: rgb_mapping.get(x, (None, None, None)))
+    rgb_df = pd.DataFrame(
+        rgb_series.tolist(),
+        index=temp_df.index,
+        columns=["r", "g", "b"],
+    )
+    temp_df[["r", "g", "b"]] = rgb_df
     temp_df["idx"] = temp_df["idx"].map(id_mapping)
 
     # Aggregate all numeric columns dynamically
@@ -295,3 +300,45 @@ def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
 
     label_df.fillna(0, inplace=True)
     return label_df
+
+
+# ── Unified quantification entry point ──────────────────────────────────
+
+
+def quantify_coords(result, atlas_labels, apply_damage_mask=True):
+    """Quantify an ExtractionResult by atlas region.
+
+    Dispatches to :func:`quantify_labeled_points` or :func:`quantify_intensity`
+    depending on the content of *result*.
+
+    Args:
+        result: ExtractionResult from a coordinate extraction function.
+        atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels``
+            will be used).
+        apply_damage_mask: Include damage statistics in output.
+
+    Returns:
+        ``(label_df, per_section_df)`` — whole-series and per-section DataFrames.
+    """
+    atlas_labels = resolve_atlas_labels(atlas_labels)
+
+    if result.region_intensities is not None:
+        return quantify_intensity(result.region_intensities, atlas_labels)
+
+    return quantify_labeled_points(
+        PerEntityArrays(
+            labels=result.points.labels,
+            hemi_labels=result.points.hemi_labels,
+            undamaged=result.points.undamaged_mask,
+            section_lengths=result.points.section_lengths,
+        ),
+        PerEntityArrays(
+            labels=result.objects.labels,
+            hemi_labels=result.objects.hemi_labels,
+            undamaged=result.objects.undamaged_mask,
+            section_lengths=result.objects.section_lengths,
+        ),
+        result.region_areas,
+        atlas_labels,
+        apply_damage_mask,
+    )

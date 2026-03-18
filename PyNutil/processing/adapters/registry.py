@@ -52,7 +52,7 @@ AnchoringLoaderRegistry.register(BrainGlobeRegistrationLoader)
 AnchoringLoaderRegistry.register(QuintAnchoringLoader)
 
 
-def load_registration(
+def read_alignment(
     path: str,
     loader_name: Optional[str] = None,
     apply_deformation: bool = True,
@@ -81,14 +81,14 @@ def load_registration(
 
     Examples:
         # Standard QUINT workflow
-        data = load_registration("alignment.json")
+        data = read_alignment("alignment.json")
 
         # Linear only (no VisuAlign deformation)
-        data = load_registration("alignment.json", apply_deformation=False)
+        data = read_alignment("alignment.json", apply_deformation=False)
 
         # Separate anchoring and damage files
         from .damage import QCAlignDamageProvider
-        data = load_registration(
+        data = read_alignment(
             "quicknii.json",
             damage_provider=QCAlignDamageProvider("qcalign_output.json")
         )

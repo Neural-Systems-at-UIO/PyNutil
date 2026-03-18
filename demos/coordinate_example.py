@@ -8,16 +8,26 @@ to produce 3D atlas-space coordinates and region quantification.
 
 The CSV must have columns: X, Y, image_width, image_height, section number
 """
-from PyNutil import PyNutil
+from brainglobe_atlasapi import BrainGlobeAtlas
+import PyNutil as pnt
 
-pnt = PyNutil(atlas_name="allen_mouse_25um")
-
-pnt.get_coordinates(
-    coordinate_file="tests/test_data/coordinates/coordinate_data_section_edges.csv",
-    alignment_json="tests/test_data/brainglobe_registration/brainglobe-registration.json",
+atlas = BrainGlobeAtlas("allen_mouse_25um")
+alignment = pnt.read_alignment(
+    "tests/test_data/brainglobe_registration/brainglobe-registration.json"
 )
-pnt.quantify_coordinates()
+
+coords = pnt.xy_to_coords(
+    "tests/test_data/coordinates/coordinate_data_section_edges.csv",
+    alignment,
+    atlas,
+)
+
+label_df, per_section_df = pnt.quantify_coords(coords, atlas)
 
 pnt.save_analysis(
-    "demo_data/outputs/coordinate_example", create_visualisations=False
+    "demo_data/outputs/coordinate_example",
+    coords,
+    atlas,
+    label_df=label_df,
+    per_section_df=per_section_df,
 )

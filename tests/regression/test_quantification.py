@@ -6,11 +6,11 @@ import warnings
 sys.path.append(os.path.abspath("/home/harryc/github/PyNutil/"))
 import numpy as np
 import pandas as pd
-from PyNutil import PyNutil
+from PyNutil import save_analysis
 import json
 
 from timing_utils import TimedTestCase
-from test_helpers import pynutil_from_settings_dict, get_coordinates_kwargs
+from test_helpers import run_pipeline_from_settings
 
 
 class TestQuantification(TimedTestCase):
@@ -32,9 +32,7 @@ class TestQuantification(TimedTestCase):
         save_suffix: str = "",
     ):
         test_case_filename, test_case = self.load_test_case(test_case_filename)
-        pnt = pynutil_from_settings_dict(test_case)
-        pnt.get_coordinates(**get_coordinates_kwargs(test_case), object_cutoff=0)
-        pnt.quantify_coordinates()
+        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(test_case)
         expected_output_path = os.path.join(
             self.test_case_dir,
             test_case["expected_output_folder"],
@@ -58,21 +56,21 @@ class TestQuantification(TimedTestCase):
             "damaged_object_count",
             "damaged_pixel_counts",
             "left_hemi_damaged_object_count",
-            "left_hemi_damaged_pixel_count",
+            "left_hemi_damaged_pixel_counts",
             "left_hemi_object_count",
             "left_hemi_pixel_count",
             "left_hemi_undamaged_object_count",
-            "left_hemi_undamaged_pixel_count",
+            "left_hemi_undamaged_pixel_counts",
             "object_count",
             "pixel_count",
             "right_hemi_damaged_object_count",
-            "right_hemi_damaged_pixel_count",
+            "right_hemi_damaged_pixel_counts",
             "right_hemi_object_count",
             "right_hemi_pixel_count",
             "right_hemi_undamaged_object_count",
-            "right_hemi_undamaged_pixel_count",
+            "right_hemi_undamaged_pixel_counts",
             "undamaged_object_count",
-            "undamaged_pixel_count",
+            "undamaged_pixel_counts",
             "area_fraction",
             "left_hemi_area_fraction",
             "right_hemi_area_fraction",
@@ -87,7 +85,7 @@ class TestQuantification(TimedTestCase):
         for column in columns:
             with self.subTest(column=column):
                 self.assertIn(
-                    column, pnt.label_df.columns, f"Missing column in output: {column}"
+                    column, label_df.columns, f"Missing column in output: {column}"
                 )
                 self.assertIn(
                     column,
@@ -95,7 +93,7 @@ class TestQuantification(TimedTestCase):
                     f"Missing column in expected output: {column}",
                 )
                 np.testing.assert_array_almost_equal(
-                    pnt.label_df[column].values,
+                    label_df[column].values,
                     expected_output[column].values,
                     err_msg=f"Mismatch in column: {column}",
                 )
@@ -105,7 +103,7 @@ class TestQuantification(TimedTestCase):
             self.test_case_dir, "..", "demo_data", "outputs", save_root
         )
         # visualisations are optional and can be slow; keep this non-failing and purely informative
-        pnt.save_analysis(save_path, create_visualisations=create_visualisations)
+        save_analysis(save_path, result, atlas, label_df, per_section_df)
 
 
 test_case_files = [

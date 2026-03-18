@@ -179,20 +179,42 @@ class BrainGlobeDeformationProvider(DeformationProvider):
         disp_x: np.ndarray,
         disp_y: np.ndarray,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Approximate inverse displacement via nearest-neighbor fill."""
+        """Approximate inverse displacement via forward splatting + NN hole fill."""
         field_h, field_w = disp_x.shape
-        yy, xx = np.indices((field_h, field_w), dtype=np.intp)
+        yy, xx = np.indices((field_h, field_w), dtype=np.float32)
+
+        # Source pixel (x, y) maps to destination (x + dx, y + dy).
+        dst_x = np.rint(xx + disp_x).astype(np.int32)
+        dst_y = np.rint(yy + disp_y).astype(np.int32)
+        valid = (
+            (dst_x >= 0)
+            & (dst_x < field_w)
+            & (dst_y >= 0)
+            & (dst_y < field_h)
+        )
+
+        src_dx = (-disp_x[valid]).astype(np.float32, copy=False)
+        src_dy = (-disp_y[valid]).astype(np.float32, copy=False)
+        dst_x_v = dst_x[valid]
+        dst_y_v = dst_y[valid]
 
         # Initialize inverse fields with NaNs
         inv_x = np.full_like(disp_x, np.nan, dtype=np.float32)
         inv_y = np.full_like(disp_y, np.nan, dtype=np.float32)
 
-        # Populate known samples
-        inv_x[yy, xx] = disp_x[yy, xx]
-        inv_y[yy, xx] = disp_y[yy, xx]
+        # Populate known inverse samples at mapped destination positions.
+        inv_x[dst_y_v, dst_x_v] = src_dx
+        inv_y[dst_y_v, dst_x_v] = src_dy
 
         # Nearest-neighbor NaN fill via distance transform
         mask = np.isnan(inv_x)
+        if not np.any(mask):
+            return inv_x, inv_y
+
+        if np.all(mask):
+            return np.zeros_like(disp_x, dtype=np.float32), np.zeros_like(
+                disp_y, dtype=np.float32
+            )
 
         indices = ndimage.distance_transform_edt(
             mask,

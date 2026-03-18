@@ -136,7 +136,6 @@ def create_colored_atlas_slice(
     atlas_labels: pd.DataFrame,
     output_path: str,
     segmentation_path: Optional[str] = None,
-    objects_data: Optional[List] = None,
     scale_factor: float = 0.5,
     _color_lookup: Optional[
         Tuple[
@@ -182,21 +181,19 @@ def create_colored_atlas_slice(
             slice_info, coloured_slice
         )
 
+    resize_width, resize_height = target_width, target_height
+    if scale_factor != 1.0:
+        resize_width = max(1, int(target_width * scale_factor))
+        resize_height = max(1, int(target_height * scale_factor))
+
     if (coloured_slice.shape[1], coloured_slice.shape[0]) != (
-        target_width,
-        target_height,
+        resize_width,
+        resize_height,
     ):
         coloured_slice = cv2.resize(
             coloured_slice,
-            (target_width, target_height),
+            (resize_width, resize_height),
             interpolation=cv2.INTER_NEAREST,
-        )
-
-    if scale_factor != 1.0:
-        new_width = max(1, int(target_width * scale_factor))
-        new_height = max(1, int(target_height * scale_factor))
-        coloured_slice = cv2.resize(
-            coloured_slice, (new_width, new_height), interpolation=cv2.INTER_NEAREST
         )
 
     if seg_available:
@@ -204,8 +201,6 @@ def create_colored_atlas_slice(
             coloured_slice, segmentation_path, segmentation=segmentation_img,
             adapter=adapter, pixel_id=pixel_id,
         )
-
-    _ = objects_data
 
     bgr = cv2.cvtColor(coloured_slice, cv2.COLOR_RGB2BGR)
     if not cv2.imwrite(output_path, bgr):
@@ -266,7 +261,6 @@ def create_section_visualisations(
     atlas_volume: np.ndarray,
     atlas_labels: pd.DataFrame,
     output_folder: str,
-    objects_per_section: Optional[List] = None,
     scale_factor: float = 0.5,
     adapter: Optional[SegmentationAdapter] = None,
     pixel_id: Optional[List[int]] = None,
@@ -288,10 +282,6 @@ def create_section_visualisations(
                 segmentation_folder,
             )
 
-            section_objects = None
-            if objects_per_section and i < len(objects_per_section):
-                section_objects = objects_per_section[i]
-
             output_filename = (
                 f"section_{slice_info.section_number:03d}_{base_name}_atlas_colored.png"
             )
@@ -304,7 +294,6 @@ def create_section_visualisations(
                 atlas_labels=atlas_labels,
                 output_path=output_path,
                 segmentation_path=segmentation_path,
-                objects_data=section_objects,
                 scale_factor=scale_factor,
                 _color_lookup=color_lookup,
                 adapter=adapter,

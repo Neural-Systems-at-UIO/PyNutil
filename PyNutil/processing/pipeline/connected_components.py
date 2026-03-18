@@ -116,32 +116,28 @@ def labeled_image_props(label_image: np.ndarray):
 
 def get_objects_and_assign_regions(
     segmentation,
+    adapter,
     pixel_id,
     atlas_map,
     y_scale,
     x_scale,
     object_cutoff=0,
-    segmentation_format="binary",
 ):
     """Single-pass object detection, pixel extraction, and region assignment.
 
     Args:
         segmentation: Segmentation image array.
+        adapter: Segmentation adapter instance.
         pixel_id: Pixel color to match [R, G, B] (only used for binary format).
         atlas_map: 2D atlas label map.
         y_scale: Vertical scaling factor (segmentation → registration space).
         x_scale: Horizontal scaling factor (segmentation → registration space).
         object_cutoff: Minimum object size.
-        segmentation_format: Format name ("binary" or "cellpose").
 
     Returns:
         tuple: (centroids, scaled_centroidsX, scaled_centroidsY,
                 scaled_y, scaled_x, per_centroid_labels)
     """
-    from ..adapters import SegmentationAdapterRegistry
-
-    adapter = SegmentationAdapterRegistry.get(segmentation_format)
-
     # Create binary mask using the adapter
     binary_seg = adapter.create_binary_mask(segmentation, pixel_id)
 
