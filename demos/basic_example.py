@@ -13,7 +13,7 @@ alignment_json = os.path.join(
     repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"
 )
 colour = [0, 0, 0]
-output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_24_03_2025")
+output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_18_03_2026")
 
 # Load atlas (BrainGlobe) and alignment
 atlas = BrainGlobeAtlas("allen_mouse_25um")

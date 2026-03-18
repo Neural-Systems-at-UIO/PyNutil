@@ -176,6 +176,37 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         # Each object contributes at least 1 pixel overall.
         self.assertTrue(np.all(gv_obj <= fv.astype(np.float32) + 1e-6))
 
+    def test_colour_auto_matches_adapter_auto_detection(self):
+        settings = self._load_settings()
+        atlas = load_atlas_data(settings["atlas_name"])
+        scale = self._scale_for_small_volume(atlas.volume.shape)
+
+        common_kwargs = dict(
+            segmentation_folder=settings["segmentation_folder"],
+            alignment_json=settings["alignment_json"],
+            atlas=atlas,
+            scale=scale,
+            missing_fill=0.0,
+            do_interpolation=False,
+            non_linear=False,
+            segmentation_format="binary",
+            segmentation_mode=True,
+            value_mode="pixel_count",
+        )
+
+        gv_auto, fv_auto, dv_auto = interpolate_volume(
+            **common_kwargs,
+            colour="auto",
+        )
+        gv_none, fv_none, dv_none = interpolate_volume(
+            **common_kwargs,
+            colour=None,
+        )
+
+        self.assertTrue(np.array_equal(gv_auto, gv_none))
+        self.assertTrue(np.array_equal(fv_auto, fv_none))
+        self.assertTrue(np.array_equal(dv_auto, dv_none))
+
 
 if __name__ == "__main__":
     unittest.main()
