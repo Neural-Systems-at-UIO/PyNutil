@@ -184,11 +184,9 @@ def _merge_dataframes(current_df, ra, atlas_labels):
                 extra[col] = 0
         result = pd.concat([result, extra[result.columns]], ignore_index=True)
 
-    # Fill count/area numeric columns with 0 using shared area-fraction specs.
-    base_numeric_cols = sorted({c for num, den, _ in AREA_FRACTION_PAIRS for c in (num, den)})
-    for col in base_numeric_cols:
-        if col in result.columns:
-            result[col] = pd.to_numeric(result[col]).fillna(0)
+    # Fill all numeric NaN values with 0 (counts, areas, damage, hemisphere cols).
+    numeric_cols = result.select_dtypes(include=[np.number]).columns
+    result[numeric_cols] = result[numeric_cols].fillna(0)
 
     apply_area_fractions(result)
     return result
