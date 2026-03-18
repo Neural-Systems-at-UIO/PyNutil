@@ -11,7 +11,6 @@ Public API
 import numpy as np
 import pandas as pd
 
-from ...results import PerEntityArrays
 from ...io.atlas_loader import resolve_atlas_labels
 from .region_counting import pixel_count_per_region
 from ..utils import (
@@ -19,21 +18,6 @@ from ..utils import (
     apply_area_fractions,
     apply_mean_intensities,
     reindex_to_atlas,
-)
-
-# Columns that are ratios and must be recomputed after summing, not summed themselves.
-_RATIO_COLS = frozenset(
-    {
-        "area_fraction",
-        "left_hemi_area_fraction",
-        "right_hemi_area_fraction",
-        "undamaged_area_fraction",
-        "left_hemi_undamaged_area_fraction",
-        "right_hemi_undamaged_area_fraction",
-        "mean_intensity",
-        "left_hemi_mean_intensity",
-        "right_hemi_mean_intensity",
-    }
 )
 
 
@@ -133,75 +117,58 @@ def apply_custom_regions(df, custom_regions_dict):
 
 
 def quantify_labeled_points(
-    points: PerEntityArrays,
-    centroids: PerEntityArrays,
-    region_areas_list,
+    points_labels,
+    centroids_labels,
+    points_undamaged,
+    centroids_undamaged,
+    points_hemi,
+    centroids_hemi,
+    region_areas,
     atlas_labels,
     apply_damage_mask,
 ):
-    """Aggregate per-pixel and per-centroid counts into summary tables.
+    """Aggregate per-pixel and per-centroid counts into a summary table.
 
     Args:
-        points: Concatenated per-pixel arrays (labels, hemi, undamaged, lengths).
-        centroids: Concatenated per-centroid arrays (same structure).
-        region_areas_list: List of region-area DataFrames per section.
+        points_labels: 1-D array of region IDs for points.
+        centroids_labels: 1-D array of region IDs for centroids.
+        points_undamaged: 1-D undamaged mask for points.
+        centroids_undamaged: 1-D undamaged mask for centroids.
+        points_hemi: 1-D hemisphere labels for points.
+        centroids_hemi: 1-D hemisphere labels for centroids.
+        region_areas: Combined region-area DataFrame (summed across sections).
         atlas_labels: Atlas labels DataFrame.
         apply_damage_mask: Whether damage mask was applied.
 
     Returns:
         label_df — whole-series DataFrame.
     """
-    per_section_df = _quantify_per_section(
-        points,
-        centroids,
-        region_areas_list,
+    count_df = pixel_count_per_region(
+        points_labels,
+        centroids_labels,
+        points_undamaged,
+        centroids_undamaged,
+        points_hemi,
+        centroids_hemi,
         atlas_labels,
         apply_damage_mask,
     )
-
-    def _area_fractions(df):
-        for num, den, res in AREA_FRACTION_PAIRS:
-            if num in df.columns and den in df.columns:
-                df[res] = df[num] / df[den]
-
-    label_df = _combine_reports(per_section_df, atlas_labels, derive_fn=_area_fractions)
+    label_df = _merge_dataframes(count_df, region_areas, atlas_labels)
     if not apply_damage_mask:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
     return label_df
 
 
-def _quantify_per_section(
-    points: PerEntityArrays,
-    centroids: PerEntityArrays,
-    region_areas_list,
-    atlas_labels,
-    with_damage=False,
-):
-    """Quantify counts per section, merging with region areas."""
-    per_section_df = []
-
-    for (p_lab, p_hemi, p_und), (c_lab, c_hemi, c_und), ra in zip(
-        points.split(), centroids.split(), region_areas_list
-    ):
-        current_df = pixel_count_per_region(
-            p_lab,
-            c_lab,
-            p_und,
-            c_und,
-            p_hemi,
-            c_hemi,
-            atlas_labels,
-            with_damage,
-        )
-        current_df_new = _merge_dataframes(current_df, ra, atlas_labels)
-        per_section_df.append(current_df_new)
-
-    return per_section_df
-
-
 def _merge_dataframes(current_df, ra, atlas_labels):
     """Merge count DataFrame with region areas and atlas labels."""
+    if ra is None or ra.empty:
+        # No region areas — just merge counts with atlas labels.
+        result = atlas_labels.merge(current_df, on="idx", how="left")
+        result.fillna(0, inplace=True)
+        apply_area_fractions(result)
+        return result
+
     cols_to_use = ra.columns.difference(atlas_labels.columns)
     all_region_df = atlas_labels.merge(ra[["idx", *cols_to_use]], on="idx", how="left")
     cols_to_use = current_df.columns.difference(all_region_df.columns)
@@ -230,63 +197,22 @@ def _merge_dataframes(current_df, ra, atlas_labels):
 # ── Intensity quantification ────────────────────────────────────────────
 
 
-def quantify_intensity(region_intensities_list, atlas_labels):
-    """Aggregate per-region intensity across sections.
+def quantify_intensity(region_intensities, atlas_labels):
+    """Aggregate per-region intensity into a summary table.
 
     Args:
-        region_intensities_list: List of per-section intensity DataFrames
-            (may contain ``None`` for skipped sections).
+        region_intensities: Combined intensity DataFrame (already summed
+            across sections by the batch processor).
         atlas_labels: Atlas labels DataFrame.
 
     Returns:
         label_df — whole-series DataFrame.
     """
-    region_intensities_list = [df for df in region_intensities_list if df is not None]
-    if not region_intensities_list:
+    if region_intensities is None or region_intensities.empty:
         return pd.DataFrame()
 
-    label_df = _combine_reports(
-        region_intensities_list, atlas_labels, derive_fn=apply_mean_intensities
-    )
-    return label_df
-
-
-# ── Shared combine logic ────────────────────────────────────────────────
-
-
-def _combine_reports(per_section_df, atlas_labels, *, derive_fn):
-    """Combine per-section DataFrames into a whole-series report.
-
-    Shared by both the segmentation (area-fraction) and intensity
-    (mean-intensity) pipelines.
-
-    Args:
-        per_section_df: List of per-section DataFrames.
-        atlas_labels: Atlas labels DataFrame.
-        derive_fn: Callable ``(df) → None`` that adds derived columns in-place.
-
-    Returns:
-        Combined DataFrame reindexed to all atlas regions.
-    """
-    group_cols = ["idx", "name", "r", "g", "b"]
-    available_group_cols = [c for c in group_cols if c in per_section_df[0].columns]
-
-    non_empty = [
-        df for df in per_section_df
-        if df is not None and not df.empty and not df.dropna(how="all").empty
-    ]
-    combined = pd.concat(non_empty) if non_empty else pd.DataFrame()
-    for col in combined.columns:
-        if col not in available_group_cols:
-            combined[col] = pd.to_numeric(combined[col], errors="coerce")
-
-    numeric_cols = combined.select_dtypes(include=[np.number]).columns
-    sum_cols = [c for c in numeric_cols if c not in set(available_group_cols)]
-    sum_cols = [c for c in sum_cols if c not in _RATIO_COLS]
-
-    label_df = combined.groupby(available_group_cols)[sum_cols].sum().reset_index()
-
-    derive_fn(label_df)
+    label_df = region_intensities.copy()
+    apply_mean_intensities(label_df)
     label_df.fillna(0, inplace=True)
     label_df = reindex_to_atlas(label_df, atlas_labels)
 
@@ -325,18 +251,12 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         return quantify_intensity(result.region_intensities, atlas_labels)
 
     return quantify_labeled_points(
-        PerEntityArrays(
-            labels=result.points.labels,
-            hemi_labels=result.points.hemi_labels,
-            undamaged=result.points.undamaged_mask,
-            section_lengths=result.points.section_lengths,
-        ),
-        PerEntityArrays(
-            labels=result.objects.labels,
-            hemi_labels=result.objects.hemi_labels,
-            undamaged=result.objects.undamaged_mask,
-            section_lengths=result.objects.section_lengths,
-        ),
+        result.points.labels,
+        result.objects.labels if result.objects is not None else np.array([], dtype=np.int64),
+        result.points.undamaged_mask,
+        result.objects.undamaged_mask if result.objects is not None else np.array([], dtype=bool),
+        result.points.hemi_labels,
+        result.objects.hemi_labels if result.objects is not None else np.array([], dtype=np.int64),
         result.region_areas,
         atlas_labels,
         apply_damage_mask,
