@@ -64,10 +64,10 @@ coords = pnt.seg_to_coords(
 )
 
 # Quantify by atlas region
-label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+label_df = pnt.quantify_coords(coords, atlas)
 
 # Save results
-pnt.save_analysis("path/to/output", coords, atlas, label_df=label_df, per_section_df=per_section_df)
+pnt.save_analysis("path/to/output", coords, atlas, label_df=label_df)
 ```
 
 For custom atlases (not from BrainGlobe), use `pnt.load_custom_atlas()` instead.

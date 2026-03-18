@@ -450,7 +450,25 @@ def interpolate_volume(
     slice_by_nr = {s.section_number: s for s in registration.slices}
     seg_paths = discover_image_files(segmentation_folder)
 
-    colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
+    # Accept GUI/settings values like "auto" and defer to adapter auto-detection
+    # by passing pixel_id=None.
+    if isinstance(colour, str):
+        colour_str = colour.strip()
+        if colour_str.lower() == "auto" or colour_str == "":
+            colour_arr = None
+        elif colour_str.isdigit():
+            colour_arr = np.array([int(colour_str)], dtype=np.uint8)
+        elif "," in colour_str:
+            colour_arr = np.array(
+                [int(x.strip()) for x in colour_str.strip("[]").split(",") if x.strip()],
+                dtype=np.uint8,
+            )
+        else:
+            raise ValueError(
+                "colour must be None, 'auto', an int-like string, or a list/tuple of ints"
+            )
+    else:
+        colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
     vol_cfg = VolumeConfig(
         segmentation_adapter=(
             SegmentationAdapterRegistry.get(segmentation_format)

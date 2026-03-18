@@ -26,7 +26,7 @@ class TestCellposeQuantification(TimedTestCase):
 
     def test_cellpose_quantification(self):
         test_case_filename, test_case = self.load_test_case("cellpose_test.json")
-        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(test_case)
+        atlas, result, label_df, alignment = run_pipeline_from_settings(test_case)
 
         expected_output_path = os.path.join(
             self.test_case_dir,

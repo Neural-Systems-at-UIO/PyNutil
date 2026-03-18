@@ -13,7 +13,7 @@ alignment_json = os.path.join(
     repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"
 )
 colour = [0, 0, 0]
-output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_24_03_2025")
+output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_18_03_2026")
 
 # Load atlas (BrainGlobe) and alignment
 atlas = BrainGlobeAtlas("allen_mouse_25um")
@@ -31,7 +31,7 @@ coords = pnt.seg_to_coords(
 )
 
 # Quantify by atlas region
-label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+label_df = pnt.quantify_coords(coords, atlas)
 # Optionally generate a 3D heatmap
 pnt.interpolate_volume(
     segmentation_folder=segmentation_folder,
@@ -45,5 +45,4 @@ pnt.save_analysis(
     coords,
     atlas,
     label_df=label_df,
-    per_section_df=per_section_df,
 )

@@ -7,6 +7,7 @@ in a folder, mapping each one to atlas space using parallel execution.
 import os
 
 import numpy as np
+import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 from ...context import PipelineContext, SectionContext
@@ -134,8 +135,48 @@ def _concat(arrays, *, dtype=None, none_if_empty=False):
     return np.array([], dtype=dtype)
 
 
+def _combine_region_areas(area_dfs):
+    """Sum per-section region-area DataFrames into a single whole-series DF."""
+    non_empty = [df for df in area_dfs if df is not None and not df.empty]
+    if not non_empty:
+        return pd.DataFrame()
+    combined = pd.concat(non_empty, ignore_index=True)
+    numeric_cols = combined.select_dtypes(include=[np.number]).columns
+    sum_cols = [c for c in numeric_cols if c != "idx"]
+    return combined.groupby("idx")[sum_cols].sum().reset_index()
+
+
+# Columns that are ratios — must be recomputed, not summed.
+_RATIO_COLS = frozenset({
+    "area_fraction", "left_hemi_area_fraction", "right_hemi_area_fraction",
+    "undamaged_area_fraction", "left_hemi_undamaged_area_fraction",
+    "right_hemi_undamaged_area_fraction",
+    "mean_intensity", "left_hemi_mean_intensity", "right_hemi_mean_intensity",
+})
+
+
+def _combine_intensity_dfs(dfs):
+    """Combine per-section intensity DataFrames into a single whole-series DF."""
+    non_empty = [df for df in dfs if not df.empty and not df.dropna(how="all").empty]
+    if not non_empty:
+        return None
+    group_cols = ["idx", "name", "r", "g", "b"]
+    available_group_cols = [c for c in group_cols if c in non_empty[0].columns]
+
+    combined = pd.concat(non_empty, ignore_index=True)
+    for col in combined.columns:
+        if col not in available_group_cols:
+            combined[col] = pd.to_numeric(combined[col], errors="coerce")
+
+    numeric_cols = combined.select_dtypes(include=[np.number]).columns
+    sum_cols = [c for c in numeric_cols
+                if c not in set(available_group_cols) and c not in _RATIO_COLS]
+
+    return combined.groupby(available_group_cols)[sum_cols].sum().reset_index()
+
+
 def _collect_section_results(results):
-    """Reduce section results into concatenated arrays and per-section lengths."""
+    """Reduce section results into concatenated arrays and combined region areas."""
     pts, ctrs = [], []
     pts_lbl, ctrs_lbl = [], []
     pts_hemi, ctrs_hemi = [], []
@@ -163,7 +204,7 @@ def _collect_section_results(results):
         _concat(ctrs_lbl, dtype=np.int64),
         _concat(pts_hemi, dtype=np.int64),
         _concat(ctrs_hemi, dtype=np.int64),
-        areas,
+        _combine_region_areas(areas),
         pts_len,
         ctrs_len,
         _concat(pt_undam, dtype=bool),
@@ -234,7 +275,7 @@ def seg_to_coords(
         centroids_labels,
         points_hemi_labels,
         centroids_hemi_labels,
-        region_areas_list,
+        region_areas,
         points_len,
         centroids_len,
         per_point_undamaged,
@@ -260,7 +301,7 @@ def seg_to_coords(
         points=point_set,
         objects=object_set,
         section_filenames=segmentations,
-        region_areas=region_areas_list,
+        region_areas=region_areas,
     )
 
 
@@ -319,7 +360,8 @@ def image_to_coords(
     )
 
     # ── Concatenate IntensitySectionResults ────────────────────────────
-    region_intensities_list = [r.region_intensities for r in results]
+    region_intensities_list = [r.region_intensities for r in results
+                               if r.region_intensities is not None]
 
     all_points = _concat([r.points for r in results], none_if_empty=True)
     all_labels = _concat([r.points_labels for r in results], none_if_empty=True)
@@ -337,11 +379,16 @@ def image_to_coords(
         point_values=all_intensities,
     )
 
+    # Combine per-section intensity DataFrames into a single whole-series DF.
+    combined_intensities = None
+    if region_intensities_list:
+        combined_intensities = _combine_intensity_dfs(region_intensities_list)
+
     return ExtractionResult(
         points=point_set,
         objects=None,
         section_filenames=images,
-        region_intensities=region_intensities_list,
+        region_intensities=combined_intensities,
     )
 
 
@@ -431,7 +478,7 @@ def xy_to_coords(
         centroids_labels,
         points_hemi_labels,
         centroids_hemi_labels,
-        region_areas_list,
+        region_areas,
         points_len,
         centroids_len,
         per_point_undamaged,
@@ -457,5 +504,5 @@ def xy_to_coords(
         points=point_set,
         objects=object_set,
         section_filenames=[],
-        region_areas=region_areas_list,
+        region_areas=region_areas,
     )

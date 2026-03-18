@@ -37,10 +37,10 @@ class TestIntensityQuantification(TimedTestCase):
             intensity_channel="grayscale",
             min_intensity=20,
         )
-        label_df, per_section_df = quantify_coords(result, atlas)
+        label_df = quantify_coords(result, atlas)
 
         # Save with magma colormap
-        save_analysis(output_folder, result, atlas, label_df, per_section_df, colormap="magma")
+        save_analysis(output_folder, result, atlas, label_df, colormap="magma")
 
         # Assertions
         self.assertTrue(os.path.exists(output_folder))
@@ -73,10 +73,10 @@ class TestIntensityQuantification(TimedTestCase):
             atlas,
             intensity_channel="grayscale",
         )
-        label_df, per_section_df = quantify_coords(result, atlas)
+        label_df = quantify_coords(result, atlas)
 
         # Save with original_colours colormap
-        save_analysis(output_folder, result, atlas, label_df, per_section_df, colormap="original_colours")
+        save_analysis(output_folder, result, atlas, label_df, colormap="original_colours")
 
         # Assertions
         self.assertTrue(os.path.exists(output_folder))
@@ -109,8 +109,8 @@ class TestIntensityQuantification(TimedTestCase):
             intensity_channel="grayscale",
             max_intensity=100,
         )
-        label_df, per_section_df = quantify_coords(result, atlas)
-        save_analysis(output_folder, result, atlas, label_df, per_section_df)
+        label_df = quantify_coords(result, atlas)
+        save_analysis(output_folder, result, atlas, label_df)
 
         # Assertions
         meshview_json = os.path.join(output_folder, "whole_series_meshview", "pixels_meshview.json")

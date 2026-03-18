@@ -74,5 +74,5 @@ class ExtractionResult:
     points: PointSetResult
     objects: Optional[PointSetResult]
     section_filenames: List[str]
-    region_areas: Optional[List[pd.DataFrame]] = None
-    region_intensities: Optional[List[Optional[pd.DataFrame]]] = None
+    region_areas: Optional[pd.DataFrame] = None
+    region_intensities: Optional[pd.DataFrame] = None

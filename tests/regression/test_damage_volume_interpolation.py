@@ -22,7 +22,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             self.settings = json.load(f)
 
     def _run_interpolation(self, do_interpolation=False, non_linear=False, k=5):
-        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings_file(self.settings_path)
+        atlas, result, label_df, alignment = run_pipeline_from_settings_file(self.settings_path)
         scale = small_volume_scale(atlas.volume.shape)
 
         gv, fv, dv = interpolate_volume(
@@ -35,10 +35,10 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             non_linear=non_linear,
             k=k,
         )
-        return atlas, result, label_df, per_section_df, gv, fv, dv
+        return atlas, result, label_df, gv, fv, dv
 
     def test_damage_volume_creation(self):
-        atlas, result, label_df, per_section_df, gv, fv, dv = self._run_interpolation(
+        atlas, result, label_df, gv, fv, dv = self._run_interpolation(
             do_interpolation=False, non_linear=False
         )
 
@@ -56,13 +56,13 @@ class TestDamageVolumeInterpolation(TimedTestCase):
 
     def test_damage_volume_interpolation(self):
         # Run without interpolation first to get baseline
-        _, _, _, _, gv_no_interp, fv_no_interp, dv_no_interp = self._run_interpolation(
+        _, _, _, gv_no_interp, fv_no_interp, dv_no_interp = self._run_interpolation(
             do_interpolation=False, non_linear=False
         )
         count_no_interp = np.sum(dv_no_interp > 0)
 
         # Run with interpolation
-        _, _, _, _, gv_interp, fv_interp, dv_interp = self._run_interpolation(
+        _, _, _, gv_interp, fv_interp, dv_interp = self._run_interpolation(
             do_interpolation=True, k=5, non_linear=False
         )
         count_interp = np.sum(dv_interp > 0)
@@ -80,17 +80,17 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         import tempfile
         import nibabel as nib
 
-        atlas, result, label_df, per_section_df, gv, fv, dv = self._run_interpolation(
+        atlas, result, label_df, gv, fv, dv = self._run_interpolation(
             do_interpolation=True, k=5, non_linear=False
         )
 
         demo_output_dir = os.path.join(
             self.tests_dir, "..", "demo_data", "outputs", "interpolated_damage"
         )
-        save_analysis(demo_output_dir, result, atlas, label_df, per_section_df)
+        save_analysis(demo_output_dir, result, atlas, label_df)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            save_analysis(tmpdir, result, atlas, label_df, per_section_df)
+            save_analysis(tmpdir, result, atlas, label_df)
 
             damage_nifti_path = os.path.join(tmpdir, "interpolated_volume", "damage_volume.nii.gz")
             # Note: save_analysis does not save volume niftis; the damage volume

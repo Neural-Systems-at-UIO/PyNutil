@@ -56,8 +56,8 @@ class TestMeshviewRegression(TimedTestCase):
 
         with open(test_case_path) as f:
             settings = json.load(f)
-        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(settings)
-        save_analysis(cls._tmpdir, result, atlas, label_df, per_section_df)
+        atlas, result, label_df, alignment = run_pipeline_from_settings(settings)
+        save_analysis(cls._tmpdir, result, atlas, label_df)
 
     @classmethod
     def tearDownClass(cls):

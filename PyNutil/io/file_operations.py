@@ -18,14 +18,10 @@ class SaveContext:
     points: Optional[np.ndarray] = None
     objects: Optional[np.ndarray] = None
     label_df: Optional[pd.DataFrame] = None
-    per_section_df: Optional[list] = None
     point_labels: Optional[np.ndarray] = None
     object_labels: Optional[np.ndarray] = None
     points_hemi_labels: Optional[np.ndarray] = None
     objects_hemi_labels: Optional[np.ndarray] = None
-    points_len: Optional[list] = None
-    objects_len: Optional[list] = None
-    section_filenames: Optional[list] = None
     atlas_labels: Optional[pd.DataFrame] = None
     point_values: Optional[np.ndarray] = None
 
@@ -40,58 +36,10 @@ class SaveContext:
     colormap: str = "gray"
 
 
-@dataclass
-class _SectionWindow:
-    """Per-section slicing window for report and meshview outputs."""
-
-    stem: str
-    points_start: int
-    points_end: int
-    centroids_start: int
-    centroids_end: int
-    df: pd.DataFrame
-
-
-def _slice_or_none(arr, start: int, end: int):
-    """Slice *arr* if present, otherwise return None."""
-    return arr[start:end] if arr is not None else None
-
-
-def _iter_section_windows(ctx: SaveContext):
-    """Yield section-aligned slicing windows for per-section outputs."""
-    if ctx.section_filenames is None or ctx.per_section_df is None:
-        return
-
-    points_len = ctx.points_len or [0] * len(ctx.section_filenames)
-    objects_len = ctx.objects_len or [0] * len(ctx.section_filenames)
-
-    points_offset = 0
-    objects_offset = 0
-    for pl, ol, fn, df in zip(
-        points_len,
-        objects_len,
-        ctx.section_filenames,
-        ctx.per_section_df,
-    ):
-        stem = os.path.basename(fn).split(".")[0]
-        yield _SectionWindow(
-            stem=stem,
-            points_start=points_offset,
-            points_end=points_offset + pl,
-            centroids_start=objects_offset,
-            centroids_end=objects_offset + ol,
-            df=df,
-        )
-        points_offset += pl
-        objects_offset += ol
-
-
 def _ensure_analysis_output_dirs(output_folder: str) -> None:
     os.makedirs(output_folder, exist_ok=True)
     for subdir in (
         "whole_series_report",
-        "per_section_meshview",
-        "per_section_reports",
         "whole_series_meshview",
     ):
         os.makedirs(f"{output_folder}/{subdir}", exist_ok=True)
@@ -125,8 +73,6 @@ def save_analysis_output(ctx: SaveContext, output_folder: str):
             "If you want to save the quantification, please run quantify_coordinates."
         )
 
-    if ctx.per_section_df is not None and ctx.section_filenames is not None:
-        _save_per_section_reports(ctx, output_folder)
     if ctx.points is not None:
         _save_whole_series_meshview(ctx, output_folder)
 
@@ -140,49 +86,6 @@ def _save_settings_json(ctx: SaveContext, output_folder: str) -> None:
     settings_file_path = os.path.join(output_folder, "pynutil_settings.json")
     with open(settings_file_path, "w") as f:
         json.dump(ctx.settings_dict, f, indent=4)
-
-
-def _save_per_section_reports(ctx: SaveContext, output_folder: str):
-    """Write per-section CSVs and MeshView JSONs."""
-    for window in _iter_section_windows(ctx):
-        window.df.to_csv(
-            f"{output_folder}/per_section_reports/{ctx.prepend}{window.stem}.csv",
-            sep=";",
-            na_rep="",
-            index=False,
-        )
-        if ctx.points is not None or ctx.objects is not None:
-            section_values = (
-                _slice_or_none(ctx.point_values, window.points_start, window.points_end)
-                if ctx.point_values is not None
-                else None
-            )
-            write_hemi_points_to_meshview(
-                _slice_or_none(ctx.points, window.points_start, window.points_end),
-                _slice_or_none(ctx.point_labels, window.points_start, window.points_end),
-                _slice_or_none(ctx.points_hemi_labels, window.points_start, window.points_end),
-                f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_pixels.json",
-                ctx.atlas_labels,
-                section_values,
-                colormap=ctx.colormap,
-            )
-            if ctx.objects is not None:
-                write_hemi_points_to_meshview(
-                    _slice_or_none(ctx.objects, window.centroids_start, window.centroids_end),
-                    _slice_or_none(
-                        ctx.object_labels,
-                        window.centroids_start,
-                        window.centroids_end,
-                    ),
-                    _slice_or_none(
-                        ctx.objects_hemi_labels,
-                        window.centroids_start,
-                        window.centroids_end,
-                    ),
-                    f"{output_folder}/per_section_meshview/{ctx.prepend}{window.stem}_centroids.json",
-                    ctx.atlas_labels,
-                    colormap=ctx.colormap,
-                )
 
 
 def _save_whole_series_meshview(ctx: SaveContext, output_folder: str):
@@ -212,7 +115,6 @@ def save_analysis(
     result,
     atlas_labels,
     label_df=None,
-    per_section_df=None,
     *,
     colormap="gray",
     settings_dict=None,
@@ -224,7 +126,6 @@ def save_analysis(
         result: ExtractionResult from coordinate extraction.
         atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels`` used).
         label_df: Whole-series quantification DataFrame.
-        per_section_df: List of per-section DataFrames.
         colormap: Colormap for MeshView intensity output.
         settings_dict: Optional dict written to pynutil_settings.json.
     """
@@ -238,7 +139,6 @@ def save_analysis(
             else None
         ),
         label_df=label_df,
-        per_section_df=per_section_df,
         point_labels=result.points.filtered_labels() if result else None,
         object_labels=(
             result.objects.filtered_labels()
@@ -251,13 +151,6 @@ def save_analysis(
             if (result and result.objects is not None)
             else None
         ),
-        points_len=result.points.filtered_section_lengths() if result else None,
-        objects_len=(
-            result.objects.filtered_section_lengths()
-            if (result and result.objects is not None)
-            else None
-        ),
-        section_filenames=result.section_filenames if result else None,
         atlas_labels=atlas_labels,
         point_values=result.points.filtered_point_values() if result else None,
         is_intensity=result.region_intensities is not None if result else False,

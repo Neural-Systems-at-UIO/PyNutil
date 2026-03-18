@@ -29,7 +29,7 @@ coords = pnt.image_to_coords(
 )
 
 # Quantify by atlas region
-label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+label_df = pnt.quantify_coords(coords, atlas)
 
 # Save results
 pnt.save_analysis(
@@ -37,5 +37,4 @@ pnt.save_analysis(
     coords,
     atlas,
     label_df=label_df,
-    per_section_df=per_section_df,
 )

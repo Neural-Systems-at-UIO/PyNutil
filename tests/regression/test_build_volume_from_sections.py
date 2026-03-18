@@ -41,7 +41,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
     def _run_pipeline_and_interpolate(self):
         with open(self.settings_path) as f:
             settings = json.load(f)
-        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(settings)
+        atlas, result, label_df, alignment = run_pipeline_from_settings(settings)
 
         # Downscale to keep runtime/memory small and stable.
         scale = small_volume_scale(atlas.volume.shape)
@@ -60,10 +60,10 @@ class TestBuildVolumeFromSections(TimedTestCase):
             use_atlas_mask=True,
             non_linear=True,
         )
-        return atlas, result, label_df, per_section_df, gv, fv, dv, settings
+        return atlas, result, label_df, gv, fv, dv, settings
 
     def test_interpolate_volume_k5_matches_expected(self):
-        atlas, result, label_df, per_section_df, gv, fv, dv, settings = self._run_pipeline_and_interpolate()
+        atlas, result, label_df, gv, fv, dv, settings = self._run_pipeline_and_interpolate()
 
         # Volumes are saved as uint8 in NIfTI; we scale them here to match
         # the expected disk fixtures without having to read back what we just wrote.
@@ -78,7 +78,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
         with tempfile.TemporaryDirectory(prefix="pynutil_build_from_sections_k5_") as tmpdir:
             output_dir = os.path.join(tmpdir, self.save_root)
             # Save analysis output for human inspection.
-            save_analysis(output_dir, result, atlas, label_df, per_section_df)
+            save_analysis(output_dir, result, atlas, label_df)
 
             if not (os.path.exists(exp_interp_path) and os.path.exists(exp_freq_path)):
                 # Copy outputs for human inspection (never used for assertions).

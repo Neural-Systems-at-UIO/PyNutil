@@ -42,14 +42,14 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             atlas,
             pixel_id=settings.get("colour", [0, 0, 0]),
         )
-        label_df, per_section_df = quantify_coords(result, atlas)
-        return settings, atlas, result, label_df, per_section_df
+        label_df = quantify_coords(result, atlas)
+        return settings, atlas, result, label_df
 
     def _scale_for_small_volume(self, atlas_shape):
         return small_volume_scale(atlas_shape)
 
     def test_value_mode_mean_matches_pixel_count_over_frequency(self):
-        settings, atlas, result, label_df, per_section_df = self._run_pipeline()
+        settings, atlas, result, label_df = self._run_pipeline()
 
         scale = self._scale_for_small_volume(atlas.volume.shape)
 
@@ -83,13 +83,13 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             # Save pixel_count
             save_analysis(
                 os.path.join(out_root, "pixel_count"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             # Save mean
             save_analysis(
                 os.path.join(out_root, "mean"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             copy_tree_to_demo(
@@ -113,7 +113,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         self.assertTrue(np.all(gv_pc <= fv.astype(np.float32)))
 
     def test_value_mode_object_count_basic_invariants(self):
-        settings, atlas, result, label_df, per_section_df = self._run_pipeline()
+        settings, atlas, result, label_df = self._run_pipeline()
 
         scale = self._scale_for_small_volume(atlas.volume.shape)
 
@@ -146,13 +146,13 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             # Save pixel_count
             save_analysis(
                 os.path.join(out_root, "pixel_count"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             # Save object_count
             save_analysis(
                 os.path.join(out_root, "object_count"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             copy_tree_to_demo(
@@ -175,6 +175,37 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         self.assertTrue(np.all(gv_obj <= gv_pc + 1e-6))
         # Each object contributes at least 1 pixel overall.
         self.assertTrue(np.all(gv_obj <= fv.astype(np.float32) + 1e-6))
+
+    def test_colour_auto_matches_adapter_auto_detection(self):
+        settings = self._load_settings()
+        atlas = load_atlas_data(settings["atlas_name"])
+        scale = self._scale_for_small_volume(atlas.volume.shape)
+
+        common_kwargs = dict(
+            segmentation_folder=settings["segmentation_folder"],
+            alignment_json=settings["alignment_json"],
+            atlas=atlas,
+            scale=scale,
+            missing_fill=0.0,
+            do_interpolation=False,
+            non_linear=False,
+            segmentation_format="binary",
+            segmentation_mode=True,
+            value_mode="pixel_count",
+        )
+
+        gv_auto, fv_auto, dv_auto = interpolate_volume(
+            **common_kwargs,
+            colour="auto",
+        )
+        gv_none, fv_none, dv_none = interpolate_volume(
+            **common_kwargs,
+            colour=None,
+        )
+
+        self.assertTrue(np.array_equal(gv_auto, gv_none))
+        self.assertTrue(np.array_equal(fv_auto, fv_none))
+        self.assertTrue(np.array_equal(dv_auto, dv_none))
 
 
 if __name__ == "__main__":
