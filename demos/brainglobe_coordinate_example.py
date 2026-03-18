@@ -15,12 +15,11 @@ coords = pnt.xy_to_coords(
     alignment,
     atlas,
 )
-label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+label_df = pnt.quantify_coords(coords, atlas)
 
 pnt.save_analysis(
     "demo_data/outputs/brainglobe_coordinate_example",
     coords,
     atlas,
     label_df=label_df,
-    per_section_df=per_section_df,
 )

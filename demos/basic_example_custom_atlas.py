@@ -36,11 +36,10 @@ coords = pnt.seg_to_coords(
 )
 
 # Quantify and save
-label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+label_df = pnt.quantify_coords(coords, atlas)
 pnt.save_analysis(
     os.path.join(repo_root, "test_result/2custom_atlas_hemi_test_24_03_2025"),
     coords,
     atlas,
     label_df=label_df,
-    per_section_df=per_section_df,
 )

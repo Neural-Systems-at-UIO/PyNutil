@@ -32,7 +32,7 @@ class TestQuantification(TimedTestCase):
         save_suffix: str = "",
     ):
         test_case_filename, test_case = self.load_test_case(test_case_filename)
-        atlas, result, label_df, per_section_df, alignment = run_pipeline_from_settings(test_case)
+        atlas, result, label_df, alignment = run_pipeline_from_settings(test_case)
         expected_output_path = os.path.join(
             self.test_case_dir,
             test_case["expected_output_folder"],
@@ -103,7 +103,7 @@ class TestQuantification(TimedTestCase):
             self.test_case_dir, "..", "demo_data", "outputs", save_root
         )
         # visualisations are optional and can be slow; keep this non-failing and purely informative
-        save_analysis(save_path, result, atlas, label_df, per_section_df)
+        save_analysis(save_path, result, atlas, label_df)
 
 
 test_case_files = [

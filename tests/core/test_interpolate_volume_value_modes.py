@@ -42,14 +42,14 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             atlas,
             pixel_id=settings.get("colour", [0, 0, 0]),
         )
-        label_df, per_section_df = quantify_coords(result, atlas)
-        return settings, atlas, result, label_df, per_section_df
+        label_df = quantify_coords(result, atlas)
+        return settings, atlas, result, label_df
 
     def _scale_for_small_volume(self, atlas_shape):
         return small_volume_scale(atlas_shape)
 
     def test_value_mode_mean_matches_pixel_count_over_frequency(self):
-        settings, atlas, result, label_df, per_section_df = self._run_pipeline()
+        settings, atlas, result, label_df = self._run_pipeline()
 
         scale = self._scale_for_small_volume(atlas.volume.shape)
 
@@ -83,13 +83,13 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             # Save pixel_count
             save_analysis(
                 os.path.join(out_root, "pixel_count"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             # Save mean
             save_analysis(
                 os.path.join(out_root, "mean"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             copy_tree_to_demo(
@@ -113,7 +113,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         self.assertTrue(np.all(gv_pc <= fv.astype(np.float32)))
 
     def test_value_mode_object_count_basic_invariants(self):
-        settings, atlas, result, label_df, per_section_df = self._run_pipeline()
+        settings, atlas, result, label_df = self._run_pipeline()
 
         scale = self._scale_for_small_volume(atlas.volume.shape)
 
@@ -146,13 +146,13 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             # Save pixel_count
             save_analysis(
                 os.path.join(out_root, "pixel_count"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             # Save object_count
             save_analysis(
                 os.path.join(out_root, "object_count"),
-                result, atlas, label_df, per_section_df,
+                result, atlas, label_df,
             )
 
             copy_tree_to_demo(

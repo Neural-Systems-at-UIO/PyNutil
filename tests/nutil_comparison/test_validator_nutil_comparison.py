@@ -212,7 +212,7 @@ class TestValidatorNutilComparison(TimedTestCase):
                 use_flat=True,
                 flat_label_path=scenario["label_txt"],
             )
-            label_df, per_section_df = quantify_coords(result, atlas)
+            label_df = quantify_coords(result, atlas)
         finally:
             shutil.rmtree(temp_root, ignore_errors=True)
             shutil.rmtree(atlas_temp, ignore_errors=True)
@@ -225,28 +225,6 @@ class TestValidatorNutilComparison(TimedTestCase):
             label_df,
             where=f"validator {scenario['case']} whole-series",
         )
-
-        section_map = {}
-        for seg_path, section_df in zip(result.section_filenames, per_section_df):
-            match = re.search(r"_s(\d+)", os.path.basename(seg_path))
-            if match:
-                section_map[match.group(1).zfill(3)] = section_df
-
-        self.assertTrue(section_map, f"No per-section reports were produced for {scenario['case']}")
-
-        for section_id, section_df in sorted(section_map.items()):
-            with self.subTest(case=scenario["case"], section=section_id):
-                expected_ref = self._load_nutil_ref_report(
-                    os.path.join(
-                        expected_root,
-                        scenario["expected_section_pattern"].format(section_id=section_id),
-                    )
-                )
-                self._assert_load_and_region_area(
-                    expected_ref,
-                    section_df,
-                    where=f"validator {scenario['case']} section s{section_id}",
-                )
 
     def test_validator_q_series_load_and_region_area_match_nutil(self):
         if not os.path.isdir(self.validator_root):

@@ -112,13 +112,12 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         atlas = load_atlas_data("allen_mouse_25um")
         alignment = read_alignment(bg_json)
         result = xy_to_coords(coord_file, alignment, atlas)
-        label_df, per_section_df = quantify_coords(result, atlas)
+        label_df = quantify_coords(result, atlas)
 
         self.assertFalse(label_df.empty)
-        self.assertGreater(len(per_section_df), 0)
 
         with tempfile.TemporaryDirectory() as tmp:
-            save_analysis(tmp, result, atlas, label_df, per_section_df)
+            save_analysis(tmp, result, atlas, label_df)
             self.assertTrue(
                 os.path.isfile(os.path.join(tmp, "whole_series_report", "counts.csv"))
                 )

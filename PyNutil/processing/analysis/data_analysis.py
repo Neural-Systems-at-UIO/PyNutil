@@ -149,7 +149,7 @@ def quantify_labeled_points(
         apply_damage_mask: Whether damage mask was applied.
 
     Returns:
-        (label_df, per_section_df) — whole-series and per-section DataFrames.
+        label_df — whole-series DataFrame.
     """
     per_section_df = _quantify_per_section(
         points,
@@ -168,8 +168,7 @@ def quantify_labeled_points(
     if not apply_damage_mask:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
-        per_section_df = [s[cols] for s in per_section_df]
-    return label_df, per_section_df
+    return label_df
 
 
 def _quantify_per_section(
@@ -240,16 +239,16 @@ def quantify_intensity(region_intensities_list, atlas_labels):
         atlas_labels: Atlas labels DataFrame.
 
     Returns:
-        (label_df, per_section_df) — whole-series and per-section DataFrames.
+        label_df — whole-series DataFrame.
     """
     region_intensities_list = [df for df in region_intensities_list if df is not None]
     if not region_intensities_list:
-        return pd.DataFrame(), []
+        return pd.DataFrame()
 
     label_df = _combine_reports(
         region_intensities_list, atlas_labels, derive_fn=apply_mean_intensities
     )
-    return label_df, region_intensities_list
+    return label_df
 
 
 # ── Shared combine logic ────────────────────────────────────────────────
@@ -318,7 +317,7 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         apply_damage_mask: Include damage statistics in output.
 
     Returns:
-        ``(label_df, per_section_df)`` — whole-series and per-section DataFrames.
+        label_df — whole-series DataFrame.
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 

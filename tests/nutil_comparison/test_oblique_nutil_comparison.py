@@ -72,8 +72,8 @@ class TestObliqueNutilComparison(TimedTestCase):
             use_flat=True,
             flat_label_path=self.flat_label_path,
         )
-        label_df, per_section_df = quantify_coords(result, atlas)
-        return result, label_df, per_section_df
+        label_df = quantify_coords(result, atlas)
+        return result, label_df
 
     @staticmethod
     def _load_nutil_ref_report(csv_path):
@@ -143,7 +143,7 @@ class TestObliqueNutilComparison(TimedTestCase):
         )
 
     def test_allen_oblique_load_and_region_area_match_nutil(self):
-        result, label_df, per_section_df = self._run_pynutil_oblique()
+        result, label_df = self._run_pynutil_oblique()
 
         expected_load_path = os.path.join(
             self.expected_root, "test17_RefAtlasRegions_load.csv"
@@ -154,27 +154,6 @@ class TestObliqueNutilComparison(TimedTestCase):
             label_df,
             where="whole-series load report",
         )
-
-        section_map = {}
-        for seg_path, section_df in zip(result.section_filenames, per_section_df):
-            match = re.search(r"_s(\d{3})", os.path.basename(seg_path))
-            if match:
-                section_map[match.group(1)] = section_df
-
-        self.assertTrue(section_map, "No per-section reports were produced")
-
-        for section_id, section_df in sorted(section_map.items()):
-            with self.subTest(section=section_id):
-                expected_path = os.path.join(
-                    self.expected_root,
-                    f"test17_RefAtlasRegions__s{section_id}.csv",
-                )
-                expected_ref = self._load_nutil_ref_report(expected_path)
-                self._assert_load_and_region_area(
-                    expected_ref,
-                    section_df,
-                    where=f"section s{section_id}",
-                )
 
 if __name__ == "__main__":
     unittest.main()

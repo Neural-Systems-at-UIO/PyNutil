@@ -33,7 +33,7 @@ def load_atlas_from_settings(settings: dict):
 def run_pipeline_from_settings(settings: dict):
     """Run the full extraction + quantification pipeline from a settings dict.
 
-    Returns (atlas, result, label_df, per_section_df, alignment).
+    Returns (atlas, result, label_df, alignment).
     """
     atlas = load_atlas_from_settings(settings)
     alignment = read_alignment(settings["alignment_json"])
@@ -62,8 +62,8 @@ def run_pipeline_from_settings(settings: dict):
             segmentation_format=settings.get("segmentation_format", "binary"),
         )
 
-    label_df, per_section_df = quantify_coords(result, atlas)
-    return atlas, result, label_df, per_section_df, alignment
+    label_df = quantify_coords(result, atlas)
+    return atlas, result, label_df, alignment
 
 
 def run_pipeline_from_settings_file(settings_path: str):

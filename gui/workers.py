@@ -87,7 +87,7 @@ class AnalysisWorker(QThread):
                 print("Analysis cancelled")
                 return
 
-            label_df, per_section_df = quantify_coords(
+            label_df = quantify_coords(
                 result, atlas.labels, apply_damage_mask=apply_damage_mask
             )
 
@@ -125,7 +125,6 @@ class AnalysisWorker(QThread):
                 result,
                 atlas.labels,
                 label_df=label_df,
-                per_section_df=per_section_df,
             )
             if volumes:
                 save_volume_niftis(

@@ -23,12 +23,11 @@ coords = pnt.seg_to_coords(
     pixel_id=[0, 0, 0],
     object_cutoff=0,
 )
-label_df, per_section_df = pnt.quantify_coords(coords, atlas)
+label_df = pnt.quantify_coords(coords, atlas)
 
 pnt.save_analysis(
     os.path.join(repo_root, "demo_data/PyNutil_nonlinear_noflat"),
     coords,
     atlas,
     label_df=label_df,
-    per_section_df=per_section_df,
 )
