@@ -178,7 +178,13 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
         reg_dir = os.path.dirname(os.path.abspath(path))
         tiff_h, tiff_w = self._find_tiff_dims(reg_dir)
 
-        section_number = data.get("atlas_2d_slice_index", 0)
+        moving_image = data.get("moving_image", "")
+        section_number = 0
+        if moving_image:
+            try:
+                section_number = int(number_sections([moving_image])[0])
+            except Exception:
+                pass
 
         slices = [
             SliceInfo(
