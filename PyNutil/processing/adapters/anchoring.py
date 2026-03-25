@@ -183,7 +183,7 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
         if moving_image:
             try:
                 section_number = int(number_sections([moving_image])[0])
-            except Exception:
+            except ValueError:
                 pass
 
         slices = [
