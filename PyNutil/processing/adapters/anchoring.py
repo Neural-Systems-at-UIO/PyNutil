@@ -50,7 +50,7 @@ class QuintAnchoringLoader(AnchoringLoader):
             if not nr and filename:
                 try:
                     nr = int(number_sections([filename])[0])
-                except Exception:
+                except ValueError:
                     nr = 0
 
             slices.append(
