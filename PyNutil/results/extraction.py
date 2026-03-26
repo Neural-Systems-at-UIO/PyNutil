@@ -46,20 +46,30 @@ class PointSetResult:
             )
         return arr[mask]
 
-    def _to_internal(self, pts: Optional[np.ndarray]) -> Optional[np.ndarray]:
-        """Reorient points back to internal orientation if needed."""
+    def points_in_internal_orientation(
+        self, pts: Optional[np.ndarray]
+    ) -> Optional[np.ndarray]:
+        """Reorient *pts* back to internal orientation if needed."""
         if pts is None or len(pts) == 0 or self.orientation == INTERNAL_ORIENTATION:
             return pts
         if self.atlas_shape is None:
             raise ValueError(
                 "atlas_shape is required to reorient points back to internal orientation"
             )
-        return reorient_points(pts, self.atlas_shape, INTERNAL_ORIENTATION,
-                               source_orientation=self.orientation)
+        return reorient_points(
+            pts,
+            self.atlas_shape,
+            INTERNAL_ORIENTATION,
+            source_orientation=self.orientation,
+        )
 
     def internal_points(self) -> Optional[np.ndarray]:
         """Return points reoriented to internal (lpi) orientation."""
-        return self._to_internal(self.points)
+        return self.points_in_internal_orientation(self.points)
+
+    def filtered_internal_points(self) -> Optional[np.ndarray]:
+        """Return filtered points reoriented to internal (lpi) orientation."""
+        return self.points_in_internal_orientation(self.filtered_points())
 
     def filtered_points(self) -> Optional[np.ndarray]:
         """Return points filtered by undamaged mask when available."""

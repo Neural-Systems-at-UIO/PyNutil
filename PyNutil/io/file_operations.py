@@ -10,13 +10,6 @@ from .meshview_writer import write_hemi_points_to_meshview
 from .atlas_loader import resolve_atlas_labels
 
 
-def _filtered_points_in_internal_orientation(point_set):
-    """Return filtered points in internal orientation for downstream writers."""
-    if point_set is None:
-        return None
-    return point_set._to_internal(point_set.filtered_points())
-
-
 @dataclass
 class SaveContext:
     """Groups the parameters needed by :func:`save_analysis_output`."""
@@ -139,9 +132,9 @@ def save_analysis(
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
     ctx = SaveContext(
-        points=_filtered_points_in_internal_orientation(result.points) if result else None,
+        points=result.points.filtered_internal_points() if result else None,
         objects=(
-            _filtered_points_in_internal_orientation(result.objects)
+            result.objects.filtered_internal_points()
             if (result and result.objects is not None)
             else None
         ),
