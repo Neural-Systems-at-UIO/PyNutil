@@ -243,6 +243,28 @@ def seg_to_coords(
     ExtractionResult
         Atlas-space points, centroid-level objects, section metadata, and
         region-area summaries for the processed series.
+        The returned object exposes ``result.points`` for per-pixel
+        atlas-space coordinates and ``result.objects`` for centroid-level
+        object coordinates. Both point sets include labels, hemisphere labels,
+        per-section lengths, and undamaged masks when available.
+
+    Examples
+    --------
+    Process binary segmentation images with a BrainGlobe atlas:
+
+    >>> from brainglobe_atlasapi import BrainGlobeAtlas
+    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> result = seg_to_coords(
+    ...     "path/to/segmentations/",
+    ...     registration,
+    ...     atlas,
+    ...     pixel_id=[0, 0, 0],
+    ... )
+    >>> result.points.points.shape
+    (N, 3)
+    >>> result.objects.labels.shape
+    (M,)
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -359,6 +381,27 @@ def image_to_coords(
     ExtractionResult
         Atlas-space point data with optional per-point intensity values and
         aggregated per-region intensity summaries.
+        The atlas-space coordinates are stored in ``result.points.points`` and
+        the sampled intensities in ``result.points.point_values``.
+        Per-region intensity summaries, when present, are stored in
+        ``result.region_intensities``.
+
+    Examples
+    --------
+    Quantify image intensity instead of segmented objects:
+
+    >>> from brainglobe_atlasapi import BrainGlobeAtlas
+    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> result = image_to_coords(
+    ...     "path/to/images/",
+    ...     registration,
+    ...     atlas,
+    ... )
+    >>> result.points.points.shape
+    (N, 3)
+    >>> result.region_intensities.columns.tolist()[:3]
+    ['idx', 'name', 'r']
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -463,6 +506,26 @@ def xy_to_coords(
     ExtractionResult
         Atlas-space points, object placeholders, and region-area summaries
         derived from the input coordinates.
+        In coordinate mode, ``result.points`` contains the transformed
+        atlas-space coordinates and labels, while ``result.objects`` mirrors
+        the same coordinates for downstream quantification and export code.
+
+    Examples
+    --------
+    Transform pre-extracted image-space coordinates from CSV:
+
+    >>> from brainglobe_atlasapi import BrainGlobeAtlas
+    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> result = xy_to_coords(
+    ...     "path/to/coordinates.csv",
+    ...     registration,
+    ...     atlas,
+    ... )
+    >>> result.points.points.shape
+    (N, 3)
+    >>> result.section_filenames
+    []
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)

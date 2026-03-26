@@ -93,6 +93,25 @@ def save_volume_niftis(
     -----
     Each written volume is scaled to 8-bit before export. Output files are
     written into ``<output_folder>/interpolated_volume``.
+
+    Examples
+    --------
+    Save the volumes returned by :func:`PyNutil.interpolate_volume`:
+
+    >>> gv, fv, dv = interpolate_volume(
+    ...     segmentation_folder="path/to/segmentations/",
+    ...     alignment_json="path/to/alignment.json",
+    ...     colour=[0, 0, 0],
+    ...     atlas=atlas,
+    ... )
+    >>> save_volume_niftis(
+    ...     output_folder="path/to/output",
+    ...     interpolated_volume=gv,
+    ...     frequency_volume=fv,
+    ...     damage_volume=dv,
+    ...     atlas_volume=atlas.volume,
+    ...     voxel_size_um=atlas.voxel_size_um,
+    ... )
     """
     if interpolated_volume is None and frequency_volume is None:
         return

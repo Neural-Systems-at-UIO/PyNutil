@@ -105,6 +105,16 @@ def load_custom_atlas(atlas_path, hemi_path, label_path):
     AtlasData
         Atlas volume, optional hemisphere map, and label table.
 
+    Examples
+    --------
+    Load a custom atlas from local files:
+
+    >>> atlas = load_custom_atlas(
+    ...     atlas_path="path/to/annotation.nrrd",
+    ...     hemi_path=None,
+    ...     label_path="path/to/labels.csv",
+    ... )
+
     Notes
     -----
     The loaded atlas is cached by file path, so repeated calls with the same

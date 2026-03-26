@@ -95,11 +95,9 @@ def read_alignment(
 
     >>> registration = read_alignment("alignment.json")
 
-    Skip non-linear deformation and keep only linear anchoring:
+    Load BrainGlobe registration output in the same way:
 
-    >>> registration = read_alignment(
-    ...     "alignment.json", apply_deformation=False
-    ... )
+    >>> registration = read_alignment("brainglobe-registration.json")
     """
     # 1. Load anchoring
     if loader_name:

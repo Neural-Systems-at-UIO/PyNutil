@@ -145,6 +145,17 @@ def save_analysis(
     -----
     Depending on the supplied data, this function writes whole-series CSV
     reports, MeshView JSON point clouds, and a reference settings file.
+    For quantified segmentation runs, the main table is written to
+    ``whole_series_report/counts.csv``. For intensity runs, the main table is
+    written to ``whole_series_report/intensity.csv``.
+
+    Examples
+    --------
+    Save a quantified analysis run:
+
+    >>> label_df = quantify_coords(result, atlas)
+    >>> save_analysis("path/to/output", result, atlas, label_df=label_df)
+    >>> # Outputs include whole_series_report/ and whole_series_meshview/
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 

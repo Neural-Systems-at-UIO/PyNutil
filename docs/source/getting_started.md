@@ -60,6 +60,25 @@ pnt.save_analysis("path/to/output", coords, atlas, label_df=label_df)
 For custom atlases that are not provided by BrainGlobe, use
 `pnt.load_custom_atlas()` instead of `BrainGlobeAtlas(...)`.
 
+The quantification table returned by `pnt.quantify_coords(...)` is a pandas
+DataFrame. A typical subset of columns for a segmentation-based workflow looks
+like this:
+
+| idx | name | region_area | object_count | area_fraction |
+| --- | --- | ---: | ---: | ---: |
+| 0 | Clear Label | 15234 | 0 | 0.0000 |
+| 8 | Basic cell groups and regions | 8421 | 17 | 0.0315 |
+| 567 | Cerebrum | 12984 | 42 | 0.0648 |
+| 688 | Cerebral cortex | 10327 | 31 | 0.0521 |
+
+The exact columns depend on the workflow:
+
+- segmentation workflows commonly include `region_area`, `object_count`,
+  `object_pixels`, `object_area`, and `area_fraction`
+- intensity workflows commonly include `sum_intensity` and `mean_intensity`
+- hemisphere-aware atlases add left/right hemisphere columns
+- damage-aware inputs add damaged/undamaged columns
+
 ## BrainGlobe and custom atlases
 
 With a BrainGlobe atlas:
@@ -323,4 +342,4 @@ metrics such as:
 
 - QUINT workflow: <https://quint-workflow.readthedocs.io/en/latest/>
 - Feature requests and bug reports: <https://github.com/Neural-Systems-at-UIO/PyNutil/issues>
-- Contact: `support@ebrains.eu`
+- Contact: `harry.carey95@gmail.com`
