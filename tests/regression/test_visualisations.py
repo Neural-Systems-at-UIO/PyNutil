@@ -8,6 +8,7 @@ import numpy as np
 from brainglobe_atlasapi import BrainGlobeAtlas
 
 from PyNutil import read_alignment, seg_to_coords
+from PyNutil.io.atlas_loader import resolve_atlas
 from timing_utils import TimedTestCase
 
 
@@ -46,7 +47,7 @@ class TestVisualisations(TimedTestCase):
             with open(self.settings_path) as f:
                 settings = json.load(f)
 
-            atlas = BrainGlobeAtlas(settings["atlas_name"])
+            atlas = resolve_atlas(BrainGlobeAtlas(settings["atlas_name"]))
             alignment = read_alignment(settings["alignment_json"])
             result = seg_to_coords(
                 settings["segmentation_folder"],
@@ -67,7 +68,7 @@ class TestVisualisations(TimedTestCase):
             create_section_visualisations(
                 settings["segmentation_folder"],
                 reg_data.slices,
-                atlas.annotation,
+                atlas.volume,
                 atlas.labels,
                 output_root,
                 adapter=adapter,
