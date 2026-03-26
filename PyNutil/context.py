@@ -34,8 +34,6 @@ class PipelineContext:
         Whether to apply non-linear deformation.
     object_cutoff : int
         Minimum connected-component area (binary pipeline).
-    use_flat : bool
-        If True, load flat-file atlas maps instead of slicing the volume.
     pixel_id : object
         Pixel colour to match, or ``"auto"`` for auto-detection.
     apply_damage_mask : bool
@@ -54,10 +52,8 @@ class PipelineContext:
     segmentation_adapter: SegmentationAdapter
     non_linear: bool
     object_cutoff: int
-    use_flat: bool
     pixel_id: object
     apply_damage_mask: bool
-    flat_label_path: Optional[str] = None
     intensity_channel: Optional[str] = None
     min_intensity: Optional[int] = None
     max_intensity: Optional[int] = None
@@ -72,10 +68,8 @@ class PipelineContext:
         hemi_map,
         non_linear: bool,
         object_cutoff: int,
-        use_flat: bool,
         pixel_id,
         apply_damage_mask: bool,
-        flat_label_path=None,
         intensity_channel=None,
         min_intensity=None,
         max_intensity=None,
@@ -90,10 +84,8 @@ class PipelineContext:
             segmentation_adapter=SegmentationAdapterRegistry.get(segmentation_format),
             non_linear=non_linear,
             object_cutoff=object_cutoff,
-            use_flat=use_flat,
             pixel_id=pixel_id,
             apply_damage_mask=apply_damage_mask,
-            flat_label_path=flat_label_path,
             intensity_channel=intensity_channel,
             min_intensity=min_intensity,
             max_intensity=max_intensity,
@@ -112,11 +104,8 @@ class SectionContext:
         Registration data for this section (anchoring, deformation, damage …).
     segmentation_path : str
         Path to the segmentation / image file on disk.
-    flat_file_path : str or None
-        Path to the corresponding flat-file atlas, if any.
     """
 
     section_number: int
     slice_info: SliceInfo
     segmentation_path: str
-    flat_file_path: Optional[str] = None

@@ -36,22 +36,19 @@ def _prepare_section(
     seg_width,
     seg_height,
     p_ctx,
-    flat_file_atlas=None,
 ):
     """Shared setup for both segmentation and intensity section processors.
 
-    When both *atlas_volume* and *hemi_map* are available (and we are not
-    using flat files), this function extracts both 2D slices in a single
-    coordinate-computation pass and shares the deformation map between
-    them, roughly halving the cost of these operations.
+    When both *atlas_volume* and *hemi_map* are available, this function
+    extracts both 2D slices in a single coordinate-computation pass and
+    shares the deformation map between them, roughly halving the cost of
+    these operations.
 
     Args:
         slice_info: Per-section registration data.
         seg_width: Width of the source segmentation/image.
         seg_height: Height of the source segmentation/image.
         p_ctx: Immutable pipeline-wide state (atlas, adapter, options).
-        flat_file_atlas: Path to the flat-file atlas for this section, or None.
-
     Returns:
         (atlas_map, region_areas, hemi_mask, damage_mask, deformation)
     """
@@ -59,8 +56,6 @@ def _prepare_section(
     atlas_volume = p_ctx.atlas_volume
     hemi_map = p_ctx.hemi_map
     non_linear = p_ctx.non_linear
-    use_flat = p_ctx.use_flat
-    flat_label_path = p_ctx.flat_label_path
 
     deformation = slice_info.deformation if non_linear else None
     damage_mask = slice_info.damage_mask
@@ -71,11 +66,7 @@ def _prepare_section(
     precomputed_atlas_slice = None
     deform_map = None
 
-    can_combine = (
-        not use_flat
-        and atlas_volume is not None
-        and hemi_map is not None
-    )
+    can_combine = atlas_volume is not None and hemi_map is not None
 
     if can_combine:
         # Extract both slices with one coordinate computation.
@@ -104,15 +95,12 @@ def _prepare_section(
         hemi_mask = None
 
     region_areas, atlas_map = get_region_areas(
-        use_flat,
         atlas_labels,
-        flat_file_atlas,
         seg_width,
         seg_height,
         slice_info,
         atlas_volume,
         hemi_mask,
-        flat_label_path,
         deform_map=deform_map,
         precomputed_atlas_slice=precomputed_atlas_slice,
     )
@@ -329,7 +317,6 @@ def segmentation_to_atlas_space(
         seg_width,
         seg_height,
         p_ctx,
-        flat_file_atlas=s_ctx.flat_file_path,
     )
     y_scale = reg_height / seg_height
     x_scale = reg_width / seg_width
@@ -502,7 +489,6 @@ def segmentation_to_atlas_space_intensity(
         image.shape[1],
         image.shape[0],
         p_ctx,
-        flat_file_atlas=s_ctx.flat_file_path,
     )
 
     # Ensure atlas_map and hemi_mask match registration resolution
