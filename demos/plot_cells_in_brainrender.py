@@ -14,14 +14,14 @@ coords = pnt.xy_to_coords(
     alignment,
     atlas)
 
+def to_hex(rgb):
+    """Convert an RGB triplet (0-255) to a hex string."""
+    return '#%02x%02x%02x' % tuple(rgb)
 
 coordinates = coords.objects.points
 coordinates *= 25 #resolution of atlas
-coordinates
-
-
-# Create a brainrender scene using the zebrafish atlas
+colours = [to_hex(atlas.structures[i]['rgb_triplet']) if i != 0 else '#000000' for i in coords.objects.labels]
 scene = Scene(atlas_name="allen_mouse_25um", title="mouse")
-scene.add(Points(coordinates, name="CELLS", colors="steelblue"))
+scene.add(Points(coordinates, name="CELLS", colors=colours))
 # Render!
 scene.render()
