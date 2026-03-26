@@ -282,8 +282,70 @@ After `save_analysis()`, the output folder typically contains:
 - `whole_series_meshview/pixels_meshview.json`
 - `whole_series_meshview/objects_meshview.json` when object-level outputs exist
 
-If you also run `interpolate_volume()`, you can additionally save interpolated
-3D outputs as NIfTI files with `save_volume_niftis()`.
+## Interpolated 3D volumes
+
+PyNutil can also project section-based data into a 3D atlas-space volume with
+`interpolate_volume()`.
+
+This is useful when you want:
+
+- a 3D heatmap of segmented objects or image intensity
+- a volume that can be viewed in downstream NIfTI tools
+- a per-voxel sampling-frequency volume alongside the main signal volume
+
+The function returns three arrays:
+
+- `interpolated_volume`: the main reconstructed value volume
+- `frequency_volume`: how many section-derived samples contributed to each voxel
+- `damage_volume`: a binary volume marking damaged regions
+
+Example:
+
+```python
+from brainglobe_atlasapi import BrainGlobeAtlas
+import PyNutil as pnt
+
+atlas = BrainGlobeAtlas("allen_mouse_25um")
+
+gv, fv, dv = pnt.interpolate_volume(
+    segmentation_folder="path/to/segmentations/",
+    alignment_json="path/to/alignment.json",
+    colour=[0, 0, 0],
+    atlas=atlas,
+    value_mode="pixel_count",
+    segmentation_format="binary",
+    segmentation_mode=True,
+)
+
+pnt.save_volume_niftis(
+    output_folder="path/to/output",
+    interpolated_volume=gv,
+    frequency_volume=fv,
+    damage_volume=dv,
+    atlas_volume=atlas.annotation,
+    voxel_size_um=atlas.voxel_size_um,
+)
+```
+
+Common `value_mode` options:
+
+- `pixel_count`: number of segmented pixels projected into each voxel
+- `object_count`: number of segmented objects projected into each voxel
+- `mean`: mean sampled intensity, useful for intensity-image workflows
+
+If you are interpolating from source images instead of segmentation masks, set
+`segmentation_mode=False` and point `segmentation_folder` to the image folder.
+You can also use `intensity_channel`, `min_intensity`, and `max_intensity` to
+control how intensity values are sampled.
+
+`save_volume_niftis()` writes the generated volumes into:
+
+- `interpolated_volume/interpolated_volume.nii.gz`
+- `interpolated_volume/frequency_volume.nii.gz`
+- `interpolated_volume/damage_volume.nii.gz`
+
+These NIfTI exports are scaled to 8-bit on write and can be opened in tools
+such as ITK-SNAP or siibra explorer.
 
 ## Worked examples
 
