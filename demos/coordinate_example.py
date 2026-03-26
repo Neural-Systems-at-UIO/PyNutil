@@ -20,6 +20,7 @@ coords = pnt.xy_to_coords(
     "tests/test_data/coordinates/coordinate_data_section_edges.csv",
     alignment,
     atlas,
+    return_orientation="rai"
 )
 
 label_df = pnt.quantify_coords(coords, atlas)

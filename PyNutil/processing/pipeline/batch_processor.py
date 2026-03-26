@@ -229,7 +229,7 @@ def seg_to_coords(
     apply_damage_mask=True,
     flat_label_path=None,
     segmentation_format="binary",
-    return_orientation=None,
+    return_orientation="lpi",
 ):
     """Process all segmentation files in a folder, mapping each to atlas space.
 
@@ -244,8 +244,7 @@ def seg_to_coords(
         apply_damage_mask: Apply damage mask (default True).
         segmentation_format: Format name ("binary" or "cellpose").
         return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
-            "ras"). If None, coordinates are returned in the internal
-            orientation.
+            "ras"). Defaults to "lpi" (internal orientation).
 
     Returns:
         ExtractionResult: Structured extraction output.
@@ -288,7 +287,7 @@ def seg_to_coords(
         per_centroid_undamaged,
     ) = _collect_section_results(results)
 
-    if return_orientation is not None:
+    if return_orientation != "lpi":
         points = reorient_points(points, atlas_shape, return_orientation)
         centroids = reorient_points(centroids, atlas_shape, return_orientation)
 
@@ -298,6 +297,8 @@ def seg_to_coords(
         hemi_labels=points_hemi_labels,
         section_lengths=points_len,
         undamaged_mask=per_point_undamaged,
+        orientation=return_orientation,
+        atlas_shape=atlas_shape,
     )
     object_set = PointSetResult(
         points=centroids,
@@ -305,6 +306,8 @@ def seg_to_coords(
         hemi_labels=centroids_hemi_labels,
         section_lengths=centroids_len,
         undamaged_mask=per_centroid_undamaged,
+        orientation=return_orientation,
+        atlas_shape=atlas_shape,
     )
 
     return ExtractionResult(
@@ -326,7 +329,7 @@ def image_to_coords(
     flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
-    return_orientation=None,
+    return_orientation="lpi",
 ):
     """Process all images in a folder, mapping each to atlas space with intensity.
 
@@ -341,8 +344,7 @@ def image_to_coords(
         min_intensity: Minimum intensity value to include.
         max_intensity: Maximum intensity value to include.
         return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
-            "ras"). If None, coordinates are returned in the internal
-            orientation.
+            "ras"). Defaults to "lpi" (internal orientation).
 
     Returns:
         ExtractionResult: Structured extraction output.
@@ -386,7 +388,7 @@ def image_to_coords(
     )
     points_len = [r.num_points for r in results]
 
-    if return_orientation is not None:
+    if return_orientation != "lpi":
         all_points = reorient_points(all_points, atlas_shape, return_orientation)
 
     point_set = PointSetResult(
@@ -395,6 +397,8 @@ def image_to_coords(
         hemi_labels=all_hemi,
         section_lengths=points_len,
         point_values=all_intensities,
+        orientation=return_orientation,
+        atlas_shape=atlas_shape,
     )
 
     # Combine per-section intensity DataFrames into a single whole-series DF.
@@ -421,7 +425,7 @@ def xy_to_coords(
     atlas: AtlasData,
     non_linear=True,
     apply_damage_mask=True,
-    return_orientation=None,
+    return_orientation="lpi",
 ):
     """Process a coordinate CSV file, transforming points to atlas space.
 
@@ -436,8 +440,7 @@ def xy_to_coords(
         non_linear: Apply non-linear transform (default True).
         apply_damage_mask: Apply damage mask (default True).
         return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
-            "ras"). If None, coordinates are returned in the internal
-            orientation.
+            "ras"). Defaults to "lpi" (internal orientation).
 
     Returns:
         ExtractionResult: Structured extraction output.
@@ -508,7 +511,7 @@ def xy_to_coords(
         per_centroid_undamaged,
     ) = _collect_section_results(results)
 
-    if return_orientation is not None:
+    if return_orientation != "lpi":
         points = reorient_points(points, atlas_shape, return_orientation)
         centroids = reorient_points(centroids, atlas_shape, return_orientation)
 
@@ -518,6 +521,8 @@ def xy_to_coords(
         hemi_labels=points_hemi_labels,
         section_lengths=points_len,
         undamaged_mask=per_point_undamaged,
+        orientation=return_orientation,
+        atlas_shape=atlas_shape,
     )
     object_set = PointSetResult(
         points=centroids,
@@ -525,6 +530,8 @@ def xy_to_coords(
         hemi_labels=centroids_hemi_labels,
         section_lengths=centroids_len,
         undamaged_mask=per_centroid_undamaged,
+        orientation=return_orientation,
+        atlas_shape=atlas_shape,
     )
 
     return ExtractionResult(
