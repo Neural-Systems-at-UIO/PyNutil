@@ -60,38 +60,44 @@ def read_alignment(
     deformation_provider: Optional[DeformationProvider] = None,
     damage_provider: Optional[DamageProvider] = None,
 ) -> RegistrationData:
-    """Load registration data with composable pipeline.
+    """Load registration data for downstream PyNutil processing.
 
-    This is the main entry point for loading registration data. It supports
-    mixing and matching different components.
+    Parameters
+    ----------
+    path
+        Path to a registration file produced by a supported workflow such as
+        QuickNII, VisuAlign, or BrainGlobe registration.
+    loader_name
+        Explicit loader name to use. If ``None``, PyNutil attempts to detect
+        the appropriate loader automatically from the file.
+    apply_deformation
+        If ``True``, apply non-linear deformation when supported by the input
+        registration source. Set to ``False`` to keep only the linear
+        anchoring transform.
+    apply_damage
+        If ``True``, load and attach damage masks when available.
+    deformation_provider
+        Optional custom deformation provider to use instead of the default
+        provider selected for the detected registration type.
+    damage_provider
+        Optional custom damage provider to use instead of the default QCAlign
+        integration.
 
-    Args:
-        path: Path to the registration file.
-        loader_name: Explicit loader name, or None for auto-detection.
-        apply_deformation: Whether to apply deformation from the file.
-                          Set False to use only linear anchoring.
-        apply_damage: Whether to apply damage masks from the file.
-        deformation_provider: Custom deformation provider to use instead of
-                             the default (VisuAlign for QUINT files).
-        damage_provider: Custom damage provider to use instead of
-                        the default (QCAlign for QUINT files).
+    Returns
+    -------
+    RegistrationData
+        Registration metadata and per-section transforms used by the
+        segmentation, intensity, and coordinate pipelines.
 
-    Returns:
-        RegistrationData with all components applied.
+    Examples
+    --------
+    Load a standard QUINT alignment file:
 
-    Examples:
-        # Standard QUINT workflow
-        data = read_alignment("alignment.json")
+    >>> registration = read_alignment("alignment.json")
 
-        # Linear only (no VisuAlign deformation)
-        data = read_alignment("alignment.json", apply_deformation=False)
+    Load BrainGlobe registration output in the same way:
 
-        # Separate anchoring and damage files
-        from .damage import QCAlignDamageProvider
-        data = read_alignment(
-            "quicknii.json",
-            damage_provider=QCAlignDamageProvider("qcalign_output.json")
-        )
+    >>> registration = read_alignment("brainglobe-registration.json")
     """
     # 1. Load anchoring
     if loader_name:

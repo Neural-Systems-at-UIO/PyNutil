@@ -88,13 +88,38 @@ def process_atlas_volume(vol):
 
 @lru_cache(maxsize=8)
 def load_custom_atlas(atlas_path, hemi_path, label_path):
-    """
-    Loads a custom atlas from provided file paths.
+    """Load a custom atlas from local annotation and label files.
+
+    Parameters
+    ----------
+    atlas_path
+        Path to the atlas annotation volume, typically an ``.nrrd`` file.
+    hemi_path
+        Path to a hemisphere-label volume, or ``None`` if hemisphere-specific
+        quantification is not available for this atlas.
+    label_path
+        Path to a CSV file containing atlas labels and colors.
 
     Returns
     -------
     AtlasData
-        Bundle containing atlas volume, hemisphere map, and labels.
+        Atlas volume, optional hemisphere map, and label table.
+
+    Examples
+    --------
+    Load a custom atlas from local files:
+
+    >>> atlas = load_custom_atlas(
+    ...     atlas_path="path/to/annotation.nrrd",
+    ...     hemi_path=None,
+    ...     label_path="path/to/labels.csv",
+    ... )
+
+    Notes
+    -----
+    The loaded atlas is cached by file path, so repeated calls with the same
+    arguments reuse the previously loaded result within the same Python
+    process.
     """
     atlas_volume, _ = nrrd.read(atlas_path)
 
