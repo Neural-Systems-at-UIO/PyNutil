@@ -67,7 +67,7 @@ class TestVisualisations(TimedTestCase):
             create_section_visualisations(
                 settings["segmentation_folder"],
                 reg_data.slices,
-                atlas.volume,
+                atlas.annotation,
                 atlas.labels,
                 output_root,
                 adapter=adapter,
