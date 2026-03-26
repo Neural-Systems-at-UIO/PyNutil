@@ -12,9 +12,7 @@ alignment = pnt.read_alignment(
 coords = pnt.xy_to_coords(
     "tests/test_data/brainglobe_coordinates/coordinates.csv",
     alignment,
-    atlas,
-    return_orientation="asr"
-)
+    atlas)
 
 
 coordinates = coords.objects.points
