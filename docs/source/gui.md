@@ -8,6 +8,19 @@ writing Python code.
 Download the Windows or macOS executable from the
 [PyNutil releases page](https://github.com/Neural-Systems-at-UIO/PyNutil/releases).
 
+If you prefer to install the GUI from source in a Python environment, install
+PyNutil with the `gui` extra from the repository root:
+
+```bash
+pip install -e .[gui]
+```
+
+Then launch the GUI with:
+
+```bash
+python gui/PyNutilGUI.py
+```
+
 ![PyNutil GUI screenshot](https://github.com/user-attachments/assets/7038a5d1-5a1e-4afc-904b-9c2bf3ea81a1)
 
 ## What the GUI does
