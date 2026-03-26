@@ -132,9 +132,15 @@ def save_analysis(
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
     ctx = SaveContext(
-        points=result.points.filtered_internal_points() if result else None,
+        points=(
+            result.points.points_in_internal_orientation(result.points.filtered_points())
+            if result
+            else None
+        ),
         objects=(
-            result.objects.filtered_internal_points()
+            result.objects.points_in_internal_orientation(
+                result.objects.filtered_points()
+            )
             if (result and result.objects is not None)
             else None
         ),

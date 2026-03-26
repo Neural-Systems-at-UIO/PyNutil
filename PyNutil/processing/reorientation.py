@@ -26,7 +26,7 @@ def validate_orientation_code(orientation):
     if len(normalized) != 3:
         raise ValueError(
             f"Invalid orientation code {orientation!r}: expected exactly 3 letters. "
-            "Use one letter from each axis pair: left/right, superior/inferior, "
+            "Use one first letter from each axis pair: left/right, superior/inferior, "
             "and anterior/posterior, for example 'lpi', 'ras', or 'asr'."
         )
 

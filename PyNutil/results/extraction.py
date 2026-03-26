@@ -67,10 +67,6 @@ class PointSetResult:
         """Return points reoriented to internal (lpi) orientation."""
         return self.points_in_internal_orientation(self.points)
 
-    def filtered_internal_points(self) -> Optional[np.ndarray]:
-        """Return filtered points reoriented to internal (lpi) orientation."""
-        return self.points_in_internal_orientation(self.filtered_points())
-
     def filtered_points(self) -> Optional[np.ndarray]:
         """Return points filtered by undamaged mask when available."""
         return self._masked(self.points, self.undamaged_mask)
