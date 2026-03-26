@@ -65,10 +65,6 @@ class PointSetResult:
         """Return points filtered by undamaged mask when available."""
         return self._masked(self.points, self.undamaged_mask)
 
-    def filtered_internal_points(self) -> Optional[np.ndarray]:
-        """Return points filtered by undamaged mask, in internal (lpi) orientation."""
-        return self._to_internal(self._masked(self.points, self.undamaged_mask))
-
     def filtered_labels(self) -> Optional[np.ndarray]:
         """Return labels filtered by undamaged mask when available."""
         return self._masked(self.labels, self.undamaged_mask)
