@@ -17,6 +17,7 @@ import unittest
 import cv2
 import numpy as np
 import tifffile
+from brainglobe_atlasapi import BrainGlobeAtlas
 
 TEST_DIR = os.path.dirname(os.path.dirname(__file__))
 BG_DATA = os.path.join(TEST_DIR, "test_data", "brainglobe_registration")
@@ -57,13 +58,13 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         nonzero coverage (brain regions)."""
         from PyNutil.processing.adapters.anchoring import BrainGlobeRegistrationLoader
         from PyNutil.processing.atlas_map import generate_target_slice
-        from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.io.atlas_loader import resolve_atlas
 
         loader = BrainGlobeRegistrationLoader()
         data = loader.load(BG_JSON)
         s = data.slices[0]
 
-        atlas_volume = load_atlas_data("allen_mouse_25um").volume
+        atlas_volume = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um")).volume
         atlas_slice = generate_target_slice(s.anchoring, atlas_volume)
 
         self.assertEqual(atlas_slice.shape, (s.height, s.width))
@@ -77,7 +78,7 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         from PyNutil.processing.adapters.anchoring import BrainGlobeRegistrationLoader
         from PyNutil.processing.adapters.deformation import BrainGlobeDeformationProvider
         from PyNutil.processing.atlas_map import generate_target_slice, warp_image
-        from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.io.atlas_loader import resolve_atlas
 
         loader = BrainGlobeRegistrationLoader()
         data = loader.load(BG_JSON)
@@ -89,7 +90,7 @@ class TestBrainGlobeRegistration(unittest.TestCase):
         self.assertIsNotNone(s.deformation)
         self.assertIsNotNone(s.forward_deformation)
 
-        atlas_volume = load_atlas_data("allen_mouse_25um").volume
+        atlas_volume = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um")).volume
         atlas_slice = generate_target_slice(s.anchoring, atlas_volume).astype(np.float64)
         warped = warp_image(atlas_slice, s.deformation, (s.width, s.height)).astype(np.uint32)
 
