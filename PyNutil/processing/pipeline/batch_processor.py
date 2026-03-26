@@ -229,21 +229,42 @@ def seg_to_coords(
     flat_label_path=None,
     segmentation_format="binary",
 ):
-    """Process all segmentation files in a folder, mapping each to atlas space.
+    """Transform segmentation images into atlas-space coordinates.
 
-    Args:
-        folder: Path to segmentation files.
-        registration: Pre-loaded registration data.
-        atlas: AtlasData or BrainGlobeAtlas object.
-        pixel_id: Pixel color to match.
-        object_cutoff: Minimum object size.
-        use_flat: If True, load flat files.
-        non_linear: Apply non-linear transform (default True).
-        apply_damage_mask: Apply damage mask (default True).
-        segmentation_format: Format name ("binary" or "cellpose").
+    Parameters
+    ----------
+    folder
+        Path to a folder containing segmentation images.
+    registration
+        Registration data returned by :func:`PyNutil.read_alignment`.
+    atlas
+        Atlas definition to use for labeling. This may be an
+        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
+    pixel_id
+        RGB value or label identifier used to select the segmented class of
+        interest.
+    object_cutoff
+        Minimum object size to keep during segmentation processing.
+    use_flat
+        If ``True``, look for per-section ``flat`` files in a ``flat_files``
+        subdirectory and use them during processing.
+    non_linear
+        If ``True``, apply non-linear deformation from the registration data
+        when available.
+    apply_damage_mask
+        If ``True``, exclude damaged regions from filtered outputs and attach
+        undamaged masks to the returned point sets.
+    flat_label_path
+        Optional path to a label definition used together with flat files.
+    segmentation_format
+        Name of the segmentation adapter to use, for example ``"binary"`` or
+        ``"cellpose"``.
 
-    Returns:
-        ExtractionResult: Structured extraction output.
+    Returns
+    -------
+    ExtractionResult
+        Atlas-space points, centroid-level objects, section metadata, and
+        region-area summaries for the processed series.
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -317,21 +338,41 @@ def image_to_coords(
     min_intensity=None,
     max_intensity=None,
 ):
-    """Process all images in a folder, mapping each to atlas space with intensity.
+    """Transform image intensities into atlas-space point data.
 
-    Args:
-        folder: Path to image files.
-        registration: Pre-loaded registration data.
-        atlas: AtlasData or BrainGlobeAtlas object.
-        intensity_channel: Channel to use for intensity.
-        use_flat: If True, load flat files.
-        non_linear: Apply non-linear transform (default True).
-        apply_damage_mask: Apply damage mask (default True).
-        min_intensity: Minimum intensity value to include.
-        max_intensity: Maximum intensity value to include.
+    Parameters
+    ----------
+    folder
+        Path to a folder containing source images.
+    registration
+        Registration data returned by :func:`PyNutil.read_alignment`.
+    atlas
+        Atlas definition to use for labeling. This may be an
+        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
+    intensity_channel
+        Image channel to convert to intensity values, such as
+        ``"grayscale"``.
+    use_flat
+        If ``True``, look for per-section ``flat`` files in a ``flat_files``
+        subdirectory and use them during processing.
+    non_linear
+        If ``True``, apply non-linear deformation from the registration data
+        when available.
+    apply_damage_mask
+        If ``True``, exclude damaged regions from filtered outputs and attach
+        undamaged masks to the returned point sets.
+    flat_label_path
+        Optional path to a label definition used together with flat files.
+    min_intensity
+        Optional lower threshold. Intensities below this value are discarded.
+    max_intensity
+        Optional upper threshold. Intensities above this value are discarded.
 
-    Returns:
-        ExtractionResult: Structured extraction output.
+    Returns
+    -------
+    ExtractionResult
+        Atlas-space point data with optional per-point intensity values and
+        aggregated per-region intensity summaries.
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -404,21 +445,31 @@ def xy_to_coords(
     non_linear=True,
     apply_damage_mask=True,
 ):
-    """Process a coordinate CSV file, transforming points to atlas space.
+    """Transform image-space coordinates from CSV into atlas space.
 
-    Loads coordinates from a CSV, groups by section number, and applies
-    the full transformation pipeline (scaling, deformation, anchoring)
-    to each section's coordinates.
+    Parameters
+    ----------
+    coordinate_file
+        Path to a CSV file containing coordinates and section metadata. The
+        file is expected to contain the columns ``X``, ``Y``,
+        ``image_width``, ``image_height``, and ``section number``.
+    registration
+        Registration data returned by :func:`PyNutil.read_alignment`.
+    atlas
+        Atlas definition to use for labeling. This may be an
+        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
+    non_linear
+        If ``True``, apply non-linear deformation from the registration data
+        when available.
+    apply_damage_mask
+        If ``True``, exclude damaged regions from filtered outputs and attach
+        undamaged masks to the returned point sets.
 
-    Args:
-        coordinate_file: Path to the coordinate CSV file.
-        registration: Pre-loaded registration data.
-        atlas: Atlas data bundle (volume, hemi_map, labels).
-        non_linear: Apply non-linear transform (default True).
-        apply_damage_mask: Apply damage mask (default True).
-
-    Returns:
-        ExtractionResult: Structured extraction output.
+    Returns
+    -------
+    ExtractionResult
+        Atlas-space points, object placeholders, and region-area summaries
+        derived from the input coordinates.
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
