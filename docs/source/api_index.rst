@@ -11,7 +11,6 @@ Top-level functions
     :template: function.rst
 
     read_alignment
-    load_atlas_data
     load_custom_atlas
     seg_to_coords
     image_to_coords
