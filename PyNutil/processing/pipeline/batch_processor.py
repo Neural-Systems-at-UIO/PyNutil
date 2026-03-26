@@ -4,6 +4,7 @@ This module contains functions for processing all segmentation files
 in a folder, mapping each one to atlas space using parallel execution.
 """
 
+import os
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
