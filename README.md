@@ -3,9 +3,12 @@
 > [!WARNING]  
 > PyNutil is still under development and the API is subject to change.
 
+a Python library for brain-wide quantification and spatial analysis of features in serial section images from the brain. 
 
-PyNutil is a Python library for brain-wide quantification and spatial analysis of features in serial section images from the brain. PyNutil is able to integrate outputs from various atlas registration software and image segmentation software in order to produce atlas based quantifications, 3D point clouds, and 3D heatmaps of brain derived data. PyNutil aims to replicate and expand the Quantifier feature of the Nutil software (RRID: SCR_017183). 
 ![alt text](docs/assets/PyNutil_fig1.png)
+
+# Overview
+PyNutil is able to integrate outputs from various atlas registration software and image segmentation software in order to produce atlas based quantifications, 3D point clouds, and 3D heatmaps of brain derived data. PyNutil aims to replicate and expand the Quantifier feature of the Nutil software (RRID: SCR_017183). 
 
 For more information about the QUINT workflow:
 https://quint-workflow.readthedocs.io/en/latest/ 
