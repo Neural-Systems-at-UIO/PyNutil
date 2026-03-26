@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+from ..processing.reorientation import INTERNAL_ORIENTATION, reorient_points
 
 
 @dataclass
@@ -18,6 +20,10 @@ class PointSetResult:
         section_lengths: Per-section counts aligned with canonical arrays.
         point_values: Optional values aligned with ``points`` (e.g., intensity/RGB).
         undamaged_mask: Optional unfiltered undamaged mask.
+        orientation: 3-letter BrainGlobe orientation string describing the
+            coordinate system of ``points`` (e.g. "lpi", "asr").
+        atlas_shape: Shape of the atlas volume in internal orientation,
+            needed for reorienting points between coordinate systems.
     """
 
     points: Optional[np.ndarray]
@@ -26,6 +32,8 @@ class PointSetResult:
     section_lengths: List[int]
     point_values: Optional[np.ndarray] = None
     undamaged_mask: Optional[np.ndarray] = None
+    orientation: str = "lpi"
+    atlas_shape: Optional[Tuple[int, ...]] = None
 
     @staticmethod
     def _masked(arr: Optional[np.ndarray], mask: Optional[np.ndarray]) -> Optional[np.ndarray]:
@@ -37,6 +45,23 @@ class PointSetResult:
                 f"Length mismatch between array ({len(arr)}) and mask ({len(mask)})."
             )
         return arr[mask]
+
+    def points_in_internal_orientation(
+        self, pts: Optional[np.ndarray]
+    ) -> Optional[np.ndarray]:
+        """Reorient *pts* back to internal orientation if needed."""
+        if pts is None or len(pts) == 0 or self.orientation == INTERNAL_ORIENTATION:
+            return pts
+        if self.atlas_shape is None:
+            raise ValueError(
+                "atlas_shape is required to reorient points back to internal orientation"
+            )
+        return reorient_points(
+            pts,
+            self.atlas_shape,
+            INTERNAL_ORIENTATION,
+            source_orientation=self.orientation,
+        )
 
     def filtered_points(self) -> Optional[np.ndarray]:
         """Return points filtered by undamaged mask when available."""
