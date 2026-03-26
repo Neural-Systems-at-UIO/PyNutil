@@ -111,10 +111,8 @@ class TestCoordinateScaling(TimedTestCase):
                     atlas_volume=None,
                     hemi_map=None,
                     segmentation_adapter=adapter,
-                    non_linear=False,
                     object_cutoff=0,
                     pixel_id="auto",
-                    apply_damage_mask=True,
                 )
                 s_ctx = SectionContext(
                     section_number=1,

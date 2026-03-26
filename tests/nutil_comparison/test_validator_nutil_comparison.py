@@ -13,7 +13,7 @@ import nrrd
 from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
 
 try:
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     from timing_utils import TimedTestCase
 

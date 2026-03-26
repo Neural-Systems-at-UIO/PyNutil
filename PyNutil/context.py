@@ -30,14 +30,10 @@ class PipelineContext:
         3-D hemisphere mask (same shape as *atlas_volume*).
     segmentation_adapter : SegmentationAdapter
         Pre-resolved adapter for the current segmentation format.
-    non_linear : bool
-        Whether to apply non-linear deformation.
     object_cutoff : int
         Minimum connected-component area (binary pipeline).
     pixel_id : object
         Pixel colour to match, or ``"auto"`` for auto-detection.
-    apply_damage_mask : bool
-        Apply the damage / exclusion mask when available.
     intensity_channel : str or None
         Channel name for the intensity pipeline (``None`` in binary mode).
     min_intensity : int or None
@@ -50,10 +46,8 @@ class PipelineContext:
     atlas_volume: Optional[np.ndarray]
     hemi_map: Optional[np.ndarray]
     segmentation_adapter: SegmentationAdapter
-    non_linear: bool
     object_cutoff: int
     pixel_id: object
-    apply_damage_mask: bool
     intensity_channel: Optional[str] = None
     min_intensity: Optional[int] = None
     max_intensity: Optional[int] = None
@@ -66,10 +60,8 @@ class PipelineContext:
         atlas_labels,
         atlas_volume,
         hemi_map,
-        non_linear: bool,
         object_cutoff: int,
         pixel_id,
-        apply_damage_mask: bool,
         intensity_channel=None,
         min_intensity=None,
         max_intensity=None,
@@ -82,10 +74,8 @@ class PipelineContext:
             atlas_volume=atlas_volume,
             hemi_map=hemi_map,
             segmentation_adapter=SegmentationAdapterRegistry.get(segmentation_format),
-            non_linear=non_linear,
             object_cutoff=object_cutoff,
             pixel_id=pixel_id,
-            apply_damage_mask=apply_damage_mask,
             intensity_channel=intensity_channel,
             min_intensity=min_intensity,
             max_intensity=max_intensity,
