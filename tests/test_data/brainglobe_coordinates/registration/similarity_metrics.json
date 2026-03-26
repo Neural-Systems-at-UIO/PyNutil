@@ -1,0 +1,21 @@
+{
+    "atlas": "ccfv3augmented_mouse_25um",
+    "moving_image": [
+        "downsampled_0004_Scene_1"
+    ],
+    "brainglobe_registration_parameters": "C:\\Users\\saara\\normal_brain_toxicity\\5 bg_registration_outputs\\P2A_C3H_M5\\ccfv3\\0004_Scene_1\\brainglobe-registration.json",
+    "metrics": {
+        "ssim": {
+            "score": 0.4567420455617167,
+            "note": "Not ideal for atlas registration: assumes similar local contrast between images, which is often violated in histology-to-atlas comparisons."
+        },
+        "ncc": {
+            "score": 0.6958252390336636,
+            "note": "Not ideal for atlas registration: assumes a linear intensity relationship between images, which breaks down across different modalities or stainings."
+        },
+        "mi": {
+            "score": 0.8730434353639973,
+            "note": "Recommended metric for atlas registration: measures statistical dependency between intensity distributions, making it robust to cross-modality and cross-stain comparisons."
+        }
+    }
+}
