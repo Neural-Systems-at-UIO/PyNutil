@@ -205,12 +205,10 @@ def seg_to_coords(
     atlas: AtlasData,
     pixel_id=[0, 0, 0],
     object_cutoff=0,
-    non_linear=True,
-    apply_damage_mask=True,
     segmentation_format="binary",
     return_orientation="asr",
 ):
-    """Process all segmentation files in a folder, mapping each to atlas space.
+    """Transform segmentation images into atlas-space coordinates.
 
     Parameters
     ----------
@@ -226,20 +224,39 @@ def seg_to_coords(
         interest.
     object_cutoff
         Minimum object size to keep during segmentation processing.
-    non_linear
-        If ``True``, apply non-linear deformation from the registration data
-        when available.
-    apply_damage_mask
-        If ``True``, exclude damaged regions from filtered outputs and attach
-        undamaged masks to the returned point sets.
     segmentation_format
         Name of the segmentation adapter to use, for example ``"binary"`` or
         ``"cellpose"``.
     return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
-    Returns:
-        ExtractionResult: Structured extraction output.
+    Returns
+    -------
+    ExtractionResult
+        Atlas-space points, centroid-level objects, section metadata, and
+        region-area summaries for the processed series.
+        The returned object exposes ``result.points`` for per-pixel
+        atlas-space coordinates and ``result.objects`` for centroid-level
+        object coordinates. Both point sets include labels, hemisphere labels,
+        per-section lengths, and undamaged masks when available.
+
+    Examples
+    --------
+    Process binary segmentation images with a BrainGlobe atlas:
+
+    >>> from brainglobe_atlasapi import BrainGlobeAtlas
+    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> result = seg_to_coords(
+    ...     "path/to/segmentations/",
+    ...     registration,
+    ...     atlas,
+    ...     pixel_id=[0, 0, 0],
+    ... )
+    >>> result.points.points.shape
+    (N, 3)
+    >>> result.objects.labels.shape
+    (M,)
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -249,10 +266,8 @@ def seg_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=non_linear,
         object_cutoff=object_cutoff,
         pixel_id=pixel_id,
-        apply_damage_mask=apply_damage_mask,
     )
 
     segmentations, results = _run_batch_with_context(
@@ -318,13 +333,11 @@ def image_to_coords(
     registration: RegistrationData,
     atlas: AtlasData,
     intensity_channel="grayscale",
-    non_linear=True,
-    apply_damage_mask=True,
     min_intensity=None,
     max_intensity=None,
     return_orientation="asr",
 ):
-    """Process all images in a folder, mapping each to atlas space with intensity.
+    """Transform image intensities into atlas-space point data.
 
     Parameters
     ----------
@@ -338,12 +351,6 @@ def image_to_coords(
     intensity_channel
         Image channel to convert to intensity values, such as
         ``"grayscale"``.
-    non_linear
-        If ``True``, apply non-linear deformation from the registration data
-        when available.
-    apply_damage_mask
-        If ``True``, exclude damaged regions from filtered outputs and attach
-        undamaged masks to the returned point sets.
     min_intensity
         Optional lower threshold. Intensities below this value are discarded.
     max_intensity
@@ -351,8 +358,32 @@ def image_to_coords(
     return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
-    Returns:
-        ExtractionResult: Structured extraction output.
+    Returns
+    -------
+    ExtractionResult
+        Atlas-space point data with optional per-point intensity values and
+        aggregated per-region intensity summaries.
+        The atlas-space coordinates are stored in ``result.points.points`` and
+        the sampled intensities in ``result.points.point_values``.
+        Per-region intensity summaries, when present, are stored in
+        ``result.region_intensities``.
+
+    Examples
+    --------
+    Quantify image intensity instead of segmented objects:
+
+    >>> from brainglobe_atlasapi import BrainGlobeAtlas
+    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> result = image_to_coords(
+    ...     "path/to/images/",
+    ...     registration,
+    ...     atlas,
+    ... )
+    >>> result.points.points.shape
+    (N, 3)
+    >>> result.region_intensities.columns.tolist()[:3]
+    ['idx', 'name', 'r']
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -362,10 +393,8 @@ def image_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=non_linear,
         object_cutoff=0,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=apply_damage_mask,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
         max_intensity=max_intensity,
@@ -426,27 +455,49 @@ def xy_to_coords(
     coordinate_file,
     registration: RegistrationData,
     atlas: AtlasData,
-    non_linear=True,
-    apply_damage_mask=True,
     return_orientation="asr",
 ):
-    """Process a coordinate CSV file, transforming points to atlas space.
+    """Transform image-space coordinates from CSV into atlas space.
 
-    Loads coordinates from a CSV, groups by section number, and applies
-    the full transformation pipeline (scaling, deformation, anchoring)
-    to each section's coordinates.
-
-    Args:
-        coordinate_file: Path to the coordinate CSV file.
-        registration: Pre-loaded registration data.
-        atlas: Atlas data bundle (volume, hemi_map, labels).
-        non_linear: Apply non-linear transform (default True).
-        apply_damage_mask: Apply damage mask (default True).
-        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+    Parameters
+    ----------
+    coordinate_file
+        Path to a CSV file containing coordinates and section metadata. The
+        file is expected to contain the columns ``X``, ``Y``,
+        ``image_width``, ``image_height``, and ``section number``.
+    registration
+        Registration data returned by :func:`PyNutil.read_alignment`.
+    atlas
+        Atlas definition to use for labeling. This may be an
+        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
+    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
-    Returns:
-        ExtractionResult: Structured extraction output.
+    Returns
+    -------
+    ExtractionResult
+        Atlas-space points, object placeholders, and region-area summaries
+        derived from the input coordinates.
+        In coordinate mode, ``result.points`` contains the transformed
+        atlas-space coordinates and labels, while ``result.objects`` mirrors
+        the same coordinates for downstream quantification and export code.
+
+    Examples
+    --------
+    Transform pre-extracted image-space coordinates from CSV:
+
+    >>> from brainglobe_atlasapi import BrainGlobeAtlas
+    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> result = xy_to_coords(
+    ...     "path/to/coordinates.csv",
+    ...     registration,
+    ...     atlas,
+    ... )
+    >>> result.points.points.shape
+    (N, 3)
+    >>> result.section_filenames
+    []
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
@@ -463,10 +514,8 @@ def xy_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=non_linear,
         object_cutoff=0,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=apply_damage_mask,
     )
 
     results = []

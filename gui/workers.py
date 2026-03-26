@@ -70,7 +70,6 @@ class AnalysisWorker(QThread):
                     img_dir,
                     registration,
                     atlas,
-                    apply_damage_mask=apply_damage_mask,
                 )
             else:
                 result = seg_to_coords(
@@ -79,16 +78,13 @@ class AnalysisWorker(QThread):
                     atlas,
                     pixel_id=self.arguments["object_colour"],
                     segmentation_format=seg_format,
-                    apply_damage_mask=apply_damage_mask,
                 )
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            label_df = quantify_coords(
-                result, atlas.labels, apply_damage_mask=apply_damage_mask
-            )
+            label_df = quantify_coords(result, atlas.labels)
 
             if self.cancelled:
                 print("Analysis cancelled")

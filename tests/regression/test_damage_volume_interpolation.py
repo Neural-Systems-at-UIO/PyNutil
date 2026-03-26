@@ -3,11 +3,11 @@ import os
 import unittest
 import numpy as np
 from PyNutil import interpolate_volume, save_analysis
-from tests.test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
+from test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
 
 try:
     # When run via `python -m unittest discover` from repo root
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     # When run with tests/ on sys.path
     from timing_utils import TimedTestCase
@@ -21,7 +21,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         with open(self.settings_path) as f:
             self.settings = json.load(f)
 
-    def _run_interpolation(self, do_interpolation=False, non_linear=False, k=5):
+    def _run_interpolation(self, do_interpolation=False, k=5):
         atlas, result, label_df, alignment = run_pipeline_from_settings_file(self.settings_path)
         scale = small_volume_scale(atlas.annotation.shape)
 
@@ -32,14 +32,13 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             atlas=atlas,
             scale=scale,
             do_interpolation=do_interpolation,
-            non_linear=non_linear,
             k=k,
         )
         return atlas, result, label_df, gv, fv, dv
 
     def test_damage_volume_creation(self):
         atlas, result, label_df, gv, fv, dv = self._run_interpolation(
-            do_interpolation=False, non_linear=False
+            do_interpolation=False,
         )
 
         # Check if damage_volume has the correct shape
@@ -57,13 +56,13 @@ class TestDamageVolumeInterpolation(TimedTestCase):
     def test_damage_volume_interpolation(self):
         # Run without interpolation first to get baseline
         _, _, _, gv_no_interp, fv_no_interp, dv_no_interp = self._run_interpolation(
-            do_interpolation=False, non_linear=False
+            do_interpolation=False,
         )
         count_no_interp = np.sum(dv_no_interp > 0)
 
         # Run with interpolation
         _, _, _, gv_interp, fv_interp, dv_interp = self._run_interpolation(
-            do_interpolation=True, k=5, non_linear=False
+            do_interpolation=True, k=5,
         )
         count_interp = np.sum(dv_interp > 0)
 
@@ -81,7 +80,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         import nibabel as nib
 
         atlas, result, label_df, gv, fv, dv = self._run_interpolation(
-            do_interpolation=True, k=5, non_linear=False
+            do_interpolation=True, k=5,
         )
 
         demo_output_dir = os.path.join(

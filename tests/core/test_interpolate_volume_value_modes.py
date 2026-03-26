@@ -8,11 +8,11 @@ import numpy as np
 from brainglobe_atlasapi import BrainGlobeAtlas
 
 from PyNutil import read_alignment, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
-from tests.test_helpers import copy_tree_to_demo, small_volume_scale
+from test_helpers import copy_tree_to_demo, small_volume_scale
 
 try:
     # When run via `python -m unittest discover` from repo root
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     # When run with tests/ on sys.path
     from timing_utils import TimedTestCase
@@ -61,7 +61,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
-            non_linear=False,
+
             segmentation_format="binary",
             segmentation_mode=True,
         )
@@ -125,7 +125,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
-            non_linear=False,
+
             segmentation_format="binary",
             segmentation_mode=True,
             missing_fill=0.0,
@@ -189,7 +189,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             scale=scale,
             missing_fill=0.0,
             do_interpolation=False,
-            non_linear=False,
+
             segmentation_format="binary",
             segmentation_mode=True,
             value_mode="pixel_count",
