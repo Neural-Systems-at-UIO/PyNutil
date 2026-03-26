@@ -27,6 +27,7 @@ from .section_processor import (
 from ..utils import (
     discover_image_files,
 )
+from ..reorientation import reorient_points
 from ...io.loaders import number_sections
 
 
@@ -228,6 +229,7 @@ def seg_to_coords(
     apply_damage_mask=True,
     flat_label_path=None,
     segmentation_format="binary",
+    return_orientation=None,
 ):
     """Process all segmentation files in a folder, mapping each to atlas space.
 
@@ -241,12 +243,16 @@ def seg_to_coords(
         non_linear: Apply non-linear transform (default True).
         apply_damage_mask: Apply damage mask (default True).
         segmentation_format: Format name ("binary" or "cellpose").
+        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+            "ras"). If None, coordinates are returned in the internal
+            orientation.
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
+    atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format=segmentation_format,
         atlas_labels=atlas.labels,
@@ -282,6 +288,10 @@ def seg_to_coords(
         per_centroid_undamaged,
     ) = _collect_section_results(results)
 
+    if return_orientation is not None:
+        points = reorient_points(points, atlas_shape, return_orientation)
+        centroids = reorient_points(centroids, atlas_shape, return_orientation)
+
     point_set = PointSetResult(
         points=points,
         labels=points_labels,
@@ -316,6 +326,7 @@ def image_to_coords(
     flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
+    return_orientation=None,
 ):
     """Process all images in a folder, mapping each to atlas space with intensity.
 
@@ -329,12 +340,16 @@ def image_to_coords(
         apply_damage_mask: Apply damage mask (default True).
         min_intensity: Minimum intensity value to include.
         max_intensity: Maximum intensity value to include.
+        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+            "ras"). If None, coordinates are returned in the internal
+            orientation.
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
+    atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
         segmentation_format="binary",
         atlas_labels=atlas.labels,
@@ -371,6 +386,9 @@ def image_to_coords(
     )
     points_len = [r.num_points for r in results]
 
+    if return_orientation is not None:
+        all_points = reorient_points(all_points, atlas_shape, return_orientation)
+
     point_set = PointSetResult(
         points=all_points,
         labels=all_labels,
@@ -403,6 +421,7 @@ def xy_to_coords(
     atlas: AtlasData,
     non_linear=True,
     apply_damage_mask=True,
+    return_orientation=None,
 ):
     """Process a coordinate CSV file, transforming points to atlas space.
 
@@ -416,12 +435,16 @@ def xy_to_coords(
         atlas: Atlas data bundle (volume, hemi_map, labels).
         non_linear: Apply non-linear transform (default True).
         apply_damage_mask: Apply damage mask (default True).
+        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+            "ras"). If None, coordinates are returned in the internal
+            orientation.
 
     Returns:
         ExtractionResult: Structured extraction output.
     """
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
+    atlas_shape = atlas.volume.shape
     from ...io.loaders import load_coordinate_file
 
     coord_df = load_coordinate_file(coordinate_file)
@@ -484,6 +507,10 @@ def xy_to_coords(
         per_point_undamaged,
         per_centroid_undamaged,
     ) = _collect_section_results(results)
+
+    if return_orientation is not None:
+        points = reorient_points(points, atlas_shape, return_orientation)
+        centroids = reorient_points(centroids, atlas_shape, return_orientation)
 
     point_set = PointSetResult(
         points=points,
