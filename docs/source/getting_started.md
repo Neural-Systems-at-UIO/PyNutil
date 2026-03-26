@@ -158,7 +158,6 @@ coords = pnt.seg_to_coords(
     atlas,
     pixel_id=[0, 0, 0],
     object_cutoff=0,
-    use_flat=False,
     segmentation_format="binary",
 )
 
