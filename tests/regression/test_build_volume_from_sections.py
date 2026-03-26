@@ -44,7 +44,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
         atlas, result, label_df, alignment = run_pipeline_from_settings(settings)
 
         # Downscale to keep runtime/memory small and stable.
-        scale = small_volume_scale(atlas.volume.shape)
+        scale = small_volume_scale(atlas.annotation.shape)
 
         # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
