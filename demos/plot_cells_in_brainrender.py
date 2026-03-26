@@ -6,7 +6,7 @@ import PyNutil as pnt
 
 atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(
-    "tests/test_data/brainglobe_coordinates/brainglobe-registration.json"
+    "tests/test_data/brainglobe_coordinates/registration/brainglobe-registration.json"
 )
 
 coords = pnt.xy_to_coords(
