@@ -1,0 +1,440 @@
+{
+    "atlas": "ccfv3augmented_mouse_25um",
+    "atlas_transform_matrix": [
+        [
+            0.0522084684839324,
+            0.14259761175985153,
+            -0.9884028515433112
+        ],
+        [
+            -0.9961969233988566,
+            -0.06169918275303926,
+            -0.061521546292820584
+        ],
+        [
+            -0.06975647374412519,
+            0.9878558254968149,
+            0.1388340822809423
+        ]
+    ],
+    "atlas_offset": [
+        551.5401614851463,
+        386.55281588908633,
+        -75.50082912943964
+    ],
+    "atlas_2d_slice_index": 240,
+    "atlas_slice_corners": [
+        [
+            14100.0,
+            3675.0,
+            -2300.0
+        ],
+        [
+            -1775.0,
+            2675.0,
+            -50.0
+        ],
+        [
+            16050.0,
+            2825.0,
+            11300.0
+        ],
+        [
+            175.0,
+            1825.0,
+            13525.0
+        ]
+    ],
+    "atlas_data_layer": "ccfv3augmented_mouse_25um",
+    "atlas_annotations_layer": "Annotations",
+    "moving_image": "section_s221",
+    "adjust_moving_image_widget": {
+        "pixel_size_x": 0.0,
+        "pixel_size_y": 0.0,
+        "pixel_size_z": 0.0,
+        "atlas_pitch": 87.0,
+        "atlas_yaw": -4.0,
+        "atlas_roll": -82.0
+    },
+    "transform_selections": [
+        [
+            "affine",
+            {
+                "FixedInternalImagePixelType": [
+                    "float"
+                ],
+                "MovingInternalImagePixelType": [
+                    "float"
+                ],
+                "Registration": [
+                    "MultiResolutionRegistration"
+                ],
+                "FixedImagePyramid": [
+                    "FixedRecursiveImagePyramid"
+                ],
+                "MovingImagePyramid": [
+                    "MovingRecursiveImagePyramid"
+                ],
+                "Interpolator": [
+                    "LinearInterpolator"
+                ],
+                "Metric": [
+                    "AdvancedMattesMutualInformation"
+                ],
+                "Optimizer": [
+                    "AdaptiveStochasticGradientDescent"
+                ],
+                "ResampleInterpolator": [
+                    "FinalBSplineInterpolator"
+                ],
+                "Resampler": [
+                    "DefaultResampler"
+                ],
+                "Transform": [
+                    "AffineTransform"
+                ],
+                "ErodeMask": [
+                    "false"
+                ],
+                "NumberOfResolutions": [
+                    "3"
+                ],
+                "HowToCombineTransforms": [
+                    "Compose"
+                ],
+                "AutomaticTransformInitialization": [
+                    "true"
+                ],
+                "AutomaticScalesEstimation": [
+                    "true"
+                ],
+                "WriteTransformParametersEachIteration": [
+                    "false"
+                ],
+                "WriteResultImage": [
+                    "true"
+                ],
+                "ResultImageFormat": [
+                    "tiff"
+                ],
+                "CompressResultImage": [
+                    "false"
+                ],
+                "WriteResultImageAfterEachResolution": [
+                    "false"
+                ],
+                "ShowExactMetricValue": [
+                    "false"
+                ],
+                "MaximumNumberOfIterations": [
+                    "500"
+                ],
+                "NumberOfHistogramBins": [
+                    "32"
+                ],
+                "FixedLimitRangeRatio": [
+                    "0.0"
+                ],
+                "MovingLimitRangeRatio": [
+                    "0.0"
+                ],
+                "FixedKernelBSplineOrder": [
+                    "3"
+                ],
+                "MovingKernelBSplineOrder": [
+                    "3"
+                ],
+                "ImageSampler": [
+                    "RandomCoordinate"
+                ],
+                "UseRandomSampleRegion": [
+                    "false"
+                ],
+                "NumberOfSpatialSamples": [
+                    "3000"
+                ],
+                "NewSamplesEveryIteration": [
+                    "true"
+                ],
+                "CheckNumberOfSamples": [
+                    "true"
+                ],
+                "MaximumNumberOfSamplingAttempts": [
+                    "10"
+                ],
+                "FinalBSplineInterpolationOrder": [
+                    "3"
+                ],
+                "DefaultPixelValue": [
+                    "0"
+                ],
+                "FixedImageDimension": [
+                    "2"
+                ],
+                "MovingImageDimension": [
+                    "2"
+                ]
+            }
+        ],
+        [
+            "bspline",
+            {
+                "FixedInternalImagePixelType": [
+                    "float"
+                ],
+                "MovingInternalImagePixelType": [
+                    "float"
+                ],
+                "Registration": [
+                    "MultiResolutionRegistration"
+                ],
+                "FixedImagePyramid": [
+                    "FixedRecursiveImagePyramid"
+                ],
+                "MovingImagePyramid": [
+                    "MovingRecursiveImagePyramid"
+                ],
+                "Interpolator": [
+                    "LinearInterpolator"
+                ],
+                "Metric": [
+                    "AdvancedMattesMutualInformation"
+                ],
+                "Optimizer": [
+                    "AdaptiveStochasticGradientDescent"
+                ],
+                "ResampleInterpolator": [
+                    "FinalBSplineInterpolator"
+                ],
+                "Resampler": [
+                    "DefaultResampler"
+                ],
+                "Transform": [
+                    "RecursiveBSplineTransform"
+                ],
+                "ErodeMask": [
+                    "false"
+                ],
+                "NumberOfResolutions": [
+                    "3"
+                ],
+                "FinalGridSpacingInVoxels": [
+                    "50.000000",
+                    "50.000000",
+                    "50.000000"
+                ],
+                "HowToCombineTransforms": [
+                    "Compose"
+                ],
+                "WriteTransformParametersEachIteration": [
+                    "false"
+                ],
+                "ResultImageFormat": [
+                    "tiff"
+                ],
+                "WriteResultImage": [
+                    "true"
+                ],
+                "CompressResultImage": [
+                    "false"
+                ],
+                "WriteResultImageAfterEachResolution": [
+                    "false"
+                ],
+                "ShowExactMetricValue": [
+                    "false"
+                ],
+                "UseFastAndLowMemoryVersion": [
+                    "true"
+                ],
+                "MaximumNumberOfIterations": [
+                    "500"
+                ],
+                "NumberOfHistogramBins": [
+                    "32"
+                ],
+                "FixedLimitRangeRatio": [
+                    "0.0"
+                ],
+                "MovingLimitRangeRatio": [
+                    "0.0"
+                ],
+                "FixedKernelBSplineOrder": [
+                    "3"
+                ],
+                "MovingKernelBSplineOrder": [
+                    "3"
+                ],
+                "ImageSampler": [
+                    "RandomCoordinate"
+                ],
+                "FixedImageBSplineInterpolationOrder": [
+                    "1"
+                ],
+                "UseRandomSampleRegion": [
+                    "false"
+                ],
+                "SampleRegionSize": [
+                    "100.0",
+                    "100.0",
+                    "100.0"
+                ],
+                "NumberOfSpatialSamples": [
+                    "10000"
+                ],
+                "NewSamplesEveryIteration": [
+                    "true"
+                ],
+                "CheckNumberOfSamples": [
+                    "true"
+                ],
+                "MaximumNumberOfSamplingAttempts": [
+                    "10"
+                ],
+                "FinalBSplineInterpolationOrder": [
+                    "3"
+                ],
+                "DefaultPixelValue": [
+                    "0"
+                ],
+                "FixedImageDimension": [
+                    "2"
+                ],
+                "MovingImageDimension": [
+                    "2"
+                ]
+            }
+        ],
+        [
+            "bspline",
+            {
+                "FixedInternalImagePixelType": [
+                    "float"
+                ],
+                "MovingInternalImagePixelType": [
+                    "float"
+                ],
+                "Registration": [
+                    "MultiResolutionRegistration"
+                ],
+                "FixedImagePyramid": [
+                    "FixedRecursiveImagePyramid"
+                ],
+                "MovingImagePyramid": [
+                    "MovingRecursiveImagePyramid"
+                ],
+                "Interpolator": [
+                    "LinearInterpolator"
+                ],
+                "Metric": [
+                    "AdvancedMattesMutualInformation"
+                ],
+                "Optimizer": [
+                    "AdaptiveStochasticGradientDescent"
+                ],
+                "ResampleInterpolator": [
+                    "FinalBSplineInterpolator"
+                ],
+                "Resampler": [
+                    "DefaultResampler"
+                ],
+                "Transform": [
+                    "RecursiveBSplineTransform"
+                ],
+                "ErodeMask": [
+                    "false"
+                ],
+                "NumberOfResolutions": [
+                    "3"
+                ],
+                "FinalGridSpacingInVoxels": [
+                    "50.000000",
+                    "50.000000",
+                    "50.000000"
+                ],
+                "HowToCombineTransforms": [
+                    "Compose"
+                ],
+                "WriteTransformParametersEachIteration": [
+                    "false"
+                ],
+                "ResultImageFormat": [
+                    "tiff"
+                ],
+                "WriteResultImage": [
+                    "true"
+                ],
+                "CompressResultImage": [
+                    "false"
+                ],
+                "WriteResultImageAfterEachResolution": [
+                    "false"
+                ],
+                "ShowExactMetricValue": [
+                    "false"
+                ],
+                "UseFastAndLowMemoryVersion": [
+                    "true"
+                ],
+                "MaximumNumberOfIterations": [
+                    "500"
+                ],
+                "NumberOfHistogramBins": [
+                    "32"
+                ],
+                "FixedLimitRangeRatio": [
+                    "0.0"
+                ],
+                "MovingLimitRangeRatio": [
+                    "0.0"
+                ],
+                "FixedKernelBSplineOrder": [
+                    "3"
+                ],
+                "MovingKernelBSplineOrder": [
+                    "3"
+                ],
+                "ImageSampler": [
+                    "RandomCoordinate"
+                ],
+                "FixedImageBSplineInterpolationOrder": [
+                    "1"
+                ],
+                "UseRandomSampleRegion": [
+                    "false"
+                ],
+                "SampleRegionSize": [
+                    "100.0",
+                    "100.0",
+                    "100.0"
+                ],
+                "NumberOfSpatialSamples": [
+                    "10000"
+                ],
+                "NewSamplesEveryIteration": [
+                    "true"
+                ],
+                "CheckNumberOfSamples": [
+                    "true"
+                ],
+                "MaximumNumberOfSamplingAttempts": [
+                    "10"
+                ],
+                "FinalBSplineInterpolationOrder": [
+                    "3"
+                ],
+                "DefaultPixelValue": [
+                    "0"
+                ],
+                "FixedImageDimension": [
+                    "2"
+                ],
+                "MovingImageDimension": [
+                    "2"
+                ]
+            }
+        ]
+    ],
+    "filter": false,
+    "output_directory": "C:\\Users\\saara\\normal_brain_toxicity\\5 bg_registration_outputs\\P2A_C3H_M5\\ccfv3\\0004_Scene_1"
+}
