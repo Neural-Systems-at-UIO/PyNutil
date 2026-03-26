@@ -5,8 +5,9 @@ import unittest
 
 import cv2
 import numpy as np
+from brainglobe_atlasapi import BrainGlobeAtlas
 
-from PyNutil import load_atlas_data, read_alignment, seg_to_coords
+from PyNutil import read_alignment, seg_to_coords
 from timing_utils import TimedTestCase
 
 
@@ -45,7 +46,7 @@ class TestVisualisations(TimedTestCase):
             with open(self.settings_path) as f:
                 settings = json.load(f)
 
-            atlas = load_atlas_data(settings["atlas_name"])
+            atlas = BrainGlobeAtlas(settings["atlas_name"])
             alignment = read_alignment(settings["alignment_json"])
             result = seg_to_coords(
                 settings["segmentation_folder"],

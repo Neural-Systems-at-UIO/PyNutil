@@ -69,35 +69,6 @@ def resolve_atlas_labels(atlas_labels):
     )
 
 
-@lru_cache(maxsize=8)
-def load_atlas_data(atlas_name):
-    """Load a BrainGlobe atlas and convert it to :class:`~PyNutil.AtlasData`.
-
-    Parameters
-    ----------
-    atlas_name
-        Name of the BrainGlobe atlas to load, for example
-        ``"allen_mouse_25um"``.
-
-    Returns
-    -------
-    AtlasData
-        Atlas volume, hemisphere map, and label table in the format expected
-        by the PyNutil processing pipeline.
-
-    Notes
-    -----
-    The loaded atlas is cached, so repeated calls with the same atlas name
-    reuse the previously loaded result within the same Python process.
-    """
-    atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
-    atlas_labels = load_atlas_labels(atlas)
-    atlas_volume = process_atlas_volume(atlas.annotation)
-    hemi_map = process_atlas_volume(atlas.hemispheres)
-    print("atlas labels loaded ✅")
-    return AtlasData(volume=atlas_volume, hemi_map=hemi_map, labels=atlas_labels)
-
-
 def process_atlas_volume(vol):
     """
     Processes the atlas volume by transposing and reversing axes.
