@@ -24,6 +24,7 @@ practical examples, and the generated API reference.
    :caption: Contents:
 
    getting_started
+   gui
    api_index
 
 Highlights

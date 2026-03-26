@@ -471,6 +471,17 @@ def interpolate_volume(
         A tuple ``(interpolated_volume, frequency_volume, damage_volume)``.
         The first element stores the requested value volume, the second stores
         per-voxel sampling frequency, and the third is a binary damage mask.
+
+    Examples
+    --------
+    Build atlas-space volumes from segmentation images:
+
+    >>> gv, fv, dv = interpolate_volume(
+    ...     segmentation_folder="path/to/segmentations/",
+    ...     alignment_json="path/to/alignment.json",
+    ...     colour=[0, 0, 0],
+    ...     atlas=atlas,
+    ... )
     """
     if value_mode not in {"pixel_count", "mean", "object_count"}:
         raise ValueError(

@@ -69,7 +69,25 @@ class PointSetResult:
 
 @dataclass
 class ExtractionResult:
-    """User-facing extraction output with shared point-set structure."""
+    """User-facing extraction output returned by coordinate extraction helpers.
+
+    Attributes
+    ----------
+    points
+        Primary point set in atlas space. For segmentation mode this stores
+        per-pixel coordinates. For intensity mode this stores sampled atlas
+        coordinates plus optional per-point intensities.
+    objects
+        Optional secondary point set, typically centroid-level object
+        coordinates for segmentation workflows. This is ``None`` for
+        intensity-based extraction.
+    section_filenames
+        Input filenames corresponding to processed sections when applicable.
+    region_areas
+        Optional per-region area summary aggregated across sections.
+    region_intensities
+        Optional per-region intensity summary aggregated across sections.
+    """
 
     points: PointSetResult
     objects: Optional[PointSetResult]

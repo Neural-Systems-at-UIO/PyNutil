@@ -253,6 +253,19 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         Whole-series quantification table. For segmentation-based extraction,
         the output includes object and area statistics. For intensity-based
         extraction, the output includes summed and mean intensity statistics.
+        Common columns include ``idx`` and ``name`` plus region-level summary
+        fields such as ``region_area``, ``object_count``, ``object_pixels``,
+        ``area_fraction``, or intensity columns such as ``sum_intensity`` and
+        ``mean_intensity`` depending on the extraction mode.
+
+    Examples
+    --------
+    Quantify an extraction result against atlas regions:
+
+    >>> label_df = quantify_coords(result, atlas)
+    >>> label_df[
+    ...     ["idx", "name", "region_area", "object_count", "area_fraction"]
+    ... ].head()
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
