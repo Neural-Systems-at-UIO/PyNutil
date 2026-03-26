@@ -101,7 +101,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
                 frequency_volume=fv,
                 damage_volume=dv,
                 atlas_volume=atlas.annotation,
-                voxel_size_um=atlas.voxel_size_um or 25.0,
+                voxel_size_um=atlas.resolution[0],
             )
 
             self.assertTrue(os.path.exists(damage_nifti_path), f"Damage volume NIfTI should be saved at {damage_nifti_path}")
