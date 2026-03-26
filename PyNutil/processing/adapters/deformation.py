@@ -8,6 +8,7 @@ functions to each slice.
 from __future__ import annotations
 
 import os
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from scipy import ndimage
 import numpy as np
@@ -283,6 +284,13 @@ class BrainGlobeDeformationProvider(DeformationProvider):
 
             field_0, field_1 = self._load_fields(reg_dir)
             if field_0 is None:
+                warnings.warn(
+                    f"Deformation fields not found for slice '{s.section_id}' "
+                    f"in '{reg_dir}'. Expected 'deformation_field_0.tiff' and "
+                    f"'deformation_field_1.tiff'. Non-linear deformation will "
+                    f"not be applied to this slice.",
+                    stacklevel=2,
+                )
                 continue
 
             inverse_deform, forward_deform = self._create_deformation(
