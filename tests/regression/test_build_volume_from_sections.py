@@ -9,10 +9,10 @@ import nibabel as nib
 
 from PyNutil import save_analysis, interpolate_volume
 from PyNutil.io.volume_nifti import scale_to_uint8
-from tests.test_helpers import copy_tree_to_demo, small_volume_scale, run_pipeline_from_settings
+from test_helpers import copy_tree_to_demo, small_volume_scale, run_pipeline_from_settings
 try:
     # When run via `python -m unittest discover` from repo root
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     # When run with tests/ on sys.path
     from timing_utils import TimedTestCase
@@ -58,7 +58,6 @@ class TestBuildVolumeFromSections(TimedTestCase):
             do_interpolation=True,
             k=5,
             use_atlas_mask=True,
-            non_linear=True,
         )
         return atlas, result, label_df, gv, fv, dv, settings
 

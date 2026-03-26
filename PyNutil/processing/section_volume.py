@@ -33,7 +33,6 @@ class VolumeConfig:
     min_intensity: Optional[int]
     max_intensity: Optional[int]
     scale: float
-    non_linear: bool
     value_mode: str
 
 
@@ -182,7 +181,7 @@ def _sample_and_deform_plane(
     flat_x = reg_x.reshape(-1)
     flat_y = reg_y.reshape(-1)
 
-    if vol_cfg.non_linear and slice_info.forward_deformation is not None:
+    if slice_info.forward_deformation is not None:
         new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
         map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
@@ -407,7 +406,6 @@ def interpolate_volume(
     k: int = 5,
     batch_size: int = 200_000,
     use_atlas_mask: bool = True,
-    non_linear: bool = True,
     value_mode: str = "pixel_count",
     segmentation_format: str = "binary",
     segmentation_mode: bool = True,
@@ -444,9 +442,6 @@ def interpolate_volume(
         Number of query voxels processed per interpolation batch.
     use_atlas_mask
         If ``True``, restrict interpolation to voxels inside the atlas mask.
-    non_linear
-        If ``True``, apply non-linear deformation from the registration data
-        when available.
     value_mode
         Output volume mode. Supported values are ``"pixel_count"``,
         ``"mean"``, and ``"object_count"``.
@@ -536,7 +531,6 @@ def interpolate_volume(
         min_intensity=min_intensity,
         max_intensity=max_intensity,
         scale=scale,
-        non_linear=non_linear,
         value_mode=value_mode,
     )
     interp_cfg = InterpolationConfig(

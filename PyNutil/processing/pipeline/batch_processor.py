@@ -204,8 +204,6 @@ def seg_to_coords(
     atlas: AtlasData,
     pixel_id=[0, 0, 0],
     object_cutoff=0,
-    non_linear=True,
-    apply_damage_mask=True,
     segmentation_format="binary",
 ):
     """Transform segmentation images into atlas-space coordinates.
@@ -224,12 +222,6 @@ def seg_to_coords(
         interest.
     object_cutoff
         Minimum object size to keep during segmentation processing.
-    non_linear
-        If ``True``, apply non-linear deformation from the registration data
-        when available.
-    apply_damage_mask
-        If ``True``, exclude damaged regions from filtered outputs and attach
-        undamaged masks to the returned point sets.
     segmentation_format
         Name of the segmentation adapter to use, for example ``"binary"`` or
         ``"cellpose"``.
@@ -269,10 +261,8 @@ def seg_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=non_linear,
         object_cutoff=object_cutoff,
         pixel_id=pixel_id,
-        apply_damage_mask=apply_damage_mask,
     )
 
     segmentations, results = _run_batch_with_context(
@@ -325,8 +315,6 @@ def image_to_coords(
     registration: RegistrationData,
     atlas: AtlasData,
     intensity_channel="grayscale",
-    non_linear=True,
-    apply_damage_mask=True,
     min_intensity=None,
     max_intensity=None,
 ):
@@ -344,12 +332,6 @@ def image_to_coords(
     intensity_channel
         Image channel to convert to intensity values, such as
         ``"grayscale"``.
-    non_linear
-        If ``True``, apply non-linear deformation from the registration data
-        when available.
-    apply_damage_mask
-        If ``True``, exclude damaged regions from filtered outputs and attach
-        undamaged masks to the returned point sets.
     min_intensity
         Optional lower threshold. Intensities below this value are discarded.
     max_intensity
@@ -389,10 +371,8 @@ def image_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=non_linear,
         object_cutoff=0,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=apply_damage_mask,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
         max_intensity=max_intensity,
@@ -448,8 +428,6 @@ def xy_to_coords(
     coordinate_file,
     registration: RegistrationData,
     atlas: AtlasData,
-    non_linear=True,
-    apply_damage_mask=True,
 ):
     """Transform image-space coordinates from CSV into atlas space.
 
@@ -464,12 +442,6 @@ def xy_to_coords(
     atlas
         Atlas definition to use for labeling. This may be an
         :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
-    non_linear
-        If ``True``, apply non-linear deformation from the registration data
-        when available.
-    apply_damage_mask
-        If ``True``, exclude damaged regions from filtered outputs and attach
-        undamaged masks to the returned point sets.
 
     Returns
     -------
@@ -511,10 +483,8 @@ def xy_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
-        non_linear=non_linear,
         object_cutoff=0,
         pixel_id=[0, 0, 0],
-        apply_damage_mask=apply_damage_mask,
     )
 
     results = []

@@ -55,9 +55,8 @@ def _prepare_section(
     atlas_labels = p_ctx.atlas_labels
     atlas_volume = p_ctx.atlas_volume
     hemi_map = p_ctx.hemi_map
-    non_linear = p_ctx.non_linear
 
-    deformation = slice_info.deformation if non_linear else None
+    deformation = slice_info.deformation
     damage_mask = slice_info.damage_mask
     reg_height, reg_width = slice_info.height, slice_info.width
 
@@ -176,7 +175,6 @@ def _compute_hemi_state(
 def _deform_and_build_result(
     *,
     slice_info,
-    non_linear,
     scaled_x,
     scaled_y,
     centroidsX,
@@ -195,14 +193,14 @@ def _deform_and_build_result(
     and coordinates_to_atlas_space.
     """
     reg_height, reg_width = slice_info.height, slice_info.width
-    deformation = slice_info.deformation if non_linear else None
+    deformation = slice_info.deformation
 
     cx_all = centroidsX if centroidsX is not None else np.array([])
     cy_all = centroidsY if centroidsY is not None else np.array([])
 
     pts_x = scaled_x
     pts_y = scaled_y
-    if non_linear and deformation is not None:
+    if deformation is not None:
         if pts_x is not None and len(pts_x):
             pts_x, pts_y = deformation(pts_x, pts_y)
         if len(cx_all):
@@ -365,7 +363,6 @@ def segmentation_to_atlas_space(
 
     return _deform_and_build_result(
         slice_info=slice_info,
-        non_linear=p_ctx.non_linear,
         scaled_x=scaled_x,
         scaled_y=scaled_y,
         centroidsX=scaled_centroidsX,
@@ -444,10 +441,9 @@ def coordinates_to_atlas_space(
         slice_info,
     )
 
-    # Apply non-linear deformation and transform to 3D atlas space
+    # Apply deformation and transform to 3D atlas space
     return _deform_and_build_result(
         slice_info=slice_info,
-        non_linear=p_ctx.non_linear,
         scaled_x=scaled_x,
         scaled_y=scaled_y,
         centroidsX=scaled_x,  # coordinates mode: centroids == points

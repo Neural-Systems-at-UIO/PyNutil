@@ -125,7 +125,7 @@ def quantify_labeled_points(
     centroids_hemi,
     region_areas,
     atlas_labels,
-    apply_damage_mask,
+    with_damage,
 ):
     """Aggregate per-pixel and per-centroid counts into a summary table.
 
@@ -138,7 +138,7 @@ def quantify_labeled_points(
         centroids_hemi: 1-D hemisphere labels for centroids.
         region_areas: Combined region-area DataFrame (summed across sections).
         atlas_labels: Atlas labels DataFrame.
-        apply_damage_mask: Whether damage mask was applied.
+        with_damage: Whether damage mask data is present in the result.
 
     Returns:
         label_df — whole-series DataFrame.
@@ -151,10 +151,10 @@ def quantify_labeled_points(
         points_hemi,
         centroids_hemi,
         atlas_labels,
-        apply_damage_mask,
+        with_damage,
     )
     label_df = _merge_dataframes(count_df, region_areas, atlas_labels)
-    if not apply_damage_mask:
+    if not with_damage:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
     return label_df
@@ -231,7 +231,7 @@ def quantify_intensity(region_intensities, atlas_labels):
 # ── Unified quantification entry point ──────────────────────────────────
 
 
-def quantify_coords(result, atlas_labels, apply_damage_mask=True):
+def quantify_coords(result, atlas_labels):
     """Summarize atlas-space extraction results by atlas region.
 
     Parameters
@@ -243,9 +243,6 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         Atlas labels to use when building the output table. This may be a
         labels :class:`pandas.DataFrame`, an :class:`~PyNutil.AtlasData`
         instance, or a BrainGlobe atlas object.
-    apply_damage_mask
-        If ``True``, include damaged and undamaged summary columns when the
-        extraction result contains damage-mask information.
 
     Returns
     -------
@@ -256,7 +253,8 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         Common columns include ``idx`` and ``name`` plus region-level summary
         fields such as ``region_area``, ``object_count``, ``object_pixels``,
         ``area_fraction``, or intensity columns such as ``sum_intensity`` and
-        ``mean_intensity`` depending on the extraction mode.
+        ``mean_intensity`` depending on the extraction mode. Damage-related
+        columns are included automatically when damage mask data is present.
 
     Examples
     --------
@@ -281,5 +279,5 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         result.objects.hemi_labels if result.objects is not None else np.array([], dtype=np.int64),
         result.region_areas,
         atlas_labels,
-        apply_damage_mask,
+        with_damage=True,
     )
