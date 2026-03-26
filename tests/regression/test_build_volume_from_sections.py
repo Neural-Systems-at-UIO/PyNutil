@@ -59,7 +59,6 @@ class TestBuildVolumeFromSections(TimedTestCase):
             k=5,
             use_atlas_mask=True,
             non_linear=True,
-            return_orientation="lpi"
         )
         return atlas, result, label_df, gv, fv, dv, settings
 

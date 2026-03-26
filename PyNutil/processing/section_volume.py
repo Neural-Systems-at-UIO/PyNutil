@@ -414,7 +414,6 @@ def interpolate_volume(
     intensity_channel: str = "grayscale",
     min_intensity: Optional[int] = None,
     max_intensity: Optional[int] = None,
-    return_orientation: str = "asr",
 ):
     """Project section segmentations into a 3D atlas-space volume.
 
@@ -504,13 +503,4 @@ def interpolate_volume(
     for seg_path in seg_paths:
         _process_one_section(seg_path, slice_by_nr, vol_cfg, gv, fv, dv, ov_flat)
 
-    gv, fv, dv = _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
-
-    if return_orientation != "lpi":
-        from .reorientation import reorient_volume
-        atlas_shape = out_base_shape
-        gv = reorient_volume(gv, atlas_shape, return_orientation)
-        fv = reorient_volume(fv, atlas_shape, return_orientation)
-        dv = reorient_volume(dv, atlas_shape, return_orientation)
-
-    return gv, fv, dv
+    return _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
