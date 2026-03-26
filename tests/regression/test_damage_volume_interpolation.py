@@ -23,7 +23,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
 
     def _run_interpolation(self, do_interpolation=False, non_linear=False, k=5):
         atlas, result, label_df, alignment = run_pipeline_from_settings_file(self.settings_path)
-        scale = small_volume_scale(atlas.volume.shape)
+        scale = small_volume_scale(atlas.annotation.shape)
 
         gv, fv, dv = interpolate_volume(
             segmentation_folder=self.settings["segmentation_folder"],
@@ -101,7 +101,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
                 interpolated_volume=gv,
                 frequency_volume=fv,
                 damage_volume=dv,
-                atlas_volume=atlas.volume,
+                atlas_volume=atlas.annotation,
                 voxel_size_um=atlas.voxel_size_um or 25.0,
             )
 
