@@ -113,7 +113,6 @@ class TestCoordinateScaling(TimedTestCase):
                     segmentation_adapter=adapter,
                     non_linear=False,
                     object_cutoff=0,
-                    use_flat=False,
                     pixel_id="auto",
                     apply_damage_mask=True,
                 )
@@ -121,7 +120,6 @@ class TestCoordinateScaling(TimedTestCase):
                     section_number=1,
                     slice_info=slice_info,
                     segmentation_path=seg_path,
-                    flat_file_path=None,
                 )
                 result = segmentation_to_atlas_space(p_ctx, s_ctx)
 
@@ -180,9 +178,7 @@ class TestCoordinateScaling(TimedTestCase):
             ),
         ):
             get_region_areas(
-                use_flat=False,
                 atlas_labels=atlas_labels,
-                flat_file_atlas=None,
                 seg_width=seg_w,
                 seg_height=seg_h,
                 slice_info=SliceInfo(

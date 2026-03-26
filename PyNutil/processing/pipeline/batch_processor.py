@@ -4,8 +4,6 @@ This module contains functions for processing all segmentation files
 in a folder, mapping each one to atlas space using parallel execution.
 """
 
-import os
-
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
@@ -63,18 +61,6 @@ def _run_batch_with_context(
 
     segmentations = discover_image_files(folder)
 
-    # Discover flat files (only needed when use_flat is True)
-    flat_files, flat_file_nrs = [], []
-    if pipeline_ctx.use_flat:
-        flat_dir = os.path.join(folder, "flat_files")
-        flat_files = [
-            os.path.join(flat_dir, name)
-            for name in os.listdir(flat_dir)
-            if name.endswith(".flat") or name.endswith(".seg")
-        ]
-        print(f"Found {len(flat_files)} flat files in folder {folder}")
-        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
-
     results = [empty_result_factory() for _ in range(len(segmentations))]
 
     if segmentations:
@@ -92,15 +78,10 @@ def _run_batch_with_context(
                 if not slice_info.anchoring:
                     continue
 
-                current_flat = None
-                if pipeline_ctx.use_flat:
-                    idx_arr = [i for i, nr in enumerate(flat_file_nrs) if nr == seg_nr]
-                    current_flat = flat_files[idx_arr[0]] if idx_arr else None
                 section_ctx = SectionContext(
                     section_number=seg_nr,
                     slice_info=slice_info,
                     segmentation_path=seg_path,
-                    flat_file_path=current_flat,
                 )
                 futures.append(
                     (
@@ -224,26 +205,37 @@ def seg_to_coords(
     atlas: AtlasData,
     pixel_id=[0, 0, 0],
     object_cutoff=0,
-    use_flat=False,
     non_linear=True,
     apply_damage_mask=True,
-    flat_label_path=None,
     segmentation_format="binary",
     return_orientation="asr",
 ):
     """Process all segmentation files in a folder, mapping each to atlas space.
 
-    Args:
-        folder: Path to segmentation files.
-        registration: Pre-loaded registration data.
-        atlas: AtlasData or BrainGlobeAtlas object.
-        pixel_id: Pixel color to match.
-        object_cutoff: Minimum object size.
-        use_flat: If True, load flat files.
-        non_linear: Apply non-linear transform (default True).
-        apply_damage_mask: Apply damage mask (default True).
-        segmentation_format: Format name ("binary" or "cellpose").
-        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+    Parameters
+    ----------
+    folder
+        Path to a folder containing segmentation images.
+    registration
+        Registration data returned by :func:`PyNutil.read_alignment`.
+    atlas
+        Atlas definition to use for labeling. This may be an
+        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
+    pixel_id
+        RGB value or label identifier used to select the segmented class of
+        interest.
+    object_cutoff
+        Minimum object size to keep during segmentation processing.
+    non_linear
+        If ``True``, apply non-linear deformation from the registration data
+        when available.
+    apply_damage_mask
+        If ``True``, exclude damaged regions from filtered outputs and attach
+        undamaged masks to the returned point sets.
+    segmentation_format
+        Name of the segmentation adapter to use, for example ``"binary"`` or
+        ``"cellpose"``.
+    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
     Returns:
@@ -259,10 +251,8 @@ def seg_to_coords(
         hemi_map=atlas.hemi_map,
         non_linear=non_linear,
         object_cutoff=object_cutoff,
-        use_flat=use_flat,
         pixel_id=pixel_id,
         apply_damage_mask=apply_damage_mask,
-        flat_label_path=flat_label_path,
     )
 
     segmentations, results = _run_batch_with_context(
@@ -328,27 +318,37 @@ def image_to_coords(
     registration: RegistrationData,
     atlas: AtlasData,
     intensity_channel="grayscale",
-    use_flat=False,
     non_linear=True,
     apply_damage_mask=True,
-    flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
     return_orientation="asr",
 ):
     """Process all images in a folder, mapping each to atlas space with intensity.
 
-    Args:
-        folder: Path to image files.
-        registration: Pre-loaded registration data.
-        atlas: AtlasData or BrainGlobeAtlas object.
-        intensity_channel: Channel to use for intensity.
-        use_flat: If True, load flat files.
-        non_linear: Apply non-linear transform (default True).
-        apply_damage_mask: Apply damage mask (default True).
-        min_intensity: Minimum intensity value to include.
-        max_intensity: Maximum intensity value to include.
-        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+    Parameters
+    ----------
+    folder
+        Path to a folder containing source images.
+    registration
+        Registration data returned by :func:`PyNutil.read_alignment`.
+    atlas
+        Atlas definition to use for labeling. This may be an
+        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
+    intensity_channel
+        Image channel to convert to intensity values, such as
+        ``"grayscale"``.
+    non_linear
+        If ``True``, apply non-linear deformation from the registration data
+        when available.
+    apply_damage_mask
+        If ``True``, exclude damaged regions from filtered outputs and attach
+        undamaged masks to the returned point sets.
+    min_intensity
+        Optional lower threshold. Intensities below this value are discarded.
+    max_intensity
+        Optional upper threshold. Intensities above this value are discarded.
+    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
     Returns:
@@ -364,10 +364,8 @@ def image_to_coords(
         hemi_map=atlas.hemi_map,
         non_linear=non_linear,
         object_cutoff=0,
-        use_flat=use_flat,
         pixel_id=[0, 0, 0],
         apply_damage_mask=apply_damage_mask,
-        flat_label_path=flat_label_path,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
         max_intensity=max_intensity,
@@ -467,7 +465,6 @@ def xy_to_coords(
         hemi_map=atlas.hemi_map,
         non_linear=non_linear,
         object_cutoff=0,
-        use_flat=False,
         pixel_id=[0, 0, 0],
         apply_damage_mask=apply_damage_mask,
     )
