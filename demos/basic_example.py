@@ -26,7 +26,6 @@ coords = pnt.seg_to_coords(
     atlas,
     pixel_id=colour,
     object_cutoff=0,
-    use_flat=False,
     segmentation_format="binary",
 )
 

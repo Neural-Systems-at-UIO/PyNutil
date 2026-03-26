@@ -5,7 +5,6 @@ import brainglobe_atlasapi
 from PyQt6.QtCore import QThread, pyqtSignal
 from log_manager import TextRedirector
 from PyNutil import (
-    load_atlas_data,
     load_custom_atlas,
     read_alignment,
     seg_to_coords,
@@ -48,7 +47,7 @@ class AnalysisWorker(QThread):
                 )
             else:
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-                atlas = load_atlas_data(self.arguments["atlas_name"])
+                atlas = brainglobe_atlasapi.BrainGlobeAtlas(self.arguments["atlas_name"])
 
             if self.cancelled:
                 print("Analysis cancelled")
