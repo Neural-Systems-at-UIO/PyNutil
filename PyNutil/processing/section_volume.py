@@ -414,7 +414,7 @@ def interpolate_volume(
     intensity_channel: str = "grayscale",
     min_intensity: Optional[int] = None,
     max_intensity: Optional[int] = None,
-    return_orientation: str = "lpi",
+    return_orientation: str = "asr",
 ):
     """Project section segmentations into a 3D atlas-space volume.
 

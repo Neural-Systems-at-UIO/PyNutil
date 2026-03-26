@@ -44,9 +44,15 @@ class TestReturnOrientation(unittest.TestCase):
         result_asr = self._run("asr")
         result_ras = self._run("ras")
 
-        lpi_pts = result_lpi.points.internal_points()
-        asr_pts = result_asr.points.internal_points()
-        ras_pts = result_ras.points.internal_points()
+        lpi_pts = result_lpi.points.points_in_internal_orientation(
+            result_lpi.points.points
+        )
+        asr_pts = result_asr.points.points_in_internal_orientation(
+            result_asr.points.points
+        )
+        ras_pts = result_ras.points.points_in_internal_orientation(
+            result_ras.points.points
+        )
 
         np.testing.assert_allclose(lpi_pts, asr_pts, atol=1e-6)
         np.testing.assert_allclose(lpi_pts, ras_pts, atol=1e-6)
