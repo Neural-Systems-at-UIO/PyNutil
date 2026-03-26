@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "PyNutil"
@@ -24,5 +24,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/Neural-Systems-at-UIO/PyNutil"
+
+[tool.setuptools.packages.find]
+include = ["PyNutil*"]
 
 [tool.setuptools_scm]
