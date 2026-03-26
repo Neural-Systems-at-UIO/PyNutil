@@ -25,6 +25,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/Neural-Systems-at-UIO/PyNutil"
 
+[project.optional-dependencies]
+gui = ["PyQt6"]
+
 [tool.setuptools.packages.find]
 include = ["PyNutil*"]
 
