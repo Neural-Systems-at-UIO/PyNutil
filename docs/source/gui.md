@@ -8,6 +8,8 @@ writing Python code.
 Download the Windows or macOS executable from the
 [PyNutil releases page](https://github.com/Neural-Systems-at-UIO/PyNutil/releases).
 
+![PyNutil GUI screenshot](https://github.com/user-attachments/assets/7038a5d1-5a1e-4afc-904b-9c2bf3ea81a1)
+
 ## What the GUI does
 
 The GUI wraps the same core pipeline as the Python API:
