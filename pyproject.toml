@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "PyNutil"
+dynamic = ["version"]
+license = "MIT"
+description = "a package to quantify atlas registered brain data"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "brainglobe-atlasapi",
+    "pandas",
+    "pynrrd",
+    "xmltodict",
+    "opencv-python",
+    "scipy",
+    "nibabel",
+    "orjson",
+    "tqdm",
+]
+
+[project.urls]
+Homepage = "https://github.com/Neural-Systems-at-UIO/PyNutil"
+
+[tool.setuptools_scm]
