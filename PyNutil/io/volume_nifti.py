@@ -98,9 +98,11 @@ def save_volume_niftis(
     --------
     Save the volumes returned by :func:`PyNutil.interpolate_volume`:
 
+    >>> image_series = read_segmentation_dir("path/to/segmentations/", pixel_id=[0, 0, 0])
+    >>> registration = read_alignment("path/to/alignment.json")
     >>> gv, fv, dv = interpolate_volume(
-    ...     segmentation_folder="path/to/segmentations/",
-    ...     alignment_json="path/to/alignment.json",
+    ...     image_series=image_series,
+    ...     registration=registration,
     ...     colour=[0, 0, 0],
     ...     atlas=atlas,
     ... )
