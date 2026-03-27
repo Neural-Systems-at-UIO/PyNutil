@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 from brainglobe_atlasapi import BrainGlobeAtlas
 
-from PyNutil import read_alignment, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
+from PyNutil import read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
 from test_helpers import copy_tree_to_demo, small_volume_scale
 
 try:
@@ -38,10 +38,12 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         atlas = BrainGlobeAtlas(settings["atlas_name"])
         alignment = read_alignment(settings["alignment_json"])
         result = seg_to_coords(
-            settings["segmentation_folder"],
+            read_segmentation_dir(
+                settings["segmentation_folder"],
+                pixel_id=settings.get("colour", [0, 0, 0]),
+            ),
             alignment,
             atlas,
-            pixel_id=settings.get("colour", [0, 0, 0]),
         )
         label_df = quantify_coords(result, atlas)
         return settings, atlas, result, label_df

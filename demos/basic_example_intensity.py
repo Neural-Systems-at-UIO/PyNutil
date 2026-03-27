@@ -23,7 +23,7 @@ alignment = pnt.read_alignment(alignment_json)
 
 # Extract intensity data
 coords = pnt.image_to_coords(
-    image_folder,
+    pnt.read_image_dir(image_folder),
     alignment,
     atlas,
 )

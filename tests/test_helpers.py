@@ -7,6 +7,8 @@ from brainglobe_atlasapi import BrainGlobeAtlas
 from PyNutil import (
     load_custom_atlas,
     read_alignment,
+    read_segmentation_dir,
+    read_image_dir,
     seg_to_coords,
     image_to_coords,
     xy_to_coords,
@@ -49,7 +51,7 @@ def run_pipeline_from_settings(settings: dict):
         )
     elif settings.get("image_folder"):
         result = image_to_coords(
-            settings["image_folder"],
+            read_image_dir(settings["image_folder"]),
             alignment,
             atlas,
             intensity_channel=settings.get("intensity_channel", "grayscale"),
@@ -58,11 +60,13 @@ def run_pipeline_from_settings(settings: dict):
         )
     else:
         result = seg_to_coords(
-            settings["segmentation_folder"],
+            read_segmentation_dir(
+                settings["segmentation_folder"],
+                pixel_id=settings.get("colour", [0, 0, 0]),
+                segmentation_format=settings.get("segmentation_format", "binary"),
+            ),
             alignment,
             atlas,
-            pixel_id=settings.get("colour", [0, 0, 0]),
-            segmentation_format=settings.get("segmentation_format", "binary"),
         )
 
     label_df = quantify_coords(result, atlas)
