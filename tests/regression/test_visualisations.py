@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from brainglobe_atlasapi import BrainGlobeAtlas
 
-from PyNutil import read_alignment, seg_to_coords
+from PyNutil import read_alignment, read_segmentation_dir, seg_to_coords
 from PyNutil.io.atlas_loader import resolve_atlas
 from timing_utils import TimedTestCase
 
@@ -50,11 +50,13 @@ class TestVisualisations(TimedTestCase):
             atlas = resolve_atlas(BrainGlobeAtlas(settings["atlas_name"]))
             alignment = read_alignment(settings["alignment_json"])
             result = seg_to_coords(
-                settings["segmentation_folder"],
+                read_segmentation_dir(
+                    settings["segmentation_folder"],
+                    pixel_id=settings.get("colour", [0, 0, 0]),
+                    segmentation_format=settings.get("segmentation_format", "binary"),
+                ),
                 alignment,
                 atlas,
-                pixel_id=settings.get("colour", [0, 0, 0]),
-                segmentation_format=settings.get("segmentation_format", "binary"),
             )
 
             from PyNutil.processing.adapters.segmentation import SegmentationAdapterRegistry

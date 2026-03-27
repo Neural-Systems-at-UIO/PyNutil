@@ -16,10 +16,9 @@ alignment = pnt.read_alignment(
 )
 
 coords = pnt.seg_to_coords(
-    "tests/test_data/brainglobe_segmentation_test_image/",
+    pnt.read_segmentation_dir("tests/test_data/brainglobe_segmentation_test_image/", pixel_id=[0, 0, 0]),
     alignment,
     atlas,
-    pixel_id=[0, 0, 0],
 )
 label_df = pnt.quantify_coords(coords, atlas)
 
