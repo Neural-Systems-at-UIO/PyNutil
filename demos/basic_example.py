@@ -21,12 +21,10 @@ alignment = pnt.read_alignment(alignment_json)
 
 # Extract coordinates from segmentations
 coords = pnt.seg_to_coords(
-    segmentation_folder,
+    pnt.read_segmentation_dir(segmentation_folder, pixel_id=colour, segmentation_format="binary"),
     alignment,
     atlas,
-    pixel_id=colour,
     object_cutoff=0,
-    segmentation_format="binary",
 )
 
 # Quantify by atlas region

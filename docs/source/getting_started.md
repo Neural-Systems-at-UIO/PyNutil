@@ -80,11 +80,9 @@ atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(alignment_json)
 
 result = pnt.seg_to_coords(
-    segmentation_folder,
+    pnt.read_segmentation_dir(segmentation_folder, pixel_id=[0, 0, 0], segmentation_format="binary"),
     alignment,
     atlas,
-    pixel_id=[0, 0, 0],
-    segmentation_format="binary",
 )
 
 label_df = pnt.quantify_coords(result, atlas)
@@ -177,23 +175,25 @@ import PyNutil as pnt
 atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment("path/to/alignment.json")
 
-result = pnt.seg_to_coords(
+segs = pnt.read_segmentation_dir(
     "path/to/segmentations/",
-    alignment,
-    atlas,
     pixel_id=[0, 0, 0],
     segmentation_format="binary",
 )
+result = pnt.seg_to_coords(segs, alignment, atlas)
 
 label_df = pnt.quantify_coords(result, atlas)
 pnt.save_analysis("path/to/output", result, atlas, label_df=label_df)
 ```
 
-Common parameters:
+Common parameters for `read_segmentation_dir`:
 
 - `pixel_id`: RGB value to quantify, for example `[0, 0, 0]`
 - `segmentation_format="binary"`: standard binary segmentation images
 - `segmentation_format="cellpose"`: Cellpose-style segmentation input
+
+Common parameter for `seg_to_coords`:
+
 - `object_cutoff`: minimum object size to keep
 
 ### Intensity images
@@ -208,8 +208,9 @@ import PyNutil as pnt
 atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment("path/to/alignment.json")
 
+images = pnt.read_image_dir("path/to/images/")
 result = pnt.image_to_coords(
-    "path/to/images/",
+    images,
     alignment,
     atlas,
 )

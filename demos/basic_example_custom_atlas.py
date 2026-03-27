@@ -27,10 +27,12 @@ alignment = pnt.read_alignment(
 
 # Extract coordinates
 coords = pnt.seg_to_coords(
-    os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"),
+    pnt.read_segmentation_dir(
+        os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"),
+        pixel_id=[0, 0, 0],
+    ),
     alignment,
     atlas,
-    pixel_id=[0, 0, 0],
     object_cutoff=0,
 )
 
