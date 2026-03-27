@@ -2,7 +2,7 @@ import json
 import os
 import unittest
 import numpy as np
-from PyNutil import interpolate_volume, save_analysis
+from PyNutil import interpolate_volume, save_analysis, read_segmentation_dir
 from test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
 
 try:
@@ -25,9 +25,13 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         atlas, result, label_df, alignment = run_pipeline_from_settings_file(self.settings_path)
         scale = small_volume_scale(atlas.volume.shape)
 
+        image_series = read_segmentation_dir(
+            self.settings["segmentation_folder"],
+            pixel_id=self.settings.get("colour", [0, 0, 0]),
+        )
         gv, fv, dv = interpolate_volume(
-            segmentation_folder=self.settings["segmentation_folder"],
-            alignment_json=self.settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             colour=self.settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,

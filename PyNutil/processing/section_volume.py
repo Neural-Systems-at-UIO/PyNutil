@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import cv2
 import numpy as np
 from tqdm import tqdm
-from .adapters import read_alignment
 from .adapters.segmentation import SegmentationAdapterRegistry
 from .atlas_map import transform_to_atlas_space
 from .utils import (
     convert_to_intensity,
-    discover_image_files,
     resize_mask_nearest,
 )
-from ..io.loaders import number_sections
 from ..io.atlas_loader import resolve_atlas
+from ..image_series import ImageSeries, Section
+
+if TYPE_CHECKING:
+    from .adapters.base import RegistrationData
 
 
 @dataclass(frozen=True)
@@ -126,14 +127,14 @@ def _knn_interpolate_generic(
 
 
 def _read_section_signal(
-    seg_path: str,
+    section: Section,
     vol_cfg: VolumeConfig,
 ):
     """Load an image and return (seg_values, mask, seg_height, seg_width) or None."""
     if vol_cfg.segmentation_mode:
-        seg = vol_cfg.segmentation_adapter.load(seg_path)
+        seg = section.get_image(vol_cfg.segmentation_adapter)
     else:
-        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
+        seg = cv2.imread(section.path, cv2.IMREAD_UNCHANGED)
     if seg is None:
         return None
 
@@ -324,24 +325,23 @@ def _finalize_volumes(
 
 
 def _process_one_section(
-    seg_path,
-    slice_by_nr,
+    section: Section,
+    slice_info,
     vol_cfg: VolumeConfig,
     gv,
     fv,
     dv,
     ov_flat,
 ):
-    """Process a single section path and accumulate into the output volumes."""
-    out_shape = gv.shape
-    sx, sy, sz = out_shape
-    seg_nr = int(number_sections([seg_path])[0])
-    slice_info = slice_by_nr.get(seg_nr)
+    """Process a single section and accumulate into the output volumes."""
     if not slice_info or not slice_info.anchoring:
         return
+    out_shape = gv.shape
+    sx, sy, sz = out_shape
+    seg_nr = section.section_number
 
     loaded = _read_section_signal(
-        seg_path,
+        section,
         vol_cfg,
     )
     if loaded is None:
@@ -397,8 +397,8 @@ def _process_one_section(
 
 def interpolate_volume(
     *,
-    segmentation_folder: str,
-    alignment_json: str,
+    image_series: ImageSeries,
+    registration: "RegistrationData",
     colour,
     atlas: object,
     scale: float = 1.0,
@@ -408,7 +408,6 @@ def interpolate_volume(
     batch_size: int = 200_000,
     use_atlas_mask: bool = True,
     value_mode: str = "pixel_count",
-    segmentation_format: str = "binary",
     segmentation_mode: bool = True,
     intensity_channel: str = "grayscale",
     min_intensity: Optional[int] = None,
@@ -418,11 +417,13 @@ def interpolate_volume(
 
     Parameters
     ----------
-    segmentation_folder
-        Path to the folder containing segmentation images or source images.
-    alignment_json
-        Path to the registration JSON passed to
-        :func:`PyNutil.read_alignment`.
+    image_series
+        :class:`~PyNutil.ImageSeries` containing the sections to project.
+        Build one with :func:`~PyNutil.read_segmentation_dir` or
+        :func:`~PyNutil.read_image_dir`.
+    registration
+        :class:`~PyNutil.processing.adapters.base.RegistrationData` loaded
+        with :func:`~PyNutil.read_alignment`.
     colour
         Segmentation color or class identifier to extract. Use ``None`` or
         ``"auto"`` to defer selection to the segmentation adapter.
@@ -446,9 +447,6 @@ def interpolate_volume(
     value_mode
         Output volume mode. Supported values are ``"pixel_count"``,
         ``"mean"``, and ``"object_count"``.
-    segmentation_format
-        Name of the segmentation adapter to use when ``segmentation_mode`` is
-        enabled.
     segmentation_mode
         If ``True``, treat input files as segmentation outputs. If ``False``,
         treat them as source images and derive intensities from
@@ -472,9 +470,14 @@ def interpolate_volume(
     --------
     Build atlas-space volumes from segmentation images:
 
-    >>> gv, fv, dv = interpolate_volume(
-    ...     segmentation_folder="path/to/segmentations/",
-    ...     alignment_json="path/to/alignment.json",
+    >>> image_series = pnt.read_segmentation_dir(
+    ...     "path/to/segmentations/",
+    ...     pixel_id=[0, 0, 0],
+    ... )
+    >>> registration = pnt.read_alignment("path/to/alignment.json")
+    >>> gv, fv, dv = pnt.interpolate_volume(
+    ...     image_series=image_series,
+    ...     registration=registration,
     ...     colour=[0, 0, 0],
     ...     atlas=atlas,
     ... )
@@ -488,12 +491,9 @@ def interpolate_volume(
     atlas_volume = atlas.volume
 
     out_base_shape = tuple(int(x) for x in atlas_volume.shape)
-
     out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)
 
-    registration = read_alignment(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}
-    seg_paths = discover_image_files(segmentation_folder)
 
     # Accept GUI/settings values like "auto" and defer to adapter auto-detection
     # by passing pixel_id=None.
@@ -514,9 +514,10 @@ def interpolate_volume(
             )
     else:
         colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
+
     vol_cfg = VolumeConfig(
         segmentation_adapter=(
-            SegmentationAdapterRegistry.get(segmentation_format)
+            SegmentationAdapterRegistry.get(image_series.segmentation_format)
             if segmentation_mode
             else None
         ),
@@ -544,7 +545,8 @@ def interpolate_volume(
         np.zeros((gv.size,), dtype=np.uint32) if value_mode == "object_count" else None
     )
 
-    for seg_path in seg_paths:
-        _process_one_section(seg_path, slice_by_nr, vol_cfg, gv, fv, dv, ov_flat)
+    for section in image_series.sections:
+        slice_info = slice_by_nr.get(section.section_number)
+        _process_one_section(section, slice_info, vol_cfg, gv, fv, dv, ov_flat)
 
     return _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
