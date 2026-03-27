@@ -66,6 +66,55 @@ def save_volume_niftis(
     voxel_size_um: Optional[float],
     logger=None,
 ) -> None:
+    """Save atlas-space volumes as NIfTI files.
+
+    Parameters
+    ----------
+    output_folder
+        Base output directory where the ``interpolated_volume`` subdirectory
+        will be created.
+    interpolated_volume
+        Value volume to save, typically returned as the first output of
+        :func:`PyNutil.interpolate_volume`.
+    frequency_volume
+        Per-voxel sample-count volume to save.
+    damage_volume
+        Optional binary damage-mask volume to save.
+    atlas_volume
+        Atlas volume used to infer isotropic voxel spacing for the written
+        NIfTI files.
+    voxel_size_um
+        Base atlas voxel size in micrometers. If ``None``, a default of
+        ``1.0`` micrometers is used.
+    logger
+        Optional logger used to report non-uniform output scaling.
+
+    Notes
+    -----
+    Each written volume is scaled to 8-bit before export. Output files are
+    written into ``<output_folder>/interpolated_volume``.
+
+    Examples
+    --------
+    Save the volumes returned by :func:`PyNutil.interpolate_volume`:
+
+    >>> image_series = read_segmentation_dir("path/to/segmentations/", pixel_id=[0, 0, 0])
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> gv, fv, dv = interpolate_volume(
+    ...     image_series=image_series,
+    ...     registration=registration,
+    ...     colour=[0, 0, 0],
+    ...     atlas=atlas,
+    ... )
+    >>> save_volume_niftis(
+    ...     output_folder="path/to/output",
+    ...     interpolated_volume=gv,
+    ...     frequency_volume=fv,
+    ...     damage_volume=dv,
+    ...     atlas_volume=atlas.volume,
+    ...     voxel_size_um=atlas.voxel_size_um,
+    ... )
+    """
     if interpolated_volume is None and frequency_volume is None:
         return
 

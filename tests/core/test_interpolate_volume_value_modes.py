@@ -55,16 +55,19 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         settings, atlas, result, label_df = self._run_pipeline()
 
         scale = self._scale_for_small_volume(atlas.annotation.shape)
+        alignment = read_alignment(settings["alignment_json"])
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
 
         common_kwargs = dict(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
-
-            segmentation_format="binary",
             segmentation_mode=True,
         )
 
@@ -119,16 +122,19 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         settings, atlas, result, label_df = self._run_pipeline()
 
         scale = self._scale_for_small_volume(atlas.annotation.shape)
+        alignment = read_alignment(settings["alignment_json"])
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
 
         common_kwargs = dict(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
-
-            segmentation_format="binary",
             segmentation_mode=True,
             missing_fill=0.0,
         )
@@ -183,16 +189,19 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         settings = self._load_settings()
         atlas = BrainGlobeAtlas(settings["atlas_name"])
         scale = self._scale_for_small_volume(atlas.annotation.shape)
+        alignment = read_alignment(settings["alignment_json"])
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=None,
+        )
 
         common_kwargs = dict(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             atlas=atlas,
             scale=scale,
             missing_fill=0.0,
             do_interpolation=False,
-
-            segmentation_format="binary",
             segmentation_mode=True,
             value_mode="pixel_count",
         )
