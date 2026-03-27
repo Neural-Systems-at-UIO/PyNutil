@@ -5,6 +5,7 @@ from typing import Optional
 import numpy as np
 
 from .nifti_writer import write_nifti
+from ..results.volume import VolumeResult
 
 
 def scale_to_uint8(data: np.ndarray) -> np.ndarray:
@@ -59,9 +60,7 @@ def isotropic_resolution_um_for_volume(
 def save_volume_niftis(
     *,
     output_folder: str,
-    interpolated_volume: Optional[np.ndarray],
-    frequency_volume: Optional[np.ndarray],
-    damage_volume: Optional[np.ndarray] = None,
+    volumes: VolumeResult,
     atlas_volume: Optional[np.ndarray],
     voxel_size_um: Optional[float],
     logger=None,
@@ -73,13 +72,9 @@ def save_volume_niftis(
     output_folder
         Base output directory where the ``interpolated_volume`` subdirectory
         will be created.
-    interpolated_volume
-        Value volume to save, typically returned as the first output of
-        :func:`PyNutil.interpolate_volume`.
-    frequency_volume
-        Per-voxel sample-count volume to save.
-    damage_volume
-        Optional binary damage-mask volume to save.
+    volumes
+        :class:`~PyNutil.VolumeResult` returned by
+        :func:`~PyNutil.interpolate_volume`.
     atlas_volume
         Atlas volume used to infer isotropic voxel spacing for the written
         NIfTI files.
@@ -100,7 +95,7 @@ def save_volume_niftis(
 
     >>> image_series = read_segmentation_dir("path/to/segmentations/", pixel_id=[0, 0, 0])
     >>> registration = read_alignment("path/to/alignment.json")
-    >>> gv, fv, dv = interpolate_volume(
+    >>> volumes = interpolate_volume(
     ...     image_series=image_series,
     ...     registration=registration,
     ...     colour=[0, 0, 0],
@@ -108,16 +103,11 @@ def save_volume_niftis(
     ... )
     >>> save_volume_niftis(
     ...     output_folder="path/to/output",
-    ...     interpolated_volume=gv,
-    ...     frequency_volume=fv,
-    ...     damage_volume=dv,
+    ...     volumes=volumes,
     ...     atlas_volume=atlas.volume,
     ...     voxel_size_um=atlas.voxel_size_um,
     ... )
     """
-    if interpolated_volume is None and frequency_volume is None:
-        return
-
     base_voxel_um = float(voxel_size_um) if voxel_size_um is not None else 1.0
 
     def _save_one(volume: np.ndarray, *, name: str) -> None:
@@ -130,11 +120,6 @@ def save_volume_niftis(
         )
         write_nifti(vol_u8, res, f"{output_folder}/interpolated_volume/{name}")
 
-    if interpolated_volume is not None:
-        _save_one(interpolated_volume, name="interpolated_volume")
-
-    if frequency_volume is not None:
-        _save_one(frequency_volume, name="frequency_volume")
-
-    if damage_volume is not None:
-        _save_one(damage_volume, name="damage_volume")
+    _save_one(volumes.value, name="interpolated_volume")
+    _save_one(volumes.frequency, name="frequency_volume")
+    _save_one(volumes.damage, name="damage_volume")

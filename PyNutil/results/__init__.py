@@ -3,6 +3,7 @@
 from .atlas import AtlasData
 from .extraction import ExtractionResult, PointSetResult
 from .section import IntensitySectionResult, SectionResult
+from .volume import VolumeResult
 
 __all__ = [
     "AtlasData",
@@ -10,4 +11,5 @@ __all__ = [
     "PointSetResult",
     "SectionResult",
     "IntensitySectionResult",
+    "VolumeResult",
 ]
