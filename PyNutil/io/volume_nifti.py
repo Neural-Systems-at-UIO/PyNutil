@@ -6,6 +6,7 @@ import numpy as np
 
 from .nifti_writer import write_nifti
 from ..results.volume import VolumeResult
+from .atlas_loader import resolve_atlas
 
 
 def scale_to_uint8(data: np.ndarray) -> np.ndarray:
@@ -61,8 +62,7 @@ def save_volume_niftis(
     *,
     output_folder: str,
     volumes: VolumeResult,
-    atlas_volume: Optional[np.ndarray],
-    voxel_size_um: Optional[float],
+    atlas: object,
     logger=None,
 ) -> None:
     """Save atlas-space volumes as NIfTI files.
@@ -75,12 +75,9 @@ def save_volume_niftis(
     volumes
         :class:`~PyNutil.VolumeResult` returned by
         :func:`~PyNutil.interpolate_volume`.
-    atlas_volume
-        Atlas volume used to infer isotropic voxel spacing for the written
-        NIfTI files.
-    voxel_size_um
-        Base atlas voxel size in micrometers. If ``None``, a default of
-        ``1.0`` micrometers is used.
+    atlas
+        Atlas definition used to infer isotropic voxel spacing. Accepts a
+        BrainGlobe atlas object or :class:`~PyNutil.AtlasData`.
     logger
         Optional logger used to report non-uniform output scaling.
 
@@ -104,16 +101,16 @@ def save_volume_niftis(
     >>> save_volume_niftis(
     ...     output_folder="path/to/output",
     ...     volumes=volumes,
-    ...     atlas_volume=atlas.volume,
-    ...     voxel_size_um=atlas.voxel_size_um,
+    ...     atlas=atlas,
     ... )
     """
-    base_voxel_um = float(voxel_size_um) if voxel_size_um is not None else 1.0
+    resolved = resolve_atlas(atlas)
+    base_voxel_um = float(resolved.voxel_size_um) if resolved.voxel_size_um is not None else 1.0
 
     def _save_one(volume: np.ndarray, *, name: str) -> None:
         vol_u8 = scale_to_uint8(volume)
         res = isotropic_resolution_um_for_volume(
-            atlas_volume=atlas_volume,
+            atlas_volume=resolved.volume,
             volume=vol_u8,
             base_voxel_um=base_voxel_um,
             logger=logger,

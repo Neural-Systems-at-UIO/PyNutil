@@ -328,8 +328,7 @@ volumes = pnt.interpolate_volume(
 pnt.save_volume_niftis(
     output_folder="path/to/output",
     volumes=volumes,
-    atlas_volume=atlas.annotation,
-    voxel_size_um=atlas.voxel_size_um,
+    atlas=atlas,
 )
 ```
 

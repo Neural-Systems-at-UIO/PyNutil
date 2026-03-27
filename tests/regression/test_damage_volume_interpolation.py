@@ -102,8 +102,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             save_volume_niftis(
                 output_folder=tmpdir,
                 volumes=volumes,
-                atlas_volume=atlas.volume,
-                voxel_size_um=atlas.voxel_size_um,
+                atlas=atlas,
             )
 
             self.assertTrue(os.path.exists(damage_nifti_path), f"Damage volume NIfTI should be saved at {damage_nifti_path}")
