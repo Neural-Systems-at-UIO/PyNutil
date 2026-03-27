@@ -41,8 +41,9 @@ def run_pipeline_from_settings(settings: dict):
     alignment = read_alignment(settings["alignment_json"])
 
     if settings.get("coordinate_file"):
+        import pandas as pd
         result = xy_to_coords(
-            settings["coordinate_file"],
+            pd.read_csv(settings["coordinate_file"]),
             alignment,
             atlas,
         )

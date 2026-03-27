@@ -112,7 +112,8 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
 
         atlas = BrainGlobeAtlas("allen_mouse_25um")
         alignment = read_alignment(bg_json)
-        result = xy_to_coords(coord_file, alignment, atlas)
+        import pandas as pd
+        result = xy_to_coords(pd.read_csv(coord_file), alignment, atlas)
         label_df = quantify_coords(result, atlas)
 
         self.assertFalse(label_df.empty)

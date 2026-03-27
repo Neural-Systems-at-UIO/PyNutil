@@ -46,7 +46,7 @@ Choose the coordinate extraction step based on your input data:
 | --- | --- | --- |
 | Segmentation images | `seg_to_coords()` | Count labeled objects or pixels by region |
 | Source images | `image_to_coords()` | Measure image intensity by region |
-| CSV of detections | `xy_to_coords()` | Quantify points produced by another tool |
+| DataFrame of detections | `xy_to_coords()` | Quantify points produced by another tool |
 
 Choose the atlas based on where it comes from:
 
@@ -224,17 +224,20 @@ should be aggregated by atlas region instead of counted as discrete objects.
 ### Pre-extracted coordinates
 
 Use `xy_to_coords()` when a different tool has already detected points in image
-space and saved them to a CSV.
+space. Pass the detections as a `pandas.DataFrame` with columns `X`, `Y`,
+`image_width`, `image_height`, and `section number`.
 
 ```python
+import pandas as pd
 from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
 atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment("path/to/alignment.json")
+df = pd.read_csv("path/to/coordinates.csv")
 
 result = pnt.xy_to_coords(
-    "path/to/coordinates.csv",
+    df,
     alignment,
     atlas,
 )
