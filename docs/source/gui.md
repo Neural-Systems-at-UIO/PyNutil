@@ -125,16 +125,3 @@ Depending on the workflow, these may include:
 | `frequency_volume.nii.gz` | Per-voxel sampling frequency |
 | `damage_volume.nii.gz` | Binary damage mask volume |
 
-## When to use the GUI vs Python
-
-Use the GUI when you want:
-
-- a no-code workflow
-- quick interactive runs
-- easy atlas and file selection
-
-Use the Python API when you want:
-
-- scripted or reproducible batch processing
-- tighter control of the pipeline in code
-- integration with other analysis workflows
