@@ -78,13 +78,13 @@ output_folder = os.path.join(repo_root, "test_result/getting_started_example")
 
 atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(alignment_json)
-
-result = pnt.seg_to_coords(
-    pnt.read_segmentation_dir(segmentation_folder, pixel_id=[0, 0, 0], segmentation_format="binary"),
-    alignment,
-    atlas,
+segmentation = pnt.read_segmentation_dir(
+  segmentation_folder,
+  pixel_id=[0, 0, 0],
+  segmentation_format="binary",
 )
 
+result = pnt.seg_to_coords(segmentation, alignment, atlas)
 label_df = pnt.quantify_coords(result, atlas)
 pnt.save_analysis(output_folder, result, atlas, label_df=label_df)
 ```
