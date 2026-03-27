@@ -128,8 +128,7 @@ class AnalysisWorker(QThread):
                 save_volume_niftis(
                     output_folder=output_dir,
                     volumes=volumes,
-                    atlas_volume=atlas.volume,
-                    voxel_size_um=atlas.voxel_size_um,
+                    atlas=atlas,
                 )
 
             print(f"Analysis complete. Results saved to {output_dir}")
