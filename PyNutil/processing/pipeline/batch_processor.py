@@ -453,19 +453,19 @@ def image_to_coords(
 
 
 def xy_to_coords(
-    coordinate_file,
+    coordinates: "pd.DataFrame",
     registration: RegistrationData,
     atlas: AtlasData,
     return_orientation="asr",
 ):
-    """Transform image-space coordinates from CSV into atlas space.
+    """Transform image-space coordinates into atlas space.
 
     Parameters
     ----------
-    coordinate_file
-        Path to a CSV file containing coordinates and section metadata. The
-        file is expected to contain the columns ``X``, ``Y``,
-        ``image_width``, ``image_height``, and ``section number``.
+    coordinates
+        A :class:`pandas.DataFrame` containing coordinates and section
+        metadata. Must contain the columns ``X``, ``Y``, ``image_width``,
+        ``image_height``, and ``section number``.
     registration
         Registration data returned by :func:`PyNutil.read_alignment`.
     atlas
@@ -485,16 +485,14 @@ def xy_to_coords(
 
     Examples
     --------
-    Transform pre-extracted image-space coordinates from CSV:
+    Transform pre-extracted image-space coordinates:
 
+    >>> import pandas as pd
     >>> from brainglobe_atlasapi import BrainGlobeAtlas
     >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
     >>> registration = read_alignment("path/to/alignment.json")
-    >>> result = xy_to_coords(
-    ...     "path/to/coordinates.csv",
-    ...     registration,
-    ...     atlas,
-    ... )
+    >>> df = pd.read_csv("path/to/coordinates.csv")
+    >>> result = xy_to_coords(df, registration, atlas)
     >>> result.points.points.shape
     (N, 3)
     >>> result.section_filenames
@@ -503,9 +501,15 @@ def xy_to_coords(
     from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
-    from ...io.loaders import load_coordinate_file
+    from ...io.loaders import _COORDINATE_REQUIRED_COLUMNS
 
-    coord_df = load_coordinate_file(coordinate_file)
+    missing = _COORDINATE_REQUIRED_COLUMNS - set(coordinates.columns)
+    if missing:
+        raise ValueError(
+            f"DataFrame is missing required columns: {missing}. "
+            f"Expected: {_COORDINATE_REQUIRED_COLUMNS}"
+        )
+    coord_df = coordinates
 
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
