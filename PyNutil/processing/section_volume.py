@@ -14,6 +14,7 @@ from .utils import (
 )
 from ..io.atlas_loader import resolve_atlas
 from ..image_series import ImageSeries, Section
+from ..results.volume import VolumeResult
 
 if TYPE_CHECKING:
     from .adapters.base import RegistrationData
@@ -462,10 +463,10 @@ def interpolate_volume(
 
     Returns
     -------
-    tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]
-        A tuple ``(interpolated_volume, frequency_volume, damage_volume)``.
-        The first element stores the requested value volume, the second stores
-        per-voxel sampling frequency, and the third is a binary damage mask.
+    VolumeResult
+        A :class:`~PyNutil.VolumeResult` with ``value`` (the requested metric
+        volume), ``frequency`` (per-voxel sample count), and ``damage`` (binary
+        damage mask).
 
     Examples
     --------
@@ -559,4 +560,4 @@ def interpolate_volume(
         fv = reorient_volume(fv, atlas_shape, return_orientation)
         dv = reorient_volume(dv, atlas_shape, return_orientation)
 
-    return gv, fv, dv
+    return VolumeResult(value=gv, frequency=fv, damage=dv)

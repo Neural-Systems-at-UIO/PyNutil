@@ -71,17 +71,19 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             segmentation_mode=True,
         )
 
-        gv_pc, fv, _ = interpolate_volume(
+        vr_pc = interpolate_volume(
             **common_kwargs,
             missing_fill=0.0,
             value_mode="pixel_count",
         )
+        gv_pc, fv = vr_pc.value, vr_pc.frequency
 
-        gv_mean, fv2, _ = interpolate_volume(
+        vr_mean = interpolate_volume(
             **common_kwargs,
             missing_fill=-1.0,
             value_mode="mean",
         )
+        gv_mean, fv2 = vr_mean.value, vr_mean.frequency
 
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_mean_") as tmpdir:
             out_root = os.path.join(tmpdir, "mean_vs_pixel_count")
@@ -139,15 +141,17 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             missing_fill=0.0,
         )
 
-        gv_pc, fv, _ = interpolate_volume(
+        vr_pc = interpolate_volume(
             **common_kwargs,
             value_mode="pixel_count",
         )
+        gv_pc, fv = vr_pc.value, vr_pc.frequency
 
-        gv_obj, fv2, _ = interpolate_volume(
+        vr_obj = interpolate_volume(
             **common_kwargs,
             value_mode="object_count",
         )
+        gv_obj, fv2 = vr_obj.value, vr_obj.frequency
 
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_object_") as tmpdir:
             out_root = os.path.join(tmpdir, "object_count")
@@ -206,18 +210,12 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             value_mode="pixel_count",
         )
 
-        gv_auto, fv_auto, dv_auto = interpolate_volume(
-            **common_kwargs,
-            colour="auto",
-        )
-        gv_none, fv_none, dv_none = interpolate_volume(
-            **common_kwargs,
-            colour=None,
-        )
+        vr_auto = interpolate_volume(**common_kwargs, colour="auto")
+        vr_none = interpolate_volume(**common_kwargs, colour=None)
 
-        self.assertTrue(np.array_equal(gv_auto, gv_none))
-        self.assertTrue(np.array_equal(fv_auto, fv_none))
-        self.assertTrue(np.array_equal(dv_auto, dv_none))
+        self.assertTrue(np.array_equal(vr_auto.value, vr_none.value))
+        self.assertTrue(np.array_equal(vr_auto.frequency, vr_none.frequency))
+        self.assertTrue(np.array_equal(vr_auto.damage, vr_none.damage))
 
 
 if __name__ == "__main__":

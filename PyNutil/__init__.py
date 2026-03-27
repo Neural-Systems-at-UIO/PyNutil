@@ -1,4 +1,4 @@
-from .results import AtlasData, ExtractionResult, PointSetResult
+from .results import AtlasData, ExtractionResult, PointSetResult, VolumeResult
 from .processing.adapters.base import RegistrationData
 from .processing.adapters import read_alignment
 from .io.atlas_loader import load_custom_atlas
@@ -31,6 +31,7 @@ __all__ = [
     "xy_to_coords",
     "quantify_coords",
     "save_analysis",
+    "VolumeResult",
     "interpolate_volume",
     "save_volume_niftis",
 ]

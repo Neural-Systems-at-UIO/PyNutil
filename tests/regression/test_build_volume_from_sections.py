@@ -53,7 +53,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
 
         # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
-        gv, fv, dv = interpolate_volume(
+        volumes = interpolate_volume(
             image_series=image_series,
             registration=alignment,
             colour=settings.get("colour", [0, 0, 0]),
@@ -69,15 +69,15 @@ class TestBuildVolumeFromSections(TimedTestCase):
 =======
 >>>>>>> 3ab296d (remove nonlinear and damage mask opt out from everywhere except load)
         )
-        return atlas, result, label_df, gv, fv, dv, settings
+        return atlas, result, label_df, volumes, settings
 
     def test_interpolate_volume_k5_matches_expected(self):
-        atlas, result, label_df, gv, fv, dv, settings = self._run_pipeline_and_interpolate()
+        atlas, result, label_df, volumes, settings = self._run_pipeline_and_interpolate()
 
         # Volumes are saved as uint8 in NIfTI; we scale them here to match
         # the expected disk fixtures without having to read back what we just wrote.
-        got_interp = scale_to_uint8(gv)
-        got_freq = scale_to_uint8(fv)
+        got_interp = scale_to_uint8(volumes.value)
+        got_freq = scale_to_uint8(volumes.frequency)
 
         exp_interp_path = os.path.join(
             self.expected_report_dir, "interpolated_volume.nii.gz"
