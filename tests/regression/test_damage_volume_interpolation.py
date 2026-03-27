@@ -29,7 +29,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             self.settings["segmentation_folder"],
             pixel_id=self.settings.get("colour", [0, 0, 0]),
         )
-        gv, fv, dv = interpolate_volume(
+        volumes = interpolate_volume(
             image_series=image_series,
             registration=alignment,
             colour=self.settings.get("colour", [0, 0, 0]),
@@ -38,44 +38,44 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             do_interpolation=do_interpolation,
             k=k,
         )
-        return atlas, result, label_df, gv, fv, dv
+        return atlas, result, label_df, volumes
 
     def test_damage_volume_creation(self):
-        atlas, result, label_df, gv, fv, dv = self._run_interpolation(
+        atlas, result, label_df, volumes = self._run_interpolation(
             do_interpolation=False,
         )
 
         # Check if damage_volume has the correct shape
-        self.assertEqual(dv.shape, gv.shape, "Damage volume shape should match interpolated volume shape")
+        self.assertEqual(volumes.damage.shape, volumes.value.shape, "Damage volume shape should match interpolated volume shape")
 
         # Check if damage_volume contains non-zero values
         # The brainglobe_atlas_damage test case is known to have damage markers
-        self.assertTrue(np.any(dv > 0), "Damage volume should contain non-zero values for this test case")
+        self.assertTrue(np.any(volumes.damage > 0), "Damage volume should contain non-zero values for this test case")
 
         # Check if damage_volume is binary (0 or 1)
-        unique_values = np.unique(dv)
+        unique_values = np.unique(volumes.damage)
         for val in unique_values:
             self.assertIn(val, [0, 1], f"Damage volume should only contain 0 or 1, found {val}")
 
     def test_damage_volume_interpolation(self):
         # Run without interpolation first to get baseline
-        _, _, _, gv_no_interp, fv_no_interp, dv_no_interp = self._run_interpolation(
+        _, _, _, volumes_no_interp = self._run_interpolation(
             do_interpolation=False,
         )
-        count_no_interp = np.sum(dv_no_interp > 0)
+        count_no_interp = np.sum(volumes_no_interp.damage > 0)
 
         # Run with interpolation
-        _, _, _, gv_interp, fv_interp, dv_interp = self._run_interpolation(
+        _, _, _, volumes_interp = self._run_interpolation(
             do_interpolation=True, k=5,
         )
-        count_interp = np.sum(dv_interp > 0)
+        count_interp = np.sum(volumes_interp.damage > 0)
 
         # With interpolation, the damage volume should generally have more (or equal) damaged voxels
         # because it's a "max" aggregation over k neighbors.
         self.assertGreaterEqual(count_interp, count_no_interp, "Interpolated damage volume should have at least as many damaged voxels as non-interpolated")
 
         # Verify that it's still binary
-        unique_values = np.unique(dv_interp)
+        unique_values = np.unique(volumes_interp.damage)
         for val in unique_values:
             self.assertIn(val, [0, 1], f"Interpolated damage volume should only contain 0 or 1, found {val}")
 
@@ -83,7 +83,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         import tempfile
         import nibabel as nib
 
-        atlas, result, label_df, gv, fv, dv = self._run_interpolation(
+        atlas, result, label_df, volumes = self._run_interpolation(
             do_interpolation=True, k=5,
         )
 
@@ -101,9 +101,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             from PyNutil import save_volume_niftis
             save_volume_niftis(
                 output_folder=tmpdir,
-                interpolated_volume=gv,
-                frequency_volume=fv,
-                damage_volume=dv,
+                volumes=volumes,
                 atlas_volume=atlas.volume,
                 voxel_size_um=atlas.voxel_size_um,
             )
