@@ -55,26 +55,7 @@ flex-wrap: wrap;
 justify-content: space-between;
 }
 
-/* grids to match theme colors */
-.sd-card-icon {
-  color: var(--sd-color-primary);
-  font-size: 1.5em;
-  margin-bottom: 0.5rem;
-}
 
-.sd-card {
-  padding: 1.5rem;
-  transition: transform 0.2s;
-}
-
-.sd-card:hover {
-  transform: translateY(-5px);
-}
-
-/* Ensuring content area uses full width when sidebar is hidden */
-.bd-page-width {
-  max-width: 90% !important;
-}
 
 /* Hide sidebar on pages with hide-sidebar metadata */
 body[data-hide-sidebar="true"] .bd-sidebar-primary {
