@@ -297,11 +297,11 @@ This is useful when you want:
 - a volume that can be viewed in downstream NIfTI tools
 - a per-voxel sampling-frequency volume alongside the main signal volume
 
-The function returns three arrays:
+The function returns a `VolumeResult` object with three fields:
 
-- `interpolated_volume`: the main reconstructed value volume
-- `frequency_volume`: how many section-derived samples contributed to each voxel
-- `damage_volume`: a binary volume marking damaged regions
+- `value`: the main reconstructed value volume
+- `frequency`: how many section-derived samples contributed to each voxel
+- `damage`: a binary volume marking damaged regions
 
 Example:
 
@@ -310,22 +310,24 @@ from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
 atlas = BrainGlobeAtlas("allen_mouse_25um")
+registration = pnt.read_alignment("path/to/alignment.json")
+image_series = pnt.read_segmentation_dir(
+    "path/to/segmentations/",
+    pixel_id=[0, 0, 0],
+)
 
-gv, fv, dv = pnt.interpolate_volume(
-    segmentation_folder="path/to/segmentations/",
-    alignment_json="path/to/alignment.json",
+volumes = pnt.interpolate_volume(
+    image_series=image_series,
+    registration=registration,
     colour=[0, 0, 0],
     atlas=atlas,
     value_mode="pixel_count",
-    segmentation_format="binary",
     segmentation_mode=True,
 )
 
 pnt.save_volume_niftis(
     output_folder="path/to/output",
-    interpolated_volume=gv,
-    frequency_volume=fv,
-    damage_volume=dv,
+    volumes=volumes,
     atlas_volume=atlas.annotation,
     voxel_size_um=atlas.voxel_size_um,
 )
@@ -338,9 +340,9 @@ Common `value_mode` options:
 - `mean`: mean sampled intensity, useful for intensity-image workflows
 
 If you are interpolating from source images instead of segmentation masks, set
-`segmentation_mode=False` and point `segmentation_folder` to the image folder.
-You can also use `intensity_channel`, `min_intensity`, and `max_intensity` to
-control how intensity values are sampled.
+`segmentation_mode=False` and use `pnt.read_image_dir()` to build the
+`ImageSeries`. You can also use `intensity_channel`, `min_intensity`, and
+`max_intensity` to control how intensity values are sampled.
 
 `save_volume_niftis()` writes the generated volumes into:
 
