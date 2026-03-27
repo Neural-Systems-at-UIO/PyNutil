@@ -7,6 +7,8 @@ from log_manager import TextRedirector
 from PyNutil import (
     load_custom_atlas,
     read_alignment,
+    read_segmentation_dir,
+    read_image_dir,
     seg_to_coords,
     image_to_coords,
     quantify_coords,
@@ -94,14 +96,20 @@ class AnalysisWorker(QThread):
             if self.arguments.get("interpolate_volume"):
                 value_mode = self.arguments.get("value_mode", "pixel_count")
                 print(f"Creating interpolated volume (mode: {value_mode})...")
-                folder = seg_dir or img_dir
+                if seg_dir:
+                    vol_series = read_segmentation_dir(
+                        seg_dir,
+                        pixel_id=self.arguments["object_colour"],
+                        segmentation_format=seg_format,
+                    )
+                else:
+                    vol_series = read_image_dir(img_dir)
                 gv, fv, dv = interpolate_volume(
-                    segmentation_folder=folder,
-                    alignment_json=alignment_json,
+                    image_series=vol_series,
+                    registration=registration,
                     colour=self.arguments["object_colour"],
                     atlas=atlas,
                     value_mode=value_mode,
-                    segmentation_format=seg_format,
                     segmentation_mode=bool(seg_dir),
                 )
                 volumes = {

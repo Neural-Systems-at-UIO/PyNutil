@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 import nibabel as nib
 
-from PyNutil import save_analysis, interpolate_volume
+from PyNutil import save_analysis, interpolate_volume, read_segmentation_dir
 from PyNutil.io.volume_nifti import scale_to_uint8
 from test_helpers import copy_tree_to_demo, small_volume_scale, run_pipeline_from_settings
 try:
@@ -46,11 +46,16 @@ class TestBuildVolumeFromSections(TimedTestCase):
         # Downscale to keep runtime/memory small and stable.
         scale = small_volume_scale(atlas.volume.shape)
 
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
+
         # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
         gv, fv, dv = interpolate_volume(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,

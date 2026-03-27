@@ -31,8 +31,8 @@ coords = pnt.seg_to_coords(
 label_df = pnt.quantify_coords(coords, atlas)
 # Optionally generate a 3D heatmap
 pnt.interpolate_volume(
-    segmentation_folder=segmentation_folder,
-    alignment_json=alignment_json,
+    image_series=pnt.read_segmentation_dir(segmentation_folder, pixel_id=colour, segmentation_format="binary"),
+    registration=alignment,
     colour=colour,
     atlas=atlas,
 )
