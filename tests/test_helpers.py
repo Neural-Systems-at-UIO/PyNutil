@@ -12,6 +12,7 @@ from PyNutil import (
     xy_to_coords,
     quantify_coords,
 )
+from PyNutil.io.atlas_loader import resolve_atlas
 
 
 def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
@@ -23,7 +24,7 @@ def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
 def load_atlas_from_settings(settings: dict):
     """Load an AtlasData from a settings dictionary."""
     if settings.get("atlas_name"):
-        return BrainGlobeAtlas(settings["atlas_name"])
+        return resolve_atlas(BrainGlobeAtlas(settings["atlas_name"]))
     return load_custom_atlas(
         settings["atlas_path"],
         settings.get("hemi_path"),
