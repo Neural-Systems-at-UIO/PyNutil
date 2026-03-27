@@ -14,7 +14,7 @@ from PyNutil import (
     quantify_coords,
     save_analysis,
     interpolate_volume,
-    save_volume_niftis,
+    save_volumes,
 )
 
 
@@ -125,7 +125,7 @@ class AnalysisWorker(QThread):
                 label_df=label_df,
             )
             if volumes:
-                save_volume_niftis(
+                save_volumes(
                     output_folder=output_dir,
                     volumes=volumes,
                     atlas=atlas,

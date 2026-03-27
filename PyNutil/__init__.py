@@ -13,7 +13,7 @@ from .processing.pipeline.batch_processor import (
 from .processing.analysis.data_analysis import quantify_coords
 from .io.file_operations import save_analysis
 from .processing.section_volume import interpolate_volume
-from .io.volume_nifti import save_volume_niftis
+from .io.volume_nifti import save_volumes
 
 __all__ = [
     "AtlasData",
@@ -33,5 +33,5 @@ __all__ = [
     "save_analysis",
     "VolumeResult",
     "interpolate_volume",
-    "save_volume_niftis",
+    "save_volumes",
 ]

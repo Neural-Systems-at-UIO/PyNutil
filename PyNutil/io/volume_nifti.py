@@ -58,7 +58,7 @@ def isotropic_resolution_um_for_volume(
     return float(base_voxel_um * iso_scale)
 
 
-def save_volume_niftis(
+def save_volumes(
     *,
     output_folder: str,
     volumes: VolumeResult,
@@ -98,7 +98,7 @@ def save_volume_niftis(
     ...     colour=[0, 0, 0],
     ...     atlas=atlas,
     ... )
-    >>> save_volume_niftis(
+    >>> save_volumes(
     ...     output_folder="path/to/output",
     ...     volumes=volumes,
     ...     atlas=atlas,
