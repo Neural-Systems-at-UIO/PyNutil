@@ -325,7 +325,7 @@ volumes = pnt.interpolate_volume(
     segmentation_mode=True,
 )
 
-pnt.save_volume_niftis(
+pnt.save_volumes(
     output_folder="path/to/output",
     volumes=volumes,
     atlas=atlas,
@@ -343,7 +343,7 @@ If you are interpolating from source images instead of segmentation masks, set
 `ImageSeries`. You can also use `intensity_channel`, `min_intensity`, and
 `max_intensity` to control how intensity values are sampled.
 
-`save_volume_niftis()` writes the generated volumes into:
+`save_volumes()` writes the generated volumes into:
 
 - `interpolated_volume/interpolated_volume.nii.gz`
 - `interpolated_volume/frequency_volume.nii.gz`

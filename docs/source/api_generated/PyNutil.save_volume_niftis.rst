@@ -3,4 +3,4 @@
 
 .. currentmodule:: PyNutil
 
-.. autofunction:: save_volume_niftis
+.. autofunction:: save_volumes

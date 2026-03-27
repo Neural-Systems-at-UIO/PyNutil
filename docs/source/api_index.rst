@@ -18,7 +18,7 @@ Top-level functions
     quantify_coords
     save_analysis
     interpolate_volume
-    save_volume_niftis
+    save_volumes
 
 Result classes
 --------------
