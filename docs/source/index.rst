@@ -2,9 +2,31 @@ PyNutil
 =======
 a Python library for brain-wide quantification and spatial analysis of features in serial section images from the brain. 
 
+.. grid:: 1 2 2 3
+   :gutter: 3
+
+   .. grid-item-card:: :fas:`book;sd-text-primary` Getting Started
+      :link: getting_started
+      :link-type: doc
+
+      Installation, supported formats and key concepts.
+
+   .. grid-item-card:: :fas:`desktop;sd-text-primary` GUI
+      :link: gui
+      :link-type: doc
+
+      Use PyNutil via the graphical user interface.
+
+   .. grid-item-card:: :fas:`images;sd-text-primary` Gallery
+      :link: demos
+      :link-type: doc
+
+      A gallery of examples using PyNutil.
+
 .. image:: ../assets/PyNutil_fig1.png
    :alt: Overview figure for the PyNutil workflow
    :width: 100%
+
 Overview
 ----------
 PyNutil is able to integrate outputs from various atlas registration software and image segmentation software in order 
@@ -25,6 +47,7 @@ practical examples, and the generated API reference.
 
    getting_started
    gui
+   demos
    api_index
 
 Highlights
