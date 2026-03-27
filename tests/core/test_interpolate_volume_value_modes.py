@@ -5,13 +5,14 @@ import tempfile
 import unittest
 
 import numpy as np
+from brainglobe_atlasapi import BrainGlobeAtlas
 
-from PyNutil import load_atlas_data, read_alignment, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
-from tests.test_helpers import copy_tree_to_demo, small_volume_scale
+from PyNutil import read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
+from test_helpers import copy_tree_to_demo, small_volume_scale
 
 try:
     # When run via `python -m unittest discover` from repo root
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     # When run with tests/ on sys.path
     from timing_utils import TimedTestCase
@@ -34,13 +35,15 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
 
     def _run_pipeline(self):
         settings = self._load_settings()
-        atlas = load_atlas_data(settings["atlas_name"])
+        atlas = BrainGlobeAtlas(settings["atlas_name"])
         alignment = read_alignment(settings["alignment_json"])
         result = seg_to_coords(
-            settings["segmentation_folder"],
+            read_segmentation_dir(
+                settings["segmentation_folder"],
+                pixel_id=settings.get("colour", [0, 0, 0]),
+            ),
             alignment,
             atlas,
-            pixel_id=settings.get("colour", [0, 0, 0]),
         )
         label_df = quantify_coords(result, atlas)
         return settings, atlas, result, label_df
@@ -51,31 +54,36 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
     def test_value_mode_mean_matches_pixel_count_over_frequency(self):
         settings, atlas, result, label_df = self._run_pipeline()
 
-        scale = self._scale_for_small_volume(atlas.volume.shape)
+        scale = self._scale_for_small_volume(atlas.annotation.shape)
+        alignment = read_alignment(settings["alignment_json"])
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
 
         common_kwargs = dict(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
-            non_linear=False,
-            segmentation_format="binary",
             segmentation_mode=True,
         )
 
-        gv_pc, fv, _ = interpolate_volume(
+        vr_pc = interpolate_volume(
             **common_kwargs,
             missing_fill=0.0,
             value_mode="pixel_count",
         )
+        gv_pc, fv = vr_pc.value, vr_pc.frequency
 
-        gv_mean, fv2, _ = interpolate_volume(
+        vr_mean = interpolate_volume(
             **common_kwargs,
             missing_fill=-1.0,
             value_mode="mean",
         )
+        gv_mean, fv2 = vr_mean.value, vr_mean.frequency
 
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_mean_") as tmpdir:
             out_root = os.path.join(tmpdir, "mean_vs_pixel_count")
@@ -115,30 +123,35 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
     def test_value_mode_object_count_basic_invariants(self):
         settings, atlas, result, label_df = self._run_pipeline()
 
-        scale = self._scale_for_small_volume(atlas.volume.shape)
+        scale = self._scale_for_small_volume(atlas.annotation.shape)
+        alignment = read_alignment(settings["alignment_json"])
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
 
         common_kwargs = dict(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
-            non_linear=False,
-            segmentation_format="binary",
             segmentation_mode=True,
             missing_fill=0.0,
         )
 
-        gv_pc, fv, _ = interpolate_volume(
+        vr_pc = interpolate_volume(
             **common_kwargs,
             value_mode="pixel_count",
         )
+        gv_pc, fv = vr_pc.value, vr_pc.frequency
 
-        gv_obj, fv2, _ = interpolate_volume(
+        vr_obj = interpolate_volume(
             **common_kwargs,
             value_mode="object_count",
         )
+        gv_obj, fv2 = vr_obj.value, vr_obj.frequency
 
         with tempfile.TemporaryDirectory(prefix="pynutil_interpolate_value_modes_object_") as tmpdir:
             out_root = os.path.join(tmpdir, "object_count")
@@ -178,34 +191,31 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
 
     def test_colour_auto_matches_adapter_auto_detection(self):
         settings = self._load_settings()
-        atlas = load_atlas_data(settings["atlas_name"])
-        scale = self._scale_for_small_volume(atlas.volume.shape)
+        atlas = BrainGlobeAtlas(settings["atlas_name"])
+        scale = self._scale_for_small_volume(atlas.annotation.shape)
+        alignment = read_alignment(settings["alignment_json"])
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=None,
+        )
 
         common_kwargs = dict(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
+            image_series=image_series,
+            registration=alignment,
             atlas=atlas,
             scale=scale,
             missing_fill=0.0,
             do_interpolation=False,
-            non_linear=False,
-            segmentation_format="binary",
             segmentation_mode=True,
             value_mode="pixel_count",
         )
 
-        gv_auto, fv_auto, dv_auto = interpolate_volume(
-            **common_kwargs,
-            colour="auto",
-        )
-        gv_none, fv_none, dv_none = interpolate_volume(
-            **common_kwargs,
-            colour=None,
-        )
+        vr_auto = interpolate_volume(**common_kwargs, colour="auto")
+        vr_none = interpolate_volume(**common_kwargs, colour=None)
 
-        self.assertTrue(np.array_equal(gv_auto, gv_none))
-        self.assertTrue(np.array_equal(fv_auto, fv_none))
-        self.assertTrue(np.array_equal(dv_auto, dv_none))
+        self.assertTrue(np.array_equal(vr_auto.value, vr_none.value))
+        self.assertTrue(np.array_equal(vr_auto.frequency, vr_none.frequency))
+        self.assertTrue(np.array_equal(vr_auto.damage, vr_none.damage))
 
 
 if __name__ == "__main__":

@@ -2,15 +2,19 @@ import json
 import os
 import shutil
 
+from brainglobe_atlasapi import BrainGlobeAtlas
+
 from PyNutil import (
-    load_atlas_data,
     load_custom_atlas,
     read_alignment,
+    read_segmentation_dir,
+    read_image_dir,
     seg_to_coords,
     image_to_coords,
     xy_to_coords,
     quantify_coords,
 )
+from PyNutil.io.atlas_loader import resolve_atlas
 
 
 def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
@@ -22,7 +26,7 @@ def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
 def load_atlas_from_settings(settings: dict):
     """Load an AtlasData from a settings dictionary."""
     if settings.get("atlas_name"):
-        return load_atlas_data(settings["atlas_name"])
+        return resolve_atlas(BrainGlobeAtlas(settings["atlas_name"]))
     return load_custom_atlas(
         settings["atlas_path"],
         settings.get("hemi_path"),
@@ -39,14 +43,15 @@ def run_pipeline_from_settings(settings: dict):
     alignment = read_alignment(settings["alignment_json"])
 
     if settings.get("coordinate_file"):
+        import pandas as pd
         result = xy_to_coords(
-            settings["coordinate_file"],
+            pd.read_csv(settings["coordinate_file"]),
             alignment,
             atlas,
         )
     elif settings.get("image_folder"):
         result = image_to_coords(
-            settings["image_folder"],
+            read_image_dir(settings["image_folder"]),
             alignment,
             atlas,
             intensity_channel=settings.get("intensity_channel", "grayscale"),
@@ -55,11 +60,13 @@ def run_pipeline_from_settings(settings: dict):
         )
     else:
         result = seg_to_coords(
-            settings["segmentation_folder"],
+            read_segmentation_dir(
+                settings["segmentation_folder"],
+                pixel_id=settings.get("colour", [0, 0, 0]),
+                segmentation_format=settings.get("segmentation_format", "binary"),
+            ),
             alignment,
             atlas,
-            pixel_id=settings.get("colour", [0, 0, 0]),
-            segmentation_format=settings.get("segmentation_format", "binary"),
         )
 
     label_df = quantify_coords(result, atlas)

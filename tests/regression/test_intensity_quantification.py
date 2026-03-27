@@ -4,12 +4,13 @@ import sys
 import shutil
 import json
 import pandas as pd
+from brainglobe_atlasapi import BrainGlobeAtlas
 
 # Add the root directory to sys.path to allow importing PyNutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from PyNutil import load_atlas_data, read_alignment, image_to_coords, quantify_coords, save_analysis
-from tests.timing_utils import TimedTestCase
+from PyNutil import read_alignment, read_image_dir, image_to_coords, quantify_coords, save_analysis
+from timing_utils import TimedTestCase
 
 class TestIntensityQuantification(TimedTestCase):
     def setUp(self):
@@ -28,10 +29,10 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        atlas = load_atlas_data(self.atlas_name)
+        atlas = BrainGlobeAtlas(self.atlas_name)
         alignment = read_alignment(self.alignment_json)
         result = image_to_coords(
-            self.image_folder,
+            read_image_dir(self.image_folder),
             alignment,
             atlas,
             intensity_channel="grayscale",
@@ -65,10 +66,10 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        atlas = load_atlas_data(self.atlas_name)
+        atlas = BrainGlobeAtlas(self.atlas_name)
         alignment = read_alignment(self.alignment_json)
         result = image_to_coords(
-            self.rgb_image_folder,
+            read_image_dir(self.rgb_image_folder),
             alignment,
             atlas,
             intensity_channel="grayscale",
@@ -100,10 +101,10 @@ class TestIntensityQuantification(TimedTestCase):
         if os.path.exists(output_folder):
             shutil.rmtree(output_folder)
 
-        atlas = load_atlas_data(self.atlas_name)
+        atlas = BrainGlobeAtlas(self.atlas_name)
         alignment = read_alignment(self.alignment_json)
         result = image_to_coords(
-            self.image_folder,
+            read_image_dir(self.image_folder),
             alignment,
             atlas,
             intensity_channel="grayscale",

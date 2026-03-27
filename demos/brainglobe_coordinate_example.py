@@ -2,6 +2,7 @@
 Example of using PyNutil with BrainGlobe registration and
 pre-extracted coordinate data.
 """
+import pandas as pd
 from brainglobe_atlasapi import BrainGlobeAtlas
 import PyNutil as pnt
 
@@ -11,7 +12,7 @@ alignment = pnt.read_alignment(
 )
 
 coords = pnt.xy_to_coords(
-    "tests/test_data/brainglobe_coordinates/coordinates.csv",
+    pd.read_csv("tests/test_data/brainglobe_coordinates/coordinates.csv"),
     alignment,
     atlas,
 )

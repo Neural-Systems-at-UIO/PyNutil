@@ -20,6 +20,7 @@ import unittest
 import cv2
 import numpy as np
 import pandas as pd
+from brainglobe_atlasapi import BrainGlobeAtlas
 
 
 TEST_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -34,7 +35,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         by calling _create_visualisations directly."""
         from PyNutil.io.section_visualisation import create_section_visualisations
         from PyNutil.processing.adapters.registry import read_alignment
-        from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.io.atlas_loader import resolve_atlas
 
         alignment_json = os.path.join(
             TEST_DIR, "test_data", "nonlinear_allen_mouse", "alignment.json"
@@ -45,7 +46,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(alignment_json):
             self.skipTest("QuickNII alignment test data not found")
 
-        _atlas = load_atlas_data("allen_mouse_25um")
+        _atlas = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um"))
         atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
         reg_data = read_alignment(
             alignment_json, apply_deformation=False, apply_damage=False
@@ -69,7 +70,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         (without segmentation overlay, since no matching segmentations exist)."""
         from PyNutil.io.section_visualisation import create_section_visualisations
         from PyNutil.processing.adapters.registry import read_alignment
-        from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.io.atlas_loader import resolve_atlas
 
         bg_json = os.path.join(
             TEST_DIR, "test_data", "brainglobe_registration", "brainglobe-registration.json"
@@ -77,7 +78,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(bg_json):
             self.skipTest("Brainglobe registration test data not found")
 
-        _atlas = load_atlas_data("allen_mouse_25um")
+        _atlas = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um"))
         atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
         reg_data = read_alignment(
             bg_json, apply_deformation=False, apply_damage=False
@@ -107,11 +108,12 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
         if not os.path.isfile(bg_json) or not os.path.isfile(coord_file):
             self.skipTest("Brainglobe coordinate test data not found")
 
-        from PyNutil import load_atlas_data, read_alignment, xy_to_coords, quantify_coords, save_analysis
+        from PyNutil import read_alignment, xy_to_coords, quantify_coords, save_analysis
 
-        atlas = load_atlas_data("allen_mouse_25um")
+        atlas = BrainGlobeAtlas("allen_mouse_25um")
         alignment = read_alignment(bg_json)
-        result = xy_to_coords(coord_file, alignment, atlas)
+        import pandas as pd
+        result = xy_to_coords(pd.read_csv(coord_file), alignment, atlas)
         label_df = quantify_coords(result, atlas)
 
         self.assertFalse(label_df.empty)
@@ -129,10 +131,10 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
     def test_none_segmentation_folder(self):
         """Passing None as segmentation_folder should not raise."""
         from PyNutil.io.section_visualisation import create_section_visualisations
-        from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.io.atlas_loader import resolve_atlas
         from PyNutil.processing.adapters.base import SliceInfo
 
-        _atlas = load_atlas_data("allen_mouse_25um")
+        _atlas = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um"))
         atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
 
         slices = [
@@ -161,9 +163,9 @@ class TestCreateSectionVisualisationsNoneFolder(unittest.TestCase):
     def test_empty_slices_list(self):
         """An empty slices list should produce no output and not raise."""
         from PyNutil.io.section_visualisation import create_section_visualisations
-        from PyNutil.io.atlas_loader import load_atlas_data
+        from PyNutil.io.atlas_loader import resolve_atlas
 
-        _atlas = load_atlas_data("allen_mouse_25um")
+        _atlas = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um"))
         atlas_volume, atlas_labels = _atlas.volume, _atlas.labels
 
         with tempfile.TemporaryDirectory() as tmp:

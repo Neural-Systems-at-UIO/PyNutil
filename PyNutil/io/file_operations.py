@@ -119,15 +119,43 @@ def save_analysis(
     colormap="gray",
     settings_dict=None,
 ):
-    """Save analysis output to the specified directory.
+    """Write PyNutil outputs to disk.
 
-    Args:
-        output_folder: Directory to write output files.
-        result: ExtractionResult from coordinate extraction.
-        atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels`` used).
-        label_df: Whole-series quantification DataFrame.
-        colormap: Colormap for MeshView intensity output.
-        settings_dict: Optional dict written to pynutil_settings.json.
+    Parameters
+    ----------
+    output_folder
+        Directory where reports and export files will be written.
+    result
+        Extraction result returned by one of the coordinate extraction
+        functions.
+    atlas_labels
+        Atlas labels to use when writing MeshView outputs. This may be a
+        labels :class:`pandas.DataFrame`, an :class:`~PyNutil.AtlasData`
+        instance, or a BrainGlobe atlas object.
+    label_df
+        Optional whole-series quantification table, typically returned by
+        :func:`PyNutil.quantify_coords`.
+    colormap
+        Colormap name used when writing intensity-based MeshView exports.
+    settings_dict
+        Optional settings dictionary to store as ``pynutil_settings.json`` in
+        the output folder.
+
+    Notes
+    -----
+    Depending on the supplied data, this function writes whole-series CSV
+    reports, MeshView JSON point clouds, and a reference settings file.
+    For quantified segmentation runs, the main table is written to
+    ``whole_series_report/counts.csv``. For intensity runs, the main table is
+    written to ``whole_series_report/intensity.csv``.
+
+    Examples
+    --------
+    Save a quantified analysis run:
+
+    >>> label_df = quantify_coords(result, atlas)
+    >>> save_analysis("path/to/output", result, atlas, label_df=label_df)
+    >>> # Outputs include whole_series_report/ and whole_series_meshview/
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 

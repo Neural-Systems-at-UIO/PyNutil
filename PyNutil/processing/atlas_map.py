@@ -205,66 +205,23 @@ def _read_itksnap_label_lookup(path):
 
 
 def load_atlas_image(
-    file, image_vector, volume, deformation, rescaleXY, labelfile=None,
-    flat_label_path=None, deform_map=None, precomputed_slice=None,
+    image_vector,
+    volume,
+    deformation,
+    rescaleXY,
+    deform_map=None,
+    precomputed_slice=None,
 ):
-    """Load an image from file or generate from atlas volume, optionally warping.
-
-    Args:
-        file (str): File path for the source image.
-        image_vector (ndarray): Preloaded image data array (anchoring vector).
-        volume (ndarray): Atlas volume or similar data.
-        deformation (callable or None): Deformation function for warping.
-        rescaleXY (tuple): (width, height) for resizing.
-        labelfile (DataFrame, optional): Label definitions.
-        flat_label_path (str, optional): Path to flat-file label lookup.
-        deform_map (tuple, optional): Precomputed deformation map from
-            :func:`compute_deformation_map`. If provided, used instead of
-            calling *deformation* again.
-        precomputed_slice (ndarray, optional): Already-extracted 2D slice.
-            Skips :func:`generate_target_slice` when provided.
-
-    Returns:
-        ndarray: The loaded or transformed image.
-    """
-    if image_vector is not None and volume is not None:
-        if precomputed_slice is not None:
-            image = np.float64(precomputed_slice)
-        else:
-            image = np.float64(generate_target_slice(image_vector, volume))
-        if deformation is not None or deform_map is not None:
-            if deform_map is not None:
-                image = apply_deformation_map(image, deform_map)
-            else:
-                image = warp_image(image, deformation, rescaleXY)
+    """Generate a 2D atlas slice from a 3D atlas volume, optionally warping it."""
+    if precomputed_slice is not None:
+        image = np.float64(precomputed_slice)
     else:
-        if file.endswith(".flat"):
-            image = read_flat_file(file)
-            max_value = int(np.max(image)) if image.size else 0
-            if max_value >= len(labelfile["idx"].values):
-                if not flat_label_path:
-                    raise ValueError(
-                        "Flat map uses indexed labels beyond atlas_labels rows. "
-                        "Provide flat_label_path (.csv or .label) to decode indexed flat files."
-                    )
-                lookup = _read_itksnap_label_lookup(flat_label_path)
-                if max_value >= len(lookup):
-                    raise ValueError(
-                        f"Flat label index {max_value} exceeds lookup size {len(lookup)} "
-                        f"from '{flat_label_path}'."
-                    )
-                return lookup[image.astype(int)]
-        if file.endswith(".seg"):
-            image = read_seg_file(file)
-        # Remap flat-file pixel values to atlas region IDs
-        h, w = image.shape
-        allen_id_image = np.zeros((h, w))
-        values = image.astype(int, copy=False)
-        lbidx = labelfile["idx"].values
-        valid = (values >= 0) & (values < len(lbidx))
-        allen_id_image[valid] = lbidx[values[valid]]
-        image = allen_id_image
-
+        image = np.float64(generate_target_slice(image_vector, volume))
+    if deformation is not None or deform_map is not None:
+        if deform_map is not None:
+            image = apply_deformation_map(image, deform_map)
+        else:
+            image = warp_image(image, deformation, rescaleXY)
     return image
 
 
@@ -423,32 +380,25 @@ def transform_to_atlas_space(
 
 
 def get_region_areas(
-    use_flat: bool,
     atlas_labels,
-    flat_file_atlas: Optional[str],
     seg_width: int,
     seg_height: int,
     slice_info,
     atlas_volume: np.ndarray,
     hemi_mask: Optional[np.ndarray],
-    flat_label_path: Optional[str] = None,
     deform_map: Optional[Tuple] = None,
     precomputed_atlas_slice: Optional[np.ndarray] = None,
 ) -> Tuple[Any, np.ndarray]:
     """Build the atlas map for a slice and compute region areas.
 
-    This performs the atlas slice extraction (from volume or flat file), applies
-    non-linear warping if requested (via ``deformation``), and converts the
-    resulting label map into a region-area dataframe.
+    This performs atlas slice extraction from the annotation volume, applies
+    non-linear warping if requested, and converts the resulting label map into
+    a region-area dataframe.
 
     Parameters
     ----------
-    use_flat : bool
-        Whether to use flat file instead of atlas volume.
     atlas_labels : pd.DataFrame
         Atlas label definitions.
-    flat_file_atlas : str or None
-        Path to flat file atlas if use_flat is True.
     seg_width, seg_height : int
         Segmentation image dimensions.
     slice_info : SliceInfo
@@ -475,16 +425,11 @@ def get_region_areas(
     deformation = slice_info.deformation
     damage_mask = slice_info.damage_mask
 
-    image_vector = None if use_flat else anchoring
-    volume = None if use_flat else atlas_volume
     atlas_map = load_atlas_image(
-        flat_file_atlas,
-        image_vector,
-        volume,
+        anchoring,
+        atlas_volume,
         deformation,
         (reg_width, reg_height),
-        atlas_labels,
-        flat_label_path,
         deform_map=deform_map,
         precomputed_slice=precomputed_atlas_slice,
     )

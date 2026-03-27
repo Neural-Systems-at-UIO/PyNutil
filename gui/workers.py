@@ -5,15 +5,16 @@ import brainglobe_atlasapi
 from PyQt6.QtCore import QThread, pyqtSignal
 from log_manager import TextRedirector
 from PyNutil import (
-    load_atlas_data,
     load_custom_atlas,
     read_alignment,
+    read_segmentation_dir,
+    read_image_dir,
     seg_to_coords,
     image_to_coords,
     quantify_coords,
     save_analysis,
     interpolate_volume,
-    save_volume_niftis,
+    save_volumes,
 )
 
 
@@ -48,7 +49,7 @@ class AnalysisWorker(QThread):
                 )
             else:
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-                atlas = load_atlas_data(self.arguments["atlas_name"])
+                atlas = brainglobe_atlasapi.BrainGlobeAtlas(self.arguments["atlas_name"])
 
             if self.cancelled:
                 print("Analysis cancelled")
@@ -71,7 +72,6 @@ class AnalysisWorker(QThread):
                     img_dir,
                     registration,
                     atlas,
-                    apply_damage_mask=apply_damage_mask,
                 )
             else:
                 result = seg_to_coords(
@@ -80,16 +80,13 @@ class AnalysisWorker(QThread):
                     atlas,
                     pixel_id=self.arguments["object_colour"],
                     segmentation_format=seg_format,
-                    apply_damage_mask=apply_damage_mask,
                 )
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            label_df = quantify_coords(
-                result, atlas.labels, apply_damage_mask=apply_damage_mask
-            )
+            label_df = quantify_coords(result, atlas.labels)
 
             if self.cancelled:
                 print("Analysis cancelled")
@@ -99,21 +96,22 @@ class AnalysisWorker(QThread):
             if self.arguments.get("interpolate_volume"):
                 value_mode = self.arguments.get("value_mode", "pixel_count")
                 print(f"Creating interpolated volume (mode: {value_mode})...")
-                folder = seg_dir or img_dir
-                gv, fv, dv = interpolate_volume(
-                    segmentation_folder=folder,
-                    alignment_json=alignment_json,
+                if seg_dir:
+                    vol_series = read_segmentation_dir(
+                        seg_dir,
+                        pixel_id=self.arguments["object_colour"],
+                        segmentation_format=seg_format,
+                    )
+                else:
+                    vol_series = read_image_dir(img_dir)
+                volumes = interpolate_volume(
+                    image_series=vol_series,
+                    registration=registration,
                     colour=self.arguments["object_colour"],
                     atlas=atlas,
                     value_mode=value_mode,
-                    segmentation_format=seg_format,
                     segmentation_mode=bool(seg_dir),
                 )
-                volumes = {
-                    "interpolated_volume": gv,
-                    "frequency_volume": fv,
-                    "damage_volume": dv,
-                }
 
             if self.cancelled:
                 print("Analysis cancelled")
@@ -127,11 +125,10 @@ class AnalysisWorker(QThread):
                 label_df=label_df,
             )
             if volumes:
-                save_volume_niftis(
+                save_volumes(
                     output_folder=output_dir,
-                    atlas_volume=atlas.volume,
-                    voxel_size_um=atlas.voxel_size_um,
-                    **volumes,
+                    volumes=volumes,
+                    atlas=atlas,
                 )
 
             print(f"Analysis complete. Results saved to {output_dir}")
