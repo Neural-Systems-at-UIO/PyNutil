@@ -97,9 +97,9 @@ class TestDamageVolumeInterpolation(TimedTestCase):
 
             damage_nifti_path = os.path.join(tmpdir, "interpolated_volume", "damage_volume.nii.gz")
             # Note: save_analysis does not save volume niftis; the damage volume
-            # persistence test needs save_volume_niftis for that.
-            from PyNutil import save_volume_niftis
-            save_volume_niftis(
+            # persistence test needs save_volumes for that.
+            from PyNutil import save_volumes
+            save_volumes(
                 output_folder=tmpdir,
                 volumes=volumes,
                 atlas=atlas,
