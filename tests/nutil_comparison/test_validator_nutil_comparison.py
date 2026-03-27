@@ -10,7 +10,7 @@ import pandas as pd
 import nibabel as nib
 import nrrd
 
-from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
+from PyNutil import load_custom_atlas, read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords
 
 try:
     from timing_utils import TimedTestCase
@@ -205,10 +205,9 @@ class TestValidatorNutilComparison(TimedTestCase):
                 apply_damage=False,
             )
             result = seg_to_coords(
-                seg_folder,
+                read_segmentation_dir(seg_folder, pixel_id=scenario["colour"]),
                 alignment,
                 atlas,
-                pixel_id=scenario["colour"],
             )
             label_df = quantify_coords(result, atlas)
         finally:

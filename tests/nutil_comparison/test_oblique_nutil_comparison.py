@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
+from PyNutil import load_custom_atlas, read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords
 
 try:
     from timing_utils import TimedTestCase
@@ -58,10 +58,9 @@ class TestObliqueNutilComparison(TimedTestCase):
             apply_damage=False,
         )
         result = seg_to_coords(
-            self.segmentation_folder,
+            read_segmentation_dir(self.segmentation_folder, pixel_id=[0, 0, 0]),
             alignment,
             atlas,
-            pixel_id=[0, 0, 0],
         )
         label_df = quantify_coords(result, atlas)
         return result, label_df
