@@ -104,7 +104,7 @@ class AnalysisWorker(QThread):
                     )
                 else:
                     vol_series = read_image_dir(img_dir)
-                gv, fv, dv = interpolate_volume(
+                volumes = interpolate_volume(
                     image_series=vol_series,
                     registration=registration,
                     colour=self.arguments["object_colour"],
@@ -112,11 +112,6 @@ class AnalysisWorker(QThread):
                     value_mode=value_mode,
                     segmentation_mode=bool(seg_dir),
                 )
-                volumes = {
-                    "interpolated_volume": gv,
-                    "frequency_volume": fv,
-                    "damage_volume": dv,
-                }
 
             if self.cancelled:
                 print("Analysis cancelled")
@@ -132,9 +127,9 @@ class AnalysisWorker(QThread):
             if volumes:
                 save_volume_niftis(
                     output_folder=output_dir,
+                    volumes=volumes,
                     atlas_volume=atlas.volume,
                     voxel_size_um=atlas.voxel_size_um,
-                    **volumes,
                 )
 
             print(f"Analysis complete. Results saved to {output_dir}")
