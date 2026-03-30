@@ -1,6 +1,6 @@
 {
     "coordinate_file": "tests/test_data/brainglobe_coordinates/coordinates.csv",
-    "alignment_json": "tests/test_data/brainglobe_coordinates/brainglobe-registration.json",
+    "alignment_json": "tests/test_data/brainglobe_coordinates/registration/brainglobe-registration.json",
     "atlas_name": "allen_mouse_25um",
     "expected_output_folder": "expected_outputs/brainglobe_coordinates"
 }

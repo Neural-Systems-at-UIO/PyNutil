@@ -99,7 +99,7 @@ class TestCreateVisualisationsAdapter(unittest.TestCase):
     def test_brainglobe_coordinate_workflow_quantifies(self):
         """Brainglobe registration with coordinates produces quantification."""
         bg_json = os.path.join(
-            TEST_DIR, "test_data", "brainglobe_coordinates", "brainglobe-registration.json"
+            TEST_DIR, "test_data", "brainglobe_coordinates", "registration", "brainglobe-registration.json"
         )
         coord_file = os.path.join(
             TEST_DIR, "test_data", "brainglobe_coordinates", "coordinates.csv"
@@ -224,7 +224,7 @@ class TestLoadRegistrationForVisualisation(unittest.TestCase):
     def test_brainglobe_coordinate_json_produces_valid_slices(self):
         """Brainglobe coordinate registration JSON should also work."""
         bg_json = os.path.join(
-            TEST_DIR, "test_data", "brainglobe_coordinates", "brainglobe-registration.json"
+            TEST_DIR, "test_data", "brainglobe_coordinates", "registration", "brainglobe-registration.json"
         )
         if not os.path.isfile(bg_json):
             self.skipTest("Brainglobe coordinate test data not found")
