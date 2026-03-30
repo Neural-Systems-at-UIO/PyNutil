@@ -298,9 +298,6 @@ def seg_to_coords(
         :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
     object_cutoff
         Minimum object size to keep during segmentation processing.
-    segmentation_format
-        Name of the segmentation adapter to use, for example ``"binary"`` or
-        ``"cellpose"``.
 
     Returns
     -------
