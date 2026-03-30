@@ -64,7 +64,6 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         common_kwargs = dict(
             image_series=image_series,
             registration=alignment,
-            colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
@@ -133,7 +132,6 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
         common_kwargs = dict(
             image_series=image_series,
             registration=alignment,
-            colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=False,
@@ -210,12 +208,10 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
             value_mode="pixel_count",
         )
 
-        vr_auto = interpolate_volume(**common_kwargs, colour="auto")
-        vr_none = interpolate_volume(**common_kwargs, colour=None)
+        vr = interpolate_volume(**common_kwargs)
 
-        self.assertTrue(np.array_equal(vr_auto.value, vr_none.value))
-        self.assertTrue(np.array_equal(vr_auto.frequency, vr_none.frequency))
-        self.assertTrue(np.array_equal(vr_auto.damage, vr_none.damage))
+        self.assertIsNotNone(vr.value)
+        self.assertIsNotNone(vr.frequency)
 
 
 if __name__ == "__main__":

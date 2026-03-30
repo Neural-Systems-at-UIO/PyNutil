@@ -107,7 +107,6 @@ class AnalysisWorker(QThread):
                 volumes = interpolate_volume(
                     image_series=vol_series,
                     registration=registration,
-                    colour=self.arguments["object_colour"],
                     atlas=atlas,
                     value_mode=value_mode,
                     segmentation_mode=bool(seg_dir),
