@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import cv2
 import numpy as np
 from tqdm import tqdm
-from .adapters import read_alignment
 from .adapters.segmentation import SegmentationAdapterRegistry
 from .atlas_map import transform_to_atlas_space
 from .utils import (
     convert_to_intensity,
-    discover_image_files,
     resize_mask_nearest,
 )
-from ..io.loaders import number_sections
+from ..io.atlas_loader import resolve_atlas
+from ..image_series import ImageSeries, Section
+from ..results.volume import VolumeResult
+
+if TYPE_CHECKING:
+    from .adapters.base import RegistrationData
 
 
 @dataclass(frozen=True)
@@ -33,7 +36,6 @@ class VolumeConfig:
     min_intensity: Optional[int]
     max_intensity: Optional[int]
     scale: float
-    non_linear: bool
     value_mode: str
 
 
@@ -126,14 +128,14 @@ def _knn_interpolate_generic(
 
 
 def _read_section_signal(
-    seg_path: str,
+    section: Section,
     vol_cfg: VolumeConfig,
 ):
     """Load an image and return (seg_values, mask, seg_height, seg_width) or None."""
     if vol_cfg.segmentation_mode:
-        seg = vol_cfg.segmentation_adapter.load(seg_path)
+        seg = section.get_image(vol_cfg.segmentation_adapter)
     else:
-        seg = cv2.imread(seg_path, cv2.IMREAD_UNCHANGED)
+        seg = cv2.imread(section.path, cv2.IMREAD_UNCHANGED)
     if seg is None:
         return None
 
@@ -182,7 +184,7 @@ def _sample_and_deform_plane(
     flat_x = reg_x.reshape(-1)
     flat_y = reg_y.reshape(-1)
 
-    if vol_cfg.non_linear and slice_info.forward_deformation is not None:
+    if slice_info.forward_deformation is not None:
         new_x, new_y = slice_info.forward_deformation(flat_x, flat_y)
         map_x = new_x.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
         map_y = new_y.reshape((plane_h, plane_w)).astype(np.float32, copy=False)
@@ -324,24 +326,23 @@ def _finalize_volumes(
 
 
 def _process_one_section(
-    seg_path,
-    slice_by_nr,
+    section: Section,
+    slice_info,
     vol_cfg: VolumeConfig,
     gv,
     fv,
     dv,
     ov_flat,
 ):
-    """Process a single section path and accumulate into the output volumes."""
-    out_shape = gv.shape
-    sx, sy, sz = out_shape
-    seg_nr = int(number_sections([seg_path])[0])
-    slice_info = slice_by_nr.get(seg_nr)
+    """Process a single section and accumulate into the output volumes."""
     if not slice_info or not slice_info.anchoring:
         return
+    out_shape = gv.shape
+    sx, sy, sz = out_shape
+    seg_nr = section.section_number
 
     loaded = _read_section_signal(
-        seg_path,
+        section,
         vol_cfg,
     )
     if loaded is None:
@@ -397,9 +398,8 @@ def _process_one_section(
 
 def interpolate_volume(
     *,
-    segmentation_folder: str,
-    alignment_json: str,
-    colour,
+    image_series: ImageSeries,
+    registration: "RegistrationData",
     atlas: object,
     scale: float = 1.0,
     missing_fill: float = np.nan,
@@ -407,72 +407,116 @@ def interpolate_volume(
     k: int = 5,
     batch_size: int = 200_000,
     use_atlas_mask: bool = True,
-    non_linear: bool = True,
     value_mode: str = "pixel_count",
-    segmentation_format: str = "binary",
     segmentation_mode: bool = True,
     intensity_channel: str = "grayscale",
     min_intensity: Optional[int] = None,
     max_intensity: Optional[int] = None,
     return_orientation: str = "asr",
 ):
-    """Project section segmentations into a 3D atlas-space volume.
+    """Project section data into atlas-space volumes.
 
-    Constructs three volumes:
-        - value volume (gv): depends on *value_mode*
-        - frequency volume (fv): number of sampled pixels per voxel
-        - damage volume (dv): binary mask of damaged voxels
+    Parameters
+    ----------
+    image_series
+        :class:`~PyNutil.ImageSeries` containing the sections to project.
+        Build one with :func:`~PyNutil.read_segmentation_dir` or
+        :func:`~PyNutil.read_image_dir`.
+    registration
+        :class:`~PyNutil.processing.adapters.base.RegistrationData` loaded
+        with :func:`~PyNutil.read_alignment`.
+    atlas
+        Atlas definition used to determine the target volume shape. This may
+        be a BrainGlobe atlas object or :class:`~PyNutil.AtlasData`.
+    scale
+        Isotropic scaling factor applied to the atlas output shape.
+    missing_fill
+        Fill value assigned to voxels with no sampled data when interpolation
+        is disabled or when uncovered voxels remain after processing.
+    do_interpolation
+        If ``True``, fill uncovered voxels using k-nearest-neighbor
+        interpolation.
+    k
+        Number of neighbors to use during interpolation.
+    batch_size
+        Number of query voxels processed per interpolation batch.
+    use_atlas_mask
+        If ``True``, restrict interpolation to voxels inside the atlas mask.
+    value_mode
+        Output volume mode. Supported values are ``"pixel_count"``,
+        ``"mean"``, and ``"object_count"``.
+    segmentation_mode
+        If ``True``, treat input files as segmentation outputs. If ``False``,
+        treat them as source images and derive intensities from
+        ``intensity_channel``.
+    intensity_channel
+        Image channel to convert to intensity values when
+        ``segmentation_mode=False``.
+    min_intensity
+        Optional lower threshold for intensity-mode inputs.
+    max_intensity
+        Optional upper threshold for intensity-mode inputs.
 
-        Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
+    Returns
+    -------
+    VolumeResult
+        A :class:`~PyNutil.VolumeResult` with ``value`` (the requested metric
+        volume), ``frequency`` (per-voxel sample count), and ``damage`` (binary
+        damage mask).
 
-        Atlas input:
-                - Pass *atlas* (BrainGlobe atlas or PyNutil AtlasData). Volume and
-                    shape are inferred from ``atlas.annotation`` or ``atlas.volume``.
+    Examples
+    --------
+    Build atlas-space volumes from segmentation images:
+
+    >>> image_series = pnt.read_segmentation_dir(
+    ...     "path/to/segmentations/",
+    ...     pixel_id=[0, 0, 0],
+    ... )
+    >>> registration = pnt.read_alignment("path/to/alignment.json")
+    >>> gv, fv, dv = pnt.interpolate_volume(
+    ...     image_series=image_series,
+    ...     registration=registration,
+    ...     atlas=atlas,
+    ... )
     """
     if value_mode not in {"pixel_count", "mean", "object_count"}:
         raise ValueError(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    if hasattr(atlas, "annotation") and getattr(atlas, "annotation") is not None:
-        atlas_volume = getattr(atlas, "annotation")
-    elif hasattr(atlas, "volume") and getattr(atlas, "volume") is not None:
-        atlas_volume = getattr(atlas, "volume")
-    else:
-        raise ValueError(
-            "atlas must provide a non-None 'annotation' or 'volume' attribute"
-        )
+    atlas = resolve_atlas(atlas)
+    atlas_volume = atlas.volume
 
     out_base_shape = tuple(int(x) for x in atlas_volume.shape)
-
     out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)
 
-    registration = read_alignment(alignment_json)
     slice_by_nr = {s.section_number: s for s in registration.slices}
-    seg_paths = discover_image_files(segmentation_folder)
 
+    # Derive colour from image_series.pixel_id (set by read_segmentation_dir).
     # Accept GUI/settings values like "auto" and defer to adapter auto-detection
     # by passing pixel_id=None.
-    if isinstance(colour, str):
-        colour_str = colour.strip()
-        if colour_str.lower() == "auto" or colour_str == "":
+    pixel_id = image_series.pixel_id
+    if isinstance(pixel_id, str):
+        pixel_id_str = pixel_id.strip()
+        if pixel_id_str.lower() == "auto" or pixel_id_str == "":
             colour_arr = None
-        elif colour_str.isdigit():
-            colour_arr = np.array([int(colour_str)], dtype=np.uint8)
-        elif "," in colour_str:
+        elif pixel_id_str.isdigit():
+            colour_arr = np.array([int(pixel_id_str)], dtype=np.uint8)
+        elif "," in pixel_id_str:
             colour_arr = np.array(
-                [int(x.strip()) for x in colour_str.strip("[]").split(",") if x.strip()],
+                [int(x.strip()) for x in pixel_id_str.strip("[]").split(",") if x.strip()],
                 dtype=np.uint8,
             )
         else:
             raise ValueError(
-                "colour must be None, 'auto', an int-like string, or a list/tuple of ints"
+                "image_series.pixel_id must be None, 'auto', an int-like string, or a list/tuple of ints"
             )
     else:
-        colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
+        colour_arr = np.array(pixel_id, dtype=np.uint8) if pixel_id is not None else None
+
     vol_cfg = VolumeConfig(
         segmentation_adapter=(
-            SegmentationAdapterRegistry.get(segmentation_format)
+            SegmentationAdapterRegistry.get(image_series.segmentation_format)
             if segmentation_mode
             else None
         ),
@@ -482,7 +526,6 @@ def interpolate_volume(
         min_intensity=min_intensity,
         max_intensity=max_intensity,
         scale=scale,
-        non_linear=non_linear,
         value_mode=value_mode,
     )
     interp_cfg = InterpolationConfig(
@@ -501,8 +544,9 @@ def interpolate_volume(
         np.zeros((gv.size,), dtype=np.uint32) if value_mode == "object_count" else None
     )
 
-    for seg_path in seg_paths:
-        _process_one_section(seg_path, slice_by_nr, vol_cfg, gv, fv, dv, ov_flat)
+    for section in image_series.sections:
+        slice_info = slice_by_nr.get(section.section_number)
+        _process_one_section(section, slice_info, vol_cfg, gv, fv, dv, ov_flat)
 
     gv, fv, dv = _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
 
@@ -513,4 +557,4 @@ def interpolate_volume(
         fv = reorient_volume(fv, atlas_shape, return_orientation)
         dv = reorient_volume(dv, atlas_shape, return_orientation)
 
-    return gv, fv, dv
+    return VolumeResult(value=gv, frequency=fv, damage=dv)

@@ -10,10 +10,10 @@ import pandas as pd
 import nibabel as nib
 import nrrd
 
-from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
+from PyNutil import load_custom_atlas, read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords
 
 try:
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     from timing_utils import TimedTestCase
 
@@ -205,12 +205,9 @@ class TestValidatorNutilComparison(TimedTestCase):
                 apply_damage=False,
             )
             result = seg_to_coords(
-                seg_folder,
+                read_segmentation_dir(seg_folder, pixel_id=scenario["colour"]),
                 alignment,
                 atlas,
-                pixel_id=scenario["colour"],
-                use_flat=True,
-                flat_label_path=scenario["label_txt"],
             )
             label_df = quantify_coords(result, atlas)
         finally:
@@ -227,6 +224,7 @@ class TestValidatorNutilComparison(TimedTestCase):
         )
 
     def test_validator_q_series_load_and_region_area_match_nutil(self):
+        self.skipTest("Flat-file atlas support has been removed from PyNutil.")
         if not os.path.isdir(self.validator_root):
             self.skipTest(f"Validator folder not found: {self.validator_root}")
 

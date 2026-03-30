@@ -21,22 +21,18 @@ alignment = pnt.read_alignment(alignment_json)
 
 # Extract coordinates from segmentations
 coords = pnt.seg_to_coords(
-    segmentation_folder,
+    pnt.read_segmentation_dir(segmentation_folder, pixel_id=colour, segmentation_format="binary"),
     alignment,
     atlas,
-    pixel_id=colour,
     object_cutoff=0,
-    use_flat=False,
-    segmentation_format="binary",
 )
 
 # Quantify by atlas region
 label_df = pnt.quantify_coords(coords, atlas)
 # Optionally generate a 3D heatmap
 pnt.interpolate_volume(
-    segmentation_folder=segmentation_folder,
-    alignment_json=alignment_json,
-    colour=colour,
+    image_series=pnt.read_segmentation_dir(segmentation_folder, pixel_id=colour, segmentation_format="binary"),
+    registration=alignment,
     atlas=atlas,
 )
 # Save results
