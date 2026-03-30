@@ -400,7 +400,6 @@ def interpolate_volume(
     *,
     image_series: ImageSeries,
     registration: "RegistrationData",
-    colour,
     atlas: object,
     scale: float = 1.0,
     missing_fill: float = np.nan,
@@ -426,9 +425,6 @@ def interpolate_volume(
     registration
         :class:`~PyNutil.processing.adapters.base.RegistrationData` loaded
         with :func:`~PyNutil.read_alignment`.
-    colour
-        Segmentation color or class identifier to extract. Use ``None`` or
-        ``"auto"`` to defer selection to the segmentation adapter.
     atlas
         Atlas definition used to determine the target volume shape. This may
         be a BrainGlobe atlas object or :class:`~PyNutil.AtlasData`.
@@ -480,7 +476,6 @@ def interpolate_volume(
     >>> gv, fv, dv = pnt.interpolate_volume(
     ...     image_series=image_series,
     ...     registration=registration,
-    ...     colour=[0, 0, 0],
     ...     atlas=atlas,
     ... )
     """
@@ -497,25 +492,27 @@ def interpolate_volume(
 
     slice_by_nr = {s.section_number: s for s in registration.slices}
 
+    # Derive colour from image_series.pixel_id (set by read_segmentation_dir).
     # Accept GUI/settings values like "auto" and defer to adapter auto-detection
     # by passing pixel_id=None.
-    if isinstance(colour, str):
-        colour_str = colour.strip()
-        if colour_str.lower() == "auto" or colour_str == "":
+    pixel_id = image_series.pixel_id
+    if isinstance(pixel_id, str):
+        pixel_id_str = pixel_id.strip()
+        if pixel_id_str.lower() == "auto" or pixel_id_str == "":
             colour_arr = None
-        elif colour_str.isdigit():
-            colour_arr = np.array([int(colour_str)], dtype=np.uint8)
-        elif "," in colour_str:
+        elif pixel_id_str.isdigit():
+            colour_arr = np.array([int(pixel_id_str)], dtype=np.uint8)
+        elif "," in pixel_id_str:
             colour_arr = np.array(
-                [int(x.strip()) for x in colour_str.strip("[]").split(",") if x.strip()],
+                [int(x.strip()) for x in pixel_id_str.strip("[]").split(",") if x.strip()],
                 dtype=np.uint8,
             )
         else:
             raise ValueError(
-                "colour must be None, 'auto', an int-like string, or a list/tuple of ints"
+                "image_series.pixel_id must be None, 'auto', an int-like string, or a list/tuple of ints"
             )
     else:
-        colour_arr = np.array(colour, dtype=np.uint8) if colour is not None else None
+        colour_arr = np.array(pixel_id, dtype=np.uint8) if pixel_id is not None else None
 
     vol_cfg = VolumeConfig(
         segmentation_adapter=(

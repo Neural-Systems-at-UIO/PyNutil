@@ -95,7 +95,6 @@ def save_volumes(
     >>> volumes = interpolate_volume(
     ...     image_series=image_series,
     ...     registration=registration,
-    ...     colour=[0, 0, 0],
     ...     atlas=atlas,
     ... )
     >>> save_volumes(

@@ -56,7 +56,6 @@ class TestBuildVolumeFromSections(TimedTestCase):
         volumes = interpolate_volume(
             image_series=image_series,
             registration=alignment,
-            colour=settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             missing_fill=np.nan,
