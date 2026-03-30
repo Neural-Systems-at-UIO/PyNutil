@@ -143,19 +143,26 @@ class BrainGlobeDeformationProvider(DeformationProvider):
 
     def _load_fields(
         self, reg_dir: str
-    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-        """Load deformation field TIFFs from *reg_dir*."""
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Load deformation field TIFFs from *reg_dir*.
+
+        Raises:
+            FileNotFoundError: If deformation field TIFFs are missing, which
+                should not happen for a valid brainglobe registration output.
+        """
         import tifffile
 
         f0_path = os.path.join(reg_dir, "deformation_field_0.tiff")
         f1_path = os.path.join(reg_dir, "deformation_field_1.tiff")
 
-        if not os.path.isfile(f0_path) or not os.path.isfile(f1_path):
-            return None, None
-
-        field_0 = tifffile.imread(f0_path).astype(np.float32)  # y-displacement
-        field_1 = tifffile.imread(f1_path).astype(np.float32)  # x-displacement
-        return field_0, field_1
+        missing = [p for p in (f0_path, f1_path) if not os.path.isfile(p)]
+        if missing:
+            raise FileNotFoundError(
+                f"Deformation field TIFFs not found in '{reg_dir}': "
+                f"{[os.path.basename(p) for p in missing]}. "
+                "brainglobe-registration always produces these files; "
+                "the registration output may be incomplete or corrupted."
+            )
 
     @staticmethod
     def _create_displacement_deformation(
@@ -284,13 +291,6 @@ class BrainGlobeDeformationProvider(DeformationProvider):
 
             field_0, field_1 = self._load_fields(reg_dir)
             if field_0 is None:
-                warnings.warn(
-                    f"Deformation fields not found for slice '{s.section_id}' "
-                    f"in '{reg_dir}'. Expected 'deformation_field_0.tiff' and "
-                    f"'deformation_field_1.tiff'. Non-linear deformation will "
-                    f"not be applied to this slice.",
-                    stacklevel=2,
-                )
                 continue
 
             inverse_deform, forward_deform = self._create_deformation(
