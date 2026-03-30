@@ -90,7 +90,7 @@ def _shape_in_orientation(internal_shape, orientation):
 
 
 def reorient_points(points, internal_atlas_shape, target_orientation,
-                    source_orientation=None):
+                    source_orientation=INTERNAL_ORIENTATION):
     """Reorient (N, 3) atlas-space points between orientations.
 
     Args:
@@ -105,8 +105,6 @@ def reorient_points(points, internal_atlas_shape, target_orientation,
     if points is None or len(points) == 0:
         return points
     target_orientation = _validate_orientation_code(target_orientation)
-    if source_orientation is None:
-        source_orientation = INTERNAL_ORIENTATION
     source_orientation = _validate_orientation_code(source_orientation)
     source_shape = _shape_in_orientation(internal_atlas_shape, source_orientation)
     source = AnatomicalSpace(source_orientation, shape=source_shape)
