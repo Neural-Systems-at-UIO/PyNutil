@@ -288,6 +288,11 @@ def seg_to_coords(
     ) = _collect_section_results(results)
 
     if return_orientation != "lpi":
+        #LPI is the internal orientation assumed by PyNutil
+        #we keep this consistent as different orientations
+        #can cause small rounding differences which effect
+        #the results. keeping everything LPI makes Pynutil
+        #reproducible.
         points = reorient_points(points, atlas_shape, return_orientation)
         centroids = reorient_points(centroids, atlas_shape, return_orientation)
 
