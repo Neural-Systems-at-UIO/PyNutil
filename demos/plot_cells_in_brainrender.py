@@ -16,7 +16,7 @@ coords = pnt.xy_to_coords(
 
 def to_hex(rgb):
     """Convert an RGB triplet (0-255) to a hex string."""
-    return '#%02x%02x%02x' % tuple(rgb)
+    return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
 
 coordinates = coords.objects.points
 coordinates *= 25 #resolution of atlas
