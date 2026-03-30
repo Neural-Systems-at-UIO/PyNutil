@@ -49,7 +49,14 @@ class PointSetResult:
     def points_in_internal_orientation(
         self, pts: Optional[np.ndarray]
     ) -> Optional[np.ndarray]:
-        """Reorient *pts* back to internal orientation if needed."""
+        """Reorient *pts* back to internal orientation if needed.
+
+        Args:
+            pts: (N, 3) array of points in ``self.orientation``.
+
+        Returns:
+            (N, 3) array of points in internal orientation.
+        """
         if pts is None or len(pts) == 0 or self.orientation == INTERNAL_ORIENTATION:
             return pts
         if self.atlas_shape is None:
