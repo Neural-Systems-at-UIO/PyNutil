@@ -33,7 +33,6 @@ label_df = pnt.quantify_coords(coords, atlas)
 pnt.interpolate_volume(
     image_series=pnt.read_segmentation_dir(segmentation_folder, pixel_id=colour, segmentation_format="binary"),
     registration=alignment,
-    colour=colour,
     atlas=atlas,
 )
 # Save results

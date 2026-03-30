@@ -32,7 +32,6 @@ class TestDamageVolumeInterpolation(TimedTestCase):
         volumes = interpolate_volume(
             image_series=image_series,
             registration=alignment,
-            colour=self.settings.get("colour", [0, 0, 0]),
             atlas=atlas,
             scale=scale,
             do_interpolation=do_interpolation,
