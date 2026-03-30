@@ -1,5 +1,9 @@
 """Utilities for reorienting coordinates and volumes to a target orientation."""
 
+from __future__ import annotations
+
+from typing import Tuple
+
 import numpy as np
 from brainglobe_space import AnatomicalSpace
 
@@ -9,7 +13,7 @@ INTERNAL_ORIENTATION = "lpi"
 _ORIENTATION_GROUPS = ("lr", "si", "ap")
 
 
-def _validate_orientation_code(orientation):
+def _validate_orientation_code(orientation: str) -> str:
     """Validate a 3-letter BrainGlobe orientation code.
 
     A valid code must contain exactly one axis from each anatomical pair:
@@ -69,7 +73,9 @@ def _validate_orientation_code(orientation):
     return normalized
 
 
-def _shape_in_orientation(internal_shape, orientation):
+def _shape_in_orientation(
+    internal_shape: Tuple[int, ...], orientation: str
+) -> Tuple[int, ...]:
     """Derive atlas shape in a given orientation from the internal shape.
 
     Args:
@@ -89,8 +95,12 @@ def _shape_in_orientation(internal_shape, orientation):
     return tuple(internal_shape[p] for p in perm)
 
 
-def reorient_points(points, internal_atlas_shape, target_orientation,
-                    source_orientation=INTERNAL_ORIENTATION):
+def reorient_points(
+    points: np.ndarray,
+    internal_atlas_shape: Tuple[int, ...],
+    target_orientation: str,
+    source_orientation: str = INTERNAL_ORIENTATION,
+) -> np.ndarray:
     """Reorient (N, 3) atlas-space points between orientations.
 
     Args:
@@ -112,7 +122,11 @@ def reorient_points(points, internal_atlas_shape, target_orientation,
     return source.map_points_to(target, points)
 
 
-def reorient_volume(volume, atlas_shape, target_orientation):
+def reorient_volume(
+    volume: np.ndarray,
+    atlas_shape: Tuple[int, ...],
+    target_orientation: str,
+) -> np.ndarray:
     """Reorient a 3D volume from internal to target orientation.
 
     Args:
