@@ -33,7 +33,7 @@ class PointSetResult:
     point_values: Optional[np.ndarray] = None
     undamaged_mask: Optional[np.ndarray] = None
     orientation: str = "lpi"
-    atlas_shape: Optional[Tuple[int, ...]] = None
+    atlas_shape: Optional[Tuple[int, int, int]] = None
 
     @staticmethod
     def _masked(arr: Optional[np.ndarray], mask: Optional[np.ndarray]) -> Optional[np.ndarray]:
