@@ -1,11 +1,12 @@
-"""
-Visualising cells in brainrender
-=================================
+# Visualising cells in brainrender
 
-Plot PyNutil-extracted cell coordinates in a 3D brainrender scene,
-coloured by atlas region.
-"""
+Plot PyNutil-extracted cell coordinates in a 3D [brainrender](https://brainrender.readthedocs.io) scene, coloured by atlas region.
 
+![Cells plotted in a 3D brainrender scene, coloured by atlas region](../assets/gallery/brainrender_cells.png)
+
+## Code
+
+```python
 import pandas as pd
 from brainglobe_atlasapi import BrainGlobeAtlas
 from brainrender import Scene
@@ -42,3 +43,4 @@ colours = [
 scene = Scene(atlas_name="allen_mouse_25um", title="mouse")
 scene.add(Points(coordinates, name="CELLS", colors=colours))
 scene.render()
+```
