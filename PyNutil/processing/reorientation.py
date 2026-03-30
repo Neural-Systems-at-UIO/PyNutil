@@ -74,8 +74,8 @@ def _validate_orientation_code(orientation: str) -> str:
 
 
 def _shape_in_orientation(
-    internal_shape: Tuple[int, ...], orientation: str
-) -> Tuple[int, ...]:
+    internal_shape: Tuple[int, int, int], orientation: str
+) -> Tuple[int, int, int]:
     """Derive atlas shape in a given orientation from the internal shape.
 
     Args:
@@ -97,7 +97,7 @@ def _shape_in_orientation(
 
 def reorient_points(
     points: np.ndarray,
-    internal_atlas_shape: Tuple[int, ...],
+    internal_atlas_shape: Tuple[int, int, int],
     target_orientation: str,
     source_orientation: str = INTERNAL_ORIENTATION,
 ) -> np.ndarray:
@@ -124,7 +124,7 @@ def reorient_points(
 
 def reorient_volume(
     volume: np.ndarray,
-    atlas_shape: Tuple[int, ...],
+    atlas_shape: Tuple[int, int, int],
     target_orientation: str,
 ) -> np.ndarray:
     """Reorient a 3D volume from internal to target orientation.
