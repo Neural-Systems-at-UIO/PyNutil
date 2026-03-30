@@ -164,6 +164,10 @@ class BrainGlobeDeformationProvider(DeformationProvider):
                 "the registration output may be incomplete or corrupted."
             )
 
+        field_0 = tifffile.imread(f0_path).astype(np.float32)  # y-displacement
+        field_1 = tifffile.imread(f1_path).astype(np.float32)  # x-displacement
+        return field_0, field_1
+
     @staticmethod
     def _create_displacement_deformation(
         disp_x: np.ndarray,
