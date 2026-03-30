@@ -8,6 +8,7 @@ A collection of examples demonstrating PyNutil's capabilities.
 
 demo_brainrender_cells
 demo_brainrender_volume
+demo_coronal_sections
 ```
 
 ::::{grid} 1 2 2 3
@@ -27,6 +28,15 @@ Plot cell coordinates in a 3D brainrender scene, coloured by atlas region.
 :img-top: ../assets/gallery/calbindin-1-3d.png
 
 Render an interpolated expression volume as a 3D heatmap directly in brainrender.
+:::
+
+:::{grid-item-card} Coronal cross-sections with expression heatmap
+:link: demo_coronal_sections
+:link-type: doc
+:img-top: ../assets/gallery/calb1_cross_section.png
+
+Display a grid of coronal sections with the Allen STPT background and a magma
+expression overlay.
 :::
 
 ::::
