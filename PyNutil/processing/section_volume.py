@@ -416,18 +416,62 @@ def interpolate_volume(
     max_intensity: Optional[int] = None,
     return_orientation: str = "asr",
 ):
-    """Project section segmentations into a 3D atlas-space volume.
+    """Project section data into atlas-space volumes.
 
-    Constructs three volumes:
-        - value volume (gv): depends on *value_mode*
-        - frequency volume (fv): number of sampled pixels per voxel
-        - damage volume (dv): binary mask of damaged voxels
+    Parameters
+    ----------
+    segmentation_folder
+        Path to the folder containing segmentation images or source images.
+    alignment_json
+        Path to the registration JSON passed to
+        :func:`PyNutil.read_alignment`.
+    colour
+        Segmentation color or class identifier to extract. Use ``None`` or
+        ``"auto"`` to defer selection to the segmentation adapter.
+    atlas
+        Atlas definition used to determine the target volume shape. This may
+        be a BrainGlobe atlas object or :class:`~PyNutil.AtlasData`.
+    scale
+        Isotropic scaling factor applied to the atlas output shape.
+    missing_fill
+        Fill value assigned to voxels with no sampled data when interpolation
+        is disabled or when uncovered voxels remain after processing.
+    do_interpolation
+        If ``True``, fill uncovered voxels using k-nearest-neighbor
+        interpolation.
+    k
+        Number of neighbors to use during interpolation.
+    batch_size
+        Number of query voxels processed per interpolation batch.
+    use_atlas_mask
+        If ``True``, restrict interpolation to voxels inside the atlas mask.
+    non_linear
+        If ``True``, apply non-linear deformation from the registration data
+        when available.
+    value_mode
+        Output volume mode. Supported values are ``"pixel_count"``,
+        ``"mean"``, and ``"object_count"``.
+    segmentation_format
+        Name of the segmentation adapter to use when ``segmentation_mode`` is
+        enabled.
+    segmentation_mode
+        If ``True``, treat input files as segmentation outputs. If ``False``,
+        treat them as source images and derive intensities from
+        ``intensity_channel``.
+    intensity_channel
+        Image channel to convert to intensity values when
+        ``segmentation_mode=False``.
+    min_intensity
+        Optional lower threshold for intensity-mode inputs.
+    max_intensity
+        Optional upper threshold for intensity-mode inputs.
 
-        Supported *value_mode* values: ``"pixel_count"``, ``"mean"``, ``"object_count"``.
-
-        Atlas input:
-                - Pass *atlas* (BrainGlobe atlas or PyNutil AtlasData). Volume and
-                    shape are inferred from ``atlas.annotation`` or ``atlas.volume``.
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]
+        A tuple ``(interpolated_volume, frequency_volume, damage_volume)``.
+        The first element stores the requested value volume, the second stores
+        per-voxel sampling frequency, and the third is a binary damage mask.
     """
     if value_mode not in {"pixel_count", "mean", "object_count"}:
         raise ValueError(
