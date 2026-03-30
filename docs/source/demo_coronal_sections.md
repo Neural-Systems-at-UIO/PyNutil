@@ -4,7 +4,10 @@ Interpolate pixel values into atlas space with PyNutil, then display a grid of
 coronal sections with the Allen STPT structural template as background and the
 expression heatmap overlaid in magma.
 
-![Calbindin-1 expression overlaid on coronal Allen STPT sections](../assets/gallery/calb1_cross_section.png)
+```{image} ../assets/gallery/calb1_cross_section.png
+:alt: Calbindin-1 expression overlaid on coronal Allen STPT sections
+:width: 100%
+```
 
 ## Code
 
@@ -45,8 +48,7 @@ stpt /= stpt.max()
 n_ap = expr.shape[0]
 indices = np.linspace(n_ap * 0.3, n_ap * 0.8, N_SECTIONS, dtype=int)
 
-fig, axes = plt.subplots(1, N_SECTIONS, figsize=(N_SECTIONS * 3, 4), dpi=300)
-axes = axes.ravel()
+fig, axes = plt.subplots(N_SECTIONS, 1, figsize=(4, N_SECTIONS * 4), dpi=300)
 
 for ax, idx in zip(axes, indices):
     ax.imshow(stpt[idx], cmap="gray", vmin=0, vmax=1)
