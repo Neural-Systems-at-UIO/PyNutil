@@ -57,6 +57,7 @@ volume.mesh.alpha([
 # ── Opacity unit distance ─────────────────────────────────────────────────────
 # A ray travelling this many µm accumulates one "unit" of opacity from the
 # transfer function above.  Too small → looks solid.  Increase to see through.
+volume.mesh.cmap("magma", vmin=0, vmax=vmax*0.6)
 volume.mesh.alpha_unit(300)
 
 # Composite (front-to-back) blending — best for heatmap-style volumes.

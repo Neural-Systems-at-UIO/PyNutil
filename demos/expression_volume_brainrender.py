@@ -14,7 +14,6 @@ from brainrender.actors import Volume
 
 import PyNutil as pnt
 
-settings.SHADER_STYLE = "default"
 
 IMAGE_DIR = "/home/harryc/github/allen_download_utilities/downloaded_data/05-2788/71717640/expression_25um"
 ALIGNMENT_JSON = "/home/harryc/github/PyNutil/tests/test_data/7171717640/05-2788.json"
@@ -32,12 +31,15 @@ result = pnt.interpolate_volume(
     segmentation_mode=False,
     intensity_channel="grayscale",
     do_interpolation=True,
+    return_orientation="rsa"
 )
 
-arr = result.value
+arr = result.value.astype(np.float32)
+arr = np.nan_to_num(arr, nan=0.0)
+
 vmax = float(arr.max())
 
-scene = Scene(atlas_name="allen_mouse_25um", title="05-2788 expression volume")
+scene = Scene(atlas_name="allen_mouse_25um", title="calbindin-1 expression volume")
 
 volume = Volume(
     arr,
@@ -49,10 +51,12 @@ volume = Volume(
 volume.mesh.alpha([
     (0,             0.0),
     (1,             0.0),
-    (vmax * 0.1,    0.1),
-    (vmax * 0.75,   0.6),
+    (vmax * 0.2,    0.10),
+    (vmax * 0.5,    0.2),
+    (vmax * 0.8,   0.4),
     (vmax,          0.6),
 ])
+volume.mesh.cmap("magma", vmin=0, vmax=vmax*0.6)
 volume.mesh.alpha_unit(300)
 volume.mesh.mode(0)
 
