@@ -9,7 +9,7 @@ INTERNAL_ORIENTATION = "lpi"
 _ORIENTATION_GROUPS = ("lr", "si", "ap")
 
 
-def validate_orientation_code(orientation):
+def _validate_orientation_code(orientation):
     """Validate a 3-letter BrainGlobe orientation code.
 
     A valid code must contain exactly one axis from each anatomical pair:
@@ -79,7 +79,7 @@ def _shape_in_orientation(internal_shape, orientation):
     Returns:
         Tuple of ints — the shape the atlas would have in *orientation*.
     """
-    orientation = validate_orientation_code(orientation)
+    orientation = _validate_orientation_code(orientation)
     if orientation == INTERNAL_ORIENTATION:
         return internal_shape
     source = AnatomicalSpace(INTERNAL_ORIENTATION, shape=internal_shape)
@@ -104,10 +104,10 @@ def reorient_points(points, internal_atlas_shape, target_orientation,
     """
     if points is None or len(points) == 0:
         return points
-    target_orientation = validate_orientation_code(target_orientation)
+    target_orientation = _validate_orientation_code(target_orientation)
     if source_orientation is None:
         source_orientation = INTERNAL_ORIENTATION
-    source_orientation = validate_orientation_code(source_orientation)
+    source_orientation = _validate_orientation_code(source_orientation)
     source_shape = _shape_in_orientation(internal_atlas_shape, source_orientation)
     source = AnatomicalSpace(source_orientation, shape=source_shape)
     target = AnatomicalSpace(target_orientation)
@@ -125,7 +125,7 @@ def reorient_volume(volume, atlas_shape, target_orientation):
     Returns:
         3D numpy array in the target orientation.
     """
-    target_orientation = validate_orientation_code(target_orientation)
+    target_orientation = _validate_orientation_code(target_orientation)
     source = AnatomicalSpace(INTERNAL_ORIENTATION, shape=atlas_shape)
     target = AnatomicalSpace(target_orientation)
     return source.map_stack_to(target, volume)
