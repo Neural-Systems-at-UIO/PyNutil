@@ -5,7 +5,6 @@ import brainglobe_atlasapi
 from PyQt6.QtCore import QThread, pyqtSignal
 from log_manager import TextRedirector
 from PyNutil import (
-    load_atlas_data,
     load_custom_atlas,
     read_alignment,
     seg_to_coords,
@@ -48,7 +47,7 @@ class AnalysisWorker(QThread):
                 )
             else:
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-                atlas = load_atlas_data(self.arguments["atlas_name"])
+                atlas = brainglobe_atlasapi.BrainGlobeAtlas(self.arguments["atlas_name"])
 
             if self.cancelled:
                 print("Analysis cancelled")
@@ -71,7 +70,6 @@ class AnalysisWorker(QThread):
                     img_dir,
                     registration,
                     atlas,
-                    apply_damage_mask=apply_damage_mask,
                 )
             else:
                 result = seg_to_coords(
@@ -80,16 +78,13 @@ class AnalysisWorker(QThread):
                     atlas,
                     pixel_id=self.arguments["object_colour"],
                     segmentation_format=seg_format,
-                    apply_damage_mask=apply_damage_mask,
                 )
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            label_df = quantify_coords(
-                result, atlas.labels, apply_damage_mask=apply_damage_mask
-            )
+            label_df = quantify_coords(result, atlas.labels)
 
             if self.cancelled:
                 print("Analysis cancelled")

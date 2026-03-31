@@ -125,7 +125,7 @@ def quantify_labeled_points(
     centroids_hemi,
     region_areas,
     atlas_labels,
-    apply_damage_mask,
+    with_damage,
 ):
     """Aggregate per-pixel and per-centroid counts into a summary table.
 
@@ -138,7 +138,7 @@ def quantify_labeled_points(
         centroids_hemi: 1-D hemisphere labels for centroids.
         region_areas: Combined region-area DataFrame (summed across sections).
         atlas_labels: Atlas labels DataFrame.
-        apply_damage_mask: Whether damage mask was applied.
+        with_damage: Whether damage mask data is present in the result.
 
     Returns:
         label_df — whole-series DataFrame.
@@ -151,10 +151,10 @@ def quantify_labeled_points(
         points_hemi,
         centroids_hemi,
         atlas_labels,
-        apply_damage_mask,
+        with_damage,
     )
     label_df = _merge_dataframes(count_df, region_areas, atlas_labels)
-    if not apply_damage_mask:
+    if not with_damage:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
     return label_df
@@ -231,20 +231,39 @@ def quantify_intensity(region_intensities, atlas_labels):
 # ── Unified quantification entry point ──────────────────────────────────
 
 
-def quantify_coords(result, atlas_labels, apply_damage_mask=True):
-    """Quantify an ExtractionResult by atlas region.
+def quantify_coords(result, atlas_labels):
+    """Summarize atlas-space extraction results by atlas region.
 
-    Dispatches to :func:`quantify_labeled_points` or :func:`quantify_intensity`
-    depending on the content of *result*.
+    Parameters
+    ----------
+    result
+        Extraction result returned by :func:`PyNutil.seg_to_coords`,
+        :func:`PyNutil.image_to_coords`, or :func:`PyNutil.xy_to_coords`.
+    atlas_labels
+        Atlas labels to use when building the output table. This may be a
+        labels :class:`pandas.DataFrame`, an :class:`~PyNutil.AtlasData`
+        instance, or a BrainGlobe atlas object.
 
-    Args:
-        result: ExtractionResult from a coordinate extraction function.
-        atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels``
-            will be used).
-        apply_damage_mask: Include damage statistics in output.
+    Returns
+    -------
+    pandas.DataFrame
+        Whole-series quantification table. For segmentation-based extraction,
+        the output includes object and area statistics. For intensity-based
+        extraction, the output includes summed and mean intensity statistics.
+        Common columns include ``idx`` and ``name`` plus region-level summary
+        fields such as ``region_area``, ``object_count``, ``object_pixels``,
+        ``area_fraction``, or intensity columns such as ``sum_intensity`` and
+        ``mean_intensity`` depending on the extraction mode. Damage-related
+        columns are included automatically when damage mask data is present.
 
-    Returns:
-        label_df — whole-series DataFrame.
+    Examples
+    --------
+    Quantify an extraction result against atlas regions:
+
+    >>> label_df = quantify_coords(result, atlas)
+    >>> label_df[
+    ...     ["idx", "name", "region_area", "object_count", "area_fraction"]
+    ... ].head()
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
@@ -260,5 +279,5 @@ def quantify_coords(result, atlas_labels, apply_damage_mask=True):
         result.objects.hemi_labels if result.objects is not None else np.array([], dtype=np.int64),
         result.region_areas,
         atlas_labels,
-        apply_damage_mask,
+        with_damage=True,
     )
