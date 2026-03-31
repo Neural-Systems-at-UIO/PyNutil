@@ -5,6 +5,8 @@ from typing import Optional
 import numpy as np
 
 from .nifti_writer import write_nifti
+from ..results.volume import VolumeResult
+from .atlas_loader import resolve_atlas
 
 
 def scale_to_uint8(data: np.ndarray) -> np.ndarray:
@@ -56,36 +58,64 @@ def isotropic_resolution_um_for_volume(
     return float(base_voxel_um * iso_scale)
 
 
-def save_volume_niftis(
+def save_volumes(
     *,
     output_folder: str,
-    interpolated_volume: Optional[np.ndarray],
-    frequency_volume: Optional[np.ndarray],
-    damage_volume: Optional[np.ndarray] = None,
-    atlas_volume: Optional[np.ndarray],
-    voxel_size_um: Optional[float],
+    volumes: VolumeResult,
+    atlas: object,
     logger=None,
 ) -> None:
-    if interpolated_volume is None and frequency_volume is None:
-        return
+    """Save atlas-space volumes as NIfTI files.
 
-    base_voxel_um = float(voxel_size_um) if voxel_size_um is not None else 1.0
+    Parameters
+    ----------
+    output_folder
+        Base output directory where the ``interpolated_volume`` subdirectory
+        will be created.
+    volumes
+        :class:`~PyNutil.VolumeResult` returned by
+        :func:`~PyNutil.interpolate_volume`.
+    atlas
+        Atlas definition used to infer isotropic voxel spacing. Accepts a
+        BrainGlobe atlas object or :class:`~PyNutil.AtlasData`.
+    logger
+        Optional logger used to report non-uniform output scaling.
+
+    Notes
+    -----
+    Each written volume is scaled to 8-bit before export. Output files are
+    written into ``<output_folder>/interpolated_volume``.
+
+    Examples
+    --------
+    Save the volumes returned by :func:`PyNutil.interpolate_volume`:
+
+    >>> image_series = read_segmentation_dir("path/to/segmentations/", pixel_id=[0, 0, 0])
+    >>> registration = read_alignment("path/to/alignment.json")
+    >>> volumes = interpolate_volume(
+    ...     image_series=image_series,
+    ...     registration=registration,
+    ...     atlas=atlas,
+    ... )
+    >>> save_volumes(
+    ...     output_folder="path/to/output",
+    ...     volumes=volumes,
+    ...     atlas=atlas,
+    ... )
+    """
+    resolved = resolve_atlas(atlas)
+    base_voxel_um = float(resolved.voxel_size_um) if resolved.voxel_size_um is not None else 1.0
 
     def _save_one(volume: np.ndarray, *, name: str) -> None:
         vol_u8 = scale_to_uint8(volume)
         res = isotropic_resolution_um_for_volume(
-            atlas_volume=atlas_volume,
+            atlas_volume=resolved.volume,
             volume=vol_u8,
             base_voxel_um=base_voxel_um,
             logger=logger,
         )
         write_nifti(vol_u8, res, f"{output_folder}/interpolated_volume/{name}")
 
-    if interpolated_volume is not None:
-        _save_one(interpolated_volume, name="interpolated_volume")
-
-    if frequency_volume is not None:
-        _save_one(frequency_volume, name="frequency_volume")
-
-    if damage_volume is not None:
-        _save_one(damage_volume, name="damage_volume")
+    _save_one(volumes.value, name="interpolated_volume")
+    _save_one(volumes.frequency, name="frequency_volume")
+    _save_one(volumes.damage, name="damage_volume")

@@ -10,6 +10,7 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 from ...context import PipelineContext, SectionContext
+from ...image_series import Section, ImageSeries
 from ...results import (
     SectionResult,
     IntensitySectionResult,
@@ -36,7 +37,7 @@ from ...io.loaders import number_sections
 
 
 def _run_batch_with_context(
-    folder,
+    image_series: ImageSeries,
     registration: RegistrationData,
     pipeline_ctx: PipelineContext,
     empty_result_factory,
@@ -44,45 +45,47 @@ def _run_batch_with_context(
 ):
     """Generic batch scaffold using context objects.
 
-    Handles file discovery, thread-pool setup, per-section looping,
-    and futures collection.
+    Handles thread-pool setup, per-section looping, and futures collection.
+    Images are loaded lazily per section via
+    :meth:`~PyNutil.image_series.Section.get_image`.
 
     Args:
-        folder: Path to segmentation / image files.
+        image_series: Image series (from :func:`read_segmentation_dir`,
+            :func:`read_image_dir`, or constructed manually).
         registration: Pre-loaded registration data.
         pipeline_ctx: Immutable pipeline-wide state.
         empty_result_factory: Callable returning a default empty result.
         processing_fn: ``fn(p_ctx, s_ctx)`` — processes one section.
 
     Returns:
-        tuple: (segmentations, results) where *results* is a list parallel to
-               *segmentations*, each element being the Future's result.
+        tuple: (filenames, results) where *results* is a list parallel to
+               *filenames*, each element being the Future's result.
     """
     slices_by_nr = {s.section_number: s for s in registration.slices}
+    sections = image_series.sections
+    adapter = pipeline_ctx.segmentation_adapter
 
-    segmentations = discover_image_files(folder)
+    results = [empty_result_factory() for _ in range(len(sections))]
 
-    results = [empty_result_factory() for _ in range(len(segmentations))]
-
-    if segmentations:
-        max_workers = min(32, len(segmentations), (os.cpu_count() or 1) + 4)
+    if sections:
+        max_workers = min(32, len(sections), (os.cpu_count() or 1) + 4)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
-            for index, seg_path in enumerate(segmentations):
-                seg_nr = int(number_sections([seg_path])[0])
-                slice_info = slices_by_nr.get(seg_nr)
+            for index, section in enumerate(sections):
+                slice_info = slices_by_nr.get(section.section_number)
                 if slice_info is None:
                     print(
-                        f"segmentation file does not exist in alignment json: {seg_path}"
+                        f"Section {section.section_number} not found in alignment JSON"
                     )
                     continue
                 if not slice_info.anchoring:
                     continue
 
                 section_ctx = SectionContext(
-                    section_number=seg_nr,
+                    section_number=section.section_number,
                     slice_info=slice_info,
-                    segmentation_path=seg_path,
+                    image=section.get_image(adapter),
+                    filename=section.filename,
                 )
                 futures.append(
                     (
@@ -94,7 +97,79 @@ def _run_batch_with_context(
             for idx, future in futures:
                 results[idx] = future.result()
 
-    return segmentations, results
+    return image_series.filenames, results
+
+
+# ---------------------------------------------------------------------------
+# Directory readers
+# ---------------------------------------------------------------------------
+
+
+def read_segmentation_dir(
+    folder,
+    pixel_id=None,
+    segmentation_format="binary",
+) -> ImageSeries:
+    """Discover segmentation image files in *folder* and return an :class:`~PyNutil.ImageSeries`.
+
+    Images are **not** loaded immediately — each section loads its image on
+    demand when the pipeline processes it.
+
+    Parameters
+    ----------
+    folder
+        Path to a folder containing segmentation image files.
+    pixel_id
+        RGB value or label identifying the segmented class of interest.
+        Defaults to ``[0, 0, 0]``.
+    segmentation_format
+        Name of the segmentation adapter to use, for example ``"binary"`` or
+        ``"cellpose"``.
+
+    Returns
+    -------
+    ImageSeries
+        One :class:`~PyNutil.Section` per discovered file, with
+        ``section_number`` inferred from the filename and ``path`` set for
+        lazy loading.
+    """
+    if pixel_id is None:
+        pixel_id = [0, 0, 0]
+    paths = discover_image_files(folder)
+    sections = []
+    for path in paths:
+        nr = int(number_sections([path])[0])
+        sections.append(Section(section_number=nr, filename=path, path=path))
+    return ImageSeries(
+        sections=sections,
+        pixel_id=pixel_id,
+        segmentation_format=segmentation_format,
+    )
+
+
+def read_image_dir(folder) -> ImageSeries:
+    """Discover source image files in *folder* and return an :class:`~PyNutil.ImageSeries`.
+
+    Images are **not** loaded immediately — each section loads its image on
+    demand when the pipeline processes it.
+
+    Parameters
+    ----------
+    folder
+        Path to a folder containing source image files.
+
+    Returns
+    -------
+    ImageSeries
+        One :class:`~PyNutil.Section` per discovered file, with ``section_number``
+        inferred from the filename and ``path`` set for lazy loading.
+    """
+    paths = discover_image_files(folder)
+    sections = []
+    for path in paths:
+        nr = int(number_sections([path])[0])
+        sections.append(Section(section_number=nr, filename=path, path=path))
+    return ImageSeries(sections=sections)
 
 
 # ---------------------------------------------------------------------------
@@ -201,35 +276,28 @@ def _collect_section_results(results):
 
 
 def seg_to_coords(
-    folder,
+    image_series: ImageSeries,
     registration: RegistrationData,
     atlas: AtlasData,
-    pixel_id=[0, 0, 0],
     object_cutoff=0,
-    segmentation_format="binary",
     return_orientation="asr",
 ):
     """Transform segmentation images into atlas-space coordinates.
 
     Parameters
     ----------
-    folder
-        Path to a folder containing segmentation images.
+    image_series
+        An :class:`~PyNutil.ImageSeries` produced by
+        :func:`~PyNutil.read_segmentation_dir`, or constructed manually for
+        custom segmentation types.  The series carries ``pixel_id`` and
+        ``segmentation_format`` set at read time.
     registration
         Registration data returned by :func:`PyNutil.read_alignment`.
     atlas
         Atlas definition to use for labeling. This may be an
         :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
-    pixel_id
-        RGB value or label identifier used to select the segmented class of
-        interest.
     object_cutoff
         Minimum object size to keep during segmentation processing.
-    segmentation_format
-        Name of the segmentation adapter to use, for example ``"binary"`` or
-        ``"cellpose"``.
-    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
-            "ras"). Defaults to "asr" (internal orientation).
 
     Returns
     -------
@@ -248,12 +316,8 @@ def seg_to_coords(
     >>> from brainglobe_atlasapi import BrainGlobeAtlas
     >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
     >>> registration = read_alignment("path/to/alignment.json")
-    >>> result = seg_to_coords(
-    ...     "path/to/segmentations/",
-    ...     registration,
-    ...     atlas,
-    ...     pixel_id=[0, 0, 0],
-    ... )
+    >>> segs = read_segmentation_dir("path/to/segmentations/", pixel_id=[0, 0, 0])
+    >>> result = seg_to_coords(segs, registration, atlas)
     >>> result.points.points.shape
     (N, 3)
     >>> result.objects.labels.shape
@@ -263,16 +327,16 @@ def seg_to_coords(
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
-        segmentation_format=segmentation_format,
+        segmentation_format=image_series.segmentation_format,
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
         object_cutoff=object_cutoff,
-        pixel_id=pixel_id,
+        pixel_id=image_series.pixel_id,
     )
 
     segmentations, results = _run_batch_with_context(
-        folder,
+        image_series,
         registration,
         pipeline_ctx,
         SectionResult.empty,
@@ -330,7 +394,7 @@ def seg_to_coords(
 
 
 def image_to_coords(
-    folder,
+    image_series: ImageSeries,
     registration: RegistrationData,
     atlas: AtlasData,
     intensity_channel="grayscale",
@@ -342,8 +406,9 @@ def image_to_coords(
 
     Parameters
     ----------
-    folder
-        Path to a folder containing source images.
+    image_series
+        An :class:`~PyNutil.ImageSeries` produced by
+        :func:`~PyNutil.read_image_dir`, or constructed manually.
     registration
         Registration data returned by :func:`PyNutil.read_alignment`.
     atlas
@@ -376,11 +441,8 @@ def image_to_coords(
     >>> from brainglobe_atlasapi import BrainGlobeAtlas
     >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
     >>> registration = read_alignment("path/to/alignment.json")
-    >>> result = image_to_coords(
-    ...     "path/to/images/",
-    ...     registration,
-    ...     atlas,
-    ... )
+    >>> images = read_image_dir("path/to/images/")
+    >>> result = image_to_coords(images, registration, atlas)
     >>> result.points.points.shape
     (N, 3)
     >>> result.region_intensities.columns.tolist()[:3]
@@ -402,7 +464,7 @@ def image_to_coords(
     )
 
     images, results = _run_batch_with_context(
-        folder,
+        image_series,
         registration,
         pipeline_ctx,
         IntensitySectionResult.empty,

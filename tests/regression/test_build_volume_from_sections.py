@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 import nibabel as nib
 
-from PyNutil import save_analysis, interpolate_volume
+from PyNutil import save_analysis, interpolate_volume, read_segmentation_dir
 from PyNutil.io.volume_nifti import scale_to_uint8
 from test_helpers import copy_tree_to_demo, small_volume_scale, run_pipeline_from_settings
 try:
@@ -44,35 +44,34 @@ class TestBuildVolumeFromSections(TimedTestCase):
         atlas, result, label_df, alignment = run_pipeline_from_settings(settings)
 
         # Downscale to keep runtime/memory small and stable.
-        scale = small_volume_scale(atlas.annotation.shape)
+        scale = small_volume_scale(atlas.volume.shape)
+
+        image_series = read_segmentation_dir(
+            settings["segmentation_folder"],
+            pixel_id=settings.get("colour", [0, 0, 0]),
+        )
 
         # Plane-based volume: every pixel in each section plane contributes
         # (0 for background, 1 for segmentation colour), and fv counts coverage.
-        gv, fv, dv = interpolate_volume(
-            segmentation_folder=settings["segmentation_folder"],
-            alignment_json=settings["alignment_json"],
-            colour=settings.get("colour", [0, 0, 0]),
+        volumes = interpolate_volume(
+            image_series=image_series,
+            registration=alignment,
             atlas=atlas,
             scale=scale,
             missing_fill=np.nan,
             do_interpolation=True,
             k=5,
             use_atlas_mask=True,
-<<<<<<< HEAD
-            non_linear=True,
-            return_orientation="lpi"
-=======
->>>>>>> 3ab296d (remove nonlinear and damage mask opt out from everywhere except load)
         )
-        return atlas, result, label_df, gv, fv, dv, settings
+        return atlas, result, label_df, volumes, settings
 
     def test_interpolate_volume_k5_matches_expected(self):
-        atlas, result, label_df, gv, fv, dv, settings = self._run_pipeline_and_interpolate()
+        atlas, result, label_df, volumes, settings = self._run_pipeline_and_interpolate()
 
         # Volumes are saved as uint8 in NIfTI; we scale them here to match
         # the expected disk fixtures without having to read back what we just wrote.
-        got_interp = scale_to_uint8(gv)
-        got_freq = scale_to_uint8(fv)
+        got_interp = scale_to_uint8(volumes.value)
+        got_freq = scale_to_uint8(volumes.frequency)
 
         exp_interp_path = os.path.join(
             self.expected_report_dir, "interpolated_volume.nii.gz"

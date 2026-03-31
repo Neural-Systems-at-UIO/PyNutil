@@ -304,7 +304,7 @@ def segmentation_to_atlas_space(
     pixel_id = p_ctx.pixel_id
     adapter = p_ctx.segmentation_adapter
 
-    segmentation = adapter.load(s_ctx.segmentation_path)
+    segmentation = s_ctx.image
     if pixel_id == "auto":
         pixel_id = adapter.detect_pixel_id(segmentation)
     seg_height, seg_width = segmentation.shape[:2]
@@ -474,7 +474,7 @@ def segmentation_to_atlas_space_intensity(
     slice_info = s_ctx.slice_info
     adapter = p_ctx.segmentation_adapter
 
-    image = adapter.load(s_ctx.segmentation_path)
+    image = s_ctx.image
     intensity = convert_to_intensity(image, p_ctx.intensity_channel)
     _apply_intensity_bounds(intensity, p_ctx.min_intensity, p_ctx.max_intensity)
 

@@ -117,7 +117,7 @@ class TestCoordinateScaling(TimedTestCase):
                 s_ctx = SectionContext(
                     section_number=1,
                     slice_info=slice_info,
-                    segmentation_path=seg_path,
+                    image=segmentation,
                 )
                 result = segmentation_to_atlas_space(p_ctx, s_ctx)
 
