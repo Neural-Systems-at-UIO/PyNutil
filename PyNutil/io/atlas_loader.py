@@ -69,29 +69,6 @@ def resolve_atlas_labels(atlas_labels):
     )
 
 
-@lru_cache(maxsize=8)
-def load_atlas_data(atlas_name):
-    """
-    Loads atlas data using the brainglobe_atlasapi.
-
-    Parameters
-    ----------
-    atlas_name : str
-        Name of the atlas to load.
-
-    Returns
-    -------
-    AtlasData
-        Bundle containing atlas volume, hemisphere map, and labels.
-    """
-    atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
-    atlas_labels = load_atlas_labels(atlas)
-    atlas_volume = process_atlas_volume(atlas.annotation)
-    hemi_map = process_atlas_volume(atlas.hemispheres)
-    print("atlas labels loaded ✅")
-    return AtlasData(volume=atlas_volume, hemi_map=hemi_map, labels=atlas_labels)
-
-
 def process_atlas_volume(vol):
     """
     Processes the atlas volume by transposing and reversing axes.
