@@ -484,14 +484,9 @@ def interpolate_volume(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    if hasattr(atlas, "annotation") and getattr(atlas, "annotation") is not None:
-        atlas_volume = getattr(atlas, "annotation")
-    elif hasattr(atlas, "volume") and getattr(atlas, "volume") is not None:
-        atlas_volume = getattr(atlas, "volume")
-    else:
-        raise ValueError(
-            "atlas must provide a non-None 'annotation' or 'volume' attribute"
-        )
+    from ..io.atlas_loader import resolve_atlas
+    atlas_data = resolve_atlas(atlas)
+    atlas_volume = atlas_data.volume
 
     out_base_shape = tuple(int(x) for x in atlas_volume.shape)
 

@@ -8,7 +8,7 @@ import numpy as np
 from brainglobe_atlasapi import BrainGlobeAtlas
 
 from PyNutil import read_alignment, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
-from PyNutil.io.atlas_loader import resolve_atlas
+from PyNutil import resolve_atlas
 from test_helpers import copy_tree_to_demo, small_volume_scale
 
 try:

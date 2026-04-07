@@ -3,7 +3,7 @@ import os
 import unittest
 import numpy as np
 from PyNutil import interpolate_volume, save_analysis
-from PyNutil.io.atlas_loader import resolve_atlas
+from PyNutil import resolve_atlas
 from test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
 
 try:
