@@ -2,8 +2,9 @@ import json
 import os
 import shutil
 
+from brainglobe_atlasapi import BrainGlobeAtlas
+
 from PyNutil import (
-    load_atlas_data,
     load_custom_atlas,
     read_alignment,
     seg_to_coords,
@@ -22,7 +23,7 @@ def small_volume_scale(atlas_shape, target_max_dim: float = 80.0) -> float:
 def load_atlas_from_settings(settings: dict):
     """Load an AtlasData from a settings dictionary."""
     if settings.get("atlas_name"):
-        return load_atlas_data(settings["atlas_name"])
+        return BrainGlobeAtlas(settings["atlas_name"])
     return load_custom_atlas(
         settings["atlas_path"],
         settings.get("hemi_path"),
