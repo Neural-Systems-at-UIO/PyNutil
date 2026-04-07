@@ -58,11 +58,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
             do_interpolation=True,
             k=5,
             use_atlas_mask=True,
-<<<<<<< HEAD
-            non_linear=True,
             return_orientation="lpi"
-=======
->>>>>>> 3ab296d (remove nonlinear and damage mask opt out from everywhere except load)
         )
         return atlas, result, label_df, gv, fv, dv, settings
 
