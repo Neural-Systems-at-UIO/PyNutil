@@ -8,6 +8,7 @@ import numpy as np
 from brainglobe_atlasapi import BrainGlobeAtlas
 
 from PyNutil import read_alignment, seg_to_coords, quantify_coords, save_analysis, interpolate_volume
+from PyNutil.io.atlas_loader import resolve_atlas
 from test_helpers import copy_tree_to_demo, small_volume_scale
 
 try:
@@ -52,7 +53,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
     def test_value_mode_mean_matches_pixel_count_over_frequency(self):
         settings, atlas, result, label_df = self._run_pipeline()
 
-        scale = self._scale_for_small_volume(atlas.annotation.shape)
+        scale = self._scale_for_small_volume(resolve_atlas(atlas).volume.shape)
 
         common_kwargs = dict(
             segmentation_folder=settings["segmentation_folder"],
@@ -116,7 +117,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
     def test_value_mode_object_count_basic_invariants(self):
         settings, atlas, result, label_df = self._run_pipeline()
 
-        scale = self._scale_for_small_volume(atlas.annotation.shape)
+        scale = self._scale_for_small_volume(resolve_atlas(atlas).volume.shape)
 
         common_kwargs = dict(
             segmentation_folder=settings["segmentation_folder"],
@@ -180,7 +181,7 @@ class TestInterpolateVolumeValueModes(TimedTestCase):
     def test_colour_auto_matches_adapter_auto_detection(self):
         settings = self._load_settings()
         atlas = BrainGlobeAtlas(settings["atlas_name"])
-        scale = self._scale_for_small_volume(atlas.annotation.shape)
+        scale = self._scale_for_small_volume(resolve_atlas(atlas).volume.shape)
 
         common_kwargs = dict(
             segmentation_folder=settings["segmentation_folder"],

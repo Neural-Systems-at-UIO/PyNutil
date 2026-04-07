@@ -48,7 +48,9 @@ def resolve_atlas(atlas):
     volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
     labels = load_atlas_labels(atlas)
-    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
+    resolution = getattr(atlas, "resolution", None)
+    voxel_size_um = float(resolution[0]) if resolution is not None else None
+    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels, voxel_size_um=voxel_size_um)
 
 
 def resolve_atlas_labels(atlas_labels):

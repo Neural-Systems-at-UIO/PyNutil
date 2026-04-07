@@ -14,6 +14,7 @@ from PyNutil import (
     interpolate_volume,
     save_volume_niftis,
 )
+from PyNutil.io.atlas_loader import resolve_atlas
 
 
 class AnalysisWorker(QThread):
@@ -47,7 +48,7 @@ class AnalysisWorker(QThread):
                 )
             else:
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-                atlas = brainglobe_atlasapi.BrainGlobeAtlas(self.arguments["atlas_name"])
+                atlas = resolve_atlas(brainglobe_atlasapi.BrainGlobeAtlas(self.arguments["atlas_name"]))
 
             if self.cancelled:
                 print("Analysis cancelled")

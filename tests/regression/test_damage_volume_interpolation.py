@@ -3,6 +3,7 @@ import os
 import unittest
 import numpy as np
 from PyNutil import interpolate_volume, save_analysis
+from PyNutil.io.atlas_loader import resolve_atlas
 from test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
 
 try:
@@ -23,7 +24,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
 
     def _run_interpolation(self, do_interpolation=False, k=5):
         atlas, result, label_df, alignment = run_pipeline_from_settings_file(self.settings_path)
-        scale = small_volume_scale(atlas.annotation.shape)
+        scale = small_volume_scale(resolve_atlas(atlas).volume.shape)
 
         gv, fv, dv = interpolate_volume(
             segmentation_folder=self.settings["segmentation_folder"],
@@ -95,13 +96,14 @@ class TestDamageVolumeInterpolation(TimedTestCase):
             # Note: save_analysis does not save volume niftis; the damage volume
             # persistence test needs save_volume_niftis for that.
             from PyNutil import save_volume_niftis
+            atlas_data = resolve_atlas(atlas)
             save_volume_niftis(
                 output_folder=tmpdir,
                 interpolated_volume=gv,
                 frequency_volume=fv,
                 damage_volume=dv,
-                atlas_volume=atlas.annotation,
-                voxel_size_um=atlas.resolution[0],
+                atlas_volume=atlas_data.volume,
+                voxel_size_um=atlas_data.voxel_size_um,
             )
 
             self.assertTrue(os.path.exists(damage_nifti_path), f"Damage volume NIfTI should be saved at {damage_nifti_path}")
