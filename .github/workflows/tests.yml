@@ -22,7 +22,7 @@ jobs:
 
     - name: Download atlas
       run: |
-        python -c "from brainglobe_atlasapi import BrainGlobeAtlas; BrainGlobeAtlas('allen_mouse_25um', check_latest=False)"
+        brainglobe install -a allen_mouse_25um
 
     - name: Run tests
       run: |
