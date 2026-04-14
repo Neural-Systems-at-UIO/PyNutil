@@ -1,11 +1,10 @@
 import sys
 from typing import Any, Dict
 
-import brainglobe_atlasapi
+import from brainglobe_atlasapi import BrainGlobeAtlas
 from PyQt6.QtCore import QThread, pyqtSignal
 from log_manager import TextRedirector
 from PyNutil import (
-    load_atlas_data,
     load_custom_atlas,
     read_alignment,
     seg_to_coords,
@@ -15,6 +14,7 @@ from PyNutil import (
     interpolate_volume,
     save_volume_niftis,
 )
+from PyNutil.io.atlas_loader import resolve_atlas
 
 
 class AnalysisWorker(QThread):
@@ -48,7 +48,7 @@ class AnalysisWorker(QThread):
                 )
             else:
                 print(f"Using BrainGlobe atlas: {self.arguments['atlas_name']}")
-                atlas = load_atlas_data(self.arguments["atlas_name"])
+                atlas = resolve_atlas(BrainGlobeAtlas(self.arguments["atlas_name"]))
 
             if self.cancelled:
                 print("Analysis cancelled")
@@ -164,7 +164,7 @@ class AtlasInstallWorker(QThread):
 
         try:
             self.progress_signal.emit(f"Starting installation of {self.atlas_name}...")
-            brainglobe_atlasapi.bg_atlas.BrainGlobeAtlas(self.atlas_name)
+            BrainGlobeAtlas(self.atlas_name)
 
             if self.cancelled:
                 self.finished_signal.emit(

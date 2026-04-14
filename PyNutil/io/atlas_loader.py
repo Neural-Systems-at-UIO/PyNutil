@@ -1,4 +1,4 @@
-import brainglobe_atlasapi
+from brainglobe_atlasapi import BrainGlobeAtlas
 import pandas as pd
 import numpy as np
 import nrrd
@@ -9,7 +9,7 @@ from ..results import AtlasData
 
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
-        atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
+        atlas = BrainGlobeAtlas(atlas_name=atlas_name)
     if not atlas_name and not atlas:
         raise Exception("Either atlas or atlas name must be specified")
     atlas_structures = {
@@ -48,7 +48,9 @@ def resolve_atlas(atlas):
     volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
     labels = load_atlas_labels(atlas)
-    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels)
+    resolution = getattr(atlas, "resolution", None)
+    voxel_size_um = float(resolution[0]) if resolution is not None else None
+    return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels, voxel_size_um=voxel_size_um)
 
 
 def resolve_atlas_labels(atlas_labels):
@@ -67,29 +69,6 @@ def resolve_atlas_labels(atlas_labels):
         "atlas_labels must be a pandas DataFrame, AtlasData-like (.labels), "
         "or BrainGlobeAtlas-like (.structures_list)."
     )
-
-
-@lru_cache(maxsize=8)
-def load_atlas_data(atlas_name):
-    """
-    Loads atlas data using the brainglobe_atlasapi.
-
-    Parameters
-    ----------
-    atlas_name : str
-        Name of the atlas to load.
-
-    Returns
-    -------
-    AtlasData
-        Bundle containing atlas volume, hemisphere map, and labels.
-    """
-    atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
-    atlas_labels = load_atlas_labels(atlas)
-    atlas_volume = process_atlas_volume(atlas.annotation)
-    hemi_map = process_atlas_volume(atlas.hemispheres)
-    print("atlas labels loaded ✅")
-    return AtlasData(volume=atlas_volume, hemi_map=hemi_map, labels=atlas_labels)
 
 
 def process_atlas_volume(vol):
