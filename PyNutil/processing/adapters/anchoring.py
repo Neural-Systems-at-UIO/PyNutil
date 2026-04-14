@@ -11,7 +11,7 @@ import re
 from typing import List
 
 import numpy as np
-
+from brainglobe_atlasapi import BrainGlobeAtlas
 from .base import AnchoringLoader, RegistrationData, SliceInfo, calculate_physical_dimensions
 from ...io.loaders import number_sections, load_json_file
 
@@ -121,9 +121,7 @@ class BrainGlobeRegistrationLoader(AnchoringLoader):
     @staticmethod
     def _get_atlas_shape(atlas_name: str):
         """Return the native (un-reoriented) atlas annotation shape."""
-        import brainglobe_atlasapi
-
-        bg = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
+        bg = BrainGlobeAtlas(atlas_name=atlas_name)
         return bg.annotation.shape  # (AP, DV, LR)
 
     @staticmethod

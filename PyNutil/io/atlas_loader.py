@@ -1,4 +1,4 @@
-import brainglobe_atlasapi
+from brainglobe_atlasapi import BrainGlobeAtlas
 import pandas as pd
 import numpy as np
 import nrrd
@@ -9,7 +9,7 @@ from ..results import AtlasData
 
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
-        atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
+        atlas = BrainGlobeAtlas(atlas_name=atlas_name)
     if not atlas_name and not atlas:
         raise Exception("Either atlas or atlas name must be specified")
     atlas_structures = {
