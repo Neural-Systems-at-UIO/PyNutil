@@ -5,6 +5,7 @@ in a folder, mapping each one to atlas space using parallel execution.
 """
 
 import os
+from typing import Union
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
@@ -204,7 +205,7 @@ def _collect_section_results(results):
 def seg_to_coords(
     folder,
     registration: RegistrationData,
-    atlas: AtlasData,
+    atlas: Union[AtlasData, "BrainGlobeAtlas"],
     pixel_id=[0, 0, 0],
     object_cutoff=0,
     segmentation_format="binary",
@@ -332,7 +333,7 @@ def seg_to_coords(
 def image_to_coords(
     folder,
     registration: RegistrationData,
-    atlas: AtlasData,
+    atlas: Union[AtlasData, "BrainGlobeAtlas"],
     intensity_channel="grayscale",
     min_intensity=None,
     max_intensity=None,
@@ -454,7 +455,7 @@ def image_to_coords(
 def xy_to_coords(
     coordinates: "pd.DataFrame",
     registration: RegistrationData,
-    atlas: AtlasData,
+    atlas: Union[AtlasData, "BrainGlobeAtlas"],
     return_orientation="asr",
 ):
     """Transform image-space coordinates into atlas space.

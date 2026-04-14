@@ -23,7 +23,6 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 
-from ..io.loaders import read_flat_file, read_seg_file
 from .utils import resize_mask_nearest
 
 

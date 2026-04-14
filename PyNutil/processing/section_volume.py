@@ -15,6 +15,7 @@ from .utils import (
     resize_mask_nearest,
 )
 from ..io.loaders import number_sections
+from ..io.atlas_loader import resolve_atlas
 
 
 @dataclass(frozen=True)
@@ -484,7 +485,6 @@ def interpolate_volume(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    from ..io.atlas_loader import resolve_atlas
     atlas_data = resolve_atlas(atlas)
     atlas_volume = atlas_data.volume
 
