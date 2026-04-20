@@ -25,8 +25,8 @@ def assign_labels_at_coordinates(coords_y, coords_x, source_map, reg_height, reg
                Out-of-bounds coordinates receive 0.
     """
     map_h, map_w = source_map.shape
-    y_scale = (map_h - 1) / (reg_height - 1) if reg_height > 1 else 0.0
-    x_scale = (map_w - 1) / (reg_width - 1) if reg_width > 1 else 0.0
+    y_scale = map_h / reg_height if reg_height > 0 else 0.0
+    x_scale = map_w / reg_width if reg_width > 0 else 0.0
     scaled_y = coords_y * y_scale
     scaled_x = coords_x * x_scale
     iy = np.floor(scaled_y).astype(int)
