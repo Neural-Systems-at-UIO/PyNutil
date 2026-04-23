@@ -5,7 +5,7 @@ in a folder, mapping each one to atlas space using parallel execution.
 """
 
 import os
-from typing import Union
+
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
@@ -28,8 +28,7 @@ from ..utils import (
     discover_image_files,
 )
 from ..reorientation import reorient_points
-from ...io.loaders import number_sections, _COORDINATE_REQUIRED_COLUMNS
-from ...io.atlas_loader import resolve_atlas
+from ...io.loaders import number_sections
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +63,18 @@ def _run_batch_with_context(
 
     segmentations = discover_image_files(folder)
 
+    # Discover flat files (only needed when use_flat is True)
+    flat_files, flat_file_nrs = [], []
+    if pipeline_ctx.use_flat:
+        flat_dir = os.path.join(folder, "flat_files")
+        flat_files = [
+            os.path.join(flat_dir, name)
+            for name in os.listdir(flat_dir)
+            if name.endswith(".flat") or name.endswith(".seg")
+        ]
+        print(f"Found {len(flat_files)} flat files in folder {folder}")
+        flat_file_nrs = [int(number_sections([ff])[0]) for ff in flat_files]
+
     results = [empty_result_factory() for _ in range(len(segmentations))]
 
     if segmentations:
@@ -81,10 +92,15 @@ def _run_batch_with_context(
                 if not slice_info.anchoring:
                     continue
 
+                current_flat = None
+                if pipeline_ctx.use_flat:
+                    idx_arr = [i for i, nr in enumerate(flat_file_nrs) if nr == seg_nr]
+                    current_flat = flat_files[idx_arr[0]] if idx_arr else None
                 section_ctx = SectionContext(
                     section_number=seg_nr,
                     slice_info=slice_info,
                     segmentation_path=seg_path,
+                    flat_file_path=current_flat,
                 )
                 futures.append(
                     (
@@ -205,62 +221,35 @@ def _collect_section_results(results):
 def seg_to_coords(
     folder,
     registration: RegistrationData,
-    atlas: Union[AtlasData, "BrainGlobeAtlas"],
+    atlas: AtlasData,
     pixel_id=[0, 0, 0],
     object_cutoff=0,
+    use_flat=False,
+    non_linear=True,
+    apply_damage_mask=True,
+    flat_label_path=None,
     segmentation_format="binary",
     return_orientation="asr",
 ):
-    """Transform segmentation images into atlas-space coordinates.
+    """Process all segmentation files in a folder, mapping each to atlas space.
 
-    Parameters
-    ----------
-    folder
-        Path to a folder containing segmentation images.
-    registration
-        Registration data returned by :func:`PyNutil.read_alignment`.
-    atlas
-        Atlas definition to use for labeling. This may be an
-        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
-    pixel_id
-        RGB value or label identifier used to select the segmented class of
-        interest.
-    object_cutoff
-        Minimum object size to keep during segmentation processing.
-    segmentation_format
-        Name of the segmentation adapter to use, for example ``"binary"`` or
-        ``"cellpose"``.
-    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+    Args:
+        folder: Path to segmentation files.
+        registration: Pre-loaded registration data.
+        atlas: AtlasData or BrainGlobeAtlas object.
+        pixel_id: Pixel color to match.
+        object_cutoff: Minimum object size.
+        use_flat: If True, load flat files.
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
+        segmentation_format: Format name ("binary" or "cellpose").
+        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
-    Returns
-    -------
-    ExtractionResult
-        Atlas-space points, centroid-level objects, section metadata, and
-        region-area summaries for the processed series.
-        The returned object exposes ``result.points`` for per-pixel
-        atlas-space coordinates and ``result.objects`` for centroid-level
-        object coordinates. Both point sets include labels, hemisphere labels,
-        per-section lengths, and undamaged masks when available.
-
-    Examples
-    --------
-    Process binary segmentation images with a BrainGlobe atlas:
-
-    >>> from brainglobe_atlasapi import BrainGlobeAtlas
-    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
-    >>> registration = read_alignment("path/to/alignment.json")
-    >>> result = seg_to_coords(
-    ...     "path/to/segmentations/",
-    ...     registration,
-    ...     atlas,
-    ...     pixel_id=[0, 0, 0],
-    ... )
-    >>> result.points.points.shape
-    (N, 3)
-    >>> result.objects.labels.shape
-    (M,)
+    Returns:
+        ExtractionResult: Structured extraction output.
     """
+    from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
@@ -268,8 +257,12 @@ def seg_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
+        non_linear=non_linear,
         object_cutoff=object_cutoff,
+        use_flat=use_flat,
         pixel_id=pixel_id,
+        apply_damage_mask=apply_damage_mask,
+        flat_label_path=flat_label_path,
     )
 
     segmentations, results = _run_batch_with_context(
@@ -333,60 +326,35 @@ def seg_to_coords(
 def image_to_coords(
     folder,
     registration: RegistrationData,
-    atlas: Union[AtlasData, "BrainGlobeAtlas"],
+    atlas: AtlasData,
     intensity_channel="grayscale",
+    use_flat=False,
+    non_linear=True,
+    apply_damage_mask=True,
+    flat_label_path=None,
     min_intensity=None,
     max_intensity=None,
     return_orientation="asr",
 ):
-    """Transform image intensities into atlas-space point data.
+    """Process all images in a folder, mapping each to atlas space with intensity.
 
-    Parameters
-    ----------
-    folder
-        Path to a folder containing source images.
-    registration
-        Registration data returned by :func:`PyNutil.read_alignment`.
-    atlas
-        Atlas definition to use for labeling. This may be an
-        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
-    intensity_channel
-        Image channel to convert to intensity values, such as
-        ``"grayscale"``.
-    min_intensity
-        Optional lower threshold. Intensities below this value are discarded.
-    max_intensity
-        Optional upper threshold. Intensities above this value are discarded.
-    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+    Args:
+        folder: Path to image files.
+        registration: Pre-loaded registration data.
+        atlas: AtlasData or BrainGlobeAtlas object.
+        intensity_channel: Channel to use for intensity.
+        use_flat: If True, load flat files.
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
+        min_intensity: Minimum intensity value to include.
+        max_intensity: Maximum intensity value to include.
+        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
-    Returns
-    -------
-    ExtractionResult
-        Atlas-space point data with optional per-point intensity values and
-        aggregated per-region intensity summaries.
-        The atlas-space coordinates are stored in ``result.points.points`` and
-        the sampled intensities in ``result.points.point_values``.
-        Per-region intensity summaries, when present, are stored in
-        ``result.region_intensities``.
-
-    Examples
-    --------
-    Quantify image intensity instead of segmented objects:
-
-    >>> from brainglobe_atlasapi import BrainGlobeAtlas
-    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
-    >>> registration = read_alignment("path/to/alignment.json")
-    >>> result = image_to_coords(
-    ...     "path/to/images/",
-    ...     registration,
-    ...     atlas,
-    ... )
-    >>> result.points.points.shape
-    (N, 3)
-    >>> result.region_intensities.columns.tolist()[:3]
-    ['idx', 'name', 'r']
+    Returns:
+        ExtractionResult: Structured extraction output.
     """
+    from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
@@ -394,8 +362,12 @@ def image_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
+        non_linear=non_linear,
         object_cutoff=0,
+        use_flat=use_flat,
         pixel_id=[0, 0, 0],
+        apply_damage_mask=apply_damage_mask,
+        flat_label_path=flat_label_path,
         intensity_channel=intensity_channel,
         min_intensity=min_intensity,
         max_intensity=max_intensity,
@@ -453,61 +425,37 @@ def image_to_coords(
 
 
 def xy_to_coords(
-    coordinates: "pd.DataFrame",
+    coordinate_file,
     registration: RegistrationData,
-    atlas: Union[AtlasData, "BrainGlobeAtlas"],
+    atlas: AtlasData,
+    non_linear=True,
+    apply_damage_mask=True,
     return_orientation="asr",
 ):
-    """Transform image-space coordinates into atlas space.
+    """Process a coordinate CSV file, transforming points to atlas space.
 
-    Parameters
-    ----------
-    coordinates
-        A :class:`pandas.DataFrame` containing coordinates and section
-        metadata. Must contain the columns ``X``, ``Y``, ``image_width``,
-        ``image_height``, and ``section number``.
-    registration
-        Registration data returned by :func:`PyNutil.read_alignment`.
-    atlas
-        Atlas definition to use for labeling. This may be an
-        :class:`~PyNutil.AtlasData` instance or a BrainGlobe atlas object.
-    return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
+    Loads coordinates from a CSV, groups by section number, and applies
+    the full transformation pipeline (scaling, deformation, anchoring)
+    to each section's coordinates.
+
+    Args:
+        coordinate_file: Path to the coordinate CSV file.
+        registration: Pre-loaded registration data.
+        atlas: Atlas data bundle (volume, hemi_map, labels).
+        non_linear: Apply non-linear transform (default True).
+        apply_damage_mask: Apply damage mask (default True).
+        return_orientation: 3-letter BrainGlobe orientation string (e.g. "asr",
             "ras"). Defaults to "asr" (internal orientation).
 
-    Returns
-    -------
-    ExtractionResult
-        Atlas-space points, object placeholders, and region-area summaries
-        derived from the input coordinates.
-        In coordinate mode, ``result.points`` contains the transformed
-        atlas-space coordinates and labels, while ``result.objects`` mirrors
-        the same coordinates for downstream quantification and export code.
-
-    Examples
-    --------
-    Transform pre-extracted image-space coordinates:
-
-    >>> import pandas as pd
-    >>> from brainglobe_atlasapi import BrainGlobeAtlas
-    >>> atlas = BrainGlobeAtlas("allen_mouse_25um")
-    >>> registration = read_alignment("path/to/alignment.json")
-    >>> df = pd.read_csv("path/to/coordinates.csv")
-    >>> result = xy_to_coords(df, registration, atlas)
-    >>> result.points.points.shape
-    (N, 3)
-    >>> result.section_filenames
-    []
+    Returns:
+        ExtractionResult: Structured extraction output.
     """
+    from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
+    from ...io.loaders import load_coordinate_file
 
-    missing = _COORDINATE_REQUIRED_COLUMNS - set(coordinates.columns)
-    if missing:
-        raise ValueError(
-            f"DataFrame is missing required columns: {missing}. "
-            f"Expected: {_COORDINATE_REQUIRED_COLUMNS}"
-        )
-    coord_df = coordinates
+    coord_df = load_coordinate_file(coordinate_file)
 
     slices_by_nr = {s.section_number: s for s in registration.slices}
 
@@ -517,8 +465,11 @@ def xy_to_coords(
         atlas_labels=atlas.labels,
         atlas_volume=atlas.volume,
         hemi_map=atlas.hemi_map,
+        non_linear=non_linear,
         object_cutoff=0,
+        use_flat=False,
         pixel_id=[0, 0, 0],
+        apply_damage_mask=apply_damage_mask,
     )
 
     results = []

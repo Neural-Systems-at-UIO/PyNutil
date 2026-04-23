@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .processing.adapters.base import SliceInfo
-from .processing.adapters.segmentation import SegmentationAdapter, SegmentationAdapterRegistry
+from .processing.adapters.segmentation import SegmentationAdapter
 
 
 @dataclass(frozen=True)
@@ -30,10 +30,16 @@ class PipelineContext:
         3-D hemisphere mask (same shape as *atlas_volume*).
     segmentation_adapter : SegmentationAdapter
         Pre-resolved adapter for the current segmentation format.
+    non_linear : bool
+        Whether to apply non-linear deformation.
     object_cutoff : int
         Minimum connected-component area (binary pipeline).
+    use_flat : bool
+        If True, load flat-file atlas maps instead of slicing the volume.
     pixel_id : object
         Pixel colour to match, or ``"auto"`` for auto-detection.
+    apply_damage_mask : bool
+        Apply the damage / exclusion mask when available.
     intensity_channel : str or None
         Channel name for the intensity pipeline (``None`` in binary mode).
     min_intensity : int or None
@@ -46,8 +52,12 @@ class PipelineContext:
     atlas_volume: Optional[np.ndarray]
     hemi_map: Optional[np.ndarray]
     segmentation_adapter: SegmentationAdapter
+    non_linear: bool
     object_cutoff: int
+    use_flat: bool
     pixel_id: object
+    apply_damage_mask: bool
+    flat_label_path: Optional[str] = None
     intensity_channel: Optional[str] = None
     min_intensity: Optional[int] = None
     max_intensity: Optional[int] = None
@@ -60,20 +70,30 @@ class PipelineContext:
         atlas_labels,
         atlas_volume,
         hemi_map,
+        non_linear: bool,
         object_cutoff: int,
+        use_flat: bool,
         pixel_id,
+        apply_damage_mask: bool,
+        flat_label_path=None,
         intensity_channel=None,
         min_intensity=None,
         max_intensity=None,
     ) -> "PipelineContext":
         """Construct a PipelineContext, resolving *segmentation_format* to an adapter."""
+        from .processing.adapters.segmentation import SegmentationAdapterRegistry
+
         return cls(
             atlas_labels=atlas_labels,
             atlas_volume=atlas_volume,
             hemi_map=hemi_map,
             segmentation_adapter=SegmentationAdapterRegistry.get(segmentation_format),
+            non_linear=non_linear,
             object_cutoff=object_cutoff,
+            use_flat=use_flat,
             pixel_id=pixel_id,
+            apply_damage_mask=apply_damage_mask,
+            flat_label_path=flat_label_path,
             intensity_channel=intensity_channel,
             min_intensity=min_intensity,
             max_intensity=max_intensity,
@@ -92,8 +112,11 @@ class SectionContext:
         Registration data for this section (anchoring, deformation, damage …).
     segmentation_path : str
         Path to the segmentation / image file on disk.
+    flat_file_path : str or None
+        Path to the corresponding flat-file atlas, if any.
     """
 
     section_number: int
     slice_info: SliceInfo
     segmentation_path: str
+    flat_file_path: Optional[str] = None

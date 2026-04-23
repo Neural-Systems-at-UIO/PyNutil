@@ -10,7 +10,7 @@ from brainglobe_atlasapi import BrainGlobeAtlas
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from PyNutil import read_alignment, image_to_coords, quantify_coords, save_analysis
-from timing_utils import TimedTestCase
+from tests.timing_utils import TimedTestCase
 
 class TestIntensityQuantification(TimedTestCase):
     def setUp(self):

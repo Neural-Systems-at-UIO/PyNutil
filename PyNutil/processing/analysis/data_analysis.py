@@ -125,18 +125,20 @@ def quantify_labeled_points(
     centroids_hemi,
     region_areas,
     atlas_labels,
+    apply_damage_mask,
 ):
     """Aggregate per-pixel and per-centroid counts into a summary table.
 
     Args:
         points_labels: 1-D array of region IDs for points.
         centroids_labels: 1-D array of region IDs for centroids.
-        points_undamaged: 1-D undamaged mask for points, or None if no damage mask.
-        centroids_undamaged: 1-D undamaged mask for centroids, or None if no damage mask.
+        points_undamaged: 1-D undamaged mask for points.
+        centroids_undamaged: 1-D undamaged mask for centroids.
         points_hemi: 1-D hemisphere labels for points.
         centroids_hemi: 1-D hemisphere labels for centroids.
         region_areas: Combined region-area DataFrame (summed across sections).
         atlas_labels: Atlas labels DataFrame.
+        apply_damage_mask: Whether damage mask was applied.
 
     Returns:
         label_df — whole-series DataFrame.
@@ -149,9 +151,10 @@ def quantify_labeled_points(
         points_hemi,
         centroids_hemi,
         atlas_labels,
+        apply_damage_mask,
     )
     label_df = _merge_dataframes(count_df, region_areas, atlas_labels)
-    if points_undamaged is None:
+    if not apply_damage_mask:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
     return label_df
@@ -228,39 +231,20 @@ def quantify_intensity(region_intensities, atlas_labels):
 # ── Unified quantification entry point ──────────────────────────────────
 
 
-def quantify_coords(result, atlas_labels):
-    """Summarize atlas-space extraction results by atlas region.
+def quantify_coords(result, atlas_labels, apply_damage_mask=True):
+    """Quantify an ExtractionResult by atlas region.
 
-    Parameters
-    ----------
-    result
-        Extraction result returned by :func:`PyNutil.seg_to_coords`,
-        :func:`PyNutil.image_to_coords`, or :func:`PyNutil.xy_to_coords`.
-    atlas_labels
-        Atlas labels to use when building the output table. This may be a
-        labels :class:`pandas.DataFrame`, an :class:`~PyNutil.AtlasData`
-        instance, or a BrainGlobe atlas object.
+    Dispatches to :func:`quantify_labeled_points` or :func:`quantify_intensity`
+    depending on the content of *result*.
 
-    Returns
-    -------
-    pandas.DataFrame
-        Whole-series quantification table. For segmentation-based extraction,
-        the output includes object and area statistics. For intensity-based
-        extraction, the output includes summed and mean intensity statistics.
-        Common columns include ``idx`` and ``name`` plus region-level summary
-        fields such as ``region_area``, ``object_count``, ``object_pixels``,
-        ``area_fraction``, or intensity columns such as ``sum_intensity`` and
-        ``mean_intensity`` depending on the extraction mode. Damage-related
-        columns are included automatically when damage mask data is present.
+    Args:
+        result: ExtractionResult from a coordinate extraction function.
+        atlas_labels: Atlas labels DataFrame (or AtlasData — ``.labels``
+            will be used).
+        apply_damage_mask: Include damage statistics in output.
 
-    Examples
-    --------
-    Quantify an extraction result against atlas regions:
-
-    >>> label_df = quantify_coords(result, atlas)
-    >>> label_df[
-    ...     ["idx", "name", "region_area", "object_count", "area_fraction"]
-    ... ].head()
+    Returns:
+        label_df — whole-series DataFrame.
     """
     atlas_labels = resolve_atlas_labels(atlas_labels)
 
@@ -271,9 +255,10 @@ def quantify_coords(result, atlas_labels):
         result.points.labels,
         result.objects.labels if result.objects is not None else np.array([], dtype=np.int64),
         result.points.undamaged_mask,
-        result.objects.undamaged_mask if result.objects is not None else None,
+        result.objects.undamaged_mask if result.objects is not None else np.array([], dtype=bool),
         result.points.hemi_labels,
         result.objects.hemi_labels if result.objects is not None else np.array([], dtype=np.int64),
         result.region_areas,
         atlas_labels,
+        apply_damage_mask,
     )

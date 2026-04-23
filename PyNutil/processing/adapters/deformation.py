@@ -19,11 +19,6 @@ from .base import (
     RegistrationData,
 )
 from ...io.loaders import load_json_file
-from .visualign_deformations import (
-    triangulate,
-    transform_vec,
-    forwardtransform_vec,
-)
 
 
 class VisuAlignDeformationProvider(DeformationProvider):
@@ -67,6 +62,12 @@ class VisuAlignDeformationProvider(DeformationProvider):
             - inverse_deform: maps from deformed to original (transform_vec)
             - forward_deform: maps from original to deformed (forwardtransform_vec)
         """
+        from .visualign_deformations import (
+            triangulate,
+            transform_vec,
+            forwardtransform_vec,
+        )
+
         triangulation = triangulate(width, height, markers)
 
         def deform_inverse(

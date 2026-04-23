@@ -1,12 +1,11 @@
 import sys
 from typing import Any, Dict
 
-from brainglobe_atlasapi import BrainGlobeAtlas
+import from brainglobe_atlasapi import BrainGlobeAtlas
 from PyQt6.QtCore import QThread, pyqtSignal
 from log_manager import TextRedirector
 from PyNutil import (
     load_custom_atlas,
-    resolve_atlas,
     read_alignment,
     seg_to_coords,
     image_to_coords,
@@ -15,6 +14,7 @@ from PyNutil import (
     interpolate_volume,
     save_volume_niftis,
 )
+from PyNutil.io.atlas_loader import resolve_atlas
 
 
 class AnalysisWorker(QThread):
@@ -71,6 +71,7 @@ class AnalysisWorker(QThread):
                     img_dir,
                     registration,
                     atlas,
+                    apply_damage_mask=apply_damage_mask,
                 )
             else:
                 result = seg_to_coords(
@@ -79,13 +80,16 @@ class AnalysisWorker(QThread):
                     atlas,
                     pixel_id=self.arguments["object_colour"],
                     segmentation_format=seg_format,
+                    apply_damage_mask=apply_damage_mask,
                 )
 
             if self.cancelled:
                 print("Analysis cancelled")
                 return
 
-            label_df = quantify_coords(result, atlas.labels)
+            label_df = quantify_coords(
+                result, atlas.labels, apply_damage_mask=apply_damage_mask
+            )
 
             if self.cancelled:
                 print("Analysis cancelled")
