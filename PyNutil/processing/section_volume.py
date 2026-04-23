@@ -15,6 +15,7 @@ from .utils import (
 from ..io.atlas_loader import resolve_atlas
 from ..image_series import ImageSeries, Section
 from ..results.volume import VolumeResult
+from .reorientation import reorient_volume
 
 if TYPE_CHECKING:
     from .adapters.base import RegistrationData
@@ -551,7 +552,6 @@ def interpolate_volume(
     gv, fv, dv = _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
 
     if return_orientation != "lpi":
-        from .reorientation import reorient_volume
         atlas_shape = out_base_shape
         gv = reorient_volume(gv, atlas_shape, return_orientation)
         fv = reorient_volume(fv, atlas_shape, return_orientation)
