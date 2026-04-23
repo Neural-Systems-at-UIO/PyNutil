@@ -150,7 +150,7 @@ def read_segmentation_dir(
 
     return ImageSeries(
         sections=_sections_from_dir(folder),
-        pixel_id=pixel_id or [0, 0, 0],
+        pixel_id=pixel_id if pixel_id is not None else [0, 0, 0],
         segmentation_format=segmentation_format,
     )
 
