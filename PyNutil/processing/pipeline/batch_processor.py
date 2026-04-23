@@ -74,7 +74,7 @@ def _run_batch_with_context(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
 
-            def _process_section(section: Section, slice_info: SliceInfo):
+            def _process_section(section: Section, slice_info: SliceInfo) -> object:
                 """Load one section image in the worker and run section processing."""
                 section_ctx = SectionContext(
                     section_number=section.section_number,
