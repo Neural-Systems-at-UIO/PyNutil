@@ -8,6 +8,7 @@ providing their own ``numpy`` arrays instead of reading from disk.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -85,6 +86,17 @@ class ImageSeries:
     sections: List[Section] = field(default_factory=list)
     pixel_id: object = field(default_factory=lambda: [0, 0, 0])
     segmentation_format: str = "binary"
+
+    def __post_init__(self):
+        seen = {}
+        for s in self.sections:
+            if s.section_number in seen:
+                warnings.warn(
+                    f"Duplicate section_number {s.section_number}: "
+                    f"'{seen[s.section_number]}' and '{s.filename}'. "
+                    f"Only '{seen[s.section_number]}' will be used."
+                )
+            seen[s.section_number] = s.filename
 
     def get_section_nr(self, section_number: int) -> Optional[Section]:
         """Return the :class:`Section` whose ``section_number`` matches, or ``None``."""
