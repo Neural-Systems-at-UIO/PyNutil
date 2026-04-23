@@ -136,7 +136,7 @@ def _read_section_signal(
     if vol_cfg.segmentation_mode:
         seg = section.get_image(vol_cfg.segmentation_adapter)
     else:
-        seg = cv2.imread(section.path, cv2.IMREAD_UNCHANGED)
+        seg = section.image if section.image is not None else cv2.imread(section.path, cv2.IMREAD_UNCHANGED)
     if seg is None:
         return None
 
@@ -474,7 +474,7 @@ def interpolate_volume(
     ...     pixel_id=[0, 0, 0],
     ... )
     >>> registration = pnt.read_alignment("path/to/alignment.json")
-    >>> gv, fv, dv = pnt.interpolate_volume(
+    >>> volumes = pnt.interpolate_volume(
     ...     image_series=image_series,
     ...     registration=registration,
     ...     atlas=atlas,

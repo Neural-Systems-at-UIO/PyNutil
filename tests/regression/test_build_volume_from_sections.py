@@ -62,6 +62,7 @@ class TestBuildVolumeFromSections(TimedTestCase):
             do_interpolation=True,
             k=5,
             use_atlas_mask=True,
+            return_orientation="lpi",
         )
         return atlas, result, label_df, volumes, settings
 

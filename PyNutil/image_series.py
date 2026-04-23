@@ -28,7 +28,9 @@ class Section:
         Numeric identifier that must match a section in the alignment JSON.
     filename:
         Display name used in :attr:`~PyNutil.ExtractionResult.section_filenames`.
-        Defaults to *path* when not set explicitly.
+        Defaults to an empty string; set explicitly or use the factory functions
+        :func:`~PyNutil.read_segmentation_dir` / :func:`~PyNutil.read_image_dir`
+        which populate this from the file path automatically.
     image:
         Pre-loaded image array (2-D or 3-D ``numpy`` array).  Provide this
         when you have already loaded or generated the image data yourself.
@@ -92,6 +94,7 @@ class ImageSeries:
     sections: List[Section] = field(default_factory=list)
     pixel_id: object = field(default_factory=lambda: [0, 0, 0])
     segmentation_format: str = "binary"
+    _section_map: dict = field(default_factory=dict, init=False, repr=False, compare=False)
 
     def __post_init__(self):
         seen = {}
@@ -103,13 +106,11 @@ class ImageSeries:
                     f"Only '{seen[s.section_number]}' will be used."
                 )
             seen[s.section_number] = s.filename
+        self._section_map = {s.section_number: s for s in self.sections}
 
     def get_section_nr(self, section_number: int) -> Optional[Section]:
         """Return the :class:`Section` whose ``section_number`` matches, or ``None``."""
-        for s in self.sections:
-            if s.section_number == section_number:
-                return s
-        return None
+        return self._section_map.get(section_number)
 
     @property
     def filenames(self) -> List[str]:

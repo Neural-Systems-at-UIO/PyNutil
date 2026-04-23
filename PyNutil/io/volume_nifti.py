@@ -116,6 +116,9 @@ def save_volumes(
         )
         write_nifti(vol_u8, res, f"{output_folder}/interpolated_volume/{name}")
 
-    _save_one(volumes.value, name="interpolated_volume")
-    _save_one(volumes.frequency, name="frequency_volume")
-    _save_one(volumes.damage, name="damage_volume")
+    if volumes.value is not None:
+        _save_one(volumes.value, name="interpolated_volume")
+    if volumes.frequency is not None:
+        _save_one(volumes.frequency, name="frequency_volume")
+    if volumes.damage is not None:
+        _save_one(volumes.damage, name="damage_volume")
