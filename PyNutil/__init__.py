@@ -1,7 +1,7 @@
 from .results import AtlasData, ExtractionResult, PointSetResult
 from .processing.adapters.base import RegistrationData
 from .processing.adapters import read_alignment
-from .io.atlas_loader import load_custom_atlas
+from .io.atlas_loader import load_custom_atlas, resolve_atlas
 from .processing.pipeline.batch_processor import (
     seg_to_coords,
     image_to_coords,
@@ -19,6 +19,7 @@ __all__ = [
     "RegistrationData",
     "read_alignment",
     "load_custom_atlas",
+    "resolve_atlas",
     "seg_to_coords",
     "image_to_coords",
     "xy_to_coords",

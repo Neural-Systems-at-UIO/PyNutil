@@ -6,19 +6,17 @@ import PyNutil as pnt
 # Configuration
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.abspath(os.path.join(script_dir, ".."))
-segmentation_folder = os.path.join(
-    repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"
-)
-alignment_json = os.path.join(
-    repo_root, "tests/test_data/nonlinear_allen_mouse/alignment.json"
-)
+segmentation_folder = "/mnt/c/users/harryc/Downloads/registration_tools/images/already_registered/segmentations_downsampled/"
+alignment_json = "/mnt/c/users/harryc/Downloads/registration_tools/images/already_registered/thumbnails/onlyCalbJSON.json"
 colour = [0, 0, 0]
-output_folder = os.path.join(repo_root, "test_result/hemi_test_bg6_damage_18_03_2026")
+output_folder = "/mnt/c/users/harryc/Downloads/registration_tools/images/already_registered/output"
 
 # Load atlas (BrainGlobe) and alignment
-atlas = BrainGlobeAtlas("allen_mouse_25um")
+atlas = BrainGlobeAtlas("demba_allen_seg_dev_mouse_p15_20um")
 alignment = pnt.read_alignment(alignment_json)
-
+for i in alignment.slices:
+    i.width = i.width // 10
+    i.height = i.height // 10
 # Extract coordinates from segmentations
 coords = pnt.seg_to_coords(
     segmentation_folder,

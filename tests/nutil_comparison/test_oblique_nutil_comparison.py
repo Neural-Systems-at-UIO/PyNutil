@@ -8,7 +8,7 @@ import pandas as pd
 from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
 
 try:
-    from tests.timing_utils import TimedTestCase
+    from timing_utils import TimedTestCase
 except ModuleNotFoundError:  # pragma: no cover
     from timing_utils import TimedTestCase
 
@@ -29,13 +29,6 @@ class TestObliqueNutilComparison(TimedTestCase):
             "allen_oblique_test",
             "AMBA_oblique_nonlin_new.json",
         )
-        self.flat_label_path = os.path.join(
-            self.tests_dir,
-            "test_data",
-            "allen_oblique_test",
-            "AllenMouseBrain_Atlas_CCF_2017.label",
-        )
-
         # Use atlas assets from tests/test_data (no atlas API download required).
         self.atlas_path = os.path.join(
             self.tests_dir,
@@ -69,8 +62,6 @@ class TestObliqueNutilComparison(TimedTestCase):
             alignment,
             atlas,
             pixel_id=[0, 0, 0],
-            use_flat=True,
-            flat_label_path=self.flat_label_path,
         )
         label_df = quantify_coords(result, atlas)
         return result, label_df

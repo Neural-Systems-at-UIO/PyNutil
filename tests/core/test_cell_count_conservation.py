@@ -77,17 +77,15 @@ class TestCellCountConservation(unittest.TestCase):
         n_cells = 10
         labels = np.array([1, 1, 2, 2, 2, 3, 3, 3, 3, 1], dtype=np.int64)
         atlas_labels = self._make_atlas_labels(1, 2, 3)
-        no_mask = np.ones(n_cells, dtype=bool)
 
         result = pixel_count_per_region(
             per_point_labels=labels,
             per_centroid_labels=labels,
-            current_points_undamaged=no_mask,
-            current_centroids_undamaged=no_mask,
+            current_points_undamaged=None,
+            current_centroids_undamaged=None,
             current_points_hemi=[None] * n_cells,
             current_centroids_hemi=[None] * n_cells,
             df_label_colours=atlas_labels,
-            with_damage=False,
         )
 
         total_pixel_count = int(result["pixel_count"].sum())
@@ -110,17 +108,15 @@ class TestCellCountConservation(unittest.TestCase):
         # 3 cells on background (label 0), 7 on valid regions
         labels = np.array([0, 0, 0, 1, 1, 2, 2, 2, 3, 3], dtype=np.int64)
         atlas_labels = self._make_atlas_labels(1, 2, 3)  # no idx=0
-        no_mask = np.ones(n_cells, dtype=bool)
 
         result = pixel_count_per_region(
             per_point_labels=labels,
             per_centroid_labels=labels,
-            current_points_undamaged=no_mask,
-            current_centroids_undamaged=no_mask,
+            current_points_undamaged=None,
+            current_centroids_undamaged=None,
             current_points_hemi=[None] * n_cells,
             current_centroids_hemi=[None] * n_cells,
             df_label_colours=atlas_labels,
-            with_damage=False,
         )
 
         total_counted = int(result["object_count"].sum())
@@ -146,17 +142,15 @@ class TestCellCountConservation(unittest.TestCase):
         labels = np.array([0, 0, 0, 1, 1, 2, 2, 2, 3, 3], dtype=np.int64)
         # Include idx=0 in atlas labels
         atlas_labels = self._make_atlas_labels(0, 1, 2, 3)
-        no_mask = np.ones(n_cells, dtype=bool)
 
         result = pixel_count_per_region(
             per_point_labels=labels,
             per_centroid_labels=labels,
-            current_points_undamaged=no_mask,
-            current_centroids_undamaged=no_mask,
+            current_points_undamaged=None,
+            current_centroids_undamaged=None,
             current_points_hemi=[None] * n_cells,
             current_centroids_hemi=[None] * n_cells,
             df_label_colours=atlas_labels,
-            with_damage=False,
         )
 
         total_counted = int(result["object_count"].sum())
