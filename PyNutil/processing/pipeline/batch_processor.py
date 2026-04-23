@@ -73,6 +73,16 @@ def _run_batch_with_context(
         max_workers = min(32, len(sections), (os.cpu_count() or 1) + 4)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
+
+            def _process_section(section: Section, slice_info):
+                section_ctx = SectionContext(
+                    section_number=section.section_number,
+                    slice_info=slice_info,
+                    image=section.get_image(adapter),
+                    filename=section.filename,
+                )
+                return processing_fn(pipeline_ctx, section_ctx)
+
             for index, section in enumerate(sections):
                 slice_info = slices_by_nr.get(section.section_number)
                 if slice_info is None:
@@ -83,16 +93,10 @@ def _run_batch_with_context(
                 if not slice_info.anchoring:
                     continue
 
-                section_ctx = SectionContext(
-                    section_number=section.section_number,
-                    slice_info=slice_info,
-                    image=section.get_image(adapter),
-                    filename=section.filename,
-                )
                 futures.append(
                     (
                         index,
-                        executor.submit(processing_fn, pipeline_ctx, section_ctx),
+                        executor.submit(_process_section, section, slice_info),
                     )
                 )
 
