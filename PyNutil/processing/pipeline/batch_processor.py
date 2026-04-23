@@ -5,6 +5,7 @@ in a folder, mapping each one to atlas space using parallel execution.
 """
 
 import os
+from typing import Union
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
@@ -28,7 +29,8 @@ from ..utils import (
     discover_image_files,
 )
 from ..reorientation import reorient_points
-from ...io.loaders import number_sections
+from ...io.loaders import number_sections, _COORDINATE_REQUIRED_COLUMNS
+from ...io.atlas_loader import resolve_atlas
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +280,7 @@ def _collect_section_results(results):
 def seg_to_coords(
     image_series: ImageSeries,
     registration: RegistrationData,
-    atlas: AtlasData,
+    atlas: Union[AtlasData, "BrainGlobeAtlas"],
     object_cutoff=0,
     return_orientation="asr",
 ):
@@ -323,7 +325,6 @@ def seg_to_coords(
     >>> result.objects.labels.shape
     (M,)
     """
-    from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
@@ -396,7 +397,7 @@ def seg_to_coords(
 def image_to_coords(
     image_series: ImageSeries,
     registration: RegistrationData,
-    atlas: AtlasData,
+    atlas: Union[AtlasData, "BrainGlobeAtlas"],
     intensity_channel="grayscale",
     min_intensity=None,
     max_intensity=None,
@@ -448,7 +449,6 @@ def image_to_coords(
     >>> result.region_intensities.columns.tolist()[:3]
     ['idx', 'name', 'r']
     """
-    from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
     pipeline_ctx = PipelineContext.from_format(
@@ -517,7 +517,7 @@ def image_to_coords(
 def xy_to_coords(
     coordinates: "pd.DataFrame",
     registration: RegistrationData,
-    atlas: AtlasData,
+    atlas: Union[AtlasData, "BrainGlobeAtlas"],
     return_orientation="asr",
 ):
     """Transform image-space coordinates into atlas space.
@@ -560,10 +560,8 @@ def xy_to_coords(
     >>> result.section_filenames
     []
     """
-    from ...io.atlas_loader import resolve_atlas
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
-    from ...io.loaders import _COORDINATE_REQUIRED_COLUMNS
 
     missing = _COORDINATE_REQUIRED_COLUMNS - set(coordinates.columns)
     if missing:

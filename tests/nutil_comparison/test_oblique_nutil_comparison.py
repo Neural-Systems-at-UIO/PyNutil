@@ -133,7 +133,6 @@ class TestObliqueNutilComparison(TimedTestCase):
         )
 
     def test_allen_oblique_load_and_region_area_match_nutil(self):
-        self.skipTest("Flat-file atlas support has been removed from PyNutil.")
         result, label_df = self._run_pynutil_oblique()
 
         expected_load_path = os.path.join(

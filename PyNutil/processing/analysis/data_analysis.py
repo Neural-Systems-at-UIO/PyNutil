@@ -125,20 +125,18 @@ def quantify_labeled_points(
     centroids_hemi,
     region_areas,
     atlas_labels,
-    with_damage,
 ):
     """Aggregate per-pixel and per-centroid counts into a summary table.
 
     Args:
         points_labels: 1-D array of region IDs for points.
         centroids_labels: 1-D array of region IDs for centroids.
-        points_undamaged: 1-D undamaged mask for points.
-        centroids_undamaged: 1-D undamaged mask for centroids.
+        points_undamaged: 1-D undamaged mask for points, or None if no damage mask.
+        centroids_undamaged: 1-D undamaged mask for centroids, or None if no damage mask.
         points_hemi: 1-D hemisphere labels for points.
         centroids_hemi: 1-D hemisphere labels for centroids.
         region_areas: Combined region-area DataFrame (summed across sections).
         atlas_labels: Atlas labels DataFrame.
-        with_damage: Whether damage mask data is present in the result.
 
     Returns:
         label_df — whole-series DataFrame.
@@ -151,10 +149,9 @@ def quantify_labeled_points(
         points_hemi,
         centroids_hemi,
         atlas_labels,
-        with_damage,
     )
     label_df = _merge_dataframes(count_df, region_areas, atlas_labels)
-    if not with_damage:
+    if points_undamaged is None:
         cols = [c for c in label_df.columns if "damage" not in c]
         label_df = label_df[cols]
     return label_df
@@ -274,10 +271,9 @@ def quantify_coords(result, atlas_labels):
         result.points.labels,
         result.objects.labels if result.objects is not None else np.array([], dtype=np.int64),
         result.points.undamaged_mask,
-        result.objects.undamaged_mask if result.objects is not None else np.array([], dtype=bool),
+        result.objects.undamaged_mask if result.objects is not None else None,
         result.points.hemi_labels,
         result.objects.hemi_labels if result.objects is not None else np.array([], dtype=np.int64),
         result.region_areas,
         atlas_labels,
-        with_damage=True,
     )

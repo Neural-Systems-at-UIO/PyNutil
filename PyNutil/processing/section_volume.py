@@ -15,6 +15,7 @@ from .utils import (
 from ..io.atlas_loader import resolve_atlas
 from ..image_series import ImageSeries, Section
 from ..results.volume import VolumeResult
+from .reorientation import reorient_volume
 
 if TYPE_CHECKING:
     from .adapters.base import RegistrationData
@@ -484,8 +485,8 @@ def interpolate_volume(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    atlas = resolve_atlas(atlas)
-    atlas_volume = atlas.volume
+    atlas_data = resolve_atlas(atlas)
+    atlas_volume = atlas_data.volume
 
     out_base_shape = tuple(int(x) for x in atlas_volume.shape)
     out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)
@@ -551,7 +552,6 @@ def interpolate_volume(
     gv, fv, dv = _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
 
     if return_orientation != "lpi":
-        from .reorientation import reorient_volume
         atlas_shape = out_base_shape
         gv = reorient_volume(gv, atlas_shape, return_orientation)
         fv = reorient_volume(fv, atlas_shape, return_orientation)

@@ -23,7 +23,6 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 
-from ..io.loaders import read_flat_file, read_seg_file
 from .utils import resize_mask_nearest
 
 
@@ -212,7 +211,22 @@ def load_atlas_image(
     deform_map=None,
     precomputed_slice=None,
 ):
-    """Generate a 2D atlas slice from a 3D atlas volume, optionally warping it."""
+    """Generate a 2D atlas slice from a 3D atlas volume, optionally warping it.
+
+    Args:
+        image_vector (ndarray): Anchoring vector used to extract the 2D slice.
+        volume (ndarray): Atlas volume to sample from.
+        deformation (callable or None): Deformation function for warping.
+        rescaleXY (tuple): (width, height) for resizing.
+        deform_map (tuple, optional): Precomputed deformation map from
+            :func:`compute_deformation_map`. If provided, used instead of
+            calling *deformation* again.
+        precomputed_slice (ndarray, optional): Already-extracted 2D slice.
+            Skips :func:`generate_target_slice` when provided.
+
+    Returns:
+        ndarray: The generated or warped atlas slice.
+    """
     if precomputed_slice is not None:
         image = np.float64(precomputed_slice)
     else:
