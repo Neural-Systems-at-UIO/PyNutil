@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .processing.adapters.base import SliceInfo
-from .processing.adapters.segmentation import SegmentationAdapter
+from .processing.adapters.segmentation import SegmentationAdapter, SegmentationAdapterRegistry
 
 
 @dataclass(frozen=True)
@@ -67,8 +67,6 @@ class PipelineContext:
         max_intensity=None,
     ) -> "PipelineContext":
         """Construct a PipelineContext, resolving *segmentation_format* to an adapter."""
-        from .processing.adapters.segmentation import SegmentationAdapterRegistry
-
         return cls(
             atlas_labels=atlas_labels,
             atlas_volume=atlas_volume,

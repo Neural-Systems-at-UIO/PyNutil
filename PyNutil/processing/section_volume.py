@@ -16,6 +16,7 @@ from .utils import (
 )
 from ..io.loaders import number_sections
 from ..io.atlas_loader import resolve_atlas
+from .reorientation import reorient_volume
 
 
 @dataclass(frozen=True)
@@ -551,7 +552,6 @@ def interpolate_volume(
     gv, fv, dv = _finalize_volumes(gv, fv, dv, ov_flat, vol_cfg, interp_cfg)
 
     if return_orientation != "lpi":
-        from .reorientation import reorient_volume
         atlas_shape = out_base_shape
         gv = reorient_volume(gv, atlas_shape, return_orientation)
         fv = reorient_volume(fv, atlas_shape, return_orientation)

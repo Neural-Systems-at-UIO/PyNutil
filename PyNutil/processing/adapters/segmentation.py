@@ -18,6 +18,8 @@ from typing import Dict, List, Optional, Tuple, Type
 import cv2
 import numpy as np
 
+from ...io.reconstruct_dzi import reconstruct_dzi
+
 
 def _detect_pixel_id(segmentation: np.ndarray) -> np.ndarray:
     """Infer the foreground pixel id as the second most common value.
@@ -88,8 +90,6 @@ class SegmentationAdapter(ABC):
             The loaded segmentation image.
         """
         if path.endswith(".dzip"):
-            from ...io.reconstruct_dzi import reconstruct_dzi
-
             return reconstruct_dzi(path)
         return cv2.imread(path, cv2.IMREAD_UNCHANGED)
 
