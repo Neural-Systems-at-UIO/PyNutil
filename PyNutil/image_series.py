@@ -103,7 +103,7 @@ class ImageSeries:
                 warnings.warn(
                     f"Duplicate section_number {s.section_number}: "
                     f"'{seen[s.section_number]}' and '{s.filename}'. "
-                    f"Only '{seen[s.section_number]}' will be used."
+                    f"Only '{s.filename}' will be used."
                 )
             seen[s.section_number] = s.filename
         self._section_map = {s.section_number: s for s in self.sections}
