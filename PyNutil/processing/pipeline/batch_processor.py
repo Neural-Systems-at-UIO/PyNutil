@@ -28,7 +28,7 @@ from ..utils import (
     discover_image_files,
 )
 from ..reorientation import reorient_points
-from ...io.loaders import number_sections
+from ...io.loaders import number_sections, _COORDINATE_REQUIRED_COLUMNS
 from ...io.atlas_loader import resolve_atlas
 
 
@@ -500,7 +500,6 @@ def xy_to_coords(
     """
     atlas = resolve_atlas(atlas)
     atlas_shape = atlas.volume.shape
-    from ...io.loaders import _COORDINATE_REQUIRED_COLUMNS
 
     missing = _COORDINATE_REQUIRED_COLUMNS - set(coordinates.columns)
     if missing:
