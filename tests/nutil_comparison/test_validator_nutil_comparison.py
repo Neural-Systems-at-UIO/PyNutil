@@ -170,7 +170,7 @@ class TestValidatorNutilComparison(TimedTestCase):
             #     "expected_whole_csv": "WHS_artificial_dataset_RefAtlasRegions.csv",
             #     "atlas_nii": whs_nii,
             #     "label_txt": whs_txt,
-            #     "colour": [0, 1, 20],
+            #     "colour": [20, 1, 0],
             # },
             {
                 "case": "Q4",
