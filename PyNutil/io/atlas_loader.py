@@ -49,7 +49,12 @@ def resolve_atlas(atlas):
     hemi_map = process_atlas_volume(atlas.hemispheres)
     labels = load_atlas_labels(atlas)
     resolution = getattr(atlas, "resolution", None)
-    voxel_size_um = float(resolution[0]) if resolution is not None else None
+    voxel_size_um = None
+    if resolution is not None:
+        try:
+            voxel_size_um = float(resolution[0])
+        except (TypeError, IndexError, ValueError):
+            voxel_size_um = None
     return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels, voxel_size_um=voxel_size_um)
 
 

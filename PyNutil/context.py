@@ -90,10 +90,13 @@ class SectionContext:
         Numeric section identifier matching the alignment JSON.
     slice_info : SliceInfo
         Registration data for this section (anchoring, deformation, damage …).
-    segmentation_path : str
-        Path to the segmentation / image file on disk.
+    image : np.ndarray
+        Pre-loaded image array for this section.
+    filename : str
+        Source filename, used for output tracking (empty string if unknown).
     """
 
     section_number: int
     slice_info: SliceInfo
-    segmentation_path: str
+    image: np.ndarray
+    filename: str = ""

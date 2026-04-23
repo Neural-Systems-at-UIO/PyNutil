@@ -20,22 +20,15 @@ atlas = BrainGlobeAtlas("allen_mouse_25um")
 alignment = pnt.read_alignment(alignment_json)
 
 # Extract coordinates from segmentations
-coords = pnt.seg_to_coords(
-    segmentation_folder,
-    alignment,
-    atlas,
-    pixel_id=colour,
-    object_cutoff=0,
-    segmentation_format="binary",
-)
+segmentations = pnt.read_segmentation_dir(segmentation_folder, pixel_id=colour, segmentation_format="binary")
+coords = pnt.seg_to_coords(segmentations, alignment, atlas, object_cutoff=0)
 
 # Quantify by atlas region
 label_df = pnt.quantify_coords(coords, atlas)
 # Optionally generate a 3D heatmap
 pnt.interpolate_volume(
-    segmentation_folder=segmentation_folder,
-    alignment_json=alignment_json,
-    colour=colour,
+    image_series=segmentations,
+    registration=alignment,
     atlas=atlas,
 )
 # Save results

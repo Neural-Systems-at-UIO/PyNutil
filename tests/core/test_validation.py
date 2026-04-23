@@ -2,7 +2,7 @@ import unittest
 import os
 import sys
 
-from PyNutil import load_custom_atlas, read_alignment, seg_to_coords
+from PyNutil import load_custom_atlas, read_alignment, read_segmentation_dir, seg_to_coords
 
 # Add the root directory to sys.path to allow importing PyNutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -29,10 +29,9 @@ class TestValidation(unittest.TestCase):
         alignment = read_alignment(self.alignment_json)
         with self.assertRaises(TypeError):
             seg_to_coords(
-                self.image_folder,
+                read_segmentation_dir(self.image_folder, pixel_id=[0, 0, 0]),
                 alignment,
                 atlas,
-                pixel_id=[0, 0, 0],
                 min_intensity=10,
             )
 

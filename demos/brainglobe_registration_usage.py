@@ -15,12 +15,8 @@ alignment = pnt.read_alignment(
     "tests/test_data/brainglobe_registration/brainglobe-registration.json"
 )
 
-coords = pnt.seg_to_coords(
-    "tests/test_data/brainglobe_segmentation_test_image/",
-    alignment,
-    atlas,
-    pixel_id=[0, 0, 0],
-)
+segmentations = pnt.read_segmentation_dir("tests/test_data/brainglobe_segmentation_test_image/", pixel_id=[0, 0, 0])
+coords = pnt.seg_to_coords(segmentations, alignment, atlas)
 label_df = pnt.quantify_coords(coords, atlas)
 
 pnt.save_analysis(

@@ -8,7 +8,7 @@ import numpy as np
 import nrrd
 import pandas as pd
 
-from PyNutil import load_custom_atlas, read_alignment, seg_to_coords, quantify_coords
+from PyNutil import load_custom_atlas, read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords
 
 try:
     from timing_utils import TimedTestCase
@@ -132,7 +132,11 @@ class TestValidatorNutilComparison(TimedTestCase):
                 apply_deformation=False,
                 apply_damage=False,
             )
-            result = seg_to_coords(seg_dir, alignment, atlas, pixel_id=scenario["colour"])
+            result = seg_to_coords(
+                read_segmentation_dir(seg_dir, pixel_id=scenario["colour"]),
+                alignment,
+                atlas,
+            )
             label_df = quantify_coords(result, atlas)
 
         expected = self._load_nutil_ref_report(expected_csv)

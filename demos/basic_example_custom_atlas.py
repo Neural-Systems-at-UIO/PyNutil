@@ -26,13 +26,11 @@ alignment = pnt.read_alignment(
 )
 
 # Extract coordinates
-coords = pnt.seg_to_coords(
+segmentations = pnt.read_segmentation_dir(
     os.path.join(repo_root, "tests/test_data/nonlinear_allen_mouse/segmentations/"),
-    alignment,
-    atlas,
     pixel_id=[0, 0, 0],
-    object_cutoff=0,
 )
+coords = pnt.seg_to_coords(segmentations, alignment, atlas, object_cutoff=0)
 
 # Quantify and save
 label_df = pnt.quantify_coords(coords, atlas)
