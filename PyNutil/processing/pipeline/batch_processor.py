@@ -76,15 +76,21 @@ def _run_batch_with_context(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
 
-            def process_section_with_image(section: Section, slice_info: SliceInfo) -> T:
+            def process_section_with_image(
+                section: Section,
+                slice_info: SliceInfo,
+                section_adapter,
+                section_pipeline_ctx: PipelineContext,
+                section_processing_fn: Callable[[PipelineContext, SectionContext], T],
+            ) -> T:
                 """Load one section image in the worker and run section processing."""
                 section_ctx = SectionContext(
                     section_number=section.section_number,
                     slice_info=slice_info,
-                    image=section.get_image(adapter),
+                    image=section.get_image(section_adapter),
                     filename=section.filename,
                 )
-                return processing_fn(pipeline_ctx, section_ctx)
+                return section_processing_fn(section_pipeline_ctx, section_ctx)
 
             for index, section in enumerate(sections):
                 slice_info = slices_by_nr.get(section.section_number)
@@ -99,7 +105,14 @@ def _run_batch_with_context(
                 futures.append(
                     (
                         index,
-                        executor.submit(process_section_with_image, section, slice_info),
+                        executor.submit(
+                            process_section_with_image,
+                            section,
+                            slice_info,
+                            adapter,
+                            pipeline_ctx,
+                            processing_fn,
+                        ),
                     )
                 )
 
