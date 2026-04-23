@@ -163,8 +163,6 @@ class TestValidatorNutilComparison(TimedTestCase):
                 "label_txt": allen_txt,
                 "colour": [255, 255, 255],
             },
-            # Q3 remains disabled because its reference report is currently
-            # unstable across environments.
             # {
             #     "case": "Q3",
             #     "alignment_json": os.path.join(self.validator_root, "Q3", "Input", "visuv09_test.json"),
