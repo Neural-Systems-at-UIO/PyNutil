@@ -19,6 +19,7 @@ from ...results import (
     PointSetResult,
 )
 from ..adapters.base import RegistrationData, SliceInfo
+from ..adapters.segmentation import SegmentationAdapter
 from ...results import AtlasData
 from .section_processor import (
     segmentation_to_atlas_space,
@@ -79,7 +80,7 @@ def _run_batch_with_context(
             def process_section_with_image(
                 section: Section,
                 slice_info: SliceInfo,
-                section_adapter,
+                section_adapter: SegmentationAdapter,
                 section_pipeline_ctx: PipelineContext,
                 section_processing_fn: Callable[[PipelineContext, SectionContext], T],
             ) -> T:
