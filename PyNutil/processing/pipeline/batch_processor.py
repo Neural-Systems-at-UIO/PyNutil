@@ -46,7 +46,7 @@ def _run_batch_with_context(
     pipeline_ctx: PipelineContext,
     empty_result_factory: Callable[[], T],
     processing_fn: Callable[[PipelineContext, SectionContext], T],
-):
+) -> tuple[list[str], list[T]]:
     """Generic batch scaffold using context objects.
 
     Handles thread-pool setup, per-section looping, and futures collection.
@@ -76,7 +76,7 @@ def _run_batch_with_context(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
 
-            def _process_section(section: Section, slice_info: SliceInfo) -> T:
+            def process_section_with_image(section: Section, slice_info: SliceInfo) -> T:
                 """Load one section image in the worker and run section processing."""
                 section_ctx = SectionContext(
                     section_number=section.section_number,
@@ -99,7 +99,7 @@ def _run_batch_with_context(
                 futures.append(
                     (
                         index,
-                        executor.submit(_process_section, section, slice_info),
+                        executor.submit(process_section_with_image, section, slice_info),
                     )
                 )
 
