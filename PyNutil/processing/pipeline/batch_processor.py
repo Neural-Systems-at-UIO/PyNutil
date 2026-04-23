@@ -106,6 +106,18 @@ def _run_batch_with_context(
 # Directory readers
 # ---------------------------------------------------------------------------
 
+def _sections_from_dir(folder):
+    if not os.path.exists(folder):
+        raise FileNotFoundError(f"Folder not found: {folder}")
+    paths = discover_image_files(folder)
+    return [
+        Section(
+            section_number=int(number_sections([p])[0]),
+            filename=os.path.basename(p),
+            path=p,
+        )
+        for p in paths
+    ]
 
 def read_segmentation_dir(
     folder,
@@ -135,18 +147,13 @@ def read_segmentation_dir(
         ``section_number`` inferred from the filename and ``path`` set for
         lazy loading.
     """
-    if pixel_id is None:
-        pixel_id = [0, 0, 0]
-    paths = discover_image_files(folder)
-    sections = []
-    for path in paths:
-        nr = int(number_sections([path])[0])
-        sections.append(Section(section_number=nr, filename=path, path=path))
+
     return ImageSeries(
-        sections=sections,
-        pixel_id=pixel_id,
+        sections=_sections_from_dir(folder),
+        pixel_id=pixel_id or [0, 0, 0],
         segmentation_format=segmentation_format,
     )
+
 
 
 def read_image_dir(folder) -> ImageSeries:
@@ -166,13 +173,7 @@ def read_image_dir(folder) -> ImageSeries:
         One :class:`~PyNutil.Section` per discovered file, with ``section_number``
         inferred from the filename and ``path`` set for lazy loading.
     """
-    paths = discover_image_files(folder)
-    sections = []
-    for path in paths:
-        nr = int(number_sections([path])[0])
-        sections.append(Section(section_number=nr, filename=path, path=path))
-    return ImageSeries(sections=sections)
-
+    return ImageSeries(sections=_sections_from_dir(folder))
 
 # ---------------------------------------------------------------------------
 # Concatenation helpers
