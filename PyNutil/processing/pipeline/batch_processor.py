@@ -5,7 +5,7 @@ in a folder, mapping each one to atlas space using parallel execution.
 """
 
 import os
-from typing import Union
+from typing import Callable, TypeVar, Union
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +32,8 @@ from ..reorientation import reorient_points
 from ...io.loaders import number_sections, _COORDINATE_REQUIRED_COLUMNS
 from ...io.atlas_loader import resolve_atlas
 
+T = TypeVar("T")
+
 
 # ---------------------------------------------------------------------------
 # Shared batch scaffold
@@ -42,8 +44,8 @@ def _run_batch_with_context(
     image_series: ImageSeries,
     registration: RegistrationData,
     pipeline_ctx: PipelineContext,
-    empty_result_factory,
-    processing_fn,
+    empty_result_factory: Callable[[], T],
+    processing_fn: Callable[[PipelineContext, SectionContext], T],
 ):
     """Generic batch scaffold using context objects.
 
@@ -74,7 +76,7 @@ def _run_batch_with_context(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
 
-            def _process_section(section: Section, slice_info: SliceInfo) -> object:
+            def _process_section(section: Section, slice_info: SliceInfo) -> T:
                 """Load one section image in the worker and run section processing."""
                 section_ctx = SectionContext(
                     section_number=section.section_number,
