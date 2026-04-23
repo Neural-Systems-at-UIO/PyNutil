@@ -19,7 +19,11 @@ from .base import (
     RegistrationData,
 )
 from ...io.loaders import load_json_file
-from .visualign_deformations import triangulate, transform_vec, forwardtransform_vec
+from .visualign_deformations import (
+    triangulate,
+    transform_vec,
+    forwardtransform_vec,
+)
 
 
 class VisuAlignDeformationProvider(DeformationProvider):

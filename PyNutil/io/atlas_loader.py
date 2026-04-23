@@ -1,4 +1,4 @@
-import brainglobe_atlasapi
+from brainglobe_atlasapi import BrainGlobeAtlas
 import pandas as pd
 import numpy as np
 import nrrd
@@ -9,7 +9,7 @@ from ..results import AtlasData
 
 def load_atlas_labels(atlas=None, atlas_name=None):
     if atlas_name:
-        atlas = brainglobe_atlasapi.BrainGlobeAtlas(atlas_name=atlas_name)
+        atlas = BrainGlobeAtlas(atlas_name=atlas_name)
     if not atlas_name and not atlas:
         raise Exception("Either atlas or atlas name must be specified")
     atlas_structures = {
@@ -48,7 +48,13 @@ def resolve_atlas(atlas):
     volume = process_atlas_volume(atlas.annotation)
     hemi_map = process_atlas_volume(atlas.hemispheres)
     labels = load_atlas_labels(atlas)
-    voxel_size_um = float(atlas.resolution[0]) if hasattr(atlas, "resolution") else None
+    resolution = getattr(atlas, "resolution", None)
+    voxel_size_um = None
+    if resolution is not None:
+        try:
+            voxel_size_um = float(resolution[0])
+        except (TypeError, IndexError, ValueError):
+            voxel_size_um = None
     return AtlasData(volume=volume, hemi_map=hemi_map, labels=labels, voxel_size_um=voxel_size_um)
 
 

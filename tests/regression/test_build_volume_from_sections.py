@@ -44,8 +44,8 @@ class TestBuildVolumeFromSections(TimedTestCase):
         atlas, result, label_df, alignment = run_pipeline_from_settings(settings)
 
         # Downscale to keep runtime/memory small and stable.
-        scale = small_volume_scale(atlas.volume.shape)
-
+        from PyNutil.io.atlas_loader import resolve_atlas
+        scale = small_volume_scale(resolve_atlas(atlas).volume.shape)
         image_series = read_segmentation_dir(
             settings["segmentation_folder"],
             pixel_id=settings.get("colour", [0, 0, 0]),

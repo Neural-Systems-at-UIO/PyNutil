@@ -7,7 +7,6 @@ import numpy as np
 
 from brainglobe_atlasapi import BrainGlobeAtlas
 from PyNutil import seg_to_coords, read_alignment, read_segmentation_dir
-from PyNutil.io.atlas_loader import resolve_atlas
 
 
 TEST_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -28,7 +27,7 @@ class TestReturnOrientation(unittest.TestCase):
         if not os.path.isfile(alignment_json):
             raise unittest.SkipTest("Test data not found")
 
-        cls.atlas = resolve_atlas(BrainGlobeAtlas("allen_mouse_25um"))
+        cls.atlas = BrainGlobeAtlas("allen_mouse_25um")
         cls.alignment = read_alignment(alignment_json)
         cls.image_series = read_segmentation_dir(seg_folder)
 

@@ -485,8 +485,8 @@ def interpolate_volume(
             "value_mode must be one of 'pixel_count', 'mean', or 'object_count'"
         )
 
-    atlas = resolve_atlas(atlas)
-    atlas_volume = atlas.volume
+    atlas_data = resolve_atlas(atlas)
+    atlas_volume = atlas_data.volume
 
     out_base_shape = tuple(int(x) for x in atlas_volume.shape)
     out_shape = derive_shape_from_atlas(atlas_shape=out_base_shape, scale=scale)

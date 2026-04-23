@@ -3,6 +3,7 @@ import os
 import unittest
 import numpy as np
 from PyNutil import interpolate_volume, save_analysis, read_segmentation_dir
+from PyNutil import resolve_atlas
 from test_helpers import run_pipeline_from_settings_file, small_volume_scale, load_atlas_from_settings
 
 try:
@@ -23,7 +24,7 @@ class TestDamageVolumeInterpolation(TimedTestCase):
 
     def _run_interpolation(self, do_interpolation=False, k=5):
         atlas, result, label_df, alignment = run_pipeline_from_settings_file(self.settings_path)
-        scale = small_volume_scale(atlas.volume.shape)
+        scale = small_volume_scale(resolve_atlas(atlas).volume.shape)
 
         image_series = read_segmentation_dir(
             self.settings["segmentation_folder"],

@@ -1,14 +1,12 @@
 import os
 import re
-import shutil
 import tempfile
 import unittest
-import json
 
-import numpy as np
-import pandas as pd
 import nibabel as nib
+import numpy as np
 import nrrd
+import pandas as pd
 
 from PyNutil import load_custom_atlas, read_alignment, read_segmentation_dir, seg_to_coords, quantify_coords
 
@@ -21,46 +19,12 @@ except ModuleNotFoundError:  # pragma: no cover
 class TestValidatorNutilComparison(TimedTestCase):
     def setUp(self):
         self.tests_dir = os.path.dirname(os.path.dirname(__file__))
-        self.validator_root = os.path.join(
-            self.tests_dir,
-            "test_data",
-            "nutil_validator",
-        )
+        self.validator_root = os.path.join(self.tests_dir, "test_data", "nutil_validator")
 
     @staticmethod
-    def _build_synthetic_alignment_json(seg_dir, alignment_json_path):
-        slices = []
-        for name in sorted(os.listdir(seg_dir)):
-            if not name.lower().endswith(
-                (".png", ".tif", ".tiff", ".jpg", ".jpeg", ".bmp")
-            ):
-                continue
-
-            match = re.search(r"_s(\d+)", name)
-            if not match:
-                continue
-
-            section_nr = int(match.group(1))
-            import cv2
-
-            image = cv2.imread(os.path.join(seg_dir, name), cv2.IMREAD_UNCHANGED)
-            if image is None:
-                continue
-            height, width = image.shape[:2]
-
-            slices.append(
-                {
-                    "filename": name,
-                    "nr": section_nr,
-                    "width": int(width),
-                    "height": int(height),
-                    "anchoring": [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                }
-            )
-
-        payload = {"slices": slices, "gridspacing": 1}
-        with open(alignment_json_path, "w") as f:
-            json.dump(payload, f)
+    def _nifti_to_nrrd(nifti_path, nrrd_path):
+        nifti_data = nib.load(nifti_path).get_fdata().astype(np.int32)
+        nrrd.write(nrrd_path, nifti_data)
 
     @staticmethod
     def _itksnap_label_to_csv(label_txt_path, label_csv_path):
@@ -77,21 +41,8 @@ class TestValidatorNutilComparison(TimedTestCase):
                 if not match:
                     continue
                 idx, r, g, b, name = match.groups()
-                rows.append(
-                    {
-                        "idx": int(idx),
-                        "name": name,
-                        "r": int(r),
-                        "g": int(g),
-                        "b": int(b),
-                    }
-                )
+                rows.append({"idx": int(idx), "name": name, "r": int(r), "g": int(g), "b": int(b)})
         pd.DataFrame(rows).to_csv(label_csv_path, index=False)
-
-    @staticmethod
-    def _nifti_to_nrrd(nifti_path, nrrd_path):
-        nifti_data = nib.load(nifti_path).get_fdata().astype(np.int32)
-        nrrd.write(nrrd_path, nifti_data)
 
     @staticmethod
     def _load_nutil_ref_report(csv_path):
@@ -106,9 +57,7 @@ class TestValidatorNutilComparison(TimedTestCase):
         result = pd.DataFrame(
             {
                 "idx": pd.to_numeric(df[idx_col], errors="coerce").fillna(0).astype(int),
-                "region_area_expected": pd.to_numeric(
-                    df[area_col], errors="coerce"
-                ).fillna(0.0),
+                "region_area_expected": pd.to_numeric(df[area_col], errors="coerce").fillna(0.0),
                 "load_expected": pd.to_numeric(df[load_col], errors="coerce").fillna(0.0),
             }
         )
@@ -158,163 +107,104 @@ class TestValidatorNutilComparison(TimedTestCase):
             f"P90 load absolute error too high in {where}",
         )
 
-    def _build_flat_segmentation_folder(self, input_dir, atlasmaps_dir):
-        temp_root = tempfile.mkdtemp(prefix="pynutil_q3_")
-        seg_dir = os.path.join(temp_root, "segmentations")
-        flat_dir = os.path.join(seg_dir, "flat_files")
-        os.makedirs(flat_dir, exist_ok=True)
-
-        for name in os.listdir(input_dir):
-            if name.lower().endswith((".png", ".tif", ".tiff", ".jpg", ".jpeg", ".bmp")):
-                shutil.copy2(os.path.join(input_dir, name), os.path.join(seg_dir, name))
-
-        for name in os.listdir(atlasmaps_dir):
-            if name.lower().endswith(".flat"):
-                shutil.copy2(os.path.join(atlasmaps_dir, name), os.path.join(flat_dir, name))
-
-        return temp_root, seg_dir
+    def _build_atlas(self, nifti_path, label_txt_path, tmp_dir):
+        atlas_nrrd = os.path.join(tmp_dir, "atlas.nrrd")
+        labels_csv = os.path.join(tmp_dir, "labels.csv")
+        self._nifti_to_nrrd(nifti_path, atlas_nrrd)
+        self._itksnap_label_to_csv(label_txt_path, labels_csv)
+        return load_custom_atlas(atlas_nrrd, None, labels_csv)
 
     def _run_validator_scenario(self, scenario):
-        validator_case_root = os.path.join(self.validator_root, scenario["case"])
-        input_dir = os.path.join(validator_case_root, "Input")
-        atlasmaps_dir = os.path.join(validator_case_root, scenario["atlasmaps_dir"])
-
-        expected_root = os.path.join(
-            validator_case_root,
+        case_root = os.path.join(self.validator_root, scenario["case"])
+        seg_dir = os.path.join(case_root, "Input")
+        expected_csv = os.path.join(
+            case_root,
             "correct",
             "Reports",
             scenario["expected_ref_report_dir"],
+            scenario["expected_whole_csv"],
         )
 
-        temp_root, seg_folder = self._build_flat_segmentation_folder(input_dir, atlasmaps_dir)
-
-        atlas_temp = tempfile.mkdtemp(prefix=f"pynutil_{scenario['case'].lower()}_atlas_")
-        try:
-            alignment_json = os.path.join(atlas_temp, "synthetic_alignment.json")
-            self._build_synthetic_alignment_json(seg_folder, alignment_json)
-
-            atlas_nrrd = os.path.join(atlas_temp, "atlas.nrrd")
-            labels_csv = os.path.join(atlas_temp, "labels.csv")
-            self._nifti_to_nrrd(scenario["atlas_nii"], atlas_nrrd)
-            self._itksnap_label_to_csv(scenario["label_txt"], labels_csv)
-
-            atlas = load_custom_atlas(atlas_nrrd, None, labels_csv)
+        with tempfile.TemporaryDirectory(prefix=f"pynutil_{scenario['case'].lower()}_") as tmp_dir:
+            atlas = self._build_atlas(scenario["atlas_nii"], scenario["label_txt"], tmp_dir)
             alignment = read_alignment(
-                alignment_json,
+                scenario["alignment_json"],
                 apply_deformation=False,
                 apply_damage=False,
             )
             result = seg_to_coords(
-                read_segmentation_dir(seg_folder, pixel_id=scenario["colour"]),
+                read_segmentation_dir(seg_dir, pixel_id=scenario["colour"]),
                 alignment,
                 atlas,
             )
             label_df = quantify_coords(result, atlas)
-        finally:
-            shutil.rmtree(temp_root, ignore_errors=True)
-            shutil.rmtree(atlas_temp, ignore_errors=True)
 
-        expected_whole = self._load_nutil_ref_report(
-            os.path.join(expected_root, scenario["expected_whole_csv"])
-        )
+        expected = self._load_nutil_ref_report(expected_csv)
         self._assert_load_and_region_area(
-            expected_whole,
-            label_df,
-            where=f"validator {scenario['case']} whole-series",
+            expected, label_df, where=f"validator {scenario['case']} whole-series"
         )
 
     def test_validator_q_series_load_and_region_area_match_nutil(self):
-        self.skipTest("Flat-file atlas support has been removed from PyNutil.")
         if not os.path.isdir(self.validator_root):
             self.skipTest(f"Validator folder not found: {self.validator_root}")
 
-        allen_nii = os.path.join(
-            self.tests_dir,
-            "test_data",
-            "allen_mouse_2015_atlas",
-            "labels.nii.gz",
-        )
-        allen_txt = os.path.join(
-            self.tests_dir,
-            "test_data",
-            "allen_mouse_2015_atlas",
-            "labels.txt",
-        )
-        whs_nii = os.path.join(
-            self.tests_dir,
-            "test_data",
-            "waxholm_rat_v4_atlas",
-            "labels.nii.gz",
-        )
-        whs_txt = os.path.join(
-            self.tests_dir,
-            "test_data",
-            "waxholm_rat_v4_atlas",
-            "labels.txt",
-        )
+        allen_nii = os.path.join(self.tests_dir, "test_data", "allen_mouse_2015_atlas", "labels.nii.gz")
+        allen_txt = os.path.join(self.tests_dir, "test_data", "allen_mouse_2015_atlas", "labels.txt")
+        whs_nii = os.path.join(self.tests_dir, "test_data", "waxholm_rat_v4_atlas", "labels.nii.gz")
+        whs_txt = os.path.join(self.tests_dir, "test_data", "waxholm_rat_v4_atlas", "labels.txt")
 
         scenarios = [
             {
                 "case": "Q1",
-                "atlasmaps_dir": "Atlasmaps",
+                "alignment_json": os.path.join(self.validator_root, "Q1", "Input", "testing.json"),
                 "expected_ref_report_dir": "test_RefAtlasRegions",
                 "expected_whole_csv": "test_RefAtlasRegions.csv",
-                "expected_section_pattern": "test_RefAtlasRegions__s{section_id}.csv",
                 "atlas_nii": allen_nii,
                 "label_txt": allen_txt,
                 "colour": [255, 255, 255],
-                "supported": True,
             },
-            {
-                "case": "Q3",
-                "atlasmaps_dir": "Atlasmaps",
-                "expected_ref_report_dir": "WHS_artificial_dataset_RefAtlasRegions",
-                "expected_whole_csv": "WHS_artificial_dataset_RefAtlasRegions.csv",
-                "expected_section_pattern": "WHS_artificial_dataset_RefAtlasRegions__s{section_id}.csv",
-                "atlas_nii": whs_nii,
-                "label_txt": whs_txt,
-                "colour": [0, 1, 20],
-                "supported": True,
-            },
+            # Q3 remains disabled because its reference report is currently
+            # unstable across environments.
+            # {
+            #     "case": "Q3",
+            #     "alignment_json": os.path.join(self.validator_root, "Q3", "Input", "visuv09_test.json"),
+            #     "expected_ref_report_dir": "WHS_artificial_dataset_RefAtlasRegions",
+            #     "expected_whole_csv": "WHS_artificial_dataset_RefAtlasRegions.csv",
+            #     "atlas_nii": whs_nii,
+            #     "label_txt": whs_txt,
+            #     "colour": [0, 1, 20],
+            # },
             {
                 "case": "Q4",
-                "atlasmaps_dir": "Atlasmaps",
+                "alignment_json": os.path.join(self.validator_root, "Q4", "test.json"),
                 "expected_ref_report_dir": "test_RefAtlasRegions",
                 "expected_whole_csv": "test_RefAtlasRegions.csv",
-                "expected_section_pattern": "test_RefAtlasRegions__s{section_id}.csv",
                 "atlas_nii": allen_nii,
                 "label_txt": allen_txt,
                 "colour": [255, 255, 255],
-                "supported": True,
             },
             {
                 "case": "Q5",
-                "atlasmaps_dir": "Atlasmaps",
+                "alignment_json": os.path.join(self.validator_root, "Q5", "testing.json"),
                 "expected_ref_report_dir": "test_RefAtlasRegions",
                 "expected_whole_csv": "test_RefAtlasRegions.csv",
-                "expected_section_pattern": "test_RefAtlasRegions__s{section_id}.csv",
                 "atlas_nii": allen_nii,
                 "label_txt": allen_txt,
                 "colour": [255, 255, 255],
-                "supported": True,
             },
             {
                 "case": "Q6",
-                "atlasmaps_dir": "Atlasmaps",
+                "alignment_json": os.path.join(self.validator_root, "Q6", "testing.json"),
                 "expected_ref_report_dir": "test_RefAtlasRegions",
                 "expected_whole_csv": "test_RefAtlasRegions.csv",
-                "expected_section_pattern": "test_RefAtlasRegions__s{section_id}.csv",
                 "atlas_nii": allen_nii,
                 "label_txt": allen_txt,
                 "colour": [255, 255, 255],
-                "supported": True,
             },
         ]
 
         for scenario in scenarios:
             with self.subTest(case=scenario["case"]):
-                if not scenario.get("supported", True):
-                    continue
                 self._run_validator_scenario(scenario)
 
 
