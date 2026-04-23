@@ -42,6 +42,12 @@ class Section:
     image: Optional[np.ndarray] = field(default=None, repr=False)
     path: Optional[str] = None
 
+    def __post_init__(self):
+        if self.image is None and self.path is None:
+            raise ValueError(
+                f"Section {self.section_number}: either 'image' or 'path' must be provided."
+            )
+
     def get_image(self, adapter) -> np.ndarray:
         """Return the image array, loading from *path* if not pre-loaded.
 
