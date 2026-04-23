@@ -69,18 +69,22 @@ class AnalysisWorker(QThread):
             seg_format = self.arguments.get("segmentation_format", "binary")
 
             if img_dir and not seg_dir:
+                image_series = read_image_dir(img_dir)
                 result = image_to_coords(
-                    img_dir,
+                    image_series,
                     registration,
                     atlas,
                 )
             else:
-                result = seg_to_coords(
+                image_series = read_segmentation_dir(
                     seg_dir,
-                    registration,
-                    atlas,
                     pixel_id=self.arguments["object_colour"],
                     segmentation_format=seg_format,
+                )
+                result = seg_to_coords(
+                    image_series,
+                    registration,
+                    atlas,
                 )
 
             if self.cancelled:
